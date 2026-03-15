@@ -1,6 +1,7 @@
 import axios, { type AxiosInstance } from "axios";
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || "https://localhost:7201/api";
+console.log(import.meta.env);
 const apiScope =
   import.meta.env.VITE_API_SCOPE ||
   (import.meta.env.VITE_AZURE_CLIENT_ID
