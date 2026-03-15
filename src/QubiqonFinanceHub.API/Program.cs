@@ -53,11 +53,13 @@ if (app.Environment.IsDevelopment())
 
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v2/swagger.json", "Qubiqon Finance Hub v2"));
-}
+//if (app.Environment.IsDevelopment())
+//{
+//    app.UseSwagger();
+//    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v2/swagger.json", "Qubiqon Finance Hub v2"));
+//}
+app.UseSwagger();
+app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v2/swagger.json", "Qubiqon Finance Hub v2"));
 
 app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
