@@ -1,0 +1,121 @@
+import { apiClient } from "./client";
+import type { Bill } from "../../types";
+
+export interface ApiBill {
+  id: string;
+  billCode?: string;
+  vendorId: string;
+  vendorName?: string;
+  vendorGstin?: string;
+  vendorEmail?: string;
+  amount: number;
+  taxConfigId?: string;
+  tdsAmount?: number;
+  payableAmount?: number;
+  description: string;
+  billDate: string;
+  dueDate: string;
+  paymentTerms: string;
+  status: string;
+  attachmentUrl?: string | null;
+  submittedBy?: string;
+  submittedAt?: string;
+  comments?: { by: string; text: string; actionType: string; createdAt: string }[];
+  ccEmails?: string[];
+  paymentReference?: string | null;
+}
+
+function mapStatus(s: string): string {
+  const m: Record<string, string> = {
+    Submitted: "Submitted",
+    Approved: "Approved",
+    Rejected: "Rejected",
+    Paid: "Paid",
+    Overdue: "Overdue",
+  };
+  return m[s] ?? s;
+}
+
+function mapApiBillToApp(item: ApiBill): Bill {
+  const pay = item.payableAmount ?? item.amount - (item.tdsAmount ?? 0);
+  const file = item.attachmentUrl
+    ? { n: item.attachmentUrl.split("/").pop() || "file", s: "—" }
+    : null;
+  return {
+    id: item.billCode ?? item.id,
+    apiId: item.id,
+    vId: item.vendorId,
+    vName: item.vendorName ?? "",
+    vGst: item.vendorGstin ?? "",
+    vEmail: item.vendorEmail ?? "",
+    amt: item.amount,
+    tds: item.taxConfigId ?? "",
+    tdsAmt: item.tdsAmount ?? 0,
+    pay,
+    desc: item.description,
+    bDate: item.billDate?.split("T")[0] ?? "",
+    due: item.dueDate?.split("T")[0] ?? "",
+    terms: item.paymentTerms ?? "",
+    status: mapStatus(item.status),
+    file,
+    by: 0,
+    byName: item.submittedBy ?? "",
+    at: item.submittedAt?.split("T")[0] ?? "",
+    comments: (item.comments ?? []).map((c) => ({
+      by: c.by,
+      text: c.text,
+      d: c.createdAt?.split("T")[0] ?? "",
+      t: "ok" as const,
+    })),
+    cc: item.ccEmails,
+    paidRef: item.paymentReference ?? undefined,
+  };
+}
+
+export async function getBills(): Promise<Bill[]> {
+  const { data } = await apiClient.get<ApiBill[] | { items: ApiBill[] }>("/bills");
+  const items = Array.isArray(data) ? data : (data as { items: ApiBill[] })?.items ?? [];
+  return items.map(mapApiBillToApp);
+}
+
+export interface CreateBillPayload {
+  vendorId: string;
+  amount: number;
+  taxConfigId: string;
+  description: string;
+  billDate: string;
+  dueDate: string;
+  paymentTerms: string;
+  ccEmails: string;
+}
+
+export async function createBill(payload: CreateBillPayload, file: File): Promise<unknown> {
+  const form = new FormData();
+  form.append("vendorId", payload.vendorId);
+  form.append("amount", String(payload.amount));
+  form.append("taxConfigId", payload.taxConfigId || "");
+  form.append("description", payload.description);
+  form.append("billDate", payload.billDate);
+  form.append("dueDate", payload.dueDate);
+  form.append("paymentTerms", payload.paymentTerms);
+  form.append("ccEmails", payload.ccEmails);
+  form.append("attachment", file);
+
+  const { data } = await apiClient.post("/bills", form);
+  return data;
+}
+
+export async function approveBill(id: string, comments: string): Promise<unknown> {
+  const { data } = await apiClient.post(`/bills/${id}/approve`, { comments });
+  return data;
+}
+
+export async function rejectBill(id: string, comments: string): Promise<unknown> {
+  const { data } = await apiClient.post(`/bills/${id}/reject`, { comments });
+  return data;
+}
+
+export async function payBill(id: string, paymentReference: string): Promise<unknown> {
+  const { data } = await apiClient.post(`/bills/${id}/pay`, { paymentReference });
+  return data;
+}

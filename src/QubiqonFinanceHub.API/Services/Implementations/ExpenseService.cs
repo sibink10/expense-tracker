@@ -1,0 +1,264 @@
+using Microsoft.EntityFrameworkCore;
+using QubiqonFinanceHub.API.Data;
+using QubiqonFinanceHub.API.DTOs;
+using QubiqonFinanceHub.API.Models.Entities;
+using QubiqonFinanceHub.API.Models.Enums;
+using QubiqonFinanceHub.API.Services.Interfaces;
+
+namespace QubiqonFinanceHub.API.Services.Implementations;
+
+public class ExpenseService : IExpenseService
+{
+    private readonly FinanceHubDbContext _db;
+    private readonly ITenantService _tenant;
+    private readonly ICodeGeneratorService _codeGen;
+    private readonly IEmailService _email;
+    private readonly ILogger<ExpenseService> _log;
+
+    public ExpenseService(FinanceHubDbContext db, ITenantService tenant, ICodeGeneratorService codeGen, IEmailService email, ILogger<ExpenseService> log)
+    { _db = db; _tenant = tenant; _codeGen = codeGen; _email = email; _log = log; }
+
+    public async Task<ExpenseDto> CreateAsync(CreateExpenseRequest dto)
+    {
+        var orgId = _tenant.GetCurrentOrganizationId();
+        var currentEmp = await _tenant.GetCurrentEmployeeAsync();
+        var targetEmpId = dto.OnBehalfOfEmployeeId ?? currentEmp.Id;
+        var targetEmp = dto.OnBehalfOfEmployeeId.HasValue
+            ? await _db.Employees.FindAsync(dto.OnBehalfOfEmployeeId.Value) ?? currentEmp
+            : currentEmp;
+
+        var code = await _codeGen.GenerateCodeAsync(orgId, "expense");
+
+        var expense = new ExpenseRequest
+        {
+            Id = Guid.NewGuid(), OrganizationId = orgId, ExpenseCode = code,
+            EmployeeId = targetEmpId, SubmittedByEmployeeId = currentEmp.Id,
+            Amount = dto.Amount, Purpose = dto.Purpose, RequiredByDate = dto.RequiredByDate,
+            Status = ExpenseStatus.PendingApproval, CreatedAt = DateTime.UtcNow
+        };
+
+        expense.Comments.Add(new ActivityComment
+        {
+            Id = Guid.NewGuid(), ExpenseRequestId = expense.Id,
+            CommentByEmployeeId = currentEmp.Id,
+            Text = $"Expense submitted for ₹{dto.Amount:N2}.",
+            ActionType = CommentActionType.Submitted
+        });
+
+        _db.ExpenseRequests.Add(expense);
+        await _db.SaveChangesAsync();
+
+        // Send notification to approvers
+        var approvers = await _db.Employees
+            .Where(e => e.OrganizationId == orgId && e.Role == UserRole.Approver && e.IsActive)
+            .ToListAsync();
+
+        foreach (var approver in approvers)
+        {
+            await _email.SendNotificationAsync("expense_submitted",
+                new Dictionary<string, string>
+                {
+                    ["employee_name"] = targetEmp.FullName,
+                    ["expense_id"] = code,
+                    ["purpose"] = dto.Purpose,
+                    ["amount"] = $"₹{dto.Amount:N2}",
+                },
+                approver.Email);
+        }
+
+        _log.LogInformation("Expense {Code} created by {Employee}", code, currentEmp.FullName);
+        return (await GetByIdAsync(expense.Id))!;
+    }
+
+    public async Task<ExpenseDto?> GetByIdAsync(Guid id)
+    {
+        var orgId = _tenant.GetCurrentOrganizationId();
+        var e = await _db.ExpenseRequests
+            .Include(x => x.Employee)
+            .Include(x => x.Comments).ThenInclude(c => c.CommentByEmployee)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId);
+
+        if (e == null) return null;
+        return MapToDto(e);
+    }
+
+    public async Task<PaginatedResult<ExpenseDto>> ListAsync(FilterParams f, bool myOnly = false)
+    {
+        var orgId = _tenant.GetCurrentOrganizationId();
+        var q = _db.ExpenseRequests
+            .Include(x => x.Employee)
+            .Include(x => x.Comments).ThenInclude(c => c.CommentByEmployee)
+            .Where(x => x.OrganizationId == orgId)
+            .AsNoTracking();
+
+        if (myOnly) { var empId = _tenant.GetCurrentEmployeeId(); q = q.Where(x => x.SubmittedByEmployeeId == empId); }
+        if (f.Status != null && Enum.TryParse<ExpenseStatus>(f.Status, true, out var status)) q = q.Where(x => x.Status == status);
+        if (!string.IsNullOrWhiteSpace(f.Search))
+        {
+            var s = f.Search.ToLower();
+            q = q.Where(x => x.ExpenseCode.ToLower().Contains(s) || x.Purpose.ToLower().Contains(s) || x.Employee.FullName.ToLower().Contains(s));
+        }
+
+        var total = await q.CountAsync();
+        q = f.Desc ? q.OrderByDescending(x => x.CreatedAt) : q.OrderBy(x => x.CreatedAt);
+        var items = await q.Skip((f.Page - 1) * f.PageSize).Take(f.PageSize).ToListAsync();
+
+        return new PaginatedResult<ExpenseDto>(items.Select(MapToDto).ToList(), total, f.Page, f.PageSize);
+    }
+
+    public async Task<ExpenseDto> ApproveAsync(Guid id, ApproveRequest dto)
+    {
+        var orgId = _tenant.GetCurrentOrganizationId();
+        var emp = await _tenant.GetCurrentEmployeeAsync();
+        var expense = await _db.ExpenseRequests.Include(x => x.Employee)
+            .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Expense not found");
+
+        if (expense.Status != ExpenseStatus.PendingApproval)
+            throw new InvalidOperationException($"Cannot approve expense in '{expense.Status}' status.");
+
+        var hasBill = expense.AttachmentUrl != null;
+        expense.Status = hasBill ? ExpenseStatus.Approved : ExpenseStatus.AwaitingBill;
+        expense.UpdatedAt = DateTime.UtcNow;
+
+        _db.ActivityComments.Add(new ActivityComment
+        {
+            Id = Guid.NewGuid(), ExpenseRequestId = id, CommentByEmployeeId = emp.Id,
+            Text = dto.Comments ?? (hasBill ? "Approved." : "Approved. Awaiting bill submission."),
+            ActionType = CommentActionType.Approved
+        });
+
+        await _db.SaveChangesAsync();
+
+        // Notify employee
+        await _email.SendNotificationAsync("expense_approved",
+            new Dictionary<string, string>
+            {
+                ["employee_name"] = expense.Employee.FullName,
+                ["expense_id"] = expense.ExpenseCode,
+                ["purpose"] = expense.Purpose,
+                ["amount"] = $"₹{expense.Amount:N2}",
+                ["status"] = expense.Status.ToString(),
+            },
+            expense.Employee.Email);
+
+        return (await GetByIdAsync(id))!;
+    }
+
+    public async Task<ExpenseDto> RejectAsync(Guid id, RejectRequest dto)
+    {
+        var orgId = _tenant.GetCurrentOrganizationId();
+        var emp = await _tenant.GetCurrentEmployeeAsync();
+        var expense = await _db.ExpenseRequests.Include(x => x.Employee)
+            .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Expense not found");
+
+        expense.Status = ExpenseStatus.Rejected;
+        expense.UpdatedAt = DateTime.UtcNow;
+
+        _db.ActivityComments.Add(new ActivityComment
+        {
+            Id = Guid.NewGuid(), ExpenseRequestId = id, CommentByEmployeeId = emp.Id,
+            Text = dto.Comments, ActionType = CommentActionType.Rejected
+        });
+
+        await _db.SaveChangesAsync();
+
+        await _email.SendNotificationAsync("expense_rejected",
+            new Dictionary<string, string>
+            {
+                ["employee_name"] = expense.Employee.FullName,
+                ["expense_id"] = expense.ExpenseCode,
+                ["reason"] = dto.Comments,
+            },
+            expense.Employee.Email);
+
+        return (await GetByIdAsync(id))!;
+    }
+
+    public async Task<ExpenseDto> CancelAsync(Guid id)
+    {
+        var orgId = _tenant.GetCurrentOrganizationId();
+        var empId = _tenant.GetCurrentEmployeeId();
+        var expense = await _db.ExpenseRequests
+            .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Expense not found");
+
+        if (expense.EmployeeId != empId) throw new UnauthorizedAccessException("Only submitter can cancel.");
+        if (expense.Status != ExpenseStatus.PendingApproval) throw new InvalidOperationException("Can only cancel pending expenses.");
+
+        expense.Status = ExpenseStatus.Cancelled;
+        expense.UpdatedAt = DateTime.UtcNow;
+
+        _db.ActivityComments.Add(new ActivityComment
+        {
+            Id = Guid.NewGuid(), ExpenseRequestId = id, CommentByEmployeeId = empId,
+            Text = "Cancelled by submitter.", ActionType = CommentActionType.Cancelled
+        });
+
+        await _db.SaveChangesAsync();
+        return (await GetByIdAsync(id))!;
+    }
+
+    public async Task<ExpenseDto> ProcessPaymentAsync(Guid id, ProcessPaymentRequest dto)
+    {
+        var orgId = _tenant.GetCurrentOrganizationId();
+        var emp = await _tenant.GetCurrentEmployeeAsync();
+        var expense = await _db.ExpenseRequests.Include(x => x.Employee)
+            .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Expense not found");
+
+        if (expense.Status != ExpenseStatus.Approved && expense.Status != ExpenseStatus.AwaitingBill)
+            throw new InvalidOperationException("Expense not ready for payment.");
+
+        expense.Status = ExpenseStatus.Completed;
+        expense.PaymentReference = dto.PaymentReference;
+        expense.UpdatedAt = DateTime.UtcNow;
+
+        _db.ActivityComments.Add(new ActivityComment
+        {
+            Id = Guid.NewGuid(), ExpenseRequestId = id, CommentByEmployeeId = emp.Id,
+            Text = $"Payment released. Ref: {dto.PaymentReference}",
+            ActionType = CommentActionType.PaymentProcessed
+        });
+
+        await _db.SaveChangesAsync();
+
+        await _email.SendNotificationAsync("payment_confirmation",
+            new Dictionary<string, string>
+            {
+                ["employee_name"] = expense.Employee.FullName,
+                ["doc_type"] = "Expense",
+                ["doc_number"] = expense.ExpenseCode,
+                ["amount"] = $"₹{expense.Amount:N2}",
+                ["ref_number"] = dto.PaymentReference,
+            },
+            expense.Employee.Email);
+
+        return (await GetByIdAsync(id))!;
+    }
+
+    public async Task AttachBillAsync(Guid id, string attachmentUrl)
+    {
+        var orgId = _tenant.GetCurrentOrganizationId();
+        var expense = await _db.ExpenseRequests
+            .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Expense not found");
+
+        expense.AttachmentUrl = attachmentUrl;
+        if (expense.Status == ExpenseStatus.AwaitingBill) expense.Status = ExpenseStatus.Approved;
+        expense.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+    }
+
+    private static ExpenseDto MapToDto(ExpenseRequest e) => new(
+        e.Id, e.ExpenseCode, e.EmployeeId, e.Employee.FullName, e.Employee.Department ?? "",
+        e.Amount, e.Purpose, e.RequiredByDate, e.Status.ToString(),
+        e.AttachmentUrl, e.PaymentReference, e.CreatedAt,
+        e.Comments.OrderBy(c => c.CreatedAt).Select(c => new CommentDto(
+            c.Id, c.CommentByEmployee.FullName, c.Text, c.ActionType.ToString(), c.CreatedAt
+        )).ToList()
+    );
+}
