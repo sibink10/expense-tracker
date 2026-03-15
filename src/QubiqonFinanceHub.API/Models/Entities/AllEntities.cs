@@ -102,12 +102,15 @@ public class ExpenseRequest
     [Required, MaxLength(30)] public string ExpenseCode { get; set; } = "";
     public Guid EmployeeId { get; set; }
     [ForeignKey(nameof(EmployeeId))] public Employee Employee { get; set; } = null!;
-    public Guid? SubmittedByEmployeeId { get; set; } // For "on behalf" submissions
+    public Guid? SubmittedByEmployeeId { get; set; }
     [Column(TypeName = "decimal(18,2)")] public decimal Amount { get; set; }
     [Required, MaxLength(500)] public string Purpose { get; set; } = "";
-    public DateTime RequiredByDate { get; set; }
+    public DateOnly BillDate { get; set; }
+    [Required, MaxLength(100)] public string BillNumber { get; set; } = "";
     public ExpenseStatus Status { get; set; } = ExpenseStatus.PendingApproval;
-    [MaxLength(2048)] public string? AttachmentUrl { get; set; }
+
+    [MaxLength(2048)] public string? BillImageUrl { get; set; }
+
     [MaxLength(100)] public string? PaymentReference { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
@@ -141,13 +144,18 @@ public class Vendor
     [Key] public Guid Id { get; set; }
     public Guid OrganizationId { get; set; }
     [Required, MaxLength(200)] public string Name { get; set; } = "";
-    [MaxLength(20)] public string? GSTIN { get; set; }
     [Required, MaxLength(256)] public string Email { get; set; } = "";
+    [Required, MaxLength(500)] public string Address { get; set; } = "";
     [MaxLength(20)] public string? Phone { get; set; }
     [MaxLength(100)] public string? Category { get; set; }
-    [MaxLength(500)] public string? Address { get; set; }
+    [MaxLength(20)] public string? GSTIN { get; set; }
+    [MaxLength(100)] public string? ContactPerson { get; set; }
+    [MaxLength(100)] public string? BankName { get; set; }
+    [MaxLength(50)] public string? AccountNumber { get; set; }
+    [MaxLength(20)] public string? IfscCode { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
 }
 
 // ═══════════════════════════════════════════════════
@@ -198,6 +206,11 @@ public class Client
     [MaxLength(500)] public string? Address { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public CustomerType CustomerType { get; set; } = CustomerType.Business;
+    [MaxLength(500)] public string? BillingAddress { get; set; }
+    [MaxLength(500)] public string? ShippingAddress { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
 }
 
 // ═══════════════════════════════════════════════════
@@ -232,6 +245,7 @@ public class Invoice
     public DateTime? UpdatedAt { get; set; }
     public ICollection<InvoiceLineItem> LineItems { get; set; } = new List<InvoiceLineItem>();
     public ICollection<ActivityComment> Comments { get; set; } = new List<ActivityComment>();
+    [MaxLength(50)] public string? InvoiceNumber { get; set; }
 }
 
 // ═══════════════════════════════════════════════════

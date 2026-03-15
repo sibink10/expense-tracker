@@ -92,10 +92,29 @@ public class DashboardController(IDashboardService dashboard) : ControllerBase
 public class ExpensesController(IExpenseService svc) : ControllerBase
 {
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateExpenseRequest dto)
+    public async Task<IActionResult> Create([FromForm] CreateExpenseRequest dto)
     {
         var result = await svc.CreateAsync(dto);
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+    }
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, [FromForm] UpdateExpenseRequest dto)
+    {
+        var result = await svc.UpdateAsync(id, dto);
+        return Ok(result);
+    }
+    [HttpPost("{id:guid}/upload-bill")]
+    public async Task<IActionResult> UploadBill(Guid id, [FromForm] UploadBillRequest dto)
+    {
+        var result = await svc.UploadBillAsync(id, dto);
+        return Ok(result);
+    }
+
+    [HttpGet("{id:guid}/bill")]
+    public async Task<IActionResult> GetBillUrl(Guid id)
+    {
+        var result = await svc.GetBillUrlAsync(id);
+        return Ok(new { url = result });
     }
     [HttpGet("{id:guid}")] public async Task<IActionResult> GetById(Guid id) { var r = await svc.GetByIdAsync(id); return r != null ? Ok(r) : NotFound(); }
     [HttpGet("my")] public async Task<IActionResult> ListMine([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f, true));
@@ -143,25 +162,23 @@ public class BillsController(IVendorBillService svc) : ControllerBase
 {
     //[HttpPost, Authorize(Roles = "Finance,Admin")]
     [HttpPost]
-    public async Task<IActionResult> Create([FromForm] CreateBillRequest dto, IFormFile? attachment)
+    [HttpPost]
+    public async Task<IActionResult> Create([FromForm] CreateBillRequest dto)
     {
-        string? attachmentUrl = null;
-        if (attachment != null)
-        {
-            var fileName = $"{Guid.NewGuid()}_{attachment.FileName}";
-            var path = Path.Combine("uploads", fileName);
-            Directory.CreateDirectory("uploads");
-            using var stream = System.IO.File.Create(path);
-            await attachment.CopyToAsync(stream);
-            attachmentUrl = fileName; // store just filename for now
-        }
-        return Ok(await svc.CreateAsync(dto, attachmentUrl));
+        var result = await svc.CreateAsync(dto);
+        return Ok(result);
     }
     [HttpGet("{id:guid}")] public async Task<IActionResult> GetById(Guid id) { var r = await svc.GetByIdAsync(id); return r != null ? Ok(r) : NotFound(); }
     [HttpGet] public async Task<IActionResult> List([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
     [HttpPost("{id:guid}/approve")] public async Task<IActionResult> Approve(Guid id, [FromBody] ApproveRequest dto) => Ok(await svc.ApproveAsync(id, dto));
     [HttpPost("{id:guid}/reject")] public async Task<IActionResult> Reject(Guid id, [FromBody] RejectRequest dto) => Ok(await svc.RejectAsync(id, dto));
     [HttpPost("{id:guid}/pay")] public async Task<IActionResult> Pay(Guid id, [FromBody] ProcessPaymentRequest dto) => Ok(await svc.ProcessPaymentAsync(id, dto));
+    [HttpGet("{id:guid}/attachment")]
+    public async Task<IActionResult> GetAttachmentUrl(Guid id)
+    {
+        var result = await svc.GetAttachmentUrlAsync(id);
+        return Ok(new { url = result });
+    }
 }
 
 // ═══════════════════════════════════════════════════

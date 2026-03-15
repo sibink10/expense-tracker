@@ -79,7 +79,7 @@ export default function RejectModal() {
       {error && (
         <div style={{ color: "var(--danger)", fontSize: "12px", marginBottom: "8px" }}>{error}</div>
       )}
-      <div style={{ display: "flex", gap: "6px" }}>
+      <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
         <Btn v="danger" onClick={handleReject} disabled={!r || loading}>
           {loading ? "Rejecting..." : "Reject"}
         </Btn>

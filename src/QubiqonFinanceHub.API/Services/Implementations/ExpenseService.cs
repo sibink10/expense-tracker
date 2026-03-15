@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
+using QubiqonFinanceHub.API.Models.Constants;
 using QubiqonFinanceHub.API.Models.Entities;
 using QubiqonFinanceHub.API.Models.Enums;
 using QubiqonFinanceHub.API.Services.Interfaces;
@@ -14,9 +15,13 @@ public class ExpenseService : IExpenseService
     private readonly ICodeGeneratorService _codeGen;
     private readonly IEmailService _email;
     private readonly ILogger<ExpenseService> _log;
+    private readonly IStorageService _storage;
 
-    public ExpenseService(FinanceHubDbContext db, ITenantService tenant, ICodeGeneratorService codeGen, IEmailService email, ILogger<ExpenseService> log)
-    { _db = db; _tenant = tenant; _codeGen = codeGen; _email = email; _log = log; }
+    public ExpenseService(FinanceHubDbContext db, ITenantService tenant, ICodeGeneratorService codeGen, IEmailService email, ILogger<ExpenseService> log, IStorageService storage)
+    {
+        _db = db; _tenant = tenant; _codeGen = codeGen; _email = email; _log = log;
+        _storage = storage;
+    }
 
     public async Task<ExpenseDto> CreateAsync(CreateExpenseRequest dto)
     {
@@ -29,17 +34,32 @@ public class ExpenseService : IExpenseService
 
         var code = await _codeGen.GenerateCodeAsync(orgId, "expense");
 
+        var expenseId = Guid.NewGuid(); // Generate ID early for storage path
+
+        var billImageUrl = dto.BillImage != null
+            ? await _storage.UploadAsync(StorageFolders.ExpenseBill, expenseId, dto.BillImage)
+            : null;
+
         var expense = new ExpenseRequest
         {
-            Id = Guid.NewGuid(), OrganizationId = orgId, ExpenseCode = code,
-            EmployeeId = targetEmpId, SubmittedByEmployeeId = currentEmp.Id,
-            Amount = dto.Amount, Purpose = dto.Purpose, RequiredByDate = dto.RequiredByDate,
-            Status = ExpenseStatus.PendingApproval, CreatedAt = DateTime.UtcNow
+            Id = expenseId,
+            OrganizationId = orgId,
+            ExpenseCode = code,
+            EmployeeId = targetEmpId,
+            SubmittedByEmployeeId = currentEmp.Id,
+            Amount = dto.Amount,
+            Purpose = dto.Purpose,
+            BillDate = dto.BillDate,
+            BillNumber = dto.BillNumber,
+            BillImageUrl = billImageUrl,
+            Status = ExpenseStatus.PendingApproval,
+            CreatedAt = DateTime.UtcNow
         };
 
         expense.Comments.Add(new ActivityComment
         {
-            Id = Guid.NewGuid(), ExpenseRequestId = expense.Id,
+            Id = Guid.NewGuid(),
+            ExpenseRequestId = expense.Id,
             CommentByEmployeeId = currentEmp.Id,
             Text = $"Expense submitted for ₹{dto.Amount:N2}.",
             ActionType = CommentActionType.Submitted
@@ -48,7 +68,6 @@ public class ExpenseService : IExpenseService
         _db.ExpenseRequests.Add(expense);
         await _db.SaveChangesAsync();
 
-        // Send notification to approvers
         var approvers = await _db.Employees
             .Where(e => e.OrganizationId == orgId && e.Role == UserRole.Approver && e.IsActive)
             .ToListAsync();
@@ -62,12 +81,91 @@ public class ExpenseService : IExpenseService
                     ["expense_id"] = code,
                     ["purpose"] = dto.Purpose,
                     ["amount"] = $"₹{dto.Amount:N2}",
+                    ["bill_number"] = dto.BillNumber,
+                    ["bill_date"] = dto.BillDate.ToString("dd MMM yyyy"),
                 },
                 approver.Email);
         }
 
         _log.LogInformation("Expense {Code} created by {Employee}", code, currentEmp.FullName);
         return (await GetByIdAsync(expense.Id))!;
+    }
+
+
+    public async Task<ExpenseDto> UploadBillAsync(Guid id, UploadBillRequest dto)
+    {
+        var orgId = _tenant.GetCurrentOrganizationId();
+        var empId = _tenant.GetCurrentEmployeeId();
+
+        var expense = await _db.ExpenseRequests
+            .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Expense not found");
+
+        if (expense.SubmittedByEmployeeId != empId)
+            throw new UnauthorizedAccessException("Only the submitter can upload the bill.");
+
+        if (expense.Status != ExpenseStatus.PendingApproval && expense.Status != ExpenseStatus.AwaitingBill)
+            throw new InvalidOperationException("Bill can only be uploaded for pending or awaiting bill expenses.");
+
+        if (expense.BillImageUrl != null)
+            await _storage.DeleteAsync(expense.BillImageUrl);  // delete old if re-uploading
+
+        expense.BillImageUrl = await _storage.UploadAsync(StorageFolders.ExpenseBill, expense.Id, dto.BillImage);
+
+        expense.Status = ExpenseStatus.PendingBillApproval;
+        expense.UpdatedAt = DateTime.UtcNow;
+
+        _db.ActivityComments.Add(new ActivityComment
+        {
+            Id = Guid.NewGuid(),
+            ExpenseRequestId = id,
+            CommentByEmployeeId = empId,
+            Text = "Bill uploaded. Awaiting bill approval.",
+            ActionType = CommentActionType.BillUploaded
+        });
+
+        await _db.SaveChangesAsync();
+        return (await GetByIdAsync(id))!;
+    }
+
+    public async Task<ExpenseDto> UpdateAsync(Guid id, UpdateExpenseRequest dto)
+    {
+        var orgId = _tenant.GetCurrentOrganizationId();
+        var empId = _tenant.GetCurrentEmployeeId();
+
+        var expense = await _db.ExpenseRequests
+            .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Expense not found");
+
+        if (expense.SubmittedByEmployeeId != empId)
+            throw new UnauthorizedAccessException("Only the submitter can edit this expense.");
+
+        if (expense.Status != ExpenseStatus.PendingApproval)
+            throw new InvalidOperationException("Only pending expenses can be edited.");
+
+        if (dto.BillImage != null)
+        {
+            if (expense.BillImageUrl != null)
+                await _storage.DeleteAsync(expense.BillImageUrl);  // delete old image
+            expense.BillImageUrl = await _storage.UploadAsync(StorageFolders.ExpenseBill, expense.Id, dto.BillImage);
+        }
+
+        expense.Amount = dto.Amount;
+        expense.Purpose = dto.Purpose;
+        expense.BillDate = dto.BillDate;
+        expense.BillNumber = dto.BillNumber;
+        expense.UpdatedAt = DateTime.UtcNow;
+
+        _db.ActivityComments.Add(new ActivityComment
+        {
+            Id = Guid.NewGuid(),
+            ExpenseRequestId = id,
+            CommentByEmployeeId = empId,
+            Text = $"Expense updated. Amount: ₹{dto.Amount:N2}."
+        });
+
+        await _db.SaveChangesAsync();
+        return (await GetByIdAsync(id))!;
     }
 
     public async Task<ExpenseDto?> GetByIdAsync(Guid id)
@@ -115,23 +213,23 @@ public class ExpenseService : IExpenseService
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
 
-        if (expense.Status != ExpenseStatus.PendingApproval)
+        if (expense.Status != ExpenseStatus.PendingApproval && expense.Status != ExpenseStatus.PendingBillApproval)
             throw new InvalidOperationException($"Cannot approve expense in '{expense.Status}' status.");
 
-        var hasBill = expense.AttachmentUrl != null;
-        expense.Status = hasBill ? ExpenseStatus.Approved : ExpenseStatus.AwaitingBill;
+        expense.Status = expense.BillImageUrl != null ? ExpenseStatus.Approved : ExpenseStatus.AwaitingBill;
         expense.UpdatedAt = DateTime.UtcNow;
 
         _db.ActivityComments.Add(new ActivityComment
         {
-            Id = Guid.NewGuid(), ExpenseRequestId = id, CommentByEmployeeId = emp.Id,
-            Text = dto.Comments ?? (hasBill ? "Approved." : "Approved. Awaiting bill submission."),
+            Id = Guid.NewGuid(),
+            ExpenseRequestId = id,
+            CommentByEmployeeId = emp.Id,
+            Text = dto.Comments ?? (expense.BillImageUrl != null ? "Approved." : "Approved. Awaiting bill submission."),
             ActionType = CommentActionType.Approved
         });
 
         await _db.SaveChangesAsync();
 
-        // Notify employee
         await _email.SendNotificationAsync("expense_approved",
             new Dictionary<string, string>
             {
@@ -159,8 +257,11 @@ public class ExpenseService : IExpenseService
 
         _db.ActivityComments.Add(new ActivityComment
         {
-            Id = Guid.NewGuid(), ExpenseRequestId = id, CommentByEmployeeId = emp.Id,
-            Text = dto.Comments, ActionType = CommentActionType.Rejected
+            Id = Guid.NewGuid(),
+            ExpenseRequestId = id,
+            CommentByEmployeeId = emp.Id,
+            Text = dto.Comments,
+            ActionType = CommentActionType.Rejected
         });
 
         await _db.SaveChangesAsync();
@@ -193,8 +294,11 @@ public class ExpenseService : IExpenseService
 
         _db.ActivityComments.Add(new ActivityComment
         {
-            Id = Guid.NewGuid(), ExpenseRequestId = id, CommentByEmployeeId = empId,
-            Text = "Cancelled by submitter.", ActionType = CommentActionType.Cancelled
+            Id = Guid.NewGuid(),
+            ExpenseRequestId = id,
+            CommentByEmployeeId = empId,
+            Text = "Cancelled by submitter.",
+            ActionType = CommentActionType.Cancelled
         });
 
         await _db.SaveChangesAsync();
@@ -218,7 +322,9 @@ public class ExpenseService : IExpenseService
 
         _db.ActivityComments.Add(new ActivityComment
         {
-            Id = Guid.NewGuid(), ExpenseRequestId = id, CommentByEmployeeId = emp.Id,
+            Id = Guid.NewGuid(),
+            ExpenseRequestId = id,
+            CommentByEmployeeId = emp.Id,
             Text = $"Payment released. Ref: {dto.PaymentReference}",
             ActionType = CommentActionType.PaymentProcessed
         });
@@ -239,24 +345,37 @@ public class ExpenseService : IExpenseService
         return (await GetByIdAsync(id))!;
     }
 
-    public async Task AttachBillAsync(Guid id, string attachmentUrl)
+    public async Task AttachBillAsync(Guid id, string billImageUrl)
     {
         var orgId = _tenant.GetCurrentOrganizationId();
         var expense = await _db.ExpenseRequests
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
 
-        expense.AttachmentUrl = attachmentUrl;
+        expense.BillImageUrl = billImageUrl;
         if (expense.Status == ExpenseStatus.AwaitingBill) expense.Status = ExpenseStatus.Approved;
         expense.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
     }
 
+    public async Task<string> GetBillUrlAsync(Guid id)
+    {
+        var orgId = _tenant.GetCurrentOrganizationId();
+        var expense = await _db.ExpenseRequests
+            .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Expense not found");
+
+        if (expense.BillImageUrl == null)
+            throw new InvalidOperationException("No bill uploaded for this expense.");
+
+        return _storage.GenerateSasUrl(expense.BillImageUrl);
+    }
+
     private static ExpenseDto MapToDto(ExpenseRequest e) => new(
         e.Id, e.ExpenseCode, e.EmployeeId, e.Employee.FullName, e.Employee.Department ?? "",
-        e.Amount, e.Purpose, e.RequiredByDate, e.Status.ToString(),
-        e.AttachmentUrl, e.PaymentReference, e.CreatedAt,
+        e.Amount, e.Purpose, e.BillDate, e.BillNumber, e.Status.ToString(),
+        e.BillImageUrl, e.PaymentReference, e.CreatedAt,
         e.Comments.OrderBy(c => c.CreatedAt).Select(c => new CommentDto(
             c.Id, c.CommentByEmployee.FullName, c.Text, c.ActionType.ToString(), c.CreatedAt
         )).ToList()

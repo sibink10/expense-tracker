@@ -10,10 +10,13 @@ interface InpOpt {
 
 interface InpProps {
   label?: string;
-  type?: "text" | "number" | "date" | "select" | "textarea";
+  type?: "text" | "number" | "date" | "select" | "textarea" | "email";
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
+  onBlur?: (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
   req?: boolean;
+  /** When false, required validation still applies but no asterisk is shown (default true) */
+  showReqStar?: boolean;
   min?: string;
   ph?: string;
   disabled?: boolean;
@@ -27,7 +30,9 @@ export const Inp: React.FC<InpProps> = ({
   type = "text",
   value,
   onChange,
+  onBlur,
   req,
+  showReqStar = true,
   min,
   ph,
   disabled,
@@ -46,13 +51,14 @@ export const Inp: React.FC<InpProps> = ({
           marginBottom: "4px",
         }}
       >
-        {label} {req && <span style={{ color: C.accent }}>*</span>}
+        {label} {req && showReqStar && <span style={{ color: C.accent }}>*</span>}
       </label>
     )}
     {type === "select" ? (
       <select
         value={value}
         onChange={onChange as React.ChangeEventHandler<HTMLSelectElement>}
+        onBlur={onBlur as React.FocusEventHandler<HTMLSelectElement>}
         required={req}
         disabled={disabled}
         style={{
@@ -77,6 +83,7 @@ export const Inp: React.FC<InpProps> = ({
       <textarea
         value={value}
         onChange={onChange as React.ChangeEventHandler<HTMLTextAreaElement>}
+        onBlur={onBlur as React.FocusEventHandler<HTMLTextAreaElement>}
         required={req}
         placeholder={ph}
         disabled={disabled}
@@ -95,9 +102,10 @@ export const Inp: React.FC<InpProps> = ({
       />
     ) : (
       <input
-        type={type}
+        type={type === "email" ? "email" : type}
         value={value}
         onChange={onChange as React.ChangeEventHandler<HTMLInputElement>}
+        onBlur={onBlur as React.FocusEventHandler<HTMLInputElement>}
         required={req}
         min={min}
         placeholder={ph}
@@ -353,7 +361,11 @@ export const FileUp: React.FC<{
   req?: boolean;
   /** Optional: pass the raw File for FormData uploads */
   onFileSelect?: (f: File | null) => void;
-}> = ({ file, onChange, req, onFileSelect }) => {
+  /** e.g. ".pdf" for PDF only */
+  accept?: string;
+  /** Override hint text below drop zone */
+  hint?: string;
+}> = ({ file, onChange, req, onFileSelect, accept = ".pdf,.jpg,.jpeg,.png", hint }) => {
   const ref = useRef<HTMLInputElement>(null);
   const handleFile = (f: File) => {
     onChange({ n: f.name, s: (f.size / 1024).toFixed(0) + " KB" });
@@ -364,6 +376,7 @@ export const FileUp: React.FC<{
     onFileSelect?.(null);
     if (ref.current) ref.current.value = "";
   };
+  const hintText = hint ?? (accept === ".pdf" ? "PDF only" : "PDF, JPG, PNG up to 10 MB");
   return (
     <div style={{ marginBottom: "14px" }}>
       <label
@@ -412,11 +425,11 @@ export const FileUp: React.FC<{
           <div style={{ fontSize: "12px", fontWeight: 600 }}>
             Drop file or <span style={{ color: C.vendor }}>browse</span>
           </div>
-          <div style={{ fontSize: "10px", color: C.muted }}>PDF, JPG, PNG up to 10 MB</div>
+          <div style={{ fontSize: "10px", color: C.muted }}>{hintText}</div>
           <input
             ref={ref}
             type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
+            accept={accept}
             onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
             style={{ display: "none" }}
           />

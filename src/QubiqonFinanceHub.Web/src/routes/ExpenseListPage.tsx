@@ -11,6 +11,7 @@ import { getExpensesMapped } from "../shared/api/expense";
 const STATUS_TABS = [
   { label: "All", value: "" },
   { label: EXP_S.PENDING, value: "PendingApproval" },
+  { label: EXP_S.PENDING_BILL_APPROVAL, value: "PendingBillApproval" },
   { label: EXP_S.APPROVED, value: "Approved" },
   { label: EXP_S.AWAITING_BILL, value: "AwaitingBill" },
   { label: EXP_S.COMPLETED, value: "Completed" },
@@ -157,6 +158,8 @@ export default function ExpenseListPage() {
               !is("employee") && "Employee",
               "Purpose",
               "Amount",
+              "Bill #",
+              "Bill date",
               "Status",
               (is("approver") || is("finance") || is("admin")) && "Action",
             ].filter(Boolean) as string[]}
@@ -167,13 +170,15 @@ export default function ExpenseListPage() {
                 ...(!is("employee") ? [{ v: <span style={{ fontSize: "11px" }}>{e.empName}</span> }] : []),
                 { v: <div style={{ maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.purpose}</div> },
                 { v: <span style={{ fontWeight: 700 }}>{fmtCur(e.amt)}</span> },
+                { v: <span style={{ fontSize: "11px" }}>{e.billNumber ?? "—"}</span> },
+                { v: <span style={{ fontSize: "11px" }}>{e.billDate ?? "—"}</span> },
                 { v: <Badge s={e.status} /> },
                 ...(is("approver") || is("finance") || is("admin")
                   ? [
                       {
                         v: (
                           <div onClick={(ev) => ev.stopPropagation()} style={{ display: "flex", gap: "3px" }}>
-                            {(is("approver") || is("admin")) && e.status === EXP_S.PENDING && (
+                            {(is("approver") || is("admin")) && (e.status === EXP_S.PENDING || e.status === EXP_S.PENDING_BILL_APPROVAL) && (
                               <>
                                 <Btn sm v="success" onClick={() => setMdl({ t: "exp-approve", d: e })}>✓</Btn>
                                 <Btn sm v="danger" onClick={() => setMdl({ t: "reject", d: e, it: "expense" })}>✕</Btn>

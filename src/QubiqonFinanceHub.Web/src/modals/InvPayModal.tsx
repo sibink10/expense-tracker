@@ -100,9 +100,11 @@ export default function InvPayModal() {
       {error && (
         <div style={{ color: "var(--danger)", fontSize: "12px", marginBottom: "8px" }}>{error}</div>
       )}
-      <Btn v="success" onClick={handleConfirm} disabled={!paymentReference.trim() || loading}>
-        {loading ? "Saving..." : "Confirm"}
-      </Btn>
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <Btn v="success" onClick={handleConfirm} disabled={!paymentReference.trim() || loading}>
+          {loading ? "Saving..." : "Confirm"}
+        </Btn>
+      </div>
     </Mdl>
   );
 }

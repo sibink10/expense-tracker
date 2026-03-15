@@ -47,11 +47,13 @@ export default function InvoiceDetailModal({ invoice: inv }: Props) {
         </table>
       </div>
       <CLog comments={inv.comments} />
-      <div style={{ display: "flex", gap: "6px" }}>
+      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "flex-end" }}>
         {inv.status !== "Paid" && (
           <Btn v="success" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "inv-pay", d: inv }), 50); }}>Mark paid</Btn>
         )}
-        <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>
+        {inv.status === "Paid" && (
+          <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>
+        )}
       </div>
     </Mdl>
   );

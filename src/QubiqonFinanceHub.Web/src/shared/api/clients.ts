@@ -11,7 +11,10 @@ export interface ApiClient {
   currency: string;
   taxType: string;
   gstin: string;
-  address: string;
+  address?: string;
+  customerType?: string;
+  shippingAddress?: string;
+  billingAddress?: string;
 }
 
 function mapApiClientToApp(item: ApiClient): Client {
@@ -23,9 +26,12 @@ function mapApiClientToApp(item: ApiClient): Client {
     phone: item.phone || "",
     country: item.country || "",
     currency: item.currency || "",
-    addr: item.address || "",
+    addr: item.billingAddress ?? item.shippingAddress ?? item.address ?? "",
     gstin: item.gstin || "",
     taxType: item.taxType || "",
+    customerType: item.customerType,
+    shippingAddress: item.shippingAddress,
+    billingAddress: item.billingAddress,
   };
 }
 
@@ -44,7 +50,9 @@ export interface ClientPayload {
   currency: string;
   taxType: string;
   gstin: string;
-  address: string;
+  shippingAddress: string;
+  billingAddress: string;
+  customerType: string;
 }
 
 export async function createClient(payload: ClientPayload): Promise<unknown> {

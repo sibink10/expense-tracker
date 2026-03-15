@@ -44,7 +44,7 @@ export default function BillListPage() {
         <h1 style={{ fontSize: "20px", fontWeight: 700, margin: 0 }}>
           <span style={{ color: C.vendor }}>📋</span> Vendor bills
         </h1>
-        {is("finance") && (
+        {(is("finance") || is("admin")) && (
           <Btn v="vendor" onClick={() => navigate("/bills/add")}>
             ＋ Submit bill
           </Btn>

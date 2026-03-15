@@ -9,6 +9,10 @@ export interface ApiVendor {
   phone: string;
   category: string;
   address: string;
+  contactPerson?: string;
+  bankName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
 }
 
 function mapApiVendorToApp(item: ApiVendor): Vendor {
@@ -20,6 +24,10 @@ function mapApiVendorToApp(item: ApiVendor): Vendor {
     cat: item.category || "",
     ph: item.phone || "",
     addr: item.address || "",
+    contactPerson: item.contactPerson ?? undefined,
+    bankName: item.bankName ?? undefined,
+    accountNumber: item.accountNumber ?? undefined,
+    ifscCode: item.ifscCode ?? undefined,
   };
 }
 
@@ -36,6 +44,10 @@ export interface CreateVendorPayload {
   phone: string;
   category: string;
   address: string;
+  contactPerson?: string;
+  bankName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
 }
 
 export async function createVendor(payload: CreateVendorPayload): Promise<unknown> {

@@ -31,11 +31,18 @@ public class InvoiceService : IInvoiceService
 
         var invoice = new Invoice
         {
-            Id = Guid.NewGuid(), OrganizationId = orgId, InvoiceCode = code,
-            ClientId = dto.ClientId, Currency = dto.Currency,
-            InvoiceDate = dto.InvoiceDate, DueDate = dto.DueDate,
-            PaymentTerms = dto.PaymentTerms, PurchaseOrder = dto.PurchaseOrder,
-            Notes = dto.Notes, TaxConfigId = dto.TaxConfigId,
+            Id = Guid.NewGuid(),
+            OrganizationId = orgId,
+            InvoiceCode = code,
+            ClientId = dto.ClientId,
+            Currency = dto.Currency,
+            InvoiceDate = dto.InvoiceDate,
+            DueDate = dto.DueDate,
+            PaymentTerms = dto.PaymentTerms,
+            PurchaseOrder = dto.PurchaseOrder,
+            Notes = dto.Notes,
+            TaxConfigId = dto.TaxConfigId,
+            InvoiceNumber = dto.InvoiceNumber,  // ← added
             CreatedByEmployeeId = emp.Id,
             Status = dto.SendImmediately ? InvoiceStatus.Sent : InvoiceStatus.Draft,
             SentAt = dto.SendImmediately ? DateTime.UtcNow : null,
@@ -246,18 +253,19 @@ public class InvoiceService : IInvoiceService
         };
 
     private static InvoiceDto MapToDto(Invoice inv) => new(
-        inv.Id, inv.InvoiceCode, inv.ClientId, inv.Client.Name, inv.Client.Email,
-        inv.Client.ContactPerson, inv.Client.Country, inv.Currency,
-        inv.SubTotal, inv.TotalGST, inv.TaxConfig?.Name, inv.TaxAmount, inv.Total,
-        inv.InvoiceDate, inv.DueDate, inv.PaymentTerms, inv.PurchaseOrder,
-        inv.Status.ToString(), inv.Notes, inv.TotalInWords,
-        inv.PaymentReference, inv.PaidAt, inv.CreatedAt,
-        inv.LineItems.Select(l => new InvoiceLineItemDto(
-            l.LineNumber, l.Description, l.HSNCode, l.Quantity, l.Rate, l.Amount,
-            l.GSTConfig?.Name, l.GSTConfig?.Rate ?? 0, l.GSTAmount, l.TotalAmount
-        )).ToList(),
-        inv.Comments.OrderBy(c => c.CreatedAt).Select(c => new CommentDto(
-            c.Id, c.CommentByEmployee.FullName, c.Text, c.ActionType.ToString(), c.CreatedAt
-        )).ToList()
-    );
+     inv.Id, inv.InvoiceCode, inv.InvoiceNumber,
+     inv.ClientId, inv.Client.Name, inv.Client.Email,
+     inv.Client.ContactPerson, inv.Client.Country, inv.Currency,
+     inv.SubTotal, inv.TotalGST, inv.TaxConfig?.Name, inv.TaxAmount, inv.Total,
+     inv.InvoiceDate, inv.DueDate, inv.PaymentTerms, inv.PurchaseOrder,
+     inv.Status.ToString(), inv.Notes, inv.TotalInWords,
+     inv.PaymentReference, inv.PaidAt, inv.CreatedAt,
+     inv.LineItems.Select(l => new InvoiceLineItemDto(
+         l.LineNumber, l.Description, l.HSNCode, l.Quantity, l.Rate, l.Amount,
+         l.GSTConfig?.Name, l.GSTConfig?.Rate ?? 0, l.GSTAmount, l.TotalAmount
+     )).ToList(),
+     inv.Comments.OrderBy(c => c.CreatedAt).Select(c => new CommentDto(
+         c.Id, c.CommentByEmployee.FullName, c.Text, c.ActionType.ToString(), c.CreatedAt
+     )).ToList()
+ );
 }

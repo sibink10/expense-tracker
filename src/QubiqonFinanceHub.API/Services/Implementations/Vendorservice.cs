@@ -22,11 +22,15 @@ public class VendorService : IVendorService
             Id = Guid.NewGuid(),
             OrganizationId = orgId,
             Name = dto.Name,
-            GSTIN = dto.GSTIN,
             Email = dto.Email,
+            Address = dto.Address,
             Phone = dto.Phone,
             Category = dto.Category,
-            Address = dto.Address,
+            GSTIN = dto.GSTIN,
+            ContactPerson = dto.ContactPerson,
+            BankName = dto.BankName,
+            AccountNumber = dto.AccountNumber,
+            IfscCode = dto.IfscCode,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -43,11 +47,16 @@ public class VendorService : IVendorService
             ?? throw new KeyNotFoundException("Vendor not found");
 
         if (dto.Name != null) vendor.Name = dto.Name;
-        if (dto.GSTIN != null) vendor.GSTIN = dto.GSTIN;
         if (dto.Email != null) vendor.Email = dto.Email;
+        if (dto.Address != null) vendor.Address = dto.Address;
         if (dto.Phone != null) vendor.Phone = dto.Phone;
         if (dto.Category != null) vendor.Category = dto.Category;
-        if (dto.Address != null) vendor.Address = dto.Address;
+        if (dto.GSTIN != null) vendor.GSTIN = dto.GSTIN;
+        if (dto.ContactPerson != null) vendor.ContactPerson = dto.ContactPerson;
+        if (dto.BankName != null) vendor.BankName = dto.BankName;
+        if (dto.AccountNumber != null) vendor.AccountNumber = dto.AccountNumber;
+        if (dto.IfscCode != null) vendor.IfscCode = dto.IfscCode;
+        vendor.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
         return MapToDto(vendor);
@@ -73,6 +82,18 @@ public class VendorService : IVendorService
     }
 
     private static VendorDto MapToDto(Vendor v) => new(
-        v.Id, v.Name, v.GSTIN, v.Email, v.Phone, v.Category, v.Address, v.IsActive
-    );
+     v.Id,
+     v.Name,
+     v.Email,
+     v.Address,
+     v.Phone,
+     v.Category,
+     v.GSTIN,
+     v.ContactPerson,
+     v.BankName,
+     v.AccountNumber,
+     v.IfscCode,
+     v.IsActive,
+     v.CreatedAt
+ );
 }

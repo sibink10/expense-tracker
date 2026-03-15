@@ -19,6 +19,8 @@ public interface ICodeGeneratorService
 public interface IExpenseService
 {
     Task<ExpenseDto> CreateAsync(CreateExpenseRequest dto);
+    Task<ExpenseDto> UpdateAsync(Guid id, UpdateExpenseRequest dto);
+    Task<ExpenseDto> UploadBillAsync(Guid id, UploadBillRequest dto);
     Task<ExpenseDto?> GetByIdAsync(Guid id);
     Task<PaginatedResult<ExpenseDto>> ListAsync(FilterParams filters, bool myOnly = false);
     Task<ExpenseDto> ApproveAsync(Guid id, ApproveRequest dto);
@@ -26,6 +28,7 @@ public interface IExpenseService
     Task<ExpenseDto> CancelAsync(Guid id);
     Task<ExpenseDto> ProcessPaymentAsync(Guid id, ProcessPaymentRequest dto);
     Task AttachBillAsync(Guid id, string attachmentUrl);
+    Task<string> GetBillUrlAsync(Guid id);
 }
 
 public interface IAdvanceService
@@ -49,12 +52,13 @@ public interface IVendorService
 
 public interface IVendorBillService
 {
-    Task<BillDto> CreateAsync(CreateBillRequest dto, string? attachmentUrl);
+    Task<BillDto> CreateAsync(CreateBillRequest dto);
     Task<BillDto?> GetByIdAsync(Guid id);
     Task<PaginatedResult<BillDto>> ListAsync(FilterParams filters);
     Task<BillDto> ApproveAsync(Guid id, ApproveRequest dto);
     Task<BillDto> RejectAsync(Guid id, RejectRequest dto);
     Task<BillDto> ProcessPaymentAsync(Guid id, ProcessPaymentRequest dto);
+    Task<string> GetAttachmentUrlAsync(Guid id);
 }
 
 public interface IClientService
@@ -107,4 +111,11 @@ public interface IEmployeeService
     Task<EmployeeDto> CreateAsync(CreateEmployeeRequest dto);
     Task<EmployeeDto> UpdateAsync(Guid id, UpdateEmployeeRequest dto);
     Task<EmployeeDto> ToggleActiveAsync(Guid id);
+}
+
+public interface IStorageService
+{
+    Task<string> UploadAsync(string folder, Guid entityId, IFormFile file);
+    Task DeleteAsync(string fileUrl);
+    string GenerateSasUrl(string fileUrl, int expiryMinutes = 30);
 }

@@ -30,8 +30,31 @@ public record UpdateOrganizationRequest(string? Name, string? LegalName, string?
 // ═══════════════════════════════════════════════════
 //  EXPENSE
 // ═══════════════════════════════════════════════════
-public record CreateExpenseRequest(decimal Amount, string Purpose, DateTime RequiredByDate, Guid? OnBehalfOfEmployeeId);
-public record ExpenseDto(Guid Id, string ExpenseCode, Guid EmployeeId, string EmployeeName, string Department, decimal Amount, string Purpose, DateTime RequiredByDate, string Status, string? AttachmentUrl, string? PaymentReference, DateTime CreatedAt, List<CommentDto> Comments);
+public class CreateExpenseRequest
+{
+    public decimal Amount { get; set; }
+    public string Purpose { get; set; } = "";
+    public DateOnly BillDate { get; set; }
+    public string BillNumber { get; set; } = "";
+    public Guid? OnBehalfOfEmployeeId { get; set; }
+    public IFormFile? BillImage { get; set; }
+}
+
+public class UpdateExpenseRequest
+{
+    public decimal Amount { get; set; }
+    public string Purpose { get; set; } = "";
+    public DateOnly BillDate { get; set; }
+    public string BillNumber { get; set; } = "";
+    public IFormFile? BillImage { get; set; }  // null = keep existing
+}
+
+public class UploadBillRequest
+{
+    public IFormFile BillImage { get; set; } = null!;
+}
+
+public record ExpenseDto(Guid Id, string ExpenseCode, Guid EmployeeId, string EmployeeName, string Department, decimal Amount, string Purpose, DateOnly BillDate, string BillNumber, string Status, string? AttachmentUrl, string? PaymentReference, DateTime CreatedAt, List<CommentDto> Comments);
 
 // ═══════════════════════════════════════════════════
 //  ADVANCE
@@ -42,31 +65,145 @@ public record AdvanceDto(Guid Id, string AdvanceCode, Guid EmployeeId, string Em
 // ═══════════════════════════════════════════════════
 //  VENDOR
 // ═══════════════════════════════════════════════════
-public record CreateVendorRequest(string Name, string? GSTIN, string Email, string? Phone, string? Category, string? Address);
-public record UpdateVendorRequest(string? Name, string? GSTIN, string? Email, string? Phone, string? Category, string? Address);
-public record VendorDto(Guid Id, string Name, string? GSTIN, string Email, string? Phone, string? Category, string? Address, bool IsActive);
+public record CreateVendorRequest(
+    string Name,
+    string Email,
+    string Address,
+    string? Phone,
+    string? Category,
+    string? GSTIN,
+    string? ContactPerson,
+    string? BankName,
+    string? AccountNumber,
+    string? IfscCode
+);
+public record UpdateVendorRequest(
+    string? Name,
+    string? Email,
+    string? Address,
+    string? Phone,
+    string? Category,
+    string? GSTIN,
+    string? ContactPerson,
+    string? BankName,
+    string? AccountNumber,
+    string? IfscCode
+);
+public record VendorDto(
+    Guid Id,
+    string Name,
+    string Email,
+    string Address,
+    string? Phone,
+    string? Category,
+    string? GSTIN,
+    string? ContactPerson,
+    string? BankName,
+    string? AccountNumber,
+    string? IfscCode,
+    bool IsActive,
+    DateTime CreatedAt
+);
 
 // ═══════════════════════════════════════════════════
 //  VENDOR BILL
 // ═══════════════════════════════════════════════════
-public record CreateBillRequest(Guid VendorId, decimal Amount, Guid? TaxConfigId, string Description, DateTime BillDate, DateTime DueDate, string PaymentTerms, string? CCEmails);
+public class CreateBillRequest
+{
+    public Guid VendorId { get; set; }
+    public decimal Amount { get; set; }
+    public Guid? TaxConfigId { get; set; }
+    public string Description { get; set; } = "";
+    public DateTime BillDate { get; set; }
+    public DateTime DueDate { get; set; }
+    public string PaymentTerms { get; set; } = "";
+    public string? CCEmails { get; set; }
+    public IFormFile? Attachment { get; set; }
+}
 public record BillDto(Guid Id, string BillCode, Guid VendorId, string VendorName, string? VendorGSTIN, string VendorEmail, decimal Amount, string? TaxName, decimal TDSAmount, decimal TotalPayable, string Description, DateTime BillDate, DateTime DueDate, string PaymentTerms, string Status, string? AttachmentUrl, string? PaymentReference, DateTime? PaidAt, string SubmittedByName, DateTime CreatedAt, List<CommentDto> Comments);
 
 // ═══════════════════════════════════════════════════
 //  CLIENT
 // ═══════════════════════════════════════════════════
-public record CreateClientRequest(string Name, string? ContactPerson, string Email, string? Phone, string Country, string Currency, string TaxType, string? GSTIN, string? Address);
-public record UpdateClientRequest(string? Name, string? ContactPerson, string? Email, string? Phone, string? Country, string? Currency, string? TaxType, string? GSTIN, string? Address);
-public record ClientDto(Guid Id, string Name, string? ContactPerson, string Email, string? Phone, string Country, string Currency, string TaxType, string? GSTIN, string? Address, bool IsActive);
+public record CreateClientRequest(
+    string Name,
+    string Email,
+    string Country,
+    string Currency,
+    string TaxType,
+    string CustomerType,
+    string? ContactPerson,
+    string? Phone,
+    string? GSTIN,
+    string? BillingAddress,
+    string? ShippingAddress
+);
+public record UpdateClientRequest(
+    string? Name,
+    string? Email,
+    string? Country,
+    string? Currency,
+    string? TaxType,
+    string? CustomerType,
+    string? ContactPerson,
+    string? Phone,
+    string? GSTIN,
+    string? BillingAddress,
+    string? ShippingAddress
+
+);
+public record ClientDto(
+    Guid Id,
+    string Name,
+    string Email,
+    string Country,
+    string Currency,
+    string TaxType,
+    string CustomerType,
+    string? ContactPerson,
+    string? Phone,
+    string? GSTIN,
+    string? BillingAddress,
+    string? ShippingAddress,
+    bool IsActive,
+    DateTime CreatedAt
+);
 
 // ═══════════════════════════════════════════════════
 //  INVOICE
 // ═══════════════════════════════════════════════════
 public record CreateInvoiceLineItemRequest(string Description, string? HSNCode, decimal Quantity, decimal Rate, Guid? GSTConfigId);
-public record CreateInvoiceRequest(Guid ClientId, string Currency, List<CreateInvoiceLineItemRequest> LineItems, Guid? TaxConfigId, DateTime InvoiceDate, DateTime DueDate, string PaymentTerms, string? PurchaseOrder, string? Notes, bool SendImmediately);
+public record CreateInvoiceRequest(Guid ClientId, string Currency, List<CreateInvoiceLineItemRequest> LineItems, Guid? TaxConfigId, DateTime InvoiceDate, DateTime DueDate, string PaymentTerms, string? PurchaseOrder, string? Notes, bool SendImmediately, string? InvoiceNumber);
 
 public record InvoiceLineItemDto(int LineNumber, string Description, string? HSNCode, decimal Quantity, decimal Rate, decimal Amount, string? GSTName, decimal GSTRate, decimal GSTAmount, decimal TotalAmount);
-public record InvoiceDto(Guid Id, string InvoiceCode, Guid ClientId, string ClientName, string ClientEmail, string? ClientContact, string ClientCountry, string Currency, decimal SubTotal, decimal TotalGST, string? TaxName, decimal TaxAmount, decimal Total, DateTime InvoiceDate, DateTime DueDate, string PaymentTerms, string? PurchaseOrder, string Status, string? Notes, string? TotalInWords, string? PaymentReference, DateTime? PaidAt, DateTime CreatedAt, List<InvoiceLineItemDto> LineItems, List<CommentDto> Comments);
+public record InvoiceDto(
+    Guid Id,
+    string InvoiceCode,
+    string? InvoiceNumber,
+    Guid ClientId,
+    string ClientName,
+    string ClientEmail,
+    string? ClientContact,
+    string ClientCountry,
+    string Currency,
+    decimal SubTotal,
+    decimal? TotalGST,
+    string? TaxName,
+    decimal TaxAmount,
+    decimal Total,
+    DateTime InvoiceDate,
+    DateTime DueDate,
+    string PaymentTerms,
+    string? PurchaseOrder,
+    string Status,
+    string? Notes,
+    string? TotalInWords,
+    string? PaymentReference,
+    DateTime? PaidAt,
+    DateTime CreatedAt,
+    List<InvoiceLineItemDto> LineItems,
+    List<CommentDto> Comments
+);
 
 // ═══════════════════════════════════════════════════
 //  TAX

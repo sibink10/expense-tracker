@@ -40,7 +40,7 @@ export default function BillApproveModal() {
       {error && (
         <div style={{ color: "var(--danger)", fontSize: "12px", marginBottom: "8px" }}>{error}</div>
       )}
-      <div style={{ display: "flex", gap: "6px" }}>
+      <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
         <Btn v="success" onClick={handleSubmit} disabled={loading}>
           {loading ? "Approving..." : "Approve"}
         </Btn>

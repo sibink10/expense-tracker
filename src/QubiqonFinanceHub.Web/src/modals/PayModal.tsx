@@ -4,6 +4,7 @@ import { fmtCur } from "../shared/utils";
 import { Inp, Btn, Mdl } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
 import { payBill } from "../shared/api/bill";
+import { payExpense } from "../shared/api/expense";
 import type { Expense, Bill, Advance } from "../types";
 
 export default function PayModal() {
@@ -31,7 +32,21 @@ export default function PayModal() {
       } finally {
         setLoading(false);
       }
-    } else if (mdl.it) {
+    } else if (mdl.it === "expense") {
+      const exp = d as Expense;
+      const id = exp.apiId ?? exp.id;
+      setLoading(true);
+      setError(null);
+      try {
+        await payExpense(id, r);
+        setMdl(null);
+        window.dispatchEvent(new CustomEvent("expenses-refresh"));
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to process payment");
+      } finally {
+        setLoading(false);
+      }
+    } else if (mdl.it === "advance") {
       pay(d, mdl.it, r);
     }
   };
@@ -67,13 +82,15 @@ export default function PayModal() {
       {error && (
         <div style={{ color: "var(--danger)", fontSize: "12px", marginBottom: "8px" }}>{error}</div>
       )}
-      <Btn
-        v={mdl.it === "bill" ? "vendor" : mdl.it === "advance" ? "advance" : "info"}
-        onClick={handlePay}
-        disabled={!r || loading}
-      >
-        {loading ? "Processing..." : "Confirm payment"}
-      </Btn>
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <Btn
+          v={mdl.it === "bill" ? "vendor" : mdl.it === "advance" ? "advance" : "info"}
+          onClick={handlePay}
+          disabled={!r || loading}
+        >
+          {loading ? "Processing..." : "Confirm payment"}
+        </Btn>
+      </div>
     </Mdl>
   );
 }

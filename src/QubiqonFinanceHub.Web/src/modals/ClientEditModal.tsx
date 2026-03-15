@@ -3,7 +3,21 @@ import { C } from "../shared/theme";
 import { Inp, Btn, Mdl } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
 import { updateClient } from "../shared/api/clients";
+import { isEmailValid } from "../shared/utils";
 import type { Client } from "../types";
+
+const CURRENCY_OPTS = [
+  { v: "INR", l: "INR" },
+  { v: "USD", l: "USD" },
+  { v: "EUR", l: "EUR" },
+  { v: "GBP", l: "GBP" },
+  { v: "AED", l: "AED" },
+  { v: "SGD", l: "SGD" },
+  { v: "CAD", l: "CAD" },
+  { v: "AUD", l: "AUD" },
+  { v: "JPY", l: "JPY" },
+  { v: "CHF", l: "CHF" },
+];
 
 export default function ClientEditModal() {
   const { mdl, setMdl } = useAppContext();
@@ -15,9 +29,13 @@ export default function ClientEditModal() {
   const [currency, setCurrency] = useState("INR");
   const [taxType, setTaxType] = useState("Domestic");
   const [gstin, setGstin] = useState("");
-  const [address, setAddress] = useState("");
+  const [customerType, setCustomerType] = useState<"Business" | "Individual">("Business");
+  const [shippingAddress, setShippingAddress] = useState("");
+  const [billingAddress, setBillingAddress] = useState("");
+  const [sameAddress, setSameAddress] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   const c = mdl?.d && mdl.t === "client-edit" ? (mdl.d as Client) : null;
 
@@ -31,14 +49,27 @@ export default function ClientEditModal() {
       setCurrency(c.currency || "INR");
       setTaxType(c.taxType || "Domestic");
       setGstin(c.gstin || "");
-      setAddress(c.addr || "");
+      setCustomerType((c.customerType === "Individual" ? "Individual" : "Business") as "Business" | "Individual");
+      setShippingAddress(c.shippingAddress ?? c.addr ?? "");
+      const bill = c.billingAddress ?? c.addr ?? "";
+      setBillingAddress(bill);
+      setSameAddress(!!(c.shippingAddress && c.billingAddress && c.shippingAddress === c.billingAddress) || (!c.shippingAddress && !c.billingAddress && !!c.addr));
     }
   }, [c]);
+
+  useEffect(() => {
+    if (sameAddress) setBillingAddress(shippingAddress);
+  }, [sameAddress, shippingAddress]);
 
   if (!c) return null;
 
   const handleSubmit = async () => {
-    if (!name.trim()) return;
+    setEmailError(null);
+    if (!isEmailValid(email)) {
+      setEmailError("Enter a valid email address");
+      return;
+    }
+    if (!name.trim() || !email.trim() || !contactPerson.trim()) return;
 
     setLoading(true);
     setError(null);
@@ -52,7 +83,9 @@ export default function ClientEditModal() {
         currency: currency.trim() || "INR",
         taxType: taxType.trim(),
         gstin: gstin.trim(),
-        address: address.trim(),
+        shippingAddress: shippingAddress.trim(),
+        billingAddress: sameAddress ? shippingAddress.trim() : billingAddress.trim(),
+        customerType,
       });
       setMdl(null);
       window.dispatchEvent(new CustomEvent("clients-refresh"));
@@ -65,12 +98,38 @@ export default function ClientEditModal() {
 
   return (
     <Mdl open close={() => setMdl(null)} title={`Edit ${c.name}`} w>
-      <Inp label="Name *" value={name} onChange={(e) => setName(e.target.value)} req ph="Client name" />
-      <Inp label="Contact person" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} ph="Contact name" />
-      <Inp label="Email" value={email} onChange={(e) => setEmail(e.target.value)} ph="email@example.com" />
+      <Inp label="Name" value={name} onChange={(e) => setName(e.target.value)} req showReqStar={false} ph="Client name" />
+      <Inp label="Contact person" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} req showReqStar={false} ph="Contact name" />
+      <div>
+        <Inp
+          label="Email"
+          value={email}
+          onChange={(e) => { setEmail(e.target.value); setEmailError(null); }}
+          onBlur={() => email.trim() && !isEmailValid(email) && setEmailError("Enter a valid email address")}
+          type="email"
+          req
+          showReqStar={false}
+          ph="email@example.com"
+          style={{ marginBottom: 0 }}
+        />
+        {emailError && <div style={{ fontSize: "11px", color: C.danger, marginTop: "4px" }}>{emailError}</div>}
+      </div>
       <Inp label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} ph="Contact number" />
       <Inp label="Country" value={country} onChange={(e) => setCountry(e.target.value)} ph="Country" />
-      <Inp label="Currency" value={currency} onChange={(e) => setCurrency(e.target.value)} ph="INR, USD, EUR..." />
+      <Inp label="Currency" type="select" value={currency} onChange={(e) => setCurrency(e.target.value)} opts={CURRENCY_OPTS} />
+      <div style={{ marginBottom: "14px" }}>
+        <div style={{ fontSize: "12px", fontWeight: 600, color: C.primary, marginBottom: "6px" }}>Customer type</div>
+        <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", fontSize: "13px" }}>
+            <input type="radio" name="customerType" checked={customerType === "Business"} onChange={() => setCustomerType("Business")} />
+            Business
+          </label>
+          <label style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", fontSize: "13px" }}>
+            <input type="radio" name="customerType" checked={customerType === "Individual"} onChange={() => setCustomerType("Individual")} />
+            Individual
+          </label>
+        </div>
+      </div>
       <Inp
         label="Tax type"
         type="select"
@@ -83,18 +142,24 @@ export default function ClientEditModal() {
         ]}
       />
       <Inp label="GSTIN" value={gstin} onChange={(e) => setGstin(e.target.value)} ph="GST number" />
+      <Inp label="Shipping address" type="textarea" value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} ph="Full shipping address" />
+      <label style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px", cursor: "pointer", fontSize: "13px" }}>
+        <input type="checkbox" checked={sameAddress} onChange={(e) => setSameAddress(e.target.checked)} />
+        Both addresses are the same
+      </label>
       <Inp
-        label="Address"
+        label="Billing address"
         type="textarea"
-        value={address}
-        onChange={(e) => setAddress(e.target.value)}
-        ph="Full address"
+        value={sameAddress ? shippingAddress : billingAddress}
+        onChange={(e) => setBillingAddress(e.target.value)}
+        ph="Full billing address"
+        disabled={sameAddress}
       />
       {error && (
-        <div style={{ color: "var(--danger)", fontSize: "12px", marginBottom: "8px" }}>{error}</div>
+        <div style={{ color: C.danger, fontSize: "12px", marginBottom: "8px" }}>{error}</div>
       )}
-      <div style={{ display: "flex", gap: "6px" }}>
-        <Btn v="invoice" onClick={handleSubmit} disabled={!name.trim() || loading}>
+      <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
+        <Btn v="invoice" onClick={handleSubmit} disabled={!name.trim() || !email.trim() || !contactPerson.trim() || !isEmailValid(email) || loading}>
           {loading ? "Saving..." : "Save"}
         </Btn>
         <Btn v="secondary" onClick={() => setMdl(null)} disabled={loading}>

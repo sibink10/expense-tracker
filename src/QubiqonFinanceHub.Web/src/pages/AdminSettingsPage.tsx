@@ -2,10 +2,12 @@ import { useState } from "react";
 import { C } from "../shared/theme";
 import { Inp, Btn } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
+import { isEmailListValid } from "../shared/utils";
 
 export default function AdminSettingsPage() {
   const { cfg, setCfg, t } = useAppContext();
   const [c, setC] = useState(cfg);
+  const [ccError, setCcError] = useState<string | null>(null);
 
   return (
     <div style={{ maxWidth: "560px" }}>
@@ -103,14 +105,27 @@ export default function AdminSettingsPage() {
         <Inp
           label="Default CC"
           value={c.ccEmails.join(", ")}
-          onChange={(e) =>
-            setC({ ...c, ccEmails: e.target.value.split(",").map((s) => s.trim()) })
-          }
+          onChange={(e) => {
+            setC({ ...c, ccEmails: e.target.value.split(",").map((s) => s.trim()) });
+            setCcError(null);
+          }}
+          onBlur={() => {
+            const v = c.ccEmails.join(", ");
+            if (v.trim() && !isEmailListValid(v)) setCcError("Enter valid email addresses (comma-separated)");
+            else setCcError(null);
+          }}
           hint="CC'd on all payment emails"
         />
+        {ccError && <div style={{ fontSize: "11px", color: C.danger, marginTop: "4px" }}>{ccError}</div>}
       </div>
       <Btn
         onClick={() => {
+          setCcError(null);
+          const ccStr = c.ccEmails.join(", ");
+          if (ccStr.trim() && !isEmailListValid(ccStr)) {
+            setCcError("Enter valid email addresses (comma-separated)");
+            return;
+          }
           setCfg(c);
           t("Saved");
         }}

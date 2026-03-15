@@ -39,15 +39,31 @@ export default function VendorDetailModal({ vendor: v }: Props) {
       >
         <DetailRow label="Email" value={v.email} />
         <DetailRow label="Phone" value={v.ph} />
+        {v.contactPerson && <DetailRow label="Contact person" value={v.contactPerson} />}
         <DetailRow label="Category" value={v.cat} />
         <DetailRow label="Address" value={v.addr} />
       </div>
-      <div style={{ display: "flex", gap: "6px" }}>
+      {(v.bankName || v.accountNumber || v.ifscCode) && (
+        <div
+          style={{
+            padding: "16px",
+            background: C.surface,
+            borderRadius: "8px",
+            marginBottom: "12px",
+            fontSize: "13px",
+          }}
+        >
+          <div style={{ fontSize: "10px", fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "10px" }}>
+            Bank details
+          </div>
+          <DetailRow label="Bank name" value={v.bankName ?? ""} />
+          <DetailRow label="Account number" value={v.accountNumber ?? ""} />
+          <DetailRow label="IFSC code" value={v.ifscCode ?? ""} />
+        </div>
+      )}
+      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "flex-end" }}>
         <Btn v="vendor" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "vendor-edit", d: v }), 50); }}>
           Edit
-        </Btn>
-        <Btn v="secondary" onClick={() => setMdl(null)}>
-          Close
         </Btn>
       </div>
     </Mdl>

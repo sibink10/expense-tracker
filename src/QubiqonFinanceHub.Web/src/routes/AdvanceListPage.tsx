@@ -71,7 +71,7 @@ export default function AdvanceListPage() {
         <h1 style={{ fontSize: "20px", fontWeight: 700, margin: 0, color: C.advance }}>
           Advance requests
         </h1>
-        {is("employee") && (
+        {(is("employee") || is("admin")) && (
           <Btn v="advance" onClick={() => navigate("/advances/add")}>
             ＋ Request
           </Btn>

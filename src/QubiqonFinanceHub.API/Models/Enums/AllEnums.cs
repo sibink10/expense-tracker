@@ -2,7 +2,7 @@ namespace QubiqonFinanceHub.API.Models.Enums;
 
 public enum UserRole { Employee = 0, Approver = 1, Finance = 2, Admin = 3 }
 
-public enum ExpenseStatus { PendingApproval = 0, Approved = 1, Rejected = 2, Cancelled = 3, AwaitingBill = 4, Completed = 5 }
+public enum ExpenseStatus { PendingApproval = 0, Approved = 1, Rejected = 2, Cancelled = 3, AwaitingBill = 4, Completed = 5, PendingBillApproval = 6 }
 
 public enum BillStatus { Draft = 0, Submitted = 1, Approved = 2, Rejected = 3, Paid = 4, Overdue = 5 }
 
@@ -16,6 +16,8 @@ public enum TaxType { TDS = 0, GST = 1 }
 
 public enum ClientTaxType { Domestic = 0, SEZ = 1, Export = 2 }
 
-public enum CommentActionType { Submitted = 0, Approved = 1, Rejected = 2, Cancelled = 3, PaymentProcessed = 4, Sent = 5, General = 6 }
+public enum CommentActionType { Submitted = 0, Approved = 1, Rejected = 2, Cancelled = 3, PaymentProcessed = 4, Sent = 5, General = 6, BillUploaded = 7 }
 
 public enum SubscriptionPlan { Free = 0, Starter = 1, Professional = 2, Enterprise = 3 }
+
+public enum CustomerType { Individual, Business }

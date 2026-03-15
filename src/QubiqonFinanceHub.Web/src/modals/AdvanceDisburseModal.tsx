@@ -86,7 +86,7 @@ export default function AdvanceDisburseModal() {
       {error && (
         <div style={{ color: "var(--danger)", fontSize: "12px", marginBottom: "8px" }}>{error}</div>
       )}
-      <div style={{ display: "flex", gap: "6px" }}>
+      <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
         <Btn v="advance" onClick={handleDisburse} disabled={!paymentReference || loading}>
           {loading ? "Disbursing..." : "Confirm disburse"}
         </Btn>

@@ -26,6 +26,8 @@ export interface ApiExpenseItem {
   paymentReference: string | null;
   createdAt: string;
   comments: ApiExpenseComment[];
+  billNumber?: string | null;
+  billDate?: string | null;
 }
 
 export interface ApiExpensesResponse {
@@ -39,6 +41,7 @@ export interface ApiExpensesResponse {
 
 const STATUS_MAP: Record<string, string> = {
   PendingApproval: EXP_S.PENDING,
+  PendingBillApproval: EXP_S.PENDING_BILL_APPROVAL,
   Approved: EXP_S.APPROVED,
   Rejected: EXP_S.REJECTED,
   Cancelled: EXP_S.CANCELLED,
@@ -69,6 +72,7 @@ function mapApiExpenseToApp(item: ApiExpenseItem): Expense {
   const file: FileRef | null = item.attachmentUrl
     ? { n: item.attachmentUrl.split("/").pop() || "file", s: "—" }
     : null;
+  const billDate = item.billDate ? (item.billDate.includes("T") ? item.billDate.split("T")[0] : item.billDate) : undefined;
   return {
     id: item.expenseCode,
     apiId: item.id,
@@ -81,6 +85,9 @@ function mapApiExpenseToApp(item: ApiExpenseItem): Expense {
     status,
     at: item.createdAt ? item.createdAt.split("T")[0] : "",
     file,
+    attachmentUrl: item.attachmentUrl ?? undefined,
+    billNumber: item.billNumber ?? undefined,
+    billDate,
     comments: (item.comments || []).map(mapApiComment),
   };
 }
@@ -131,12 +138,15 @@ export interface ExpenseCounts {
 export interface CreateExpensePayload {
   amount: number;
   purpose: string;
-  requiredByDate: string;
+  requiredByDate?: string;
   onBehalfOfEmployeeId: string | null;
+  billNumber?: string | null;
+  billDate?: string | null;
 }
 
-export async function createExpense(payload: CreateExpensePayload): Promise<unknown> {
-  const { data } = await apiClient.post("/expenses", payload);
+/** Submit expense with file attachment via FormData (multipart/form-data). */
+export async function createExpenseForm(formData: FormData): Promise<unknown> {
+  const { data } = await apiClient.post("/expenses", formData);
   return data;
 }
 
@@ -147,6 +157,48 @@ export async function approveExpense(id: string, comments: string): Promise<unkn
 
 export async function rejectExpense(id: string, comments: string): Promise<unknown> {
   const { data } = await apiClient.post(`/expenses/${id}/reject`, { comments });
+  return data;
+}
+
+/** Mark expense as paid (POST /api/expenses/{id}/pay). */
+export async function payExpense(id: string, paymentReference: string): Promise<unknown> {
+  const { data } = await apiClient.post(`/expenses/${id}/pay`, { paymentReference });
+  return data;
+}
+
+export interface UpdateExpensePayload {
+  amount?: number;
+  purpose?: string;
+  billNumber?: string;
+  billDate?: string;
+}
+
+/** Update expense via PUT /api/expenses/{id} with FormData: Amount, Purpose, BillDate, BillNumber, optional BillImage. */
+export async function updateExpenseForm(id: string, formData: FormData): Promise<unknown> {
+  const { data } = await apiClient.put(`/expenses/${id}`, formData);
+  return data;
+}
+
+/** Upload bill document for expense in AwaitingBill status. */
+export async function uploadExpenseBill(id: string, formData: FormData): Promise<unknown> {
+  const { data } = await apiClient.post(`/expenses/${id}/upload-bill`, formData);
+  return data;
+}
+
+/** Response from GET /api/expenses/{id}/bill. */
+export interface GetExpenseBillResponse {
+  url: string;
+}
+
+/** Get bill view URL (GET /api/expenses/{id}/bill). Returns signed URL for viewing in iframe. */
+export async function getExpenseBill(id: string): Promise<string> {
+  const { data } = await apiClient.get<GetExpenseBillResponse>(`/expenses/${id}/bill`);
+  return data?.url ?? "";
+}
+
+/** Get bill as blob for download (GET /api/expenses/{id}/bill/download). Use this to avoid CORS when downloading. */
+export async function getExpenseBillBlob(id: string): Promise<Blob> {
+  const { data } = await apiClient.get(`/expenses/${id}/bill`, { responseType: "blob" });
   return data;
 }
 

@@ -23,14 +23,16 @@ public class ClientService : IClientService
             Id = Guid.NewGuid(),
             OrganizationId = orgId,
             Name = dto.Name,
-            ContactPerson = dto.ContactPerson,
             Email = dto.Email,
-            Phone = dto.Phone,
             Country = dto.Country,
             Currency = dto.Currency,
             TaxType = Enum.Parse<ClientTaxType>(dto.TaxType, true),
+            CustomerType = Enum.Parse<CustomerType>(dto.CustomerType, true),
+            ContactPerson = dto.ContactPerson,
+            Phone = dto.Phone,
             GSTIN = dto.GSTIN,
-            Address = dto.Address,
+            BillingAddress = dto.BillingAddress,
+            ShippingAddress = dto.ShippingAddress,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -47,14 +49,17 @@ public class ClientService : IClientService
             ?? throw new KeyNotFoundException("Client not found");
 
         if (dto.Name != null) client.Name = dto.Name;
-        if (dto.ContactPerson != null) client.ContactPerson = dto.ContactPerson;
         if (dto.Email != null) client.Email = dto.Email;
-        if (dto.Phone != null) client.Phone = dto.Phone;
         if (dto.Country != null) client.Country = dto.Country;
         if (dto.Currency != null) client.Currency = dto.Currency;
         if (dto.TaxType != null) client.TaxType = Enum.Parse<ClientTaxType>(dto.TaxType, true);
+        if (dto.CustomerType != null) client.CustomerType = Enum.Parse<CustomerType>(dto.CustomerType, true);
+        if (dto.ContactPerson != null) client.ContactPerson = dto.ContactPerson;
+        if (dto.Phone != null) client.Phone = dto.Phone;
         if (dto.GSTIN != null) client.GSTIN = dto.GSTIN;
-        if (dto.Address != null) client.Address = dto.Address;
+        if (dto.BillingAddress != null) client.BillingAddress = dto.BillingAddress;
+        if (dto.ShippingAddress != null) client.ShippingAddress = dto.ShippingAddress;
+        client.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
         return MapToDto(client);
@@ -80,8 +85,19 @@ public class ClientService : IClientService
     }
 
     private static ClientDto MapToDto(Client c) => new(
-        c.Id, c.Name, c.ContactPerson, c.Email, c.Phone,
-        c.Country, c.Currency, c.TaxType.ToString(),
-        c.GSTIN, c.Address, c.IsActive
-    );
+     c.Id,
+     c.Name,
+     c.Email,
+     c.Country,
+     c.Currency,
+     c.TaxType.ToString(),
+     c.CustomerType.ToString(),
+     c.ContactPerson,
+     c.Phone,
+     c.GSTIN,
+     c.BillingAddress,
+     c.ShippingAddress,
+     c.IsActive,
+     c.CreatedAt
+ );
 }

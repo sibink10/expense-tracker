@@ -43,7 +43,7 @@
     <PackageReference Include="MailKit" Version="4.8.0" />
 
     <!-- Azure Blob Storage -->
-    <PackageReference Include="Azure.Storage.Blobs" Version="12.22.2" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.27.0" />
 
     <!-- Number to Words (for invoice) -->
     <PackageReference Include="Humanizer" Version="2.14.1" />

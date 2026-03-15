@@ -10,6 +10,8 @@ import { getTaxConfigs } from "../shared/api/taxConfig";
 import type { Client, TaxConfig } from "../types";
 import type { CreateInvoiceLineItem } from "../shared/api/invoice";
 
+const GRID_BREAKPOINT = 600;
+
 const defaultLineItem: CreateInvoiceLineItem = {
   description: "",
   hsnCode: "998314",
@@ -27,17 +29,26 @@ export default function InvoiceAddPage() {
   const [currency, setCurrency] = useState("INR");
   const [lineItems, setLineItems] = useState<CreateInvoiceLineItem[]>([{ ...defaultLineItem }]);
   const [taxConfigId, setTaxConfigId] = useState("");
+  const [invoiceNumber, setInvoiceNumber] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [paymentTerms, setPaymentTerms] = useState("net30");
   const [purchaseOrder, setPurchaseOrder] = useState("");
   const [notes, setNotes] = useState("");
+  const [etc, setEtc] = useState("");
   const [sendImmediately, setSendImmediately] = useState(false);
   const [loading, setLoading] = useState(false);
   const [clientsLoading, setClientsLoading] = useState(true);
   const [taxLoading, setTaxLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [narrow, setNarrow] = useState(typeof window !== "undefined" && window.innerWidth < GRID_BREAKPOINT);
 
   const dueDate = addDays(invoiceDate, PAY_TERMS.find((x) => x.v === paymentTerms)?.d ?? 30);
+
+  useEffect(() => {
+    const onResize = () => setNarrow(window.innerWidth < GRID_BREAKPOINT);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   useEffect(() => {
     getClients()
@@ -76,17 +87,52 @@ export default function InvoiceAddPage() {
   const subTotal = lineItems.reduce((sum, it) => sum + it.quantity * it.rate, 0);
   const selectedClient = clients.find((c) => c.id === clientId);
   const clientCurrency = selectedClient?.currency || currency;
+  const selectedTds = tdsConfigs.find((t) => t.id === taxConfigId);
+  const tdsRate = selectedTds?.rate ?? 0;
+  const tdsAmount = Math.round((subTotal * tdsRate) / 100);
+  const totalAfterTds = subTotal - tdsAmount;
+
+  const validLineItems = lineItems.filter(
+    (it) => it.description.trim() && it.gstConfigId && it.quantity > 0 && it.rate >= 0
+  );
+  const hasValidLineItems = validLineItems.length > 0;
+  const canSubmit =
+    !!clientId.trim() &&
+    !!currency.trim() &&
+    !!invoiceNumber.trim() &&
+    !!taxConfigId.trim() &&
+    !!invoiceDate &&
+    !!purchaseOrder.trim() &&
+    hasValidLineItems;
 
   const handleSubmit = async () => {
+    setError(null);
     if (!clientId.trim()) {
       setError("Please select a client");
       return;
     }
-    const validItems = lineItems.filter(
-      (it) => it.description.trim() && it.gstConfigId && it.quantity > 0 && it.rate >= 0
-    );
-    if (validItems.length === 0) {
-      setError("Add at least one line item with description, GST, quantity and rate");
+    if (!currency.trim()) {
+      setError("Currency is required");
+      return;
+    }
+    if (!invoiceNumber.trim()) {
+      setError("Invoice number is required");
+      return;
+    }
+    if (!taxConfigId.trim()) {
+      setError("TDS is required");
+      return;
+    }
+    if (!hasValidLineItems) {
+      setError("Add at least one line item with description, Tax, quantity and rate");
+      return;
+    }
+    if (!invoiceDate) {
+      setError("Invoice date is required");
+      return;
+    }
+    if (!purchaseOrder.trim()) {
+      setError("Purchase order is required");
       return;
     }
 
@@ -96,7 +142,7 @@ export default function InvoiceAddPage() {
       await createInvoice({
         clientId,
         currency: clientCurrency,
-        lineItems: validItems.map((it) => ({
+        lineItems: validLineItems.map((it) => ({
           description: it.description.trim(),
           hsnCode: it.hsnCode.trim() || "998314",
           quantity: it.quantity,
@@ -110,6 +156,8 @@ export default function InvoiceAddPage() {
         purchaseOrder: purchaseOrder.trim(),
         notes: notes.trim(),
         sendImmediately,
+        invoiceNumber: invoiceNumber.trim(),
+        etc: etc.trim() || undefined,
       });
       window.dispatchEvent(new CustomEvent("invoices-refresh"));
       navigate("/invoices");
@@ -120,8 +168,16 @@ export default function InvoiceAddPage() {
     }
   };
 
+  const gridStyle: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: narrow ? "1fr" : "1fr 1fr",
+    gap: "14px",
+  };
+  const fullWidth = { gridColumn: "1 / -1" as const };
+  const cellStyle = { marginBottom: 0 };
+
   return (
-    <div style={{ maxWidth: "720px" }}>
+    <div style={{ width: "100%", maxWidth: "100%" }}>
       <h1 style={{ fontSize: "20px", fontWeight: 700, margin: "0 0 20px" }}>
         <span style={{ color: C.invoice }}>📄</span> Create invoice
       </h1>
@@ -132,196 +188,241 @@ export default function InvoiceAddPage() {
           borderRadius: "12px",
           padding: "20px",
           border: `1px solid ${C.border}`,
+          width: "100%",
+          boxSizing: "border-box",
         }}
       >
-        <Inp
-          label="Client *"
-          type="select"
-          value={clientId}
-          onChange={(e) => {
-            setClientId(e.target.value);
-            const c = clients.find((x) => x.id === e.target.value);
-            if (c?.currency) setCurrency(c.currency);
-          }}
-          req
-          opts={[
-            { v: "", l: clientsLoading ? "Loading..." : "Select client..." },
-            ...clients.map((c) => ({ v: c.id, l: `${c.name} (${c.currency})` })),
-          ]}
-        />
-
-        <Inp
-          label="Currency"
-          type="select"
-          value={currency}
-          onChange={(e) => setCurrency(e.target.value)}
-          opts={CURRENCIES.map((c) => ({ v: c.v, l: c.l }))}
-        />
-
-        <div style={{ marginBottom: "14px" }}>
-          <div
-            style={{
-              fontSize: "12px",
-              fontWeight: 600,
-              color: C.primary,
-              marginBottom: "8px",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
+        <div style={gridStyle}>
+          <Inp
+            label="Client"
+            type="select"
+            value={clientId}
+            onChange={(e) => {
+              setClientId(e.target.value);
+              const c = clients.find((x) => x.id === e.target.value);
+              if (c?.currency) setCurrency(c.currency);
             }}
-          >
-            <span>Line items *</span>
-            <Btn sm v="invoice" onClick={addLineItem}>
-              ＋ Add line
-            </Btn>
-          </div>
-          <div style={{ overflowX: "auto" }}>
-            <table
+            req
+            showReqStar={false}
+            opts={[
+              { v: "", l: clientsLoading ? "Loading..." : "Select client..." },
+              ...clients.map((c) => ({ v: c.id, l: `${c.name} (${c.currency})` })),
+            ]}
+            style={cellStyle}
+          />
+          <Inp
+            label="Currency"
+            type="select"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            req
+            showReqStar={false}
+            opts={CURRENCIES.map((c) => ({ v: c.v, l: c.l }))}
+            style={cellStyle}
+          />
+          <Inp
+            label="Invoice number"
+            value={invoiceNumber}
+            onChange={(e) => setInvoiceNumber(e.target.value)}
+            req
+            showReqStar={false}
+            ph="e.g. INV-001"
+            style={cellStyle}
+          />
+          <Inp
+            label="TDS"
+            type="select"
+            value={taxConfigId}
+            onChange={(e) => setTaxConfigId(e.target.value)}
+            req
+            showReqStar={false}
+            disabled={taxLoading}
+            opts={[
+              { v: "", l: taxLoading ? "Loading..." : "Select TDS..." },
+              ...tdsConfigs.map((t) => ({ v: t.id, l: `${t.name} (${t.rate}%)` })),
+            ]}
+            style={cellStyle}
+          />
+
+          <div style={{ ...fullWidth, marginTop: "4px", marginBottom: "4px" }}>
+            <div
               style={{
-                width: "100%",
-                borderCollapse: "collapse",
                 fontSize: "12px",
-                border: `1px solid ${C.border}`,
-                borderRadius: "8px",
-                overflow: "hidden",
+                fontWeight: 600,
+                color: C.primary,
+                marginBottom: "8px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
               }}
             >
-              <thead>
-                <tr style={{ background: C.surface }}>
-                  <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600 }}>Description</th>
-                  <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600 }}>HSN</th>
-                  <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600 }}>Qty</th>
-                  <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600 }}>Rate</th>
-                  <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600 }}>GST</th>
-                  <th style={{ padding: "8px 10px", width: 40 }} />
-                </tr>
-              </thead>
-              <tbody>
-                {lineItems.map((item, idx) => (
-                  <tr key={idx} style={{ borderTop: `1px solid ${C.border}` }}>
-                    <td style={{ padding: "6px 10px" }}>
-                      <input
-                        type="text"
-                        value={item.description}
-                        onChange={(e) => updateLineItem(idx, "description", e.target.value)}
-                        placeholder="Description"
-                        style={{
-                          width: "100%",
-                          padding: "6px 8px",
-                          border: `1px solid ${C.border}`,
-                          borderRadius: "6px",
-                          fontSize: "12px",
-                        }}
-                      />
-                    </td>
-                    <td style={{ padding: "6px 10px" }}>
-                      <input
-                        type="text"
-                        value={item.hsnCode}
-                        onChange={(e) => updateLineItem(idx, "hsnCode", e.target.value)}
-                        placeholder="998314"
-                        style={{
-                          width: "70px",
-                          padding: "6px 8px",
-                          border: `1px solid ${C.border}`,
-                          borderRadius: "6px",
-                          fontSize: "12px",
-                        }}
-                      />
-                    </td>
-                    <td style={{ padding: "6px 10px" }}>
-                      <input
-                        type="number"
-                        min="1"
-                        value={item.quantity || ""}
-                        onChange={(e) => updateLineItem(idx, "quantity", parseInt(e.target.value) || 0)}
-                        style={{
-                          width: "60px",
-                          padding: "6px 8px",
-                          border: `1px solid ${C.border}`,
-                          borderRadius: "6px",
-                          fontSize: "12px",
-                        }}
-                      />
-                    </td>
-                    <td style={{ padding: "6px 10px" }}>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={item.rate || ""}
-                        onChange={(e) => updateLineItem(idx, "rate", parseFloat(e.target.value) || 0)}
-                        style={{
-                          width: "90px",
-                          padding: "6px 8px",
-                          border: `1px solid ${C.border}`,
-                          borderRadius: "6px",
-                          fontSize: "12px",
-                        }}
-                      />
-                    </td>
-                    <td style={{ padding: "6px 10px" }}>
-                      <select
-                        value={item.gstConfigId}
-                        onChange={(e) => updateLineItem(idx, "gstConfigId", e.target.value)}
-                        style={{
-                          padding: "6px 8px",
-                          border: `1px solid ${C.border}`,
-                          borderRadius: "6px",
-                          fontSize: "12px",
-                          minWidth: "120px",
-                        }}
-                      >
-                        <option value="">Select GST</option>
-                        {gstConfigs.map((g) => (
-                          <option key={g.id} value={g.id}>
-                            {g.name} ({g.rate}%)
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td style={{ padding: "6px 10px" }}>
-                      <button
-                        type="button"
-                        onClick={() => removeLineItem(idx)}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          color: C.danger,
-                          cursor: "pointer",
-                          fontSize: "14px",
-                          padding: 4,
-                        }}
-                      >
-                        ✕
-                      </button>
-                    </td>
+              <span>Line items (at least one required)</span>
+              <Btn sm v="invoice" onClick={addLineItem}>
+                ＋ Add line
+              </Btn>
+            </div>
+            <div style={{ overflowX: "auto" }}>
+              <table
+                style={{
+                  width: "100%",
+                  minWidth: "640px",
+                  borderCollapse: "collapse",
+                  fontSize: "12px",
+                  border: `1px solid ${C.border}`,
+                  borderRadius: "8px",
+                  overflow: "hidden",
+                  tableLayout: "fixed",
+                }}
+              >
+                <colgroup>
+                  <col style={{ width: "32%" }} />
+                  <col style={{ width: "80px" }} />
+                  <col style={{ width: "72px" }} />
+                  <col style={{ width: "100px" }} />
+                  <col style={{ width: "140px" }} />
+                  <col style={{ width: "44px" }} />
+                </colgroup>
+                <thead>
+                  <tr style={{ background: C.surface }}>
+                    <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600, fontSize: "11px", color: C.muted, textTransform: "uppercase", letterSpacing: "0.04em", verticalAlign: "middle" }}>Description</th>
+                    <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600, fontSize: "11px", color: C.muted, textTransform: "uppercase", letterSpacing: "0.04em", verticalAlign: "middle" }}>HSN</th>
+                    <th style={{ padding: "10px 12px", textAlign: "center", fontWeight: 600, fontSize: "11px", color: C.muted, textTransform: "uppercase", letterSpacing: "0.04em", verticalAlign: "middle" }}>Qty</th>
+                    <th style={{ padding: "10px 12px", textAlign: "right", fontWeight: 600, fontSize: "11px", color: C.muted, textTransform: "uppercase", letterSpacing: "0.04em", verticalAlign: "middle" }}>Rate</th>
+                    <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600, fontSize: "11px", color: C.muted, textTransform: "uppercase", letterSpacing: "0.04em", verticalAlign: "middle" }}>Tax</th>
+                    <th style={{ padding: "10px 8px", verticalAlign: "middle" }} />
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {lineItems.map((item, idx) => (
+                    <tr key={idx} style={{ borderTop: `1px solid ${C.border}` }}>
+                      <td style={{ padding: "10px 12px", verticalAlign: "middle" }}>
+                        <input
+                          type="text"
+                          value={item.description}
+                          onChange={(e) => updateLineItem(idx, "description", e.target.value)}
+                          placeholder="Description"
+                          style={{
+                            width: "100%",
+                            padding: "8px 10px",
+                            border: `1px solid ${C.border}`,
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            lineHeight: "1.25",
+                            boxSizing: "border-box",
+                          }}
+                        />
+                      </td>
+                      <td style={{ padding: "10px 12px", verticalAlign: "middle" }}>
+                        <input
+                          type="text"
+                          value={item.hsnCode}
+                          onChange={(e) => updateLineItem(idx, "hsnCode", e.target.value)}
+                          placeholder="998314"
+                          style={{
+                            width: "100%",
+                            padding: "8px 10px",
+                            border: `1px solid ${C.border}`,
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            lineHeight: "1.25",
+                            boxSizing: "border-box",
+                          }}
+                        />
+                      </td>
+                      <td style={{ padding: "10px 12px", verticalAlign: "middle", textAlign: "center" }}>
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.quantity || ""}
+                          onChange={(e) => updateLineItem(idx, "quantity", parseInt(e.target.value) || 0)}
+                          style={{
+                            width: "100%",
+                            padding: "8px 10px",
+                            border: `1px solid ${C.border}`,
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            lineHeight: "1.25",
+                            textAlign: "center",
+                            boxSizing: "border-box",
+                          }}
+                        />
+                      </td>
+                      <td style={{ padding: "10px 12px", verticalAlign: "middle", textAlign: "right" }}>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.rate || ""}
+                          onChange={(e) => updateLineItem(idx, "rate", parseFloat(e.target.value) || 0)}
+                          style={{
+                            width: "100%",
+                            padding: "8px 10px",
+                            border: `1px solid ${C.border}`,
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            lineHeight: "1.25",
+                            textAlign: "right",
+                            boxSizing: "border-box",
+                          }}
+                        />
+                      </td>
+                      <td style={{ padding: "10px 12px", verticalAlign: "middle" }}>
+                        <select
+                          value={item.gstConfigId}
+                          onChange={(e) => updateLineItem(idx, "gstConfigId", e.target.value)}
+                          style={{
+                            width: "100%",
+                            padding: "8px 10px",
+                            border: `1px solid ${C.border}`,
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            lineHeight: "1.25",
+                            boxSizing: "border-box",
+                          }}
+                        >
+                          <option value="">Select Tax</option>
+                          {gstConfigs.map((g) => (
+                            <option key={g.id} value={g.id}>
+                              {g.name} ({g.rate}%)
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td style={{ padding: "10px 8px", verticalAlign: "middle", textAlign: "center" }}>
+                        <button
+                          type="button"
+                          onClick={() => removeLineItem(idx)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: C.danger,
+                            cursor: "pointer",
+                            fontSize: "16px",
+                            lineHeight: 1,
+                            padding: 4,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
 
-        <Inp
-          label="TDS (optional)"
-          type="select"
-          value={taxConfigId}
-          onChange={(e) => setTaxConfigId(e.target.value)}
-          opts={[
-            { v: "", l: "No TDS" },
-            ...tdsConfigs.map((t) => ({ v: t.id, l: `${t.name} (${t.rate}%)` })),
-          ]}
-        />
-
-        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
           <Inp
-            label="Invoice date *"
+            label="Invoice date"
             type="date"
             value={invoiceDate}
             onChange={(e) => setInvoiceDate(e.target.value)}
             req
-            style={{ flex: 1 }}
+            showReqStar={false}
+            style={cellStyle}
           />
           <Inp
             label="Payment terms"
@@ -329,78 +430,106 @@ export default function InvoiceAddPage() {
             value={paymentTerms}
             onChange={(e) => setPaymentTerms(e.target.value)}
             opts={PAY_TERMS.map((x) => ({ v: x.v, l: x.l }))}
-            style={{ flex: 1 }}
+            style={cellStyle}
           />
-        </div>
-        <div style={{ fontSize: "11px", color: C.muted, marginBottom: "14px" }}>
-          📅 Due date: <strong>{dueDate}</strong>
-        </div>
-
-        <Inp
-          label="Purchase order"
-          value={purchaseOrder}
-          onChange={(e) => setPurchaseOrder(e.target.value)}
-          ph="PO reference"
-        />
-
-        <Inp
-          label="Notes"
-          type="textarea"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          ph="Additional notes..."
-        />
-
-        <div style={{ marginBottom: "16px" }}>
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              cursor: "pointer",
-              fontSize: "12px",
-              fontWeight: 600,
-              color: C.primary,
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={sendImmediately}
-              onChange={(e) => setSendImmediately(e.target.checked)}
-              style={{ width: 16, height: 16 }}
-            />
-            Send immediately
-          </label>
-        </div>
-
-        {subTotal > 0 && (
-          <div
-            style={{
-              padding: "12px 14px",
-              background: `${C.invoice}08`,
-              borderRadius: "8px",
-              marginBottom: "14px",
-              fontSize: "12px",
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700 }}>
-              <span>Sub total</span>
-              <span>{fmtCur(subTotal, currency)}</span>
+          {dueDate && (
+            <div style={{ ...fullWidth, fontSize: "12px", color: C.muted }}>
+              📅 Due date: <strong>{dueDate}</strong>
             </div>
+          )}
+          <Inp
+            label="Purchase order"
+            value={purchaseOrder}
+            onChange={(e) => setPurchaseOrder(e.target.value)}
+            req
+            showReqStar={false}
+            ph="PO reference"
+            style={cellStyle}
+          />
+          <Inp
+            label="Etc"
+            value={etc}
+            onChange={(e) => setEtc(e.target.value)}
+            ph="Other / etc"
+            style={cellStyle}
+          />
+          <Inp
+            label="Notes"
+            type="textarea"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            ph="Additional notes..."
+            style={{ ...cellStyle, ...fullWidth }}
+          />
+
+          <div style={fullWidth}>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                cursor: "pointer",
+                fontSize: "12px",
+                fontWeight: 600,
+                color: C.primary,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={sendImmediately}
+                onChange={(e) => setSendImmediately(e.target.checked)}
+                style={{ width: 16, height: 16 }}
+              />
+              Send immediately
+            </label>
           </div>
-        )}
 
-        {error && (
-          <div style={{ color: C.danger, fontSize: "12px", marginBottom: "12px" }}>{error}</div>
-        )}
+          {subTotal > 0 && (
+            <div
+              style={{
+                ...fullWidth,
+                padding: "12px 14px",
+                background: `${C.invoice}08`,
+                borderRadius: "8px",
+                fontSize: "12px",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                <span style={{ color: C.muted }}>Sub total</span>
+                <span style={{ fontWeight: 600 }}>{fmtCur(subTotal, clientCurrency)}</span>
+              </div>
+              {tdsRate > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", color: C.danger }}>
+                  <span>TDS ({selectedTds?.section ?? ""} @ {tdsRate}%)</span>
+                  <span style={{ fontWeight: 600 }}>-{fmtCur(tdsAmount, clientCurrency)}</span>
+                </div>
+              )}
+              <div
+                style={{
+                  borderTop: `1px solid ${C.invoice}20`,
+                  paddingTop: "6px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                }}
+              >
+                <span style={{ fontWeight: 700, color: C.invoice }}>Total</span>
+                <span style={{ fontSize: "14px", fontWeight: 700, color: C.invoice }}>{fmtCur(totalAfterTds, clientCurrency)}</span>
+              </div>
+            </div>
+          )}
 
-        <div style={{ display: "flex", gap: "8px" }}>
-          <Btn v="invoice" onClick={handleSubmit} disabled={loading}>
-            {loading ? "Creating..." : "Create invoice"}
-          </Btn>
-          <Btn v="secondary" onClick={() => navigate("/invoices")} disabled={loading}>
-            Cancel
-          </Btn>
+          {error && (
+            <div style={{ ...fullWidth, color: C.danger, fontSize: "12px" }}>{error}</div>
+          )}
+
+          <div style={{ ...fullWidth, display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+            <Btn v="secondary" onClick={() => navigate("/invoices")} disabled={loading}>
+              Cancel
+            </Btn>
+            <Btn v="invoice" onClick={handleSubmit} disabled={!canSubmit || loading}>
+              {loading ? "Creating..." : "Create invoice"}
+            </Btn>
+          </div>
         </div>
       </div>
     </div>

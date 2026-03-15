@@ -3,23 +3,34 @@ import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
 import { Inp, Btn, Av, FileUp } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
-import { createExpense } from "../shared/api/expense";
+import { createExpenseForm } from "../shared/api/expense";
 import { getEmployeeRoleEmployees } from "../shared/api/employees";
 import type { Employee } from "../shared/api/employees";
+
+const GRID_BREAKPOINT = 600;
 
 export default function AddExpensePage() {
   const navigate = useNavigate();
   const { user, setEmail, t, is } = useAppContext();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
+  const [narrow, setNarrow] = useState(typeof window !== "undefined" && window.innerWidth < GRID_BREAKPOINT);
 
   const [amt, setAmt] = useState("");
   const [pur, setPur] = useState("");
-  const [rq, setRq] = useState("");
+  const [billNumber, setBillNumber] = useState("");
+  const [billDate, setBillDate] = useState("");
   const [fi, setFi] = useState<{ n: string; s: string } | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [ob, setOb] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const onResize = () => setNarrow(window.innerWidth < GRID_BREAKPOINT);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   useEffect(() => {
     if (is("finance")) {
@@ -37,17 +48,19 @@ export default function AddExpensePage() {
     const employeeId = selectedEmp ? selectedEmp.id : user.employeeId?.trim() || null;
     const displayName = selectedEmp ? selectedEmp.name : user.name;
     const amount = parseFloat(amt);
-    if (isNaN(amount) || amount <= 0) return;
+    if (isNaN(amount) || amount <= 0 || !pur.trim() || !billNumber.trim() || !billDate) return;
     if (is("finance") && !ob) return;
     setLoading(true);
     setError(null);
     try {
-      await createExpense({
-        amount,
-        purpose: pur,
-        requiredByDate: rq ? new Date(rq).toISOString() : new Date().toISOString(),
-        onBehalfOfEmployeeId: employeeId,
-      });
+      const formData = new FormData();
+      formData.append("amount", String(amount));
+      formData.append("purpose", pur.trim());
+      formData.append("billNumber", billNumber.trim());
+      formData.append("billDate", billDate);
+      if (employeeId) formData.append("onBehalfOfEmployeeId", employeeId);
+      if (file) formData.append("BillImage", file);
+      await createExpenseForm(formData);
       setEmail({ to: "Approvers", subj: `New expense request from ${displayName}` });
       t("Expense submitted");
       navigate("/expenses");
@@ -58,8 +71,22 @@ export default function AddExpensePage() {
     }
   };
 
+  const gridStyle: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: narrow ? "1fr" : "1fr 1fr",
+    gap: "14px",
+  };
+  const cellStyle = { marginBottom: 0 };
+  const canSubmit =
+    amt.trim() !== "" &&
+    pur.trim() !== "" &&
+    billNumber.trim() !== "" &&
+    billDate !== "" &&
+    !(is("finance") && !ob) &&
+    !loading;
+
   return (
-    <div style={{ maxWidth: "500px" }}>
+    <div style={{ width: "100%", maxWidth: "100%" }}>
       <h1 style={{ fontSize: "20px", fontWeight: 700, margin: "0 0 20px" }}>Add expense</h1>
       <div
         style={{
@@ -67,6 +94,8 @@ export default function AddExpensePage() {
           borderRadius: "12px",
           padding: "20px",
           border: `1px solid ${C.border}`,
+          width: "100%",
+          boxSizing: "border-box",
         }}
       >
         {is("finance") && (
@@ -83,6 +112,7 @@ export default function AddExpensePage() {
                 l: `${e.name} (${e.dept})`,
               })),
             ]}
+            style={{ marginBottom: "14px" }}
           />
         )}
         {!is("finance") && (
@@ -104,15 +134,37 @@ export default function AddExpensePage() {
             </div>
           </div>
         )}
-        <Inp
-          label="Amount (₹)"
-          type="number"
-          value={amt}
-          onChange={(e) => setAmt(e.target.value)}
-          req
-          min="1"
-          ph="15000"
-        />
+
+        <div style={gridStyle}>
+          <Inp
+            label="Amount (₹)"
+            type="number"
+            value={amt}
+            onChange={(e) => setAmt(e.target.value)}
+            req
+            min="1"
+            ph="15000"
+            style={cellStyle}
+          />
+          <Inp
+            label="Bill number"
+            type="text"
+            value={billNumber}
+            onChange={(e) => setBillNumber(e.target.value)}
+            req
+            ph="e.g. INV-001"
+            style={cellStyle}
+          />
+          <Inp
+            label="Bill date"
+            type="date"
+            value={billDate}
+            onChange={(e) => setBillDate(e.target.value)}
+            req
+            style={cellStyle}
+          />
+        </div>
+
         <Inp
           label="Purpose"
           type="textarea"
@@ -120,27 +172,16 @@ export default function AddExpensePage() {
           onChange={(e) => setPur(e.target.value)}
           req
           ph="Describe..."
+          style={{ marginTop: "14px" }}
         />
-        <Inp
-          label="Required by"
-          type="date"
-          value={rq}
-          onChange={(e) => setRq(e.target.value)}
-          req
-        />
-        <FileUp file={fi} onChange={setFi} />
-        <div
-          style={{
-            fontSize: "11px",
-            color: C.muted,
-            padding: "8px 12px",
-            background: C.surface,
-            borderRadius: "6px",
-            marginBottom: "14px",
+        <FileUp
+          file={fi}
+          onChange={(f) => {
+            setFi(f);
+            if (!f) setFile(null);
           }}
-        >
-          💡 No bill attached = approval only. Payment after bill submission.
-        </div>
+          onFileSelect={setFile}
+        />
         {error && (
           <div
             style={{
@@ -155,12 +196,11 @@ export default function AddExpensePage() {
             {error}
           </div>
         )}
-        <Btn
-          onClick={submit}
-          disabled={!amt || !pur || !rq || (is("finance") && !ob) || loading}
-        >
-          {loading ? "Submitting..." : "Submit"}
-        </Btn>
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <Btn onClick={submit} disabled={!canSubmit}>
+            {loading ? "Submitting..." : "Submit"}
+          </Btn>
+        </div>
       </div>
     </div>
   );

@@ -119,3 +119,20 @@ export async function payBill(id: string, paymentReference: string): Promise<unk
   const { data } = await apiClient.post(`/bills/${id}/pay`, { paymentReference });
   return data;
 }
+
+/** Response from GET /api/bills/{id}/attachment. */
+export interface GetBillAttachmentResponse {
+  url: string;
+}
+
+/** Get bill attachment URL (GET /api/bills/{id}/attachment). Returns signed URL for viewing in iframe. */
+export async function getBillAttachment(id: string): Promise<string> {
+  const { data } = await apiClient.get<GetBillAttachmentResponse>(`/bills/${id}/attachment`);
+  return data?.url ?? "";
+}
+
+/** Get bill attachment as blob for download (GET /api/bills/{id}/attachment with blob response). Same as expense: backend returns file to avoid CORS. */
+export async function getBillAttachmentBlob(id: string): Promise<Blob> {
+  const { data } = await apiClient.get(`/bills/${id}/attachment`, { responseType: "blob" });
+  return data;
+}

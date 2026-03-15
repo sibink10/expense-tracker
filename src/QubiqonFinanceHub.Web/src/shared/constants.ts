@@ -1,5 +1,6 @@
 export const EXP_S = {
   PENDING: "Pending Approval",
+  PENDING_BILL_APPROVAL: "Pending Bill Approval",
   APPROVED: "Approved",
   REJECTED: "Rejected",
   CANCELLED: "Cancelled",

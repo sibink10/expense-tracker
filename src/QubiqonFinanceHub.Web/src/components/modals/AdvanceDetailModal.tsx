@@ -15,12 +15,12 @@ export default function AdvanceDetailModal({ advance: a, previousAdvances: hist 
 
   return (
     <Mdl open close={() => setMdl(null)} title={a.id} w>
-      <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", marginBottom: "16px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap", marginBottom: "16px" }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: "13px", fontWeight: 600 }}>{a.empName} · {a.dept}</div>
         </div>
         <div style={{ fontSize: "20px", fontWeight: 700, color: C.advance }}>{fmtCur(a.amt)}</div>
-        <Badge s={a.status} />
+        <div style={{ display: "flex", alignItems: "center" }}><Badge s={a.status} /></div>
       </div>
       <div style={{ padding: "10px 14px", background: C.surface, borderRadius: "8px", marginBottom: "12px", fontSize: "12px" }}>{a.purpose}</div>
       <CLog comments={a.comments} />
@@ -28,7 +28,7 @@ export default function AdvanceDetailModal({ advance: a, previousAdvances: hist 
         <div style={{ marginBottom: "12px" }}>
           <div style={{ fontSize: "10px", color: C.muted, fontWeight: 600, textTransform: "uppercase", marginBottom: "6px" }}>Previous advances</div>
           {hist.map((h) => (
-            <div key={h.id} style={{ display: "flex", justifyContent: "space-between", padding: "6px 10px", borderBottom: `1px solid ${C.border}`, fontSize: "11px" }}>
+            <div key={h.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "6px 10px", borderBottom: `1px solid ${C.border}`, fontSize: "11px" }}>
               <span style={{ color: C.advance, fontWeight: 600 }}>{h.id}</span>
               <span>{fmtCur(h.amt)}</span>
               <Badge s={h.status} />
@@ -36,7 +36,7 @@ export default function AdvanceDetailModal({ advance: a, previousAdvances: hist 
           ))}
         </div>
       )}
-      <div style={{ display: "flex", gap: "6px" }}>
+      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "flex-end" }}>
         {is("approver") && a.status === ADV_S.PENDING && (
           <>
             <Btn v="success" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "adv-approve", d: a }), 50); }}>Approve</Btn>
@@ -46,7 +46,9 @@ export default function AdvanceDetailModal({ advance: a, previousAdvances: hist 
         {is("finance") && a.status === ADV_S.APPROVED && (
           <Btn v="advance" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "adv-disburse", d: a }), 50); }}>Disburse</Btn>
         )}
-        <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>
+        {!((is("approver") && a.status === ADV_S.PENDING) || (is("finance") && a.status === ADV_S.APPROVED)) && (
+          <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>
+        )}
       </div>
     </Mdl>
   );

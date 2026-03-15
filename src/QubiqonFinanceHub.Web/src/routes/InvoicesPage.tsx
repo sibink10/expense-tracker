@@ -49,7 +49,7 @@ export default function InvoicesPage() {
         <h1 style={{ fontSize: "20px", fontWeight: 700, margin: 0 }}>
           <span style={{ color: C.invoice }}>📄</span> Client invoices
         </h1>
-        {is("finance") && (
+        {(is("finance") || is("admin")) && (
           <Btn v="invoice" onClick={() => navigate("/invoices/add")}>
             ＋ Create invoice
           </Btn>

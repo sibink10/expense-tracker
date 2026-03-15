@@ -1,8 +1,10 @@
-using QubiqonFinanceHub.API.Data;
-using QubiqonFinanceHub.API.Middleware;
-using QubiqonFinanceHub.API.Extensions;
-using Serilog;
 using Microsoft.EntityFrameworkCore;
+using QubiqonFinanceHub.API.Data;
+using QubiqonFinanceHub.API.Extensions;
+using QubiqonFinanceHub.API.Middleware;
+using QubiqonFinanceHub.API.Services.Implementations;
+using QubiqonFinanceHub.API.Services.Interfaces;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +21,7 @@ Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler.DefaultInboundClaimTyp
 builder.Services.AddApplicationAuth(builder.Configuration);
 builder.Services.AddApplicationServices();
 builder.Services.AddApplicationCors(builder.Configuration);
+builder.Services.AddSingleton<IStorageService, AzureBlobStorageService>();
 
 builder.Services.AddControllers()
     .AddJsonOptions(o =>

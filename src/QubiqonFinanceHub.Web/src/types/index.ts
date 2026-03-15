@@ -53,6 +53,10 @@ export interface Expense {
   status: string;
   at: string;
   file: FileRef | null;
+  /** Full URL for view/download of bill image */
+  attachmentUrl?: string | null;
+  billNumber?: string;
+  billDate?: string;
   comments: ActivityComment[];
 }
 
@@ -137,6 +141,10 @@ export interface Vendor {
   cat: string;
   ph: string;
   addr: string;
+  contactPerson?: string;
+  bankName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
 }
 
 export interface Client {
@@ -147,9 +155,13 @@ export interface Client {
   phone: string;
   country: string;
   currency: string;
-  addr: string;
+  /** @deprecated use billingAddress / shippingAddress */
+  addr?: string;
   gstin: string;
   taxType: string;
+  customerType?: string;
+  shippingAddress?: string;
+  billingAddress?: string;
 }
 
 export interface OrgConfig {

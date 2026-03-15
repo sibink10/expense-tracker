@@ -1,5 +1,25 @@
 import { CURRENCIES } from "./constants";
 
+/** Email regex for validation (single address). */
+export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Returns true if the string is a valid email (empty string is invalid; use isEmailValidOrEmpty for optional fields). */
+export function isEmailValid(email: string): boolean {
+  return email.trim() !== "" && EMAIL_REGEX.test(email.trim());
+}
+
+/** Returns true if the string is empty or a valid email. */
+export function isEmailValidOrEmpty(email: string): boolean {
+  const t = email.trim();
+  return t === "" || EMAIL_REGEX.test(t);
+}
+
+/** Validates comma-separated email list; returns true if every non-empty part is a valid email. */
+export function isEmailListValid(list: string): boolean {
+  const parts = list.split(",").map((s) => s.trim()).filter(Boolean);
+  return parts.every((part) => EMAIL_REGEX.test(part));
+}
+
 export const genCode = (fmt: string, seq: number, type = "SEZ"): string => {
   const d = new Date();
   const y = d.getFullYear();

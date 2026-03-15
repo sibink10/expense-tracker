@@ -21,6 +21,8 @@ export interface CreateInvoicePayload {
   purchaseOrder: string;
   notes: string;
   sendImmediately: boolean;
+  invoiceNumber?: string;
+  etc?: string;
 }
 
 export interface ApiInvoiceLineItem {

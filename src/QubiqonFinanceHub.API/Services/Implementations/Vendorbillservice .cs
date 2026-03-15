@@ -1,6 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Identity.Client.Extensions.Msal;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
+using QubiqonFinanceHub.API.Models.Constants;
 using QubiqonFinanceHub.API.Models.Entities;
 using QubiqonFinanceHub.API.Models.Enums;
 using QubiqonFinanceHub.API.Services.Interfaces;
@@ -13,16 +15,16 @@ public class VendorBillService : IVendorBillService
     private readonly ITenantService _tenant;
     private readonly ICodeGeneratorService _codeGen;
     private readonly ILogger<VendorBillService> _log;
+    private readonly IStorageService _storage;
 
-    public VendorBillService(FinanceHubDbContext db, ITenantService tenant, ICodeGeneratorService codeGen, ILogger<VendorBillService> log)
-    { _db = db; _tenant = tenant; _codeGen = codeGen; _log = log; }
+    public VendorBillService(FinanceHubDbContext db, ITenantService tenant, ICodeGeneratorService codeGen, ILogger<VendorBillService> log, IStorageService storage)
+    { _db = db; _tenant = tenant; _codeGen = codeGen; _log = log; _storage = storage; }
 
-    public async Task<BillDto> CreateAsync(CreateBillRequest dto, string? attachmentUrl)
+    public async Task<BillDto> CreateAsync(CreateBillRequest dto)
     {
         var orgId = _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var code = await _codeGen.GenerateCodeAsync(orgId, "bill");
-
         var vendor = await _db.Vendors.FindAsync(dto.VendorId)
             ?? throw new KeyNotFoundException("Vendor not found");
 
@@ -33,9 +35,15 @@ public class VendorBillService : IVendorBillService
             if (tax != null) tdsAmount = Math.Round(dto.Amount * tax.Rate / 100, 2);
         }
 
+        var billId = Guid.NewGuid();
+
+        var attachmentUrl = dto.Attachment != null
+            ? await _storage.UploadAsync(StorageFolders.InvoiceDoc, billId, dto.Attachment)
+            : null;
+
         var bill = new VendorBill
         {
-            Id = Guid.NewGuid(),
+            Id = billId,
             OrganizationId = orgId,
             BillCode = code,
             VendorId = dto.VendorId,
@@ -59,13 +67,12 @@ public class VendorBillService : IVendorBillService
             Id = Guid.NewGuid(),
             VendorBillId = bill.Id,
             CommentByEmployeeId = emp.Id,
-            Text = $"Bill submitted for ₹{dto.Amount:N2}. File: {attachmentUrl ?? "No attachment"}",
+            Text = $"Bill submitted for ₹{dto.Amount:N2}." + (attachmentUrl != null ? " Attachment uploaded." : " No attachment."),
             ActionType = CommentActionType.Submitted
         });
 
         _db.VendorBills.Add(bill);
         await _db.SaveChangesAsync();
-
         _log.LogInformation("Bill {Code} created by {Employee}", code, emp.FullName);
         return (await GetByIdAsync(bill.Id))!;
     }
@@ -203,5 +210,18 @@ public class VendorBillService : IVendorBillService
                 c.Id, c.CommentByEmployee.FullName, c.Text, c.ActionType.ToString(), c.CreatedAt
             )).ToList()
         );
+    }
+
+    public async Task<string> GetAttachmentUrlAsync(Guid id)
+    {
+        var orgId = _tenant.GetCurrentOrganizationId();
+        var bill = await _db.VendorBills
+            .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Bill not found");
+
+        if (bill.AttachmentUrl == null)
+            throw new InvalidOperationException("No attachment uploaded for this bill.");
+
+        return _storage.GenerateSasUrl(bill.AttachmentUrl);
     }
 }
