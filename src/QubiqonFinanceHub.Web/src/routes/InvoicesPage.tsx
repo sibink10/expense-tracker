@@ -32,8 +32,7 @@ export default function InvoicesPage() {
 
   const f = fil(invoices);
 
-  const handleDownloadPdf = (inv: Invoice, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDownloadPdf = (inv: Invoice) => {
     downloadInvoicePdf(inv).catch(() => {});
   };
 
@@ -106,7 +105,7 @@ export default function InvoicesPage() {
                         </Btn>
                       )}
                       {(inv.status === INV_S.SENT || inv.status === INV_S.PAID) && (
-                        <Btn sm v="invoice" onClick={(e) => handleDownloadPdf(inv, e)}>
+                        <Btn sm v="invoice" onClick={() => handleDownloadPdf(inv)}>
                           ↓
                         </Btn>
                       )}

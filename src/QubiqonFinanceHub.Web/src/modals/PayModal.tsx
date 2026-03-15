@@ -31,7 +31,7 @@ export default function PayModal() {
       } finally {
         setLoading(false);
       }
-    } else {
+    } else if (mdl.it) {
       pay(d, mdl.it, r);
     }
   };
