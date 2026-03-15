@@ -20,6 +20,7 @@ jobs:
       VITE_APP_ENV: production
       VITE_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID }}
       VITE_API_SCOPE: ${{ secrets.VITE_API_SCOPE }}
+      VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID }}
 
     steps:
       - uses: actions/checkout@v3
