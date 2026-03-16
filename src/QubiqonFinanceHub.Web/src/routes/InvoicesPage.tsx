@@ -67,6 +67,9 @@ export default function InvoicesPage() {
           borderRadius: "12px",
           padding: "16px",
           border: `1px solid ${C.border}`,
+          minHeight: "400px",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
         <Filter
@@ -81,6 +84,7 @@ export default function InvoicesPage() {
         ) : f.length === 0 ? (
           <Empty icon="📄" title="No invoices" sub="" />
         ) : (
+          <div style={{ flex: 1 }}>
           <Tbl
             cols={["Invoice #", "Client", "Amount", "Currency", "Due", "Status", "Action"]}
             rows={f.map((inv) => ({
@@ -116,6 +120,7 @@ export default function InvoicesPage() {
             }))}
             onRow={(row) => setMdl({ t: "inv-detail", d: row as unknown as Invoice })}
           />
+          </div>
         )}
       </div>
     </div>

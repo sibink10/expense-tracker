@@ -67,6 +67,9 @@ export default function ClientsPage() {
           padding: "16px",
           border: `1px solid ${C.border}`,
           boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+          minHeight: "400px",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
         {loading ? (
@@ -101,7 +104,7 @@ export default function ClientsPage() {
             {filtered.length === 0 ? (
               <div style={{ padding: "32px", textAlign: "center", color: C.muted, fontSize: "13px" }}>No clients match your search</div>
             ) : (
-              <div style={{ overflowX: "auto", borderRadius: "8px", border: `1px solid ${C.border}` }}>
+              <div style={{ overflowX: "auto", borderRadius: "8px", border: `1px solid ${C.border}`, flex: 1 }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
                   <thead>
                     <tr style={{ background: C.surface }}>

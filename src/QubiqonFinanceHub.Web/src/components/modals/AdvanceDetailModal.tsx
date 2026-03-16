@@ -24,7 +24,7 @@ export default function AdvanceDetailModal({ advance: a, previousAdvances: hist 
       </div>
       <div style={{ padding: "10px 14px", background: C.surface, borderRadius: "8px", marginBottom: "12px", fontSize: "12px" }}>{a.purpose}</div>
       <CLog comments={a.comments} />
-      {(is("approver") || is("finance")) && hist.length > 0 && (
+      {(is("approver") || is("finance") || is("admin")) && hist.length > 0 && (
         <div style={{ marginBottom: "12px" }}>
           <div style={{ fontSize: "10px", color: C.muted, fontWeight: 600, textTransform: "uppercase", marginBottom: "6px" }}>Previous advances</div>
           {hist.map((h) => (
@@ -37,7 +37,7 @@ export default function AdvanceDetailModal({ advance: a, previousAdvances: hist 
         </div>
       )}
       <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "flex-end" }}>
-        {is("approver") && a.status === ADV_S.PENDING && (
+        {(is("approver") || is("admin")) && a.status === ADV_S.PENDING && (
           <>
             <Btn v="success" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "adv-approve", d: a }), 50); }}>Approve</Btn>
             <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "reject", d: a, it: "advance" }), 50); }}>Reject</Btn>
@@ -46,7 +46,7 @@ export default function AdvanceDetailModal({ advance: a, previousAdvances: hist 
         {is("finance") && a.status === ADV_S.APPROVED && (
           <Btn v="advance" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "adv-disburse", d: a }), 50); }}>Disburse</Btn>
         )}
-        {!((is("approver") && a.status === ADV_S.PENDING) || (is("finance") && a.status === ADV_S.APPROVED)) && (
+        {!(((is("approver") || is("admin")) && a.status === ADV_S.PENDING) || (is("finance") && a.status === ADV_S.APPROVED)) && (
           <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>
         )}
       </div>

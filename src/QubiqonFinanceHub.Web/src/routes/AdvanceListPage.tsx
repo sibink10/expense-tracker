@@ -160,7 +160,7 @@ export default function AdvanceListPage() {
                 "Purpose",
                 "Amount",
                 "Status",
-                (is("approver") || is("finance")) && "Action",
+                (is("approver") || is("finance") || is("admin")) && "Action",
               ].filter(Boolean) as string[]}
               rows={data.map((a) => ({
                 ...a,
@@ -170,12 +170,12 @@ export default function AdvanceListPage() {
                   { v: <div style={{ maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.purpose}</div> },
                   { v: <span style={{ fontWeight: 700 }}>{fmtCur(a.amt)}</span> },
                   { v: <Badge s={a.status} /> },
-                  ...(is("approver") || is("finance")
+                  ...(is("approver") || is("finance") || is("admin")
                     ? [
                         {
                           v: (
                             <div onClick={(ev) => ev.stopPropagation()} style={{ display: "flex", gap: "3px" }}>
-                            {is("approver") && a.status === ADV_S.PENDING && (
+                            {(is("approver") || is("admin")) && a.status === ADV_S.PENDING && (
                               <>
                                 <Btn sm v="success" onClick={() => setMdl({ t: "adv-approve", d: a })}>✓</Btn>
                                 <Btn sm v="danger" onClick={() => setMdl({ t: "reject", d: a, it: "advance" })}>✕</Btn>

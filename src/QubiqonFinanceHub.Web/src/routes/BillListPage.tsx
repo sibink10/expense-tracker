@@ -56,6 +56,9 @@ export default function BillListPage() {
           borderRadius: "12px",
           padding: "16px",
           border: `1px solid ${C.border}`,
+          minHeight: "400px",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
         <Filter
@@ -77,6 +80,7 @@ export default function BillListPage() {
         ) : f.length === 0 ? (
           <Empty icon="📋" title="No bills" sub="" />
         ) : (
+          <div style={{ flex: 1 }}>
           <Tbl
             cols={[
               "Bill #",
@@ -86,7 +90,7 @@ export default function BillListPage() {
               "Payable",
               "Due",
               "Status",
-              (is("approver") || is("finance")) && "Action",
+              (is("approver") || is("finance") || is("admin")) && "Action",
             ].filter(Boolean) as string[]}
             rows={f.map((b) => ({
               ...b,
@@ -105,12 +109,12 @@ export default function BillListPage() {
                 { v: <span style={{ fontWeight: 700 }}>{fmtCur(b.pay)}</span> },
                 { v: <span style={{ fontSize: "11px", color: C.muted }}>{b.due}</span> },
                 { v: <Badge s={b.status} /> },
-                ...(is("approver") || is("finance")
+                ...(is("approver") || is("finance") || is("admin")
                   ? [
                       {
                         v: (
                           <div onClick={(ev) => ev.stopPropagation()} style={{ display: "flex", gap: "3px" }}>
-                            {is("approver") && b.status === BILL_S.SUBMITTED && (
+                            {(is("approver") || is("admin")) && b.status === BILL_S.SUBMITTED && (
                               <>
                                 <Btn sm v="success" onClick={() => setMdl({ t: "bill-approve", d: b, it: "bill" })}>✓</Btn>
                                 <Btn sm v="danger" onClick={() => setMdl({ t: "reject", d: b, it: "bill" })}>✕</Btn>
@@ -128,6 +132,7 @@ export default function BillListPage() {
             }))}
             onRow={(row) => setMdl({ t: "bill-detail", d: row as unknown as Bill })}
           />
+          </div>
         )}
       </div>
     </div>

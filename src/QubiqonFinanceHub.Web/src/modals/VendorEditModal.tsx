@@ -50,6 +50,14 @@ export default function VendorEditModal() {
       return;
     }
     if (!name.trim() || !email.trim() || !address.trim()) return;
+    if (!accountNumber.trim() || !accountNumberRe.trim()) {
+      setError("Account number is required");
+      return;
+    }
+    if (!bankName.trim() || !ifscCode.trim()) {
+      setError("Bank name and IFSC code are required");
+      return;
+    }
     if (accountNumber.trim() !== accountNumberRe.trim()) {
       setError("Account numbers do not match");
       return;
@@ -66,9 +74,9 @@ export default function VendorEditModal() {
         category: category.trim(),
         address: address.trim(),
         contactPerson: contactPerson.trim() || undefined,
-        bankName: bankName.trim() || undefined,
+        bankName: bankName.trim(),
         accountNumber: accountNumber.trim() || undefined,
-        ifscCode: ifscCode.trim() || undefined,
+        ifscCode: ifscCode.trim(),
       });
       setMdl(null);
       window.dispatchEvent(new CustomEvent("vendors-refresh"));
@@ -111,16 +119,30 @@ export default function VendorEditModal() {
         <div style={{ fontSize: "11px", fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "12px" }}>
           Bank details
         </div>
-        <Inp label="Bank name" value={bankName} onChange={(e) => setBankName(e.target.value)} ph="e.g. HDFC Bank" />
-        <Inp label="IFSC code" value={ifscCode} onChange={(e) => setIfscCode(e.target.value)} ph="e.g. HDFC0001234" />
-        <Inp label="Account number" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} ph="Account number" />
-        <Inp label="Re-enter account number" value={accountNumberRe} onChange={(e) => setAccountNumberRe(e.target.value)} ph="Re-enter account number" />
+        <Inp label="Bank name" value={bankName} onChange={(e) => setBankName(e.target.value)} ph="e.g. HDFC Bank" req />
+        <Inp label="IFSC code" value={ifscCode} onChange={(e) => setIfscCode(e.target.value)} ph="e.g. HDFC0001234" req />
+        <Inp label="Account number" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} ph="Account number" req />
+        <Inp label="Re-enter account number" value={accountNumberRe} onChange={(e) => setAccountNumberRe(e.target.value)} ph="Re-enter account number" req />
       </div>
       {error && (
         <div style={{ color: "var(--danger)", fontSize: "12px", marginBottom: "8px" }}>{error}</div>
       )}
       <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
-        <Btn v="vendor" onClick={handleSubmit} disabled={!name.trim() || !email.trim() || !address.trim() || !isEmailValid(email) || loading}>
+        <Btn
+          v="vendor"
+          onClick={handleSubmit}
+          disabled={
+            !name.trim() ||
+            !email.trim() ||
+            !address.trim() ||
+            !bankName.trim() ||
+            !ifscCode.trim() ||
+            !accountNumber.trim() ||
+            !accountNumberRe.trim() ||
+            !isEmailValid(email) ||
+            loading
+          }
+        >
           {loading ? "Saving..." : "Save"}
         </Btn>
         <Btn v="secondary" onClick={() => setMdl(null)} disabled={loading}>

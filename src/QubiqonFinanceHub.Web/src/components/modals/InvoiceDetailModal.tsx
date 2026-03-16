@@ -13,13 +13,15 @@ export default function InvoiceDetailModal({ invoice: inv }: Props) {
 
   return (
     <Mdl open close={() => setMdl(null)} title={inv.id} w>
-      <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", marginBottom: "16px" }}>
+      <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", alignItems: "center", marginBottom: "16px" }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: "13px", fontWeight: 600 }}>{inv.cName}</div>
           <div style={{ fontSize: "10px", color: C.muted }}>{inv.currency} · {inv.due}</div>
         </div>
         <div style={{ fontSize: "20px", fontWeight: 700, color: C.invoice }}>{fmtCur(inv.total, inv.currency)}</div>
-        <Badge s={inv.status} />
+        <div style={{ marginLeft: "auto" }}>
+          <Badge s={inv.status} />
+        </div>
       </div>
       <div style={{ marginBottom: "12px" }}>
         <div style={{ fontSize: "10px", color: C.muted, fontWeight: 600, textTransform: "uppercase", marginBottom: "4px" }}>Line items</div>

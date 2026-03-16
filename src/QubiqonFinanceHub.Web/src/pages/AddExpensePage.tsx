@@ -98,23 +98,6 @@ export default function AddExpensePage() {
           boxSizing: "border-box",
         }}
       >
-        {is("finance") && (
-          <Inp
-            label="On behalf of"
-            type="select"
-            value={ob}
-            onChange={(e) => setOb(e.target.value)}
-            req
-            opts={[
-              { v: "", l: employeesLoading ? "Loading..." : "Select employee..." },
-              ...employees.map((e) => ({
-                v: e.id,
-                l: `${e.name} (${e.dept})`,
-              })),
-            ]}
-            style={{ marginBottom: "14px" }}
-          />
-        )}
         {!is("finance") && (
           <div
             style={{
@@ -136,6 +119,23 @@ export default function AddExpensePage() {
         )}
 
         <div style={gridStyle}>
+          {is("finance") && (
+            <Inp
+              label="On behalf of"
+              type="select"
+              value={ob}
+              onChange={(e) => setOb(e.target.value)}
+              req
+              opts={[
+                { v: "", l: employeesLoading ? "Loading..." : "Select employee..." },
+                ...employees.map((e) => ({
+                  v: e.id,
+                  l: `${e.name} (${e.dept})`,
+                })),
+              ]}
+              style={cellStyle}
+            />
+          )}
           <Inp
             label="Amount (₹)"
             type="number"

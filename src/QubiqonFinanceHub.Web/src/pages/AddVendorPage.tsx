@@ -38,6 +38,14 @@ export default function AddVendorPage() {
       return;
     }
     if (!name.trim() || !email.trim() || !address.trim()) return;
+    if (!accountNumber.trim() || !accountNumberRe.trim()) {
+      setError("Account number is required");
+      return;
+    }
+    if (!bankName.trim() || !ifscCode.trim()) {
+      setError("Bank name and IFSC code are required");
+      return;
+    }
     if (accountNumber.trim() !== accountNumberRe.trim()) {
       setError("Account numbers do not match");
       return;
@@ -54,9 +62,9 @@ export default function AddVendorPage() {
         category: category.trim(),
         address: address.trim(),
         contactPerson: contactPerson.trim() || undefined,
-        bankName: bankName.trim() || undefined,
+        bankName: bankName.trim(),
         accountNumber: accountNumber.trim() || undefined,
-        ifscCode: ifscCode.trim() || undefined,
+        ifscCode: ifscCode.trim(),
       });
       navigate("/vendors");
     } catch (err: unknown) {
@@ -123,10 +131,10 @@ export default function AddVendorPage() {
             Bank details
           </div>
           <div style={gridStyle}>
-            <Inp label="Bank name" value={bankName} onChange={(e) => setBankName(e.target.value)} ph="e.g. HDFC Bank" style={cellStyle} />
-            <Inp label="IFSC code" value={ifscCode} onChange={(e) => setIfscCode(e.target.value)} ph="e.g. HDFC0001234" style={cellStyle} />
-            <Inp label="Account number" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} ph="Account number" style={cellStyle} />
-            <Inp label="Re-enter account number" value={accountNumberRe} onChange={(e) => setAccountNumberRe(e.target.value)} ph="Re-enter account number" style={cellStyle} />
+            <Inp label="Bank name" value={bankName} onChange={(e) => setBankName(e.target.value)} ph="e.g. HDFC Bank" req style={cellStyle} />
+            <Inp label="IFSC code" value={ifscCode} onChange={(e) => setIfscCode(e.target.value)} ph="e.g. HDFC0001234" req style={cellStyle} />
+            <Inp label="Account number" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} ph="Account number" req style={cellStyle} />
+            <Inp label="Re-enter account number" value={accountNumberRe} onChange={(e) => setAccountNumberRe(e.target.value)} ph="Re-enter account number" req style={cellStyle} />
           </div>
         </div>
         {error && (
@@ -145,7 +153,20 @@ export default function AddVendorPage() {
           </div>
         )}
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "20px" }}>
-          <Btn onClick={submit} disabled={!name.trim() || !email.trim() || !address.trim() || !isEmailValid(email) || loading}>
+          <Btn
+            onClick={submit}
+            disabled={
+              !name.trim() ||
+              !email.trim() ||
+              !address.trim() ||
+              !bankName.trim() ||
+              !ifscCode.trim() ||
+              !accountNumber.trim() ||
+              !accountNumberRe.trim() ||
+              !isEmailValid(email) ||
+              loading
+            }
+          >
             {loading ? "Adding..." : "Add vendor"}
           </Btn>
         </div>

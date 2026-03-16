@@ -206,10 +206,12 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
                 📎 {e.file.n} ({e.file.s})
               </span>
             )}
-            <Btn sm v="secondary" onClick={openBillView} disabled={billViewLoading}>
-              {billViewLoading ? "Loading…" : "View"}
-            </Btn>
-            <Btn sm v="secondary" onClick={handleDownloadBill}>Download</Btn>
+            <div style={{ marginLeft: "auto", display: "flex", gap: "6px" }}>
+              <Btn sm v="secondary" onClick={openBillView} disabled={billViewLoading}>
+                {billViewLoading ? "Loading…" : "View"}
+              </Btn>
+              <Btn sm v="secondary" onClick={handleDownloadBill}>Download</Btn>
+            </div>
           </div>
         </div>
       )}
