@@ -1,4 +1,5 @@
 import { useRef, type CSSProperties, type ReactNode } from "react";
+import Select from "react-select";
 import { C } from "../shared/theme";
 import { EXP_S, BILL_S, ADV_S, INV_S } from "../shared/constants";
 import type { ActivityComment } from "../types";
@@ -8,7 +9,7 @@ interface InpOpt {
   l: string;
 }
 
-interface InpProps {
+export interface InpProps {
   label?: string;
   type?: "text" | "number" | "date" | "select" | "textarea" | "email";
   value?: string;
@@ -18,6 +19,7 @@ interface InpProps {
   /** When false, required validation still applies but no asterisk is shown (default true) */
   showReqStar?: boolean;
   min?: string;
+  max?: string;
   ph?: string;
   disabled?: boolean;
   opts?: InpOpt[];
@@ -38,7 +40,7 @@ export const Inp: React.FC<InpProps> = ({
   disabled,
   opts,
   hint,
-  style: sx,
+  style: sx,max
 }) => (
   <div style={{ marginBottom: "14px", ...sx }}>
     {label && (
@@ -55,30 +57,62 @@ export const Inp: React.FC<InpProps> = ({
       </label>
     )}
     {type === "select" ? (
-      <select
-        value={value}
-        onChange={onChange as React.ChangeEventHandler<HTMLSelectElement>}
-        onBlur={onBlur as React.FocusEventHandler<HTMLSelectElement>}
-        required={req}
-        disabled={disabled}
-        style={{
-          width: "100%",
-          padding: "8px 12px",
-          border: `1.5px solid ${C.border}`,
-          borderRadius: "8px",
-          fontSize: "13px",
-          fontFamily: "'DM Sans'",
-          outline: "none",
-          background: disabled ? C.surface : "#fff",
-          boxSizing: "border-box",
+      <Select
+        value={
+          opts
+            ?.map((o) => ({ value: o.v, label: o.l }))
+            .find((o) => o.value === value) ?? null
+        }
+        onChange={(opt) => {
+          const option = opt as { value: string } | null;
+          const v = option?.value ?? "";
+          const evt = {
+            target: { value: v },
+          } as React.ChangeEvent<HTMLSelectElement>;
+          onChange?.(evt);
         }}
-      >
-        {opts?.map((o) => (
-          <option key={o.v} value={o.v}>
-            {o.l}
-          </option>
-        ))}
-      </select>
+        options={opts?.map((o) => ({ value: o.v, label: o.l })) ?? []}
+        isDisabled={disabled}
+        isSearchable
+        styles={{
+          control: (base) => ({
+            ...base,
+            minHeight: "34px",
+            borderRadius: 8,
+            borderColor: C.border,
+            boxShadow: "none",
+            "&:hover": { borderColor: C.border },
+            fontSize: 13,
+            fontFamily: "'DM Sans'",
+          }),
+          valueContainer: (base) => ({
+            ...base,
+            padding: "0 8px",
+          }),
+          menuPortal: (base) => ({
+            ...base,
+            zIndex: 2000,
+          }),
+          menu: (base) => ({
+            ...base,
+            borderRadius: 8,
+            boxShadow: "0 8px 24px rgba(15,23,42,0.12)",
+          }),
+          option: (base, state) => ({
+            ...base,
+            fontSize: 12,
+            backgroundColor: state.isSelected
+              ? C.surface
+              : state.isFocused
+              ? "#f1f3f5"
+              : "#fff",
+            color: "#111827",
+          }),
+        }}
+        menuPortalTarget={typeof document !== "undefined" ? document.body : undefined}
+        menuPosition="fixed"
+        menuPlacement="auto"
+      />
     ) : type === "textarea" ? (
       <textarea
         value={value}
@@ -108,6 +142,7 @@ export const Inp: React.FC<InpProps> = ({
         onBlur={onBlur as React.FocusEventHandler<HTMLInputElement>}
         required={req}
         min={min}
+        max={max}
         placeholder={ph}
         disabled={disabled}
         style={{
@@ -263,7 +298,6 @@ export const Mdl: React.FC<{
         justifyContent: "center",
         padding: "16px",
       }}
-      onClick={close}
     >
       <div
         style={{
@@ -359,13 +393,14 @@ export const FileUp: React.FC<{
   file: { n: string; s: string } | null;
   onChange: (f: { n: string; s: string } | null) => void;
   req?: boolean;
+  title?:string;
   /** Optional: pass the raw File for FormData uploads */
   onFileSelect?: (f: File | null) => void;
   /** e.g. ".pdf" for PDF only */
   accept?: string;
   /** Override hint text below drop zone */
   hint?: string;
-}> = ({ file, onChange, req, onFileSelect, accept = ".pdf,.jpg,.jpeg,.png", hint }) => {
+}> = ({ file, onChange, req, onFileSelect, accept = ".pdf,.jpg,.jpeg,.png", hint , title = "Attachment"}) => {
   const ref = useRef<HTMLInputElement>(null);
   const handleFile = (f: File) => {
     onChange({ n: f.name, s: (f.size / 1024).toFixed(0) + " KB" });
@@ -388,7 +423,7 @@ export const FileUp: React.FC<{
           marginBottom: "4px",
         }}
       >
-        Attachment {req && <span style={{ color: C.accent }}>*</span>}
+        {title} {req && <span style={{ color: C.accent }}>*</span>}
       </label>
       {file ? (
         <div
@@ -438,6 +473,51 @@ export const FileUp: React.FC<{
     </div>
   );
 };
+
+export const Toggle: React.FC<{
+  checked: boolean;
+  onChange: (next: boolean) => void;
+}> = ({ checked, onChange }) => (
+  <label
+    style={{
+      position: "relative",
+      display: "inline-flex",
+      alignItems: "center",
+      cursor: "pointer",
+    }}
+  >
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={(e) => onChange(e.target.checked)}
+      style={{ position: "absolute", opacity: 0, pointerEvents: "none" }}
+    />
+    <span
+      style={{
+        width: 34,
+        height: 18,
+        borderRadius: 999,
+        background: checked ? C.invoice : C.border,
+        position: "relative",
+        transition: "background 0.15s",
+      }}
+    >
+      <span
+        style={{
+          position: "absolute",
+          top: 2,
+          left: checked ? 18 : 2,
+          width: 14,
+          height: 14,
+          borderRadius: "50%",
+          background: "#fff",
+          boxShadow: "0 1px 3px rgba(15,23,42,0.25)",
+          transition: "left 0.15s",
+        }}
+      />
+    </span>
+  </label>
+);
 
 interface TableRow {
   _cells: { v: ReactNode; sx?: CSSProperties }[];

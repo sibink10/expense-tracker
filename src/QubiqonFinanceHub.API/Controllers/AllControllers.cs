@@ -56,7 +56,7 @@ public class AuthController(ITenantService tenant, FinanceHubDbContext db) : Con
 
         return Ok(new CurrentUserDto(
             emp.Id, emp.FullName, emp.Email, emp.Department,
-            emp.Designation, emp.Role, initials.ToUpper(), org.Id, org.Name
+            emp.Designation, emp.Role, initials.ToUpper(), org.Id, org.OrgName
         ));
     }
 
@@ -151,7 +151,7 @@ public class VendorsController(IVendorService svc) : ControllerBase
     [HttpPost] public async Task<IActionResult> Create([FromBody] CreateVendorRequest dto) => Ok(await svc.CreateAsync(dto));
     [HttpPut("{id:guid}")] public async Task<IActionResult> Update(Guid id, [FromBody] UpdateVendorRequest dto) => Ok(await svc.UpdateAsync(id, dto));
     [HttpGet("{id:guid}")] public async Task<IActionResult> GetById(Guid id) { var r = await svc.GetByIdAsync(id); return r != null ? Ok(r) : NotFound(); }
-    [HttpGet] public async Task<IActionResult> List() => Ok(await svc.ListAsync());
+    [HttpGet] public async Task<IActionResult> List([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
 }
 
 // ═══════════════════════════════════════════════════
@@ -161,7 +161,6 @@ public class VendorsController(IVendorService svc) : ControllerBase
 public class BillsController(IVendorBillService svc) : ControllerBase
 {
     //[HttpPost, Authorize(Roles = "Finance,Admin")]
-    [HttpPost]
     [HttpPost]
     public async Task<IActionResult> Create([FromForm] CreateBillRequest dto)
     {
@@ -190,7 +189,7 @@ public class ClientsController(IClientService svc) : ControllerBase
     [HttpPost] public async Task<IActionResult> Create([FromBody] CreateClientRequest dto) => Ok(await svc.CreateAsync(dto));
     [HttpPut("{id:guid}")] public async Task<IActionResult> Update(Guid id, [FromBody] UpdateClientRequest dto) => Ok(await svc.UpdateAsync(id, dto));
     [HttpGet("{id:guid}")] public async Task<IActionResult> GetById(Guid id) { var r = await svc.GetByIdAsync(id); return r != null ? Ok(r) : NotFound(); }
-    [HttpGet] public async Task<IActionResult> List() => Ok(await svc.ListAsync());
+    [HttpGet] public async Task<IActionResult> List([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
 }
 
 // ═══════════════════════════════════════════════════
@@ -225,10 +224,15 @@ public class TaxConfigController(ITaxConfigService svc) : ControllerBase
 [ApiController, Route("api/organization"), Authorize]
 public class OrganizationController(IOrganizationService svc) : ControllerBase
 {
+
+    [HttpPost] public async Task<IActionResult> Create([FromForm] CreateOrganizationRequest dto) => Ok(await svc.CreateAsync(dto));
+    [HttpGet("all")] public async Task<IActionResult> List() => Ok(await svc.GetAllAsync());
     [HttpGet] public async Task<IActionResult> Get() => Ok(await svc.GetAsync());
-    [HttpPut] public async Task<IActionResult> Update([FromBody] UpdateOrganizationRequest dto) => Ok(await svc.UpdateAsync(dto));
+    [HttpPut("{id:guid}")] public async Task<IActionResult> Update(Guid id, [FromForm] UpdateOrganizationRequest dto) => Ok(await svc.UpdateAsync(id, dto));
     [HttpGet("settings")] public async Task<IActionResult> Settings() => Ok(await svc.GetSettingsAsync());
     [HttpPost("settings/{key}")] public async Task<IActionResult> SetSetting(string key, [FromBody] string value) { await svc.SetSettingAsync(key, value); return Ok(); }
+    [HttpGet("{id:guid}")] public async Task<IActionResult> GetById(Guid id) => Ok(await svc.GetByIdAsync(id));
+    [HttpPatch("{id:guid}/select")] public async Task<IActionResult> Select(Guid id) => Ok(await svc.SelectAsync(id));
 }
 
 // ═══════════════════════════════════════════════════
@@ -238,12 +242,46 @@ public class OrganizationController(IOrganizationService svc) : ControllerBase
 [ApiController, Route("api/employees"), Authorize]
 public class EmployeesController(IEmployeeService svc) : ControllerBase
 {
-    [HttpGet] public async Task<IActionResult> List() => Ok(await svc.ListAsync());
+    [HttpGet] public async Task<IActionResult> List([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
     [HttpGet("{id:guid}")] public async Task<IActionResult> GetById(Guid id) { var r = await svc.GetByIdAsync(id); return r != null ? Ok(r) : NotFound(); }
     [HttpPost] public async Task<IActionResult> Create([FromBody] CreateEmployeeRequest dto) => Ok(await svc.CreateAsync(dto));
     [HttpPut("{id:guid}")] public async Task<IActionResult> Update(Guid id, [FromBody] UpdateEmployeeRequest dto) => Ok(await svc.UpdateAsync(id, dto));
     [HttpPost("{id:guid}/toggle")] public async Task<IActionResult> Toggle(Guid id) => Ok(await svc.ToggleActiveAsync(id));
 }
+
+// ═══════════════════════════════════════════════════
+//  CATEGORY
+// ═══════════════════════════════════════════════════
+[ApiController, Route("api/categories"), Authorize]
+public class CategoryController(ICategoryService svc) : ControllerBase
+{
+    [HttpGet]
+    public async Task<IActionResult> List() => Ok(await svc.GetAllAsync());
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        var r = await svc.GetByIdAsync(id);
+        return r != null ? Ok(r) : NotFound();
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateCategoryRequest dto) => Ok(await svc.CreateAsync(dto));
+
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCategoryRequest dto) => Ok(await svc.UpdateAsync(id, dto));
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        await svc.DeleteAsync(id);
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/toggle")]
+    public async Task<IActionResult> Toggle(Guid id) => Ok(await svc.ToggleActiveAsync(id));
+}
+
+
 
 // ═══════════════════════════════════════════════════
 //  HEALTH

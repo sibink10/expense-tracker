@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
 import { PAY_TERMS } from "../shared/constants";
 import { genCode, addDays, fmtCur, isEmailListValid } from "../shared/utils";
 import { Inp, Btn, FileUp } from "../components/ui";
+import { AsyncSelectInput } from "../components/AsyncSelectInput";
 import { useAppContext } from "../context/AppContext";
 import { createBill } from "../shared/api/bill";
 import { getVendors } from "../shared/api/vendor";
@@ -16,7 +17,6 @@ export default function SubmitBillPage() {
   const navigate = useNavigate();
   const { cfg, setCfg, t } = useAppContext();
   const [narrow, setNarrow] = useState(typeof window !== "undefined" && window.innerWidth < GRID_BREAKPOINT);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [tdsOptions, setTdsOptions] = useState<TaxConfig[]>([]);
   const [vId, setVId] = useState("");
   const [amt, setAmt] = useState("");
@@ -31,7 +31,6 @@ export default function SubmitBillPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ccError, setCcError] = useState<string | null>(null);
-  const [vendorsLoading, setVendorsLoading] = useState(true);
 
   useEffect(() => {
     const onResize = () => setNarrow(window.innerWidth < GRID_BREAKPOINT);
@@ -39,11 +38,16 @@ export default function SubmitBillPage() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  useEffect(() => {
-    getVendors()
-      .then(setVendors)
-      .catch(() => setVendors([]))
-      .finally(() => setVendorsLoading(false));
+  const loadVendorOptions = useCallback(async (query: string) => {
+    try {
+      const res = await getVendors(1, 50, query);
+      return res.items.map((v) => ({
+        value: v.id,
+        label: `${v.name} (${v.gstin})`,
+      }));
+    } catch {
+      return [];
+    }
   }, []);
 
   useEffect(() => {
@@ -123,18 +127,16 @@ export default function SubmitBillPage() {
         }}
       >
         <div style={gridStyle}>
-          <Inp
-            label="Vendor"
-            type="select"
-            value={vId}
-            onChange={(e) => setVId(e.target.value)}
-            req
-            opts={[
-              { v: "", l: vendorsLoading ? "Loading..." : "Select..." },
-              ...vendors.map((v) => ({ v: v.id, l: `${v.name} (${v.gstin})` })),
-            ]}
-            style={cellStyle}
-          />
+          <div style={cellStyle}>
+            <AsyncSelectInput
+              label="Vendor"
+              value={vId}
+              onChange={setVId}
+              loadOptions={loadVendorOptions}
+              disabled={loading}
+              placeholder="Search vendors..."
+            />
+          </div>
           <Inp
             label="Bill amount (₹)"
             type="number"
@@ -219,6 +221,7 @@ export default function SubmitBillPage() {
             type="date"
             value={bd}
             onChange={(e) => setBd(e.target.value)}
+            max={new Date().toISOString().split("T")[0]}
             req
             style={cellStyle}
           />

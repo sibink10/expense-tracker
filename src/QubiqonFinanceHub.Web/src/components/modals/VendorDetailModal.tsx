@@ -53,9 +53,6 @@ export default function VendorDetailModal({ vendor: v }: Props) {
             fontSize: "13px",
           }}
         >
-          <div style={{ fontSize: "10px", fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "10px" }}>
-            Bank details
-          </div>
           <DetailRow label="Bank name" value={v.bankName ?? ""} />
           <DetailRow label="Account number" value={v.accountNumber ?? ""} />
           <DetailRow label="IFSC code" value={v.ifscCode ?? ""} />

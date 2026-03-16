@@ -9,48 +9,57 @@ namespace QubiqonFinanceHub.API.Models.Entities;
 // ═══════════════════════════════════════════════════
 public class Organization
 {
-    [Key] public Guid Id { get; set; }
-    [Required, MaxLength(200)] public string Name { get; set; } = "";
-    [MaxLength(300)] public string? LegalName { get; set; }
-    [Required, MaxLength(50)] public string Slug { get; set; } = "";
-    [MaxLength(2048)] public string? LogoUrl { get; set; }
-    [MaxLength(7)] public string PrimaryColor { get; set; } = "#1B2A4A";
-    [MaxLength(7)] public string AccentColor { get; set; } = "#E8593C";
+    [Key]
+    public Guid Id { get; set; }
 
-    // Address
-    [MaxLength(300)] public string? AddressLine1 { get; set; }
-    [MaxLength(300)] public string? AddressLine2 { get; set; }
-    [MaxLength(100)] public string? City { get; set; }
-    [MaxLength(100)] public string? State { get; set; }
-    [MaxLength(100)] public string Country { get; set; } = "India";
-    [MaxLength(20)] public string? PinCode { get; set; }
+    [Required, MaxLength(200)]
+    public string OrgName { get; set; } = "";
 
-    // Tax Registration
-    [MaxLength(20)] public string? GSTIN { get; set; }
-    [MaxLength(15)] public string? PAN { get; set; }
-    [MaxLength(25)] public string? CIN { get; set; }
-    [MaxLength(15)] public string? TAN { get; set; }
+    [MaxLength(200)]
+    public string? SubName { get; set; }
 
-    // Contact
-    [MaxLength(100)] public string? ContactPersonName { get; set; }
-    [MaxLength(256)] public string? ContactEmail { get; set; }
-    [MaxLength(20)] public string? ContactPhone { get; set; }
-    [MaxLength(256)] public string? Website { get; set; }
+    [MaxLength(300)]
+    public string? Address { get; set; }
 
-    // Bank Details
-    [MaxLength(200)] public string? BankAccountName { get; set; }
-    [MaxLength(30)] public string? BankAccountNumber { get; set; }
-    [MaxLength(15)] public string? BankIFSC { get; set; }
-    [MaxLength(100)] public string? BankName { get; set; }
-    [MaxLength(200)] public string? BankBranch { get; set; }
-    [MaxLength(15)] public string? BankSWIFT { get; set; }
+    [MaxLength(100)]
+    public string? City { get; set; }
 
-    // Subscription
-    public SubscriptionPlan Plan { get; set; } = SubscriptionPlan.Professional;
-    public int MaxUsers { get; set; } = 25;
+    [MaxLength(100)]
+    public string? State { get; set; }
+
+    [MaxLength(100)]
+    public string? Country { get; set; }
+
+    [MaxLength(20)]
+    public string? PostalCode { get; set; }
+
+    [MaxLength(20)]
+    public string? Phone { get; set; }
+
+    [MaxLength(20)]
+    public string? Fax { get; set; }
+
+    [MaxLength(256)]
+    public string? Website { get; set; }
+
+    [MaxLength(300)]
+    public string? PaymentAddress { get; set; }
+
+    public bool UseSeparatePaymentAddress { get; set; }
+
+    [MaxLength(100)]
+    public string? Industry { get; set; }
+
+    [MaxLength(2048)]
+    public string? LogoUrl { get; set; }
+
     public bool IsActive { get; set; } = true;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime? UpdatedAt { get; set; }
+
+    public bool Selected { get; set; } = false;
+
+    public string? Tenant { get; set; }
+
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation
     public ICollection<Employee> Employees { get; set; } = new List<Employee>();
@@ -80,7 +89,7 @@ public class Employee
     [Key] public Guid Id { get; set; }
     public Guid OrganizationId { get; set; }
     [ForeignKey(nameof(OrganizationId))] public Organization Organization { get; set; } = null!;
-    [Required, MaxLength(36)] public string EntraObjectId { get; set; } = "";
+    [MaxLength(36)] public string? EntraObjectId { get; set; }
     [Required, MaxLength(100)] public string FullName { get; set; } = "";
     [Required, MaxLength(256)] public string Email { get; set; } = "";
     [MaxLength(100)] public string? Department { get; set; }
@@ -328,4 +337,17 @@ public class CodeSequence
     public Guid OrganizationId { get; set; }
     [Required, MaxLength(30)] public string SequenceType { get; set; } = ""; // expense, bill, advance, invoice
     public int LastNumber { get; set; }
+}
+
+// ═══════════════════════════════════════════════════
+//  CATEGORY
+// ═══════════════════════════════════════════════════
+public class Category
+{
+    public Guid Id { get; set; }
+    public Guid OrganizationId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 }

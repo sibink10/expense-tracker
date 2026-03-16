@@ -22,6 +22,7 @@ builder.Services.AddApplicationAuth(builder.Configuration);
 builder.Services.AddApplicationServices();
 builder.Services.AddApplicationCors(builder.Configuration);
 builder.Services.AddSingleton<IStorageService, AzureBlobStorageService>();
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddControllers()
     .AddJsonOptions(o =>

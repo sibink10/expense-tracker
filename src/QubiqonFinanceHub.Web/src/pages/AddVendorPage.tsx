@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
 import { Inp, Btn } from "../components/ui";
 import { createVendor } from "../shared/api/vendor";
+import { getCategories, type Category } from "../shared/api";
+import type { Vendor } from "../types";
 import { isEmailValid } from "../shared/utils";
 
 const GRID_BREAKPOINT = 600;
@@ -14,6 +16,7 @@ export default function AddVendorPage() {
   const [gstin, setGstin] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [category, setCategory] = useState("");
   const [address, setAddress] = useState("");
   const [contactPerson, setContactPerson] = useState("");
@@ -24,6 +27,12 @@ export default function AddVendorPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  const isPhoneValid = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, "");
+    return digitsOnly.length === 10;
+  };
 
   useEffect(() => {
     const onResize = () => setNarrow(window.innerWidth < GRID_BREAKPOINT);
@@ -31,13 +40,28 @@ export default function AddVendorPage() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  useEffect(() => {
+    getCategories()
+      .then((items) => setCategories(items.filter((c) => c.isActive)))
+      .catch(() => setCategories([]));
+  }, []);
+
   const submit = async () => {
     setEmailError(null);
+    setPhoneError(null);
     if (!isEmailValid(email)) {
       setEmailError("Enter a valid email address");
       return;
     }
     if (!name.trim() || !email.trim() || !address.trim()) return;
+    if (!phone.trim()) {
+      setPhoneError("Phone number is required");
+      return;
+    }
+    if (!isPhoneValid(phone)) {
+      setPhoneError("Enter a valid 10-digit phone number");
+      return;
+    }
     if (!accountNumber.trim() || !accountNumberRe.trim()) {
       setError("Account number is required");
       return;
@@ -113,8 +137,31 @@ export default function AddVendorPage() {
           </div>
           <Inp label="Contact person" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} ph="Optional" style={cellStyle} />
           <Inp label="GSTIN" value={gstin} onChange={(e) => setGstin(e.target.value)} ph="GST number" style={cellStyle} />
-          <Inp label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} ph="Contact number" style={cellStyle} />
-          <Inp label="Category" value={category} onChange={(e) => setCategory(e.target.value)} ph="Vendor category" style={cellStyle} />
+          <div style={cellStyle}>
+            <Inp
+              label="Phone"
+              value={phone}
+              onChange={(e) => {
+                setPhone(e.target.value);
+                setPhoneError(null);
+              }}
+              onBlur={() => phone.trim() && !isPhoneValid(phone) && setPhoneError("Enter a valid 10-digit phone number")}
+              ph="Contact number"
+              style={{ marginBottom: 0 }}
+            />
+            {phoneError && <div style={{ fontSize: "11px", color: C.danger, marginTop: "4px" }}>{phoneError}</div>}
+          </div>
+          <Inp
+            label="Category"
+            type="select"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            opts={[
+              { v: "", l: categories.length ? "Select category..." : "No categories" },
+              ...categories.map((c) => ({ v: c.name, l: c.name })),
+            ]}
+            style={cellStyle}
+          />
         </div>
         <Inp
           label="Address"
@@ -158,12 +205,15 @@ export default function AddVendorPage() {
             disabled={
               !name.trim() ||
               !email.trim() ||
+              !phone.trim() ||
               !address.trim() ||
               !bankName.trim() ||
               !ifscCode.trim() ||
               !accountNumber.trim() ||
               !accountNumberRe.trim() ||
               !isEmailValid(email) ||
+              !!phoneError ||
+              (phone.trim() && !isPhoneValid(phone)) ||
               loading
             }
           >

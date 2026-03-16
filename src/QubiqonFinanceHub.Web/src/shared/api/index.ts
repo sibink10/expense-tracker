@@ -9,3 +9,11 @@ export { getClients, createClient, updateClient, type ClientPayload } from "./cl
 export { getBills, createBill, approveBill, rejectBill, payBill, type CreateBillPayload } from "./bill";
 export { getTaxConfigs, createTaxConfig, toggleTaxConfig, type CreateTaxConfigPayload } from "./taxConfig";
 export { getInvoices, createInvoice, markInvoicePaid, type CreateInvoicePayload, type CreateInvoiceLineItem, type MarkInvoicePaidPayload } from "./invoice";
+export { getCategories, createCategory, toggleCategory, type Category, type CreateCategoryPayload } from "./category";
+export {
+  getOrganization,
+  getOrganizations,
+  saveOrganization,
+  selectOrganization,
+  type OrganizationPayload,
+} from "./organization";

@@ -2,18 +2,16 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
 import { Inp, Btn, Av, FileUp } from "../components/ui";
+import { AsyncSelectInput } from "../components/AsyncSelectInput";
 import { useAppContext } from "../context/AppContext";
 import { createExpenseForm } from "../shared/api/expense";
-import { getEmployeeRoleEmployees } from "../shared/api/employees";
-import type { Employee } from "../shared/api/employees";
+import { getEmployees } from "../shared/api/employees";
 
 const GRID_BREAKPOINT = 600;
 
 export default function AddExpensePage() {
   const navigate = useNavigate();
   const { user, setEmail, t, is } = useAppContext();
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [employeesLoading, setEmployeesLoading] = useState(true);
   const [narrow, setNarrow] = useState(typeof window !== "undefined" && window.innerWidth < GRID_BREAKPOINT);
 
   const [amt, setAmt] = useState("");
@@ -32,21 +30,17 @@ export default function AddExpensePage() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  useEffect(() => {
-    if (is("finance")) {
-      getEmployeeRoleEmployees()
-        .then(setEmployees)
-        .catch(() => setEmployees([]))
-        .finally(() => setEmployeesLoading(false));
-    } else {
-      setEmployeesLoading(false);
-    }
-  }, [is]);
+  const loadEmployeeOptions = async (query: string) => {
+    const res = await getEmployees({ page: 1, pageSize: 20, search: query || undefined });
+    return res.items.map((e) => ({
+      value: e.id,
+      label: `${e.name}${e.dept ? ` (${e.dept})` : ""}`,
+    }));
+  };
 
   const submit = async () => {
-    const selectedEmp = ob ? employees.find((e) => e.id === ob) : null;
-    const employeeId = selectedEmp ? selectedEmp.id : user.employeeId?.trim() || null;
-    const displayName = selectedEmp ? selectedEmp.name : user.name;
+    const employeeId = ob || user.employeeId?.trim() || null;
+    const displayName = user.name;
     const amount = parseFloat(amt);
     if (isNaN(amount) || amount <= 0 || !pur.trim() || !billNumber.trim() || !billDate) return;
     if (is("finance") && !ob) return;
@@ -120,20 +114,13 @@ export default function AddExpensePage() {
 
         <div style={gridStyle}>
           {is("finance") && (
-            <Inp
+            <AsyncSelectInput
               label="On behalf of"
-              type="select"
               value={ob}
-              onChange={(e) => setOb(e.target.value)}
-              req
-              opts={[
-                { v: "", l: employeesLoading ? "Loading..." : "Select employee..." },
-                ...employees.map((e) => ({
-                  v: e.id,
-                  l: `${e.name} (${e.dept})`,
-                })),
-              ]}
-              style={cellStyle}
+              onChange={setOb}
+              loadOptions={loadEmployeeOptions}
+              disabled={loading}
+              placeholder="Select employee..."
             />
           )}
           <Inp
@@ -160,6 +147,7 @@ export default function AddExpensePage() {
             type="date"
             value={billDate}
             onChange={(e) => setBillDate(e.target.value)}
+            max={new Date().toISOString().split("T")[0]}
             req
             style={cellStyle}
           />

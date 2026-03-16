@@ -1,25 +1,28 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
 import Layout from "./Layout";
-import DashPage from "./DashPage";
-import ExpenseListPage from "./ExpenseListPage";
-import ExpensePayPage from "./ExpensePayPage";
+import DashPage from "../pages/DashPage";
+import ExpenseListPage from "../pages/ExpenseListPage";
+import ExpensePayPage from "../pages/ExpensePayPage";
 import AddExpensePage from "../pages/AddExpensePage";
-import AdvanceListPage from "./AdvanceListPage";
+import AdvanceListPage from "../pages/AdvanceListPage";
 import RequestAdvancePage from "../pages/RequestAdvancePage";
-import BillListPage from "./BillListPage";
+import BillListPage from "../pages/BillListPage";
 import SubmitBillPage from "../pages/SubmitBillPage";
-import InvoicesPage from "./InvoicesPage";
-import InvoiceAddPage from "./InvoiceAddPage";
-import VendorsPage from "./VendorsPage";
+import InvoicesPage from "../pages/InvoicesPage";
+import InvoiceAddPage from "../pages/InvoiceAddPage";
+import VendorsPage from "../pages/VendorsPage";
 import AddVendorPage from "../pages/AddVendorPage";
-import ClientsPage from "./ClientsPage";
+import ClientsPage from "../pages/ClientsPage";
 import AddClientPage from "../pages/AddClientPage";
 import AdminSettingsPage from "../pages/AdminSettingsPage";
-import AdminOrgPage from "./AdminOrgPage";
-import AdminTaxPage from "./AdminTaxPage";
-import AdminGstPage from "./AdminGstPage";
-import AdminEmailPage from "./AdminEmailPage";
+import EmployeesPage from "../pages/EmployeesPage";
+import AdminOrgViewPage from "../pages/AdminOrgViewPage";
+import AdminOrgPage from "../pages/AdminOrgPage";
+import AdminTaxPage from "../pages/AdminTaxPage";
+import AdminGstPage from "../pages/AdminGstPage";
+import AdminEmailPage from "../pages/AdminEmailPage";
+import AdminCategoriesPage from "../pages/AdminCategoriesPage";
 
 function DashOrRedirect() {
   return <DashPage />;
@@ -45,9 +48,13 @@ export const router = createBrowserRouter([
       { path: "clients", element: <ClientsPage /> },
       { path: "clients/add", element: <AddClientPage /> },
       { path: "admin", element: <AdminSettingsPage /> },
-      { path: "admin/org", element: <AdminOrgPage /> },
+      { path: "employees", element: <EmployeesPage /> },
+      { path: "admin/org", element: <AdminOrgViewPage /> },
+      { path: "admin/org/edit", element: <AdminOrgPage /> },
+      { path: "admin/org/edit/:id", element: <AdminOrgPage /> },
       { path: "admin/tax", element: <AdminTaxPage /> },
       { path: "admin/gst", element: <AdminGstPage /> },
+      { path: "admin/categories", element: <AdminCategoriesPage /> },
       { path: "admin/email", element: <AdminEmailPage /> },
     ],
   },

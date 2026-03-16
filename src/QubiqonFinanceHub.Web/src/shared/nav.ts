@@ -34,7 +34,7 @@ export function buildNav(
             c: "#0E7490",
             items: [
               { path: "/advances", l: "Requests", i: "⤴", r: ["employee", "approver", "finance", "admin"] as UserRole[], b: isApprover ? pendAdv : 0, end: true },
-              { path: "/advances/add", l: "Request advance", i: "＋", r: ["employee", "admin"] as UserRole[] },
+              { path: "/advances/add", l: "Request advance", i: "＋", r: ["employee", "finance", "admin"] as UserRole[] },
             ],
           },
         ]
@@ -60,6 +60,13 @@ export function buildNav(
       ],
     },
     {
+      s: "Employees",
+      c: "#0F766E",
+      items: [
+        { path: "/employees", l: "Employee directory", i: "👥", r: ["admin"] as UserRole[], end: true },
+      ],
+    },
+    {
       s: "Admin",
       c: "#6B7A94",
       items: [
@@ -67,6 +74,7 @@ export function buildNav(
         { path: "/admin/org", l: "Organization", i: "🏢", r: ["admin"] as UserRole[] },
         { path: "/admin/tax", l: "Tax config", i: "📊", r: ["admin"] as UserRole[] },
         { path: "/admin/gst", l: "GST config", i: "📊", r: ["admin"] as UserRole[] },
+        { path: "/admin/categories", l: "Categories", i: "🏷", r: ["admin"] as UserRole[] },
         { path: "/admin/email", l: "Email templates", i: "✉", r: ["admin"] as UserRole[] },
       ],
     },

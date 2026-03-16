@@ -14,10 +14,14 @@ interface Props {
 
 export default function ExpenseDetailModal({ expense: e }: Props) {
   const { setMdl, is, t } = useAppContext();
-  const isApproverOrAdmin = is("approver") || is("admin");
+  const isApprover = is("approver");
+  const isAdmin = is("admin");
+  const isFinance = is("finance");
   const hasBill = !!(e.file || e.attachmentUrl);
   const isPending = e.status === EXP_S.PENDING || e.status === EXP_S.PENDING_BILL_APPROVAL;
-  const canApproveReject = e.status === EXP_S.PENDING || e.status === EXP_S.PENDING_BILL_APPROVAL;
+  const canApproveReject =
+    (e.status === EXP_S.PENDING && (isApprover || isAdmin)) ||
+    (e.status === EXP_S.PENDING_BILL_APPROVAL && (isFinance || isAdmin));
   const showBillUploadPanel = e.status === EXP_S.AWAITING_BILL && !e.file && !e.attachmentUrl;
 
   const [editing, setEditing] = useState(false);
@@ -151,7 +155,15 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
                 <Inp label="Bill #" type="text" value={billNumber} onChange={(ev) => setBillNumber(ev.target.value)} req style={{ marginBottom: 0 }} />
               </div>
               <div style={{ flex: "1 1 120px" }}>
-                <Inp label="Bill date" type="date" value={billDate} onChange={(ev) => setBillDate(ev.target.value)} req style={{ marginBottom: 0 }} />
+                <Inp
+                  label="Bill date"
+                  type="date"
+                  value={billDate}
+                  onChange={(ev) => setBillDate(ev.target.value)}
+                  max={new Date().toISOString().split("T")[0]}
+                  req
+                  style={{ marginBottom: 0 }}
+                />
               </div>
             </>
           ) : (
@@ -334,7 +346,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
               <Btn v="secondary" onClick={() => { setEditing(false); setError(null); setAmt(String(e.amt)); setPur(e.purpose); setBillNumber(e.billNumber ?? ""); setBillDate(e.billDate ?? ""); }}>Cancel</Btn>
             </>
           )}
-          {isApproverOrAdmin && canApproveReject && !editing && (
+          {canApproveReject && !editing && (
             <>
               <Btn v="success" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "exp-approve", d: e }), 50); }}>Approve</Btn>
               <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "reject", d: e, it: "expense" }), 50); }}>Reject</Btn>
@@ -343,7 +355,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
           {(is("finance") || is("admin")) && e.status === EXP_S.APPROVED && (
             <Btn v="info" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "pay", d: e, it: "expense" }), 50); }}>Pay</Btn>
           )}
-          {!(isPending || (isApproverOrAdmin && canApproveReject) || ((is("finance") || is("admin")) && e.status === EXP_S.APPROVED)) && (
+          {!(isPending || canApproveReject || ((isFinance || isAdmin) && e.status === EXP_S.APPROVED)) && (
             <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>
           )}
         </div>

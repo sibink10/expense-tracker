@@ -72,10 +72,62 @@ function mapApiBillToApp(item: ApiBill): Bill {
   };
 }
 
-export async function getBills(): Promise<Bill[]> {
-  const { data } = await apiClient.get<ApiBill[] | { items: ApiBill[] }>("/bills");
-  const items = Array.isArray(data) ? data : (data as { items: ApiBill[] })?.items ?? [];
-  return items.map(mapApiBillToApp);
+export interface ApiBillsResponse {
+  items: ApiBill[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  hasNext: boolean;
+}
+
+export interface GetBillsParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: string;
+}
+
+export async function getBillsRaw(params: GetBillsParams = {}): Promise<ApiBillsResponse> {
+  const apiParams: Record<string, unknown> = {
+    Page: params.page,
+    PageSize: params.pageSize,
+    Search: params.search,
+    Status: params.status,
+  };
+
+  const { data } = await apiClient.get<ApiBill[] | ApiBillsResponse>("/bills", {
+    params: apiParams,
+  });
+
+  if (Array.isArray(data)) {
+    const items = data;
+    return {
+      items,
+      totalCount: items.length,
+      page: params.page ?? 1,
+      pageSize: params.pageSize || items.length || 10,
+      totalPages: 1,
+      hasNext: false,
+    };
+  }
+
+  return data as ApiBillsResponse;
+}
+
+export async function getBills(params: GetBillsParams = {}): Promise<{
+  items: Bill[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  hasNext: boolean;
+}> {
+  const res = await getBillsRaw(params);
+  return {
+    ...res,
+    items: res.items.map(mapApiBillToApp),
+  };
 }
 
 export interface CreateBillPayload {

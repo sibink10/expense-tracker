@@ -15,20 +15,29 @@ public class EmployeeService : IEmployeeService
     public EmployeeService(FinanceHubDbContext db, ITenantService tenant)
     { _db = db; _tenant = tenant; }
 
-    public async Task<List<EmployeeDto>> ListAsync()
+    public async Task<PaginatedResult<EmployeeDto>> ListAsync(FilterParams f)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
-        var employees = await _db.Employees
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var q = _db.Employees
             .Where(e => e.OrganizationId == orgId)
-            .OrderBy(e => e.FullName)
-            .AsNoTracking()
-            .ToListAsync();
-        return employees.Select(MapToDto).ToList();
+            .AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(f.Search))
+        {
+            var s = f.Search.ToLower();
+            q = q.Where(e => e.FullName.ToLower().Contains(s) || e.Email.ToLower().Contains(s));
+        }
+
+        var total = await q.CountAsync();
+        q = f.Desc ? q.OrderByDescending(e => e.FullName) : q.OrderBy(e => e.FullName);
+        var items = await q.Skip((f.Page - 1) * f.PageSize).Take(f.PageSize).ToListAsync();
+
+        return new PaginatedResult<EmployeeDto>(items.Select(MapToDto).ToList(), total, f.Page, f.PageSize);
     }
 
     public async Task<EmployeeDto?> GetByIdAsync(Guid id)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _db.Employees.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == id && e.OrganizationId == orgId);
         return emp == null ? null : MapToDto(emp);
@@ -36,12 +45,12 @@ public class EmployeeService : IEmployeeService
 
     public async Task<EmployeeDto> CreateAsync(CreateEmployeeRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = new Employee
         {
             Id = Guid.NewGuid(),
             OrganizationId = orgId,
-            EntraObjectId = dto.EntraObjectId,
+            EntraObjectId = dto.EntraObjectId ?? "",
             FullName = dto.FullName,
             Email = dto.Email,
             Department = dto.Department,
@@ -58,7 +67,7 @@ public class EmployeeService : IEmployeeService
 
     public async Task<EmployeeDto> UpdateAsync(Guid id, UpdateEmployeeRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _db.Employees
             .FirstOrDefaultAsync(e => e.Id == id && e.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Employee not found");
@@ -76,7 +85,7 @@ public class EmployeeService : IEmployeeService
 
     public async Task<EmployeeDto> ToggleActiveAsync(Guid id)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _db.Employees
             .FirstOrDefaultAsync(e => e.Id == id && e.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Employee not found");

@@ -22,6 +22,7 @@ public class FinanceHubDbContext : DbContext
     public DbSet<ActivityComment> ActivityComments => Set<ActivityComment>();
     public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
     public DbSet<CodeSequence> CodeSequences => Set<CodeSequence>();
+    public DbSet<Category> Categories => Set<Category>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -30,8 +31,7 @@ public class FinanceHubDbContext : DbContext
         // ─── Organization ───────────────────────────
         b.Entity<Organization>(e => {
             e.ToTable("Organizations");
-            e.HasIndex(x => x.Slug).IsUnique();
-            e.Property(x => x.Plan).HasConversion<string>().HasMaxLength(20);
+            e.HasIndex(x => x.OrgName).IsUnique();
         });
 
         b.Entity<OrganizationSetting>(e => {
@@ -128,6 +128,12 @@ public class FinanceHubDbContext : DbContext
         b.Entity<CodeSequence>(e => {
             e.ToTable("CodeSequences");
             e.HasIndex(x => new { x.OrganizationId, x.SequenceType }).IsUnique();
+        });
+
+        // ─── Category ───────────────────────────────  
+        b.Entity<Category>(e => {
+            e.ToTable("Categories");
+            e.HasIndex(x => new { x.OrganizationId, x.Name }).IsUnique();
         });
     }
 }

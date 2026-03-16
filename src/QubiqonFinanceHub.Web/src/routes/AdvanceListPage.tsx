@@ -71,7 +71,7 @@ export default function AdvanceListPage() {
         <h1 style={{ fontSize: "20px", fontWeight: 700, margin: 0, color: C.advance }}>
           Advance requests
         </h1>
-        {(is("employee") || is("admin")) && (
+        {(is("employee") || is("finance") || is("admin")) && (
           <Btn v="advance" onClick={() => navigate("/advances/add")}>
             ＋ Request
           </Btn>
@@ -181,8 +181,11 @@ export default function AdvanceListPage() {
                                 <Btn sm v="danger" onClick={() => setMdl({ t: "reject", d: a, it: "advance" })}>✕</Btn>
                               </>
                             )}
-                              {is("finance") && a.status === ADV_S.APPROVED && (
-                                <Btn sm v="advance" onClick={() => setMdl({ t: "adv-disburse", d: a })}>Disburse</Btn>
+                              {(is("finance") || is("admin")) && a.status === ADV_S.APPROVED && (
+                                <>
+                                  <Btn sm v="advance" onClick={() => setMdl({ t: "adv-disburse", d: a })}>Disburse</Btn>
+                                  <Btn sm v="danger" onClick={() => setMdl({ t: "reject", d: a, it: "advance" })}>✕</Btn>
+                                </>
                               )}
                             </div>
                           ),

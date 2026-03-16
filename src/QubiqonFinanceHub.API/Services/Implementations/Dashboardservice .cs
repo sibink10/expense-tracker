@@ -16,7 +16,7 @@ public class DashboardService : IDashboardService
 
     public async Task<DashboardDto> GetStatsAsync(bool myOnly = false)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var empId = _tenant.GetCurrentEmployeeId();
 
         var expenses = _db.ExpenseRequests.Where(e => e.OrganizationId == orgId);

@@ -23,9 +23,63 @@ public record CurrentUserDto(Guid Id, string FullName, string Email, string? Dep
 // ═══════════════════════════════════════════════════
 //  ORGANIZATION
 // ═══════════════════════════════════════════════════
-public record OrganizationDto(Guid Id, string Name, string? LegalName, string Slug, string? LogoUrl, string PrimaryColor, string AccentColor, string? AddressLine1, string? AddressLine2, string? City, string? State, string Country, string? PinCode, string? GSTIN, string? PAN, string? CIN, string? TAN, string? ContactPersonName, string? ContactEmail, string? ContactPhone, string? Website, string? BankAccountName, string? BankAccountNumber, string? BankIFSC, string? BankName, string? BankBranch, string? BankSWIFT);
+public record CreateOrganizationRequest(
+    string OrgName,
+    string? SubName,
+    string? Address,
+    string? PaymentAddress,
+    bool? UseSeparatePaymentAddress,
+    string? City,
+    string? State,
+    string? Country,
+    string? PostalCode,
+    string? Phone,
+    string? Fax,
+    string? Website,
+    string? Industry,
+    string? Tenant,
+    bool? Selected,
+    IFormFile? LogoFile
+);
 
-public record UpdateOrganizationRequest(string? Name, string? LegalName, string? LogoUrl, string? PrimaryColor, string? AccentColor, string? AddressLine1, string? AddressLine2, string? City, string? State, string? Country, string? PinCode, string? GSTIN, string? PAN, string? CIN, string? TAN, string? ContactPersonName, string? ContactEmail, string? ContactPhone, string? Website, string? BankAccountName, string? BankAccountNumber, string? BankIFSC, string? BankName, string? BankBranch, string? BankSWIFT);
+public record UpdateOrganizationRequest(
+    string? OrgName,
+    string? SubName,
+    string? Address,
+    string? PaymentAddress,
+    bool? UseSeparatePaymentAddress,
+    string? City,
+    string? State,
+    string? Country,
+    string? PostalCode,
+    string? Phone,
+    string? Fax,
+    string? Website,
+    string? Industry,
+    string? Tenant,
+    bool? Selected,
+    IFormFile? LogoFile
+);
+
+public record OrganizationDto(
+    Guid Id,
+    string OrgName,
+    string? SubName,
+    string? Tenant,
+    bool Selected,
+    string? LogoUrl,
+    string? Address,
+    string? PaymentAddress,
+    bool UseSeparatePaymentAddress,
+    string? City,
+    string? State,
+    string? Country,
+    string? PostalCode,
+    string? Phone,
+    string? Fax,
+    string? Website,
+    string? Industry
+);
 
 // ═══════════════════════════════════════════════════
 //  EXPENSE
@@ -227,5 +281,13 @@ public record DashboardDto(int PendingExpenses, int ApprovedExpenses, int Comple
 //  EMPLOYEE
 // ═══════════════════════════════════════════════════
 public record EmployeeDto(Guid Id, string FullName, string Email, string? Department, string? Designation, string? EmployeeCode, string Role, bool IsActive);
-public record CreateEmployeeRequest(string EntraObjectId, string FullName, string Email, string? Department, string? Designation, string? EmployeeCode, string Role);
+public record CreateEmployeeRequest(string? EntraObjectId, string FullName, string Email, string? Department, string? Designation, string? EmployeeCode, string Role);
 public record UpdateEmployeeRequest(string? FullName, string? Department, string? Designation, string? EmployeeCode, string? Role);
+
+
+// ═══════════════════════════════════════════════════
+//  CATOGORY
+// ═══════════════════════════════════════════════════
+public record CategoryDto(Guid Id, string Name, bool IsActive);
+public record CreateCategoryRequest(string Name); 
+public record UpdateCategoryRequest(string Name, bool IsActive);

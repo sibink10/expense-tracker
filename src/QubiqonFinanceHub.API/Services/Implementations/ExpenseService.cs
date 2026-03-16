@@ -25,7 +25,7 @@ public class ExpenseService : IExpenseService
 
     public async Task<ExpenseDto> CreateAsync(CreateExpenseRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var currentEmp = await _tenant.GetCurrentEmployeeAsync();
         var targetEmpId = dto.OnBehalfOfEmployeeId ?? currentEmp.Id;
         var targetEmp = dto.OnBehalfOfEmployeeId.HasValue
@@ -94,7 +94,7 @@ public class ExpenseService : IExpenseService
 
     public async Task<ExpenseDto> UploadBillAsync(Guid id, UploadBillRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var empId = _tenant.GetCurrentEmployeeId();
 
         var expense = await _db.ExpenseRequests
@@ -130,7 +130,7 @@ public class ExpenseService : IExpenseService
 
     public async Task<ExpenseDto> UpdateAsync(Guid id, UpdateExpenseRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var empId = _tenant.GetCurrentEmployeeId();
 
         var expense = await _db.ExpenseRequests
@@ -170,7 +170,7 @@ public class ExpenseService : IExpenseService
 
     public async Task<ExpenseDto?> GetByIdAsync(Guid id)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var e = await _db.ExpenseRequests
             .Include(x => x.Employee)
             .Include(x => x.Comments).ThenInclude(c => c.CommentByEmployee)
@@ -183,7 +183,7 @@ public class ExpenseService : IExpenseService
 
     public async Task<PaginatedResult<ExpenseDto>> ListAsync(FilterParams f, bool myOnly = false)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var q = _db.ExpenseRequests
             .Include(x => x.Employee)
             .Include(x => x.Comments).ThenInclude(c => c.CommentByEmployee)
@@ -207,7 +207,7 @@ public class ExpenseService : IExpenseService
 
     public async Task<ExpenseDto> ApproveAsync(Guid id, ApproveRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var expense = await _db.ExpenseRequests.Include(x => x.Employee)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
@@ -230,23 +230,29 @@ public class ExpenseService : IExpenseService
 
         await _db.SaveChangesAsync();
 
-        await _email.SendNotificationAsync("expense_approved",
-            new Dictionary<string, string>
-            {
-                ["employee_name"] = expense.Employee.FullName,
-                ["expense_id"] = expense.ExpenseCode,
-                ["purpose"] = expense.Purpose,
-                ["amount"] = $"₹{expense.Amount:N2}",
-                ["status"] = expense.Status.ToString(),
-            },
-            expense.Employee.Email);
+        var templateKey = expense.Status == ExpenseStatus.Approved
+                    ? "expense_approved"
+                    : "expense_awaiting_bill";
+
+        //await _email.SendNotificationAsync(
+        //    templateKey,
+        //    new Dictionary<string, string>
+        //    {
+        //        ["employee_name"] = expense.Employee.FullName,
+        //        ["expense_id"] = expense.ExpenseCode,
+        //        ["purpose"] = expense.Purpose,
+        //        ["amount"] = $"₹{expense.Amount:N2}",
+        //        ["status"] = expense.Status.ToString(),
+        //    },
+        //    expense.Employee.Email);
+
 
         return (await GetByIdAsync(id))!;
     }
 
     public async Task<ExpenseDto> RejectAsync(Guid id, RejectRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var expense = await _db.ExpenseRequests.Include(x => x.Employee)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
@@ -280,7 +286,7 @@ public class ExpenseService : IExpenseService
 
     public async Task<ExpenseDto> CancelAsync(Guid id)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var empId = _tenant.GetCurrentEmployeeId();
         var expense = await _db.ExpenseRequests
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
@@ -307,13 +313,13 @@ public class ExpenseService : IExpenseService
 
     public async Task<ExpenseDto> ProcessPaymentAsync(Guid id, ProcessPaymentRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var expense = await _db.ExpenseRequests.Include(x => x.Employee)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
 
-        if (expense.Status != ExpenseStatus.Approved && expense.Status != ExpenseStatus.AwaitingBill)
+        if (expense.Status != ExpenseStatus.Approved && expense.Status != ExpenseStatus.PendingBillApproval)
             throw new InvalidOperationException("Expense not ready for payment.");
 
         expense.Status = ExpenseStatus.Completed;
@@ -347,7 +353,7 @@ public class ExpenseService : IExpenseService
 
     public async Task AttachBillAsync(Guid id, string billImageUrl)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var expense = await _db.ExpenseRequests
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
@@ -361,7 +367,7 @@ public class ExpenseService : IExpenseService
 
     public async Task<string> GetBillUrlAsync(Guid id)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var expense = await _db.ExpenseRequests
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");

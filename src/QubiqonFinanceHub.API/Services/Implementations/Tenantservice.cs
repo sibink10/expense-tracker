@@ -20,12 +20,21 @@ public class TenantService : ITenantService
         _db = db;
     }
 
-    public Guid GetCurrentOrganizationId()
+    public async Task<Guid> GetCurrentOrganizationId()
     {
-        var claim = _httpContextAccessor.HttpContext?.User?.FindFirst("org_id")?.Value
-                    ?? _httpContextAccessor.HttpContext?.User?.FindFirst("tid")?.Value;
-        if (Guid.TryParse(claim, out var id)) return id;
-        return DevOrgId; // DEV fallback
+        var selected = await _db.Organizations
+            .Where(o => o.Selected)
+            .Select(o => o.Id)
+            .FirstOrDefaultAsync();
+
+        if (selected != Guid.Empty)
+            return selected;
+
+        var first = await _db.Organizations
+            .Select(o => o.Id)
+            .FirstOrDefaultAsync();
+
+        return first != Guid.Empty ? first : DevOrgId;
     }
 
     public Guid GetCurrentEmployeeId()
@@ -36,17 +45,36 @@ public class TenantService : ITenantService
         return DevEmpId; // DEV fallback
     }
 
+    public string? GetCurrentUserEmail()
+    {
+        return _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Email)?.Value
+               ?? _httpContextAccessor.HttpContext?.User?.FindFirst("email")?.Value
+               ?? _httpContextAccessor.HttpContext?.User?.FindFirst("preferred_username")?.Value;
+    }
+
     public async Task<Employee> GetCurrentEmployeeAsync()
     {
         var empId = GetCurrentEmployeeId();
+        var email = GetCurrentUserEmail();
+
         var emp = await _db.Employees.FirstOrDefaultAsync(e => e.EntraObjectId == empId.ToString());
+
+        if (emp == null)
+        {
+            emp = await _db.Employees.FirstOrDefaultAsync(e => e.Email == email);
+            if (emp != null)
+            {
+                emp.EntraObjectId = empId.ToString();
+                await _db.SaveChangesAsync();
+            }
+        }
         return emp ?? new Employee { Id = DevEmpId, FullName = "Dev User", Email = "dev@local.com" };
     }
 
     public async Task<Organization> GetCurrentOrganizationAsync()
     {
-        var orgId = GetCurrentOrganizationId();
+        var orgId = await GetCurrentOrganizationId();
         var org = await _db.Organizations.FirstOrDefaultAsync(o => o.Id == orgId);
-        return org ?? new Organization { Id = DevOrgId, Name = "Dev Org", Slug = "dev" };
+        return org ?? new Organization { Id = DevOrgId, OrgName = "Dev Org", SubName = "dev" };
     }
 }

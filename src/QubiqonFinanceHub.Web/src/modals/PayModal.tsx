@@ -73,7 +73,7 @@ export default function PayModal() {
         </div>
       </div>
       <Inp
-        label="Payment ref (NEFT/IMPS/UPI) *"
+        label="Payment ref (NEFT/IMPS/UPI)"
         value={r}
         onChange={(e) => setR(e.target.value)}
         req

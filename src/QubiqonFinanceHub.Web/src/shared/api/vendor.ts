@@ -31,10 +31,44 @@ function mapApiVendorToApp(item: ApiVendor): Vendor {
   };
 }
 
-export async function getVendors(): Promise<Vendor[]> {
-  const { data } = await apiClient.get<ApiVendor[] | { items: ApiVendor[] }>("/vendors");
-  const items = Array.isArray(data) ? data : (data as { items: ApiVendor[] })?.items ?? [];
-  return items.map(mapApiVendorToApp);
+export interface PagedVendorsResponse {
+  items: Vendor[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  hasNext: boolean;
+}
+
+export async function getVendors(page = 1, pageSize = 10, search?: string): Promise<PagedVendorsResponse> {
+  const params: Record<string, string | number> = { page, pageSize };
+  if (search?.trim()) params.search = search.trim();
+
+  const { data } = await apiClient.get<
+    ApiVendor[] | { items: ApiVendor[]; totalCount: number; page: number; pageSize: number; totalPages: number; hasNext: boolean }
+  >("/vendors", { params });
+
+  if (Array.isArray(data)) {
+    const items = data.map(mapApiVendorToApp);
+    return {
+      items,
+      totalCount: items.length,
+      page,
+      pageSize,
+      totalPages: 1,
+      hasNext: false,
+    };
+  }
+
+  const dto = data as { items: ApiVendor[]; totalCount: number; page: number; pageSize: number; totalPages: number; hasNext: boolean };
+  return {
+    items: (dto.items ?? []).map(mapApiVendorToApp),
+    totalCount: dto.totalCount ?? dto.items.length,
+    page: dto.page ?? page,
+    pageSize: dto.pageSize ?? pageSize,
+    totalPages: dto.totalPages ?? 1,
+    hasNext: dto.hasNext ?? false,
+  };
 }
 
 export interface CreateVendorPayload {

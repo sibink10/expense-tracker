@@ -14,6 +14,10 @@ export default function BillListPage() {
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
     const handler = () => setRefreshKey((k) => k + 1);
@@ -23,13 +27,29 @@ export default function BillListPage() {
 
   useEffect(() => {
     setLoading(true);
-    getBills()
-      .then(setBills)
-      .catch(() => setBills([]))
+    getBills({
+      page,
+      pageSize,
+      search: search || undefined,
+      status: sf && sf !== "all" ? sf : undefined,
+    })
+      .then((res) => {
+        setBills(res.items);
+        setTotalCount(res.totalCount ?? res.items.length);
+        setTotalPages(res.totalPages ?? 1);
+      })
+      .catch(() => {
+        setBills([]);
+        setTotalCount(0);
+        setTotalPages(0);
+      })
       .finally(() => setLoading(false));
-  }, [refreshKey]);
+  }, [page, pageSize, search, sf, refreshKey]);
 
   const f = fil(bills);
+  const startIndex = totalCount === 0 ? 0 : (page - 1) * pageSize;
+  const endIndex = totalCount === 0 ? 0 : Math.min(startIndex + pageSize, totalCount);
+  const paged = f;
 
   return (
     <div>
@@ -80,59 +100,98 @@ export default function BillListPage() {
         ) : f.length === 0 ? (
           <Empty icon="📋" title="No bills" sub="" />
         ) : (
-          <div style={{ flex: 1 }}>
-          <Tbl
-            cols={[
-              "Bill #",
-              "Vendor",
-              "Amount",
-              "TDS",
-              "Payable",
-              "Due",
-              "Status",
-              (is("approver") || is("finance") || is("admin")) && "Action",
-            ].filter(Boolean) as string[]}
-            rows={f.map((b) => ({
-              ...b,
-              _cells: [
-                { v: <span style={{ fontWeight: 600, color: C.vendor, fontSize: "11px" }}>{b.id}</span> },
-                {
-                  v: (
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <Av n={b.vName} sz={24} v />
-                      <span style={{ fontSize: "11px", fontWeight: 600 }}>{b.vName}</span>
-                    </div>
-                  ),
-                },
-                { v: <span style={{ fontWeight: 600 }}>{fmtCur(b.amt)}</span> },
-                { v: <span style={{ fontSize: "11px", color: C.danger }}>-{fmtCur(b.tdsAmt)}</span> },
-                { v: <span style={{ fontWeight: 700 }}>{fmtCur(b.pay)}</span> },
-                { v: <span style={{ fontSize: "11px", color: C.muted }}>{b.due}</span> },
-                { v: <Badge s={b.status} /> },
-                ...(is("approver") || is("finance") || is("admin")
-                  ? [
-                      {
-                        v: (
-                          <div onClick={(ev) => ev.stopPropagation()} style={{ display: "flex", gap: "3px" }}>
-                            {(is("approver") || is("admin")) && b.status === BILL_S.SUBMITTED && (
-                              <>
-                                <Btn sm v="success" onClick={() => setMdl({ t: "bill-approve", d: b, it: "bill" })}>✓</Btn>
-                                <Btn sm v="danger" onClick={() => setMdl({ t: "reject", d: b, it: "bill" })}>✕</Btn>
-                              </>
-                            )}
-                            {is("finance") && (b.status === BILL_S.APPROVED || b.status === BILL_S.OVERDUE) && (
-                              <Btn sm v="vendor" onClick={() => setMdl({ t: "pay", d: b, it: "bill" })}>Pay</Btn>
-                            )}
-                          </div>
-                        ),
-                      },
-                    ]
-                  : []),
-              ],
-            }))}
-            onRow={(row) => setMdl({ t: "bill-detail", d: row as unknown as Bill })}
-          />
-          </div>
+          <>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+              <Tbl
+                cols={[
+                  "Bill #",
+                  "Vendor",
+                  "Amount",
+                  "TDS",
+                  "Payable",
+                  "Due",
+                  "Status",
+                  (is("approver") || is("finance") || is("admin")) && "Action",
+                ].filter(Boolean) as string[]}
+                rows={paged.map((b) => ({
+                  ...b,
+                  _cells: [
+                    { v: <span style={{ fontWeight: 600, color: C.vendor, fontSize: "11px" }}>{b.id}</span> },
+                    {
+                      v: (
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <Av n={b.vName} sz={24} v />
+                          <span style={{ fontSize: "11px", fontWeight: 600 }}>{b.vName}</span>
+                        </div>
+                      ),
+                    },
+                    { v: <span style={{ fontWeight: 600 }}>{fmtCur(b.amt)}</span> },
+                    { v: <span style={{ fontSize: "11px", color: C.danger }}>-{fmtCur(b.tdsAmt)}</span> },
+                    { v: <span style={{ fontWeight: 700 }}>{fmtCur(b.pay)}</span> },
+                    { v: <span style={{ fontSize: "11px", color: C.muted }}>{b.due}</span> },
+                    { v: <Badge s={b.status} /> },
+                    ...(is("approver") || is("finance") || is("admin")
+                      ? [
+                          {
+                            v: (
+                              <div onClick={(ev) => ev.stopPropagation()} style={{ display: "flex", gap: "3px" }}>
+                                {(is("approver") || is("admin")) && b.status === BILL_S.SUBMITTED && (
+                                  <>
+                                    <Btn sm v="success" onClick={() => setMdl({ t: "bill-approve", d: b, it: "bill" })}>✓</Btn>
+                                    <Btn sm v="danger" onClick={() => setMdl({ t: "reject", d: b, it: "bill" })}>✕</Btn>
+                                  </>
+                                )}
+                                {is("finance") && (b.status === BILL_S.APPROVED || b.status === BILL_S.OVERDUE) && (
+                                  <Btn sm v="vendor" onClick={() => setMdl({ t: "pay", d: b, it: "bill" })}>Pay</Btn>
+                                )}
+                              </div>
+                            ),
+                          },
+                        ]
+                      : []),
+                  ],
+                }))}
+                onRow={(row) => setMdl({ t: "bill-detail", d: row as unknown as Bill })}
+              />
+            </div>
+            {!loading && totalPages > 1 && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginTop: "auto",
+                  paddingTop: "16px",
+                  borderTop: `1px solid ${C.border}`,
+                }}
+              >
+                <span style={{ fontSize: "12px", color: C.muted }}>
+                  Showing {startIndex + 1}–{endIndex} of {totalCount}
+                </span>
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  <Btn
+                    sm
+                    v="secondary"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                  >
+                    ← Prev
+                  </Btn>
+                  <span style={{ fontSize: "12px", fontWeight: 500 }}>
+                    Page {page} of {totalPages}
+                  </span>
+                  <Btn
+                    sm
+                    v="secondary"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                  >
+                    Next →
+                  </Btn>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -13,6 +13,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
         services.AddHttpContextAccessor();
+        services.AddHttpClient("GraphClient");
         services.AddScoped<ITenantService, TenantService>();
         services.AddScoped<ICodeGeneratorService, CodeGeneratorService>();
         services.AddScoped<IEmailService, EmailService>();
@@ -29,6 +30,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITenantService, TenantService>();
         services.AddScoped<ICodeGeneratorService, CodeGeneratorService>();
         services.AddScoped<IEmployeeService, EmployeeService>();
+        services.AddScoped<ICategoryService, CategoryService>();
 
         services.AddFluentValidationAutoValidation();
         return services;
@@ -44,7 +46,9 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddApplicationAuth(this IServiceCollection services, IConfiguration config)
     {
-        services.AddMicrosoftIdentityWebApiAuthentication(config, "AzureAd");
+        services.AddMicrosoftIdentityWebApiAuthentication(config, "AzureAd")
+        .EnableTokenAcquisitionToCallDownstreamApi()
+        .AddInMemoryTokenCaches();
         services.AddAuthorizationBuilder()
             .AddPolicy("EmployeeOnly", p => p.RequireRole("Employee", "Approver", "Finance", "Admin"))
             .AddPolicy("ApproverOnly", p => p.RequireRole("Approver", "Admin"))

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { C } from "../shared/theme";
-import { Btn, Empty } from "../components/ui";
+import { Btn, Empty, Toggle } from "../components/ui";
 import { getTaxConfigs, toggleTaxConfig } from "../shared/api/taxConfig";
 import type { TaxConfig } from "../types";
 
@@ -116,8 +116,10 @@ export default function AdminGstPage() {
                   <th
                     style={{
                       padding: "8px 12px",
+                      textAlign: "left",
                       borderBottom: `1px solid ${C.border}`,
                       fontWeight: 600,
+                      color: C.muted,
                     }}
                   >
                     Action
@@ -150,14 +152,10 @@ export default function AdminGstPage() {
                       </span>
                     </td>
                     <td style={{ padding: "10px 12px" }}>
-                      <Btn
-                        sm
-                        v={t.isActive ? "secondary" : "success"}
-                        onClick={() => handleToggle(t.id)}
-                        disabled={togglingId === t.id}
-                      >
-                        {togglingId === t.id ? "..." : t.isActive ? "Deactivate" : "Activate"}
-                      </Btn>
+                      <Toggle
+                        checked={t.isActive}
+                        onChange={() => handleToggle(t.id)}
+                      />
                     </td>
                   </tr>
                 ))}

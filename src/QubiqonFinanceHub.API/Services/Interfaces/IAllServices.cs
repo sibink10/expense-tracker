@@ -1,12 +1,13 @@
-using QubiqonFinanceHub.API.DTOs;
+﻿using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Entities;
 
 namespace QubiqonFinanceHub.API.Services.Interfaces;
 
 public interface ITenantService
 {
-    Guid GetCurrentOrganizationId();
     Guid GetCurrentEmployeeId();
+    string? GetCurrentUserEmail();
+    Task<Guid> GetCurrentOrganizationId();
     Task<Employee> GetCurrentEmployeeAsync();
     Task<Organization> GetCurrentOrganizationAsync();
 }
@@ -47,7 +48,7 @@ public interface IVendorService
     Task<VendorDto> CreateAsync(CreateVendorRequest dto);
     Task<VendorDto> UpdateAsync(Guid id, UpdateVendorRequest dto);
     Task<VendorDto?> GetByIdAsync(Guid id);
-    Task<List<VendorDto>> ListAsync();
+    Task<PaginatedResult<VendorDto>> ListAsync(FilterParams f);
 }
 
 public interface IVendorBillService
@@ -66,7 +67,7 @@ public interface IClientService
     Task<ClientDto> CreateAsync(CreateClientRequest dto);
     Task<ClientDto> UpdateAsync(Guid id, UpdateClientRequest dto);
     Task<ClientDto?> GetByIdAsync(Guid id);
-    Task<List<ClientDto>> ListAsync();
+    Task<PaginatedResult<ClientDto>> ListAsync(FilterParams f);
 }
 
 public interface IInvoiceService
@@ -88,10 +89,14 @@ public interface ITaxConfigService
 
 public interface IOrganizationService
 {
+    Task<OrganizationDto> CreateAsync(CreateOrganizationRequest dto);
     Task<OrganizationDto> GetAsync();
-    Task<OrganizationDto> UpdateAsync(UpdateOrganizationRequest dto);
+    Task<OrganizationDto> UpdateAsync(Guid id, UpdateOrganizationRequest dto);
     Task<Dictionary<string, string>> GetSettingsAsync();
+    Task<List<OrganizationDto>> GetAllAsync();
     Task SetSettingAsync(string key, string value);
+    Task<OrganizationDto> GetByIdAsync(Guid id);
+    Task<OrganizationDto> SelectAsync(Guid id);
 }
 
 public interface IEmailService
@@ -106,7 +111,7 @@ public interface IDashboardService
 
 public interface IEmployeeService
 {
-    Task<List<EmployeeDto>> ListAsync();
+    Task<PaginatedResult<EmployeeDto>> ListAsync(FilterParams f);
     Task<EmployeeDto?> GetByIdAsync(Guid id);
     Task<EmployeeDto> CreateAsync(CreateEmployeeRequest dto);
     Task<EmployeeDto> UpdateAsync(Guid id, UpdateEmployeeRequest dto);
@@ -118,4 +123,14 @@ public interface IStorageService
     Task<string> UploadAsync(string folder, Guid entityId, IFormFile file);
     Task DeleteAsync(string fileUrl);
     string GenerateSasUrl(string fileUrl, int expiryMinutes = 30);
+}
+
+public interface ICategoryService
+{
+    Task<List<CategoryDto>> GetAllAsync();
+    Task<CategoryDto?> GetByIdAsync(Guid id);
+    Task<CategoryDto> CreateAsync(CreateCategoryRequest dto);
+    Task<CategoryDto> UpdateAsync(Guid id, UpdateCategoryRequest dto);
+    Task DeleteAsync(Guid id);
+    Task<CategoryDto> ToggleActiveAsync(Guid id);
 }

@@ -22,7 +22,7 @@ public class VendorBillService : IVendorBillService
 
     public async Task<BillDto> CreateAsync(CreateBillRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var code = await _codeGen.GenerateCodeAsync(orgId, "bill");
         var vendor = await _db.Vendors.FindAsync(dto.VendorId)
@@ -79,7 +79,7 @@ public class VendorBillService : IVendorBillService
 
     public async Task<BillDto?> GetByIdAsync(Guid id)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var bill = await _db.VendorBills
             .Include(x => x.Vendor)
             .Include(x => x.TaxConfig)
@@ -92,7 +92,7 @@ public class VendorBillService : IVendorBillService
 
     public async Task<PaginatedResult<BillDto>> ListAsync(FilterParams f)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var q = _db.VendorBills
             .Include(x => x.Vendor)
             .Include(x => x.TaxConfig)
@@ -119,7 +119,7 @@ public class VendorBillService : IVendorBillService
 
     public async Task<BillDto> ApproveAsync(Guid id, ApproveRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var bill = await _db.VendorBills
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
@@ -146,7 +146,7 @@ public class VendorBillService : IVendorBillService
 
     public async Task<BillDto> RejectAsync(Guid id, RejectRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var bill = await _db.VendorBills
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
@@ -170,7 +170,7 @@ public class VendorBillService : IVendorBillService
 
     public async Task<BillDto> ProcessPaymentAsync(Guid id, ProcessPaymentRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var bill = await _db.VendorBills
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
@@ -214,7 +214,7 @@ public class VendorBillService : IVendorBillService
 
     public async Task<string> GetAttachmentUrlAsync(Guid id)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var bill = await _db.VendorBills
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Bill not found");

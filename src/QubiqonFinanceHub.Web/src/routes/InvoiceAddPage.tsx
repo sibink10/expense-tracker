@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
 import { PAY_TERMS, CURRENCIES } from "../shared/constants";
 import { addDays, fmtCur } from "../shared/utils";
-import { Inp, Btn } from "../components/ui";
+import { Inp, Btn, Toggle } from "../components/ui";
+import { AsyncSelectInput } from "../components/AsyncSelectInput";
 import { createInvoice } from "../shared/api/invoice";
 import { getClients } from "../shared/api/clients";
 import { getTaxConfigs } from "../shared/api/taxConfig";
@@ -48,6 +49,29 @@ export default function InvoiceAddPage() {
     const onResize = () => setNarrow(window.innerWidth < GRID_BREAKPOINT);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const loadClientOptions = useCallback(async (query: string) => {
+    try {
+      const all = await getClients();
+      const q = query.trim().toLowerCase();
+      const filtered = q
+        ? all.filter(
+            (c) =>
+              c.name.toLowerCase().includes(q) ||
+              (c.email && c.email.toLowerCase().includes(q)) ||
+              (c.contact && c.contact.toLowerCase().includes(q))
+          )
+        : all;
+      return filtered.slice(0, 50).map((c) => ({
+        value: c.id,
+        label: `${c.name} (${c.currency || "INR"})`,
+      }));
+    } catch {
+      return [];
+    } finally {
+      setClientsLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -193,23 +217,20 @@ export default function InvoiceAddPage() {
         }}
       >
         <div style={gridStyle}>
-          <Inp
-            label="Client"
-            type="select"
-            value={clientId}
-            onChange={(e) => {
-              setClientId(e.target.value);
-              const c = clients.find((x) => x.id === e.target.value);
-              if (c?.currency) setCurrency(c.currency);
-            }}
-            req
-            showReqStar={false}
-            opts={[
-              { v: "", l: clientsLoading ? "Loading..." : "Select client..." },
-              ...clients.map((c) => ({ v: c.id, l: `${c.name} (${c.currency})` })),
-            ]}
-            style={cellStyle}
-          />
+          <div style={cellStyle}>
+            <AsyncSelectInput
+              label="Client"
+              value={clientId}
+              onChange={(val) => {
+                setClientId(val);
+                const c = clients.find((x) => x.id === val);
+                if (c?.currency) setCurrency(c.currency);
+              }}
+              loadOptions={loadClientOptions}
+              disabled={clientsLoading || loading}
+              placeholder="Search clients..."
+            />
+          </div>
           <Inp
             label="Currency"
             type="select"
@@ -420,6 +441,7 @@ export default function InvoiceAddPage() {
             type="date"
             value={invoiceDate}
             onChange={(e) => setInvoiceDate(e.target.value)}
+            max={new Date().toISOString().split("T")[0]}
             req
             showReqStar={false}
             style={cellStyle}
@@ -462,26 +484,17 @@ export default function InvoiceAddPage() {
             style={{ ...cellStyle, ...fullWidth }}
           />
 
-          <div style={fullWidth}>
-            <label
+          <div style={{ ...fullWidth, display: "flex", alignItems: "center", gap: "8px" }}>
+            <Toggle checked={sendImmediately} onChange={setSendImmediately} />
+            <span
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                cursor: "pointer",
                 fontSize: "12px",
                 fontWeight: 600,
                 color: C.primary,
               }}
             >
-              <input
-                type="checkbox"
-                checked={sendImmediately}
-                onChange={(e) => setSendImmediately(e.target.checked)}
-                style={{ width: 16, height: 16 }}
-              />
               Send immediately
-            </label>
+            </span>
           </div>
 
           {subTotal > 0 && (

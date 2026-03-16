@@ -17,7 +17,7 @@ public class TaxConfigService : ITaxConfigService
 
     public async Task<TaxConfigDto> CreateAsync(CreateTaxConfigRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
 
         var tax = new TaxConfiguration
         {
@@ -39,7 +39,7 @@ public class TaxConfigService : ITaxConfigService
 
     public async Task<List<TaxConfigDto>> ListAsync(string? type = null)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var q = _db.TaxConfigurations
             .Where(t => t.OrganizationId == orgId)
             .AsNoTracking();
@@ -53,7 +53,7 @@ public class TaxConfigService : ITaxConfigService
 
     public async Task<TaxConfigDto> ToggleActiveAsync(Guid id)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var tax = await _db.TaxConfigurations
             .FirstOrDefaultAsync(t => t.Id == id && t.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Tax config not found");

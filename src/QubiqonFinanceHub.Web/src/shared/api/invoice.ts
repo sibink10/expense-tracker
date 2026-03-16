@@ -118,10 +118,62 @@ function mapApiInvoiceToApp(item: ApiInvoice): Invoice {
   };
 }
 
-export async function getInvoices(): Promise<Invoice[]> {
-  const { data } = await apiClient.get<ApiInvoice[] | { items: ApiInvoice[] }>("/invoices");
-  const items = Array.isArray(data) ? data : (data as { items: ApiInvoice[] })?.items ?? [];
-  return items.map(mapApiInvoiceToApp);
+export interface ApiInvoicesResponse {
+  items: ApiInvoice[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  hasNext: boolean;
+}
+
+export interface GetInvoicesParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: string;
+}
+
+export async function getInvoicesRaw(params: GetInvoicesParams = {}): Promise<ApiInvoicesResponse> {
+  const apiParams: Record<string, unknown> = {
+    Page: params.page,
+    PageSize: params.pageSize,
+    Search: params.search,
+    Status: params.status,
+  };
+
+  const { data } = await apiClient.get<ApiInvoice[] | ApiInvoicesResponse>("/invoices", {
+    params: apiParams,
+  });
+
+  if (Array.isArray(data)) {
+    const items = data;
+    return {
+      items,
+      totalCount: items.length,
+      page: params.page ?? 1,
+      pageSize: params.pageSize ?? (items.length || 10),
+      totalPages: 1,
+      hasNext: false,
+    };
+  }
+
+  return data as ApiInvoicesResponse;
+}
+
+export async function getInvoices(params: GetInvoicesParams = {}): Promise<{
+  items: Invoice[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  hasNext: boolean;
+}> {
+  const res = await getInvoicesRaw(params);
+  return {
+    ...res,
+    items: res.items.map(mapApiInvoiceToApp),
+  };
 }
 
 export async function createInvoice(payload: CreateInvoicePayload): Promise<unknown> {

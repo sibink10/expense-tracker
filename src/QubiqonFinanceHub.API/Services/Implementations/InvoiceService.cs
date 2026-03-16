@@ -22,7 +22,7 @@ public class InvoiceService : IInvoiceService
 
     public async Task<InvoiceDto> CreateAsync(CreateInvoiceRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var client = await _db.Clients.FindAsync(dto.ClientId)
             ?? throw new KeyNotFoundException("Client not found");
@@ -133,7 +133,7 @@ public class InvoiceService : IInvoiceService
 
     public async Task<InvoiceDto?> GetByIdAsync(Guid id)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var inv = await _db.Invoices
             .Include(x => x.Client)
             .Include(x => x.LineItems.OrderBy(l => l.LineNumber))
@@ -149,7 +149,7 @@ public class InvoiceService : IInvoiceService
 
     public async Task<PaginatedResult<InvoiceDto>> ListAsync(FilterParams f)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var q = _db.Invoices
             .Include(x => x.Client)
             .Include(x => x.LineItems.OrderBy(l => l.LineNumber)).ThenInclude(l => l.GSTConfig)
@@ -175,7 +175,7 @@ public class InvoiceService : IInvoiceService
 
     public async Task<InvoiceDto> MarkSentAsync(Guid id)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var inv = await _db.Invoices.Include(x => x.Client)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
@@ -208,7 +208,7 @@ public class InvoiceService : IInvoiceService
 
     public async Task<InvoiceDto> MarkPaidAsync(Guid id, ProcessPaymentRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var inv = await _db.Invoices.Include(x => x.Client)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)

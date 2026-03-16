@@ -16,7 +16,7 @@ public class VendorService : IVendorService
 
     public async Task<VendorDto> CreateAsync(CreateVendorRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var vendor = new Vendor
         {
             Id = Guid.NewGuid(),
@@ -41,7 +41,7 @@ public class VendorService : IVendorService
 
     public async Task<VendorDto> UpdateAsync(Guid id, UpdateVendorRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var vendor = await _db.Vendors
             .FirstOrDefaultAsync(v => v.Id == id && v.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Vendor not found");
@@ -64,21 +64,31 @@ public class VendorService : IVendorService
 
     public async Task<VendorDto?> GetByIdAsync(Guid id)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var vendor = await _db.Vendors.AsNoTracking()
             .FirstOrDefaultAsync(v => v.Id == id && v.OrganizationId == orgId);
         return vendor == null ? null : MapToDto(vendor);
     }
 
-    public async Task<List<VendorDto>> ListAsync()
+    public async Task<PaginatedResult<VendorDto>> ListAsync(FilterParams f)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
-        var vendors = await _db.Vendors
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var q = _db.Vendors
             .Where(v => v.OrganizationId == orgId)
-            .OrderBy(v => v.Name)
-            .AsNoTracking()
-            .ToListAsync();
-        return vendors.Select(MapToDto).ToList();
+            .AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(f.Search))
+        {
+            var s = f.Search.ToLower();
+            q = q.Where(x => x.Name.ToLower().Contains(s) ||
+                             x.Email.ToLower().Contains(s));
+        }
+
+        var total = await q.CountAsync();
+        q = f.Desc ? q.OrderByDescending(x => x.Name) : q.OrderBy(x => x.Name);
+        var items = await q.Skip((f.Page - 1) * f.PageSize).Take(f.PageSize).ToListAsync();
+
+        return new PaginatedResult<VendorDto>(items.Select(MapToDto).ToList(), total, f.Page, f.PageSize);
     }
 
     private static VendorDto MapToDto(Vendor v) => new(

@@ -3,6 +3,7 @@ import { C } from "../shared/theme";
 import { Inp, Btn, Mdl } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
 import { updateVendor } from "../shared/api/vendor";
+import { getCategories, type Category } from "../shared/api";
 import { isEmailValid } from "../shared/utils";
 import type { Vendor } from "../types";
 
@@ -22,6 +23,7 @@ export default function VendorEditModal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   const v = mdl?.d && mdl.t === "vendor-edit" ? (mdl.d as Vendor) : null;
 
@@ -40,6 +42,12 @@ export default function VendorEditModal() {
       setIfscCode(v.ifscCode || "");
     }
   }, [v]);
+
+  useEffect(() => {
+    getCategories()
+      .then((items) => setCategories(items.filter((c) => c.isActive)))
+      .catch(() => setCategories([]));
+  }, []);
 
   if (!v) return null;
 
@@ -106,7 +114,36 @@ export default function VendorEditModal() {
       <Inp label="Contact person" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} ph="Optional" />
       <Inp label="GSTIN" value={gstin} onChange={(e) => setGstin(e.target.value)} ph="GST number" />
       <Inp label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} ph="Contact number" />
-      <Inp label="Category" value={category} onChange={(e) => setCategory(e.target.value)} ph="Vendor category" />
+      <div>
+        <Inp
+          label="Category"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          ph="Vendor category"
+          style={{ marginBottom: categories.length ? 6 : 14 }}
+        />
+        {categories.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+            {categories.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setCategory(c.name)}
+                style={{
+                  padding: "3px 8px",
+                  borderRadius: "999px",
+                  border: `1px solid ${C.border}`,
+                  background: category === c.name ? C.surface : "#fff",
+                  fontSize: "10px",
+                  cursor: "pointer",
+                }}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       <Inp
         label="Address"
         type="textarea"

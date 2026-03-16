@@ -17,7 +17,7 @@ public class ClientService : IClientService
 
     public async Task<ClientDto> CreateAsync(CreateClientRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var client = new Client
         {
             Id = Guid.NewGuid(),
@@ -43,7 +43,7 @@ public class ClientService : IClientService
 
     public async Task<ClientDto> UpdateAsync(Guid id, UpdateClientRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var client = await _db.Clients
             .FirstOrDefaultAsync(c => c.Id == id && c.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Client not found");
@@ -67,21 +67,31 @@ public class ClientService : IClientService
 
     public async Task<ClientDto?> GetByIdAsync(Guid id)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var client = await _db.Clients.AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == id && c.OrganizationId == orgId);
         return client == null ? null : MapToDto(client);
     }
 
-    public async Task<List<ClientDto>> ListAsync()
+    public async Task<PaginatedResult<ClientDto>> ListAsync(FilterParams f)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
-        var clients = await _db.Clients
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var q = _db.Clients
             .Where(c => c.OrganizationId == orgId)
-            .OrderBy(c => c.Name)
-            .AsNoTracking()
-            .ToListAsync();
-        return clients.Select(MapToDto).ToList();
+            .AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(f.Search))
+        {
+            var s = f.Search.ToLower();
+            q = q.Where(x => x.Name.ToLower().Contains(s) ||
+                             x.Email.ToLower().Contains(s));
+        }
+
+        var total = await q.CountAsync();
+        q = f.Desc ? q.OrderByDescending(x => x.Name) : q.OrderBy(x => x.Name);
+        var items = await q.Skip((f.Page - 1) * f.PageSize).Take(f.PageSize).ToListAsync();
+
+        return new PaginatedResult<ClientDto>(items.Select(MapToDto).ToList(), total, f.Page, f.PageSize);
     }
 
     private static ClientDto MapToDto(Client c) => new(

@@ -6,4 +6,6 @@ public static class StorageFolders
     public const string InvoiceDoc = "invoices";
     public const string ProfilePicture = "profiles";
     public const string OrganizationLogo = "organizations";
+    public const string OrgLogo = "org-logos";
 }
+

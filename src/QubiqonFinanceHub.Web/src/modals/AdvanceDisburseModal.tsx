@@ -63,7 +63,7 @@ export default function AdvanceDisburseModal() {
         <div style={{ fontSize: "11px", color: C.muted, marginTop: "2px" }}>{a.purpose}</div>
       </div>
       <Inp
-        label="Payment reference *"
+        label="Payment reference"
         value={paymentReference}
         onChange={(e) => setPaymentReference(e.target.value)}
         req

@@ -77,7 +77,7 @@ export default function InvPayModal() {
         </div>
       </div>
       <Inp
-        label="Payment reference *"
+        label="Payment reference"
         value={paymentReference}
         onChange={(e) => setPaymentReference(e.target.value)}
         req

@@ -43,10 +43,13 @@ export default function AdvanceDetailModal({ advance: a, previousAdvances: hist 
             <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "reject", d: a, it: "advance" }), 50); }}>Reject</Btn>
           </>
         )}
-        {is("finance") && a.status === ADV_S.APPROVED && (
-          <Btn v="advance" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "adv-disburse", d: a }), 50); }}>Disburse</Btn>
+        {(is("finance") || is("admin")) && a.status === ADV_S.APPROVED && (
+          <>
+            <Btn v="advance" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "adv-disburse", d: a }), 50); }}>Disburse</Btn>
+            <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "reject", d: a, it: "advance" }), 50); }}>Reject</Btn>
+          </>
         )}
-        {!(((is("approver") || is("admin")) && a.status === ADV_S.PENDING) || (is("finance") && a.status === ADV_S.APPROVED)) && (
+        {!(((is("approver") || is("admin")) && a.status === ADV_S.PENDING) || ((is("finance") || is("admin")) && a.status === ADV_S.APPROVED)) && (
           <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>
         )}
       </div>

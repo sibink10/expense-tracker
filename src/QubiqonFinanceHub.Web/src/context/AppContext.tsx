@@ -20,6 +20,7 @@ import {
   INIT_CLIENTS,
 } from "../shared/initData";
 import { EXP_S, BILL_S, ADV_S } from "../shared/constants";
+import { getOrganizations, type OrganizationPayload } from "../shared/api";
 import type {
   AppUser,
   AppConfig,
@@ -87,6 +88,9 @@ export interface AppContextValue {
   payableExp: Expense[];
   payableBill: Bill[];
   fil: <T extends { status: string }>(list: T[]) => T[];
+  orgs: OrganizationPayload[];
+  activeOrg: OrganizationPayload | null;
+  setActiveOrg: React.Dispatch<React.SetStateAction<OrganizationPayload | null>>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -143,6 +147,8 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
   const [email, setEmail] = useState<EmailData | null>(null);
   const [search, setSearch] = useState("");
   const [sf, setSf] = useState("all");
+  const [orgs, setOrgs] = useState<OrganizationPayload[]>([]);
+  const [activeOrg, setActiveOrg] = useState<OrganizationPayload | null>(null);
 
   const t = useCallback((m: string, type = "ok") => {
     setToast({ m, type });
@@ -152,6 +158,26 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
   const rf = useCallback(() => {
     setSearch("");
     setSf("all");
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getOrganizations()
+      .then((list) => {
+        if (cancelled) return;
+        setOrgs(list);
+        if (!activeOrg && list.length > 0) {
+          const selected = list.find((o) => o.selected) ?? list[0];
+          setActiveOrg(selected);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setOrgs([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const approve = useCallback(
@@ -409,6 +435,9 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
       payableExp,
       payableBill,
       fil,
+      orgs,
+      activeOrg,
+      setActiveOrg,
     }),
     [
       user,
@@ -438,6 +467,9 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
       payableExp,
       payableBill,
       fil,
+      orgs,
+      activeOrg,
+      setActiveOrg,
     ],
   );
 

@@ -72,9 +72,7 @@ export default function ExpenseListPage() {
         }}
       >
         <h1 style={{ fontSize: "20px", fontWeight: 700, margin: 0 }}>Expense requests</h1>
-        {(is("employee") || is("finance")) && (
-          <Btn onClick={() => navigate("/expenses/add")}>＋ Add</Btn>
-        )}
+        <Btn onClick={() => navigate("/expenses/add")}>＋ Add expense</Btn>
       </div>
       <div
         style={{
@@ -178,13 +176,13 @@ export default function ExpenseListPage() {
                       {
                         v: (
                           <div onClick={(ev) => ev.stopPropagation()} style={{ display: "flex", gap: "3px" }}>
-                            {(is("approver") || is("admin")) && (e.status === EXP_S.PENDING || e.status === EXP_S.PENDING_BILL_APPROVAL) && (
+                            {(is("approver") || is("admin")) && e.status === EXP_S.PENDING && (
                               <>
                                 <Btn sm v="success" onClick={() => setMdl({ t: "exp-approve", d: e })}>✓</Btn>
                                 <Btn sm v="danger" onClick={() => setMdl({ t: "reject", d: e, it: "expense" })}>✕</Btn>
                               </>
                             )}
-                            {(is("finance") || is("admin")) && e.status === EXP_S.APPROVED && (
+                            {(is("finance") || is("admin")) && (e.status === EXP_S.APPROVED || e.status === EXP_S.PENDING_BILL_APPROVAL) && (
                               <Btn sm v="info" onClick={() => setMdl({ t: "pay", d: e, it: "expense" })}>Pay</Btn>
                             )}
                           </div>

@@ -20,7 +20,7 @@ public class AdvanceService : IAdvanceService
 
     public async Task<AdvanceDto> CreateAsync(CreateAdvanceRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var code = await _codeGen.GenerateCodeAsync(orgId, "advance");
 
@@ -54,7 +54,7 @@ public class AdvanceService : IAdvanceService
 
     public async Task<AdvanceDto?> GetByIdAsync(Guid id)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var a = await _db.AdvancePayments
             .Include(x => x.Employee)
             .Include(x => x.Comments).ThenInclude(c => c.CommentByEmployee)
@@ -66,7 +66,7 @@ public class AdvanceService : IAdvanceService
 
     public async Task<PaginatedResult<AdvanceDto>> ListAsync(FilterParams f, bool myOnly = false)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var q = _db.AdvancePayments
             .Include(x => x.Employee)
             .Include(x => x.Comments).ThenInclude(c => c.CommentByEmployee)
@@ -91,7 +91,7 @@ public class AdvanceService : IAdvanceService
 
     public async Task<AdvanceDto> ApproveAsync(Guid id, ApproveRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var advance = await _db.AdvancePayments
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
@@ -117,7 +117,7 @@ public class AdvanceService : IAdvanceService
 
     public async Task<AdvanceDto> RejectAsync(Guid id, RejectRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var advance = await _db.AdvancePayments
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
@@ -140,7 +140,7 @@ public class AdvanceService : IAdvanceService
 
     public async Task<AdvanceDto> DisburseAsync(Guid id, ProcessPaymentRequest dto)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var advance = await _db.AdvancePayments
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
@@ -168,7 +168,7 @@ public class AdvanceService : IAdvanceService
 
     public async Task<List<AdvanceDto>> GetEmployeeHistoryAsync(Guid employeeId)
     {
-        var orgId = _tenant.GetCurrentOrganizationId();
+        var orgId = await _tenant.GetCurrentOrganizationId();
         var items = await _db.AdvancePayments
             .Include(x => x.Employee)
             .Include(x => x.Comments).ThenInclude(c => c.CommentByEmployee)
