@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { C } from "../../shared/theme";
 import { BILL_S } from "../../shared/constants";
-import { fmtCur } from "../../shared/utils";
+import { fmtCur, downloadFromSasUrl } from "../../shared/utils";
 import { Av, Btn, Badge, Mdl, CLog } from "../ui";
 import { useAppContext } from "../../context/AppContext";
-import { getBillAttachment, getBillAttachmentBlob } from "../../shared/api/bill";
+import { getBillAttachment } from "../../shared/api/bill";
 import type { Bill } from "../../types";
 
 interface Props {
@@ -45,19 +45,12 @@ export default function BillDetailModal({ bill: b }: Props) {
 
   const handleDownload = async () => {
     const id = b.apiId ?? b.id;
-    try {
-      const blob = await getBillAttachmentBlob(id);
-      const objectUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = objectUrl;
-      a.download = b.file?.n || "bill-attachment.pdf";
-      a.rel = "noopener";
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 200);
-      t("Download started");
-    } catch {
+    const sasUrl = await getBillAttachment(id);
+    if (!sasUrl) {
       t("Failed to download attachment");
+      return;
     }
+    await downloadFromSasUrl(sasUrl, b.file?.n || "bill-attachment.pdf", () => t("Failed to download attachment"));
   };
 
   return (

@@ -197,9 +197,9 @@ export async function getExpenseBill(id: string): Promise<string> {
 }
 
 /** Get bill as blob for download (GET /api/expenses/{id}/bill/download). Use this to avoid CORS when downloading. */
-export async function getExpenseBillBlob(id: string): Promise<Blob> {
-  const { data } = await apiClient.get(`/expenses/${id}/bill`, { responseType: "blob" });
-  return data;
+export async function getExpenseBillBlob(id: string): Promise<string> {
+  const { data } = await apiClient.get(`/expenses/${id}/bill`);
+  return data?.url || "";
 }
 
 /** Lightweight fetch for counts (Dashboard, nav badges). */

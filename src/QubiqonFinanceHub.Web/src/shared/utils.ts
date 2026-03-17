@@ -43,6 +43,35 @@ export const addDays = (ds: string, n: number): string => {
   return d.toISOString().split("T")[0];
 };
 
+/**
+ * Download a file from a SAS/signed URL via fetch → arrayBuffer → blob.
+ * Use when the API returns a SAS URL and you need to trigger a browser download.
+ */
+export async function downloadFromSasUrl(
+  sasUrl: string,
+  filename: string,
+  onError?: () => void
+): Promise<void> {
+  try {
+    const response = await fetch(sasUrl, { method: "GET", mode: "cors" });
+    if (!response.ok) throw new Error("Fetch failed");
+    const arrayBuffer = await response.arrayBuffer();
+    const blob = new Blob([arrayBuffer], {
+      type: response.headers.get("content-type") || "application/octet-stream",
+    });
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(objectUrl);
+  } catch {
+    onError?.();
+  }
+}
+
 export const fmtCur = (a: number | string, cur = "INR"): string => {
   const s = CURRENCIES.find((c) => c.v === cur)?.s || "₹";
   return (

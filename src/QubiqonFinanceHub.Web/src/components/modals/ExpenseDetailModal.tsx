@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { C } from "../../shared/theme";
 import { EXP_S } from "../../shared/constants";
-import { fmtCur } from "../../shared/utils";
+import { fmtCur, downloadFromSasUrl } from "../../shared/utils";
 import { Btn, Badge, Mdl, CLog, Inp, FileUp } from "../ui";
 import { EditIcon } from "../icons";
 import { useAppContext } from "../../context/AppContext";
-import { updateExpenseForm, uploadExpenseBill, getExpenseBill, getExpenseBillBlob } from "../../shared/api/expense";
+import { updateExpenseForm, uploadExpenseBill, getExpenseBill } from "../../shared/api/expense";
 import type { Expense } from "../../types";
 
 interface Props {
@@ -63,19 +63,14 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
 
   const handleDownloadBill = async () => {
     const id = e.apiId ?? e.id;
-    try {
-      const blob = await getExpenseBillBlob(id);
-      const objectUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = objectUrl;
-      a.download = e.file?.n || "bill.pdf";
-      a.rel = "noopener";
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 200);
-    } catch {
+    const sasUrl = await getExpenseBill(id);
+    if (!sasUrl) {
       t("Failed to download bill");
+      return;
     }
+    await downloadFromSasUrl(sasUrl, e.file?.n || "bill.pdf", () => t("Failed to download bill"));
   };
+
 
   const handleUpdate = async () => {
     const amount = parseFloat(amt);
