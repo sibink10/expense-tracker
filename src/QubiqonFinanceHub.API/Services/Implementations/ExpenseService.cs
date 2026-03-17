@@ -32,7 +32,7 @@ public class ExpenseService : IExpenseService
             ? await _db.Employees.FindAsync(dto.OnBehalfOfEmployeeId.Value) ?? currentEmp
             : currentEmp;
 
-        var code = await _codeGen.GenerateCodeAsync(orgId, "expense");
+        var code = await _codeGen.GenerateBillNumberAsync(orgId, "expense");
 
         var expenseId = Guid.NewGuid(); // Generate ID early for storage path
 
@@ -50,7 +50,6 @@ public class ExpenseService : IExpenseService
             Amount = dto.Amount,
             Purpose = dto.Purpose,
             BillDate = dto.BillDate,
-            BillNumber = dto.BillNumber,
             BillImageUrl = billImageUrl,
             Status = ExpenseStatus.PendingApproval,
             CreatedAt = DateTime.UtcNow
@@ -68,23 +67,32 @@ public class ExpenseService : IExpenseService
         _db.ExpenseRequests.Add(expense);
         await _db.SaveChangesAsync();
 
-        var approvers = await _db.Employees
-            .Where(e => e.OrganizationId == orgId && e.Role == UserRole.Approver && e.IsActive)
+        var reviewRoles = new[] { UserRole.Admin, UserRole.Finance, UserRole.Approver };
+        var reviewers = await _db.Employees
+            .Where(e => e.OrganizationId == orgId &&
+                        e.IsActive &&
+                        !e.IsDelete &&
+                        !string.IsNullOrWhiteSpace(e.Email) &&
+                        reviewRoles.Contains(e.Role))
+            .Select(e => e.Email)
+            .Distinct()
             .ToListAsync();
 
-        foreach (var approver in approvers)
+        if (reviewers.Count > 0)
         {
-            await _email.SendNotificationAsync("expense_submitted",
+            await _email.SendNotificationAsync(Constants.EmailTemplateKeys.ExpenseSubmitted,
                 new Dictionary<string, string>
                 {
                     ["employee_name"] = targetEmp.FullName,
                     ["expense_id"] = code,
                     ["purpose"] = dto.Purpose,
                     ["amount"] = $"₹{dto.Amount:N2}",
-                    ["bill_number"] = dto.BillNumber,
                     ["bill_date"] = dto.BillDate.ToString("dd MMM yyyy"),
+                    ["submitted_by"] = currentEmp.FullName,
+                    ["submission_notes"] = "",
+                    ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
                 },
-                approver.Email);
+                string.Join(",", reviewers));
         }
 
         _log.LogInformation("Expense {Code} created by {Employee}", code, currentEmp.FullName);
@@ -153,7 +161,6 @@ public class ExpenseService : IExpenseService
         expense.Amount = dto.Amount;
         expense.Purpose = dto.Purpose;
         expense.BillDate = dto.BillDate;
-        expense.BillNumber = dto.BillNumber;
         expense.UpdatedAt = DateTime.UtcNow;
 
         _db.ActivityComments.Add(new ActivityComment
@@ -234,17 +241,21 @@ public class ExpenseService : IExpenseService
                     ? "expense_approved"
                     : "expense_awaiting_bill";
 
-        //await _email.SendNotificationAsync(
-        //    templateKey,
-        //    new Dictionary<string, string>
-        //    {
-        //        ["employee_name"] = expense.Employee.FullName,
-        //        ["expense_id"] = expense.ExpenseCode,
-        //        ["purpose"] = expense.Purpose,
-        //        ["amount"] = $"₹{expense.Amount:N2}",
-        //        ["status"] = expense.Status.ToString(),
-        //    },
-        //    expense.Employee.Email);
+        await _email.SendNotificationAsync(
+            templateKey,
+            new Dictionary<string, string>
+            {
+                ["employee_name"] = expense.Employee.FullName,
+                ["expense_id"] = expense.ExpenseCode,
+                ["purpose"] = expense.Purpose,
+                ["amount"] = $"₹{expense.Amount:N2}",
+                ["bill_date"] = expense.BillDate.ToString("dd MMM yyyy"),
+                ["status"] = expense.Status.ToString(),
+                ["approver_name"] = emp.FullName,
+                ["approver_comments"] = dto.Comments ?? "",
+                ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
+            },
+            expense.Employee.Email);
 
 
         return (await GetByIdAsync(id))!;
@@ -272,12 +283,17 @@ public class ExpenseService : IExpenseService
 
         await _db.SaveChangesAsync();
 
-        await _email.SendNotificationAsync("expense_rejected",
+        await _email.SendNotificationAsync(Constants.EmailTemplateKeys.ExpenseRejected,
             new Dictionary<string, string>
             {
                 ["employee_name"] = expense.Employee.FullName,
                 ["expense_id"] = expense.ExpenseCode,
+                ["purpose"] = expense.Purpose,
+                ["amount"] = $"₹{expense.Amount:N2}",
+                ["bill_date"] = expense.BillDate.ToString("dd MMM yyyy"),
                 ["reason"] = dto.Comments,
+                ["rejected_by"] = emp.FullName,
+                ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
             },
             expense.Employee.Email);
 
@@ -337,14 +353,18 @@ public class ExpenseService : IExpenseService
 
         await _db.SaveChangesAsync();
 
-        await _email.SendNotificationAsync("payment_confirmation",
+        await _email.SendNotificationAsync(Constants.EmailTemplateKeys.PaymentConfirmation,
             new Dictionary<string, string>
             {
                 ["employee_name"] = expense.Employee.FullName,
-                ["doc_type"] = "Expense",
-                ["doc_number"] = expense.ExpenseCode,
+                ["expense_id"] = expense.ExpenseCode,
+                ["purpose"] = expense.Purpose,
                 ["amount"] = $"₹{expense.Amount:N2}",
-                ["ref_number"] = dto.PaymentReference,
+                ["bill_date"] = expense.BillDate.ToString("dd MMM yyyy"),
+                ["payment_reference"] = dto.PaymentReference,
+                ["processed_by"] = emp.FullName,
+                ["payment_notes"] = dto.Notes ?? "",
+                ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
             },
             expense.Employee.Email);
 
@@ -379,11 +399,27 @@ public class ExpenseService : IExpenseService
     }
 
     private static ExpenseDto MapToDto(ExpenseRequest e) => new(
-        e.Id, e.ExpenseCode, e.EmployeeId, e.Employee.FullName, e.Employee.Department ?? "",
-        e.Amount, e.Purpose, e.BillDate, e.BillNumber, e.Status.ToString(),
-        e.BillImageUrl, e.PaymentReference, e.CreatedAt,
-        e.Comments.OrderBy(c => c.CreatedAt).Select(c => new CommentDto(
-            c.Id, c.CommentByEmployee.FullName, c.Text, c.ActionType.ToString(), c.CreatedAt
-        )).ToList()
+        e.Id,
+        e.ExpenseCode,
+        e.EmployeeId,
+        e.Employee.FullName,
+        e.Employee.Department ?? "",
+        e.Amount,
+        e.Purpose, 
+        e.BillDate, 
+        e.Status.ToString(),
+        e.BillImageUrl,
+        e.PaymentReference,
+        e.CreatedAt,
+        e.Comments
+            .OrderBy(c => c.CreatedAt)
+            .Select(c => new CommentDto(
+                c.Id,
+                c.CommentByEmployee.FullName,
+                c.Text,
+                c.ActionType.ToString(),
+                c.CreatedAt
+            ))
+            .ToList()
     );
 }

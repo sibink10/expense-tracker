@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Client.Extensions.Msal;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
@@ -14,17 +14,18 @@ public class VendorBillService : IVendorBillService
     private readonly FinanceHubDbContext _db;
     private readonly ITenantService _tenant;
     private readonly ICodeGeneratorService _codeGen;
+    private readonly IEmailService _email;
     private readonly ILogger<VendorBillService> _log;
     private readonly IStorageService _storage;
 
-    public VendorBillService(FinanceHubDbContext db, ITenantService tenant, ICodeGeneratorService codeGen, ILogger<VendorBillService> log, IStorageService storage)
-    { _db = db; _tenant = tenant; _codeGen = codeGen; _log = log; _storage = storage; }
+    public VendorBillService(FinanceHubDbContext db, ITenantService tenant, ICodeGeneratorService codeGen, IEmailService email, ILogger<VendorBillService> log, IStorageService storage)
+    { _db = db; _tenant = tenant; _codeGen = codeGen; _email = email; _log = log; _storage = storage; }
 
     public async Task<BillDto> CreateAsync(CreateBillRequest dto)
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
-        var code = await _codeGen.GenerateCodeAsync(orgId, "bill");
+        var code = await _codeGen.GenerateBillNumberAsync(orgId, "bill");
         var vendor = await _db.Vendors.FindAsync(dto.VendorId)
             ?? throw new KeyNotFoundException("Vendor not found");
 
@@ -48,6 +49,7 @@ public class VendorBillService : IVendorBillService
             BillCode = code,
             VendorId = dto.VendorId,
             Amount = dto.Amount,
+            vendorBillNumber=dto.vendorBillNumber,
             TaxConfigId = dto.TaxConfigId,
             TDSAmount = tdsAmount,
             TotalPayable = dto.Amount - tdsAmount,
@@ -73,6 +75,39 @@ public class VendorBillService : IVendorBillService
 
         _db.VendorBills.Add(bill);
         await _db.SaveChangesAsync();
+
+        var reviewRoles = new[] { UserRole.Admin, UserRole.Finance, UserRole.Approver };
+        var reviewers = await _db.Employees
+            .Where(e => e.OrganizationId == orgId &&
+                        e.IsActive &&
+                        !e.IsDelete &&
+                        !string.IsNullOrWhiteSpace(e.Email) &&
+                        reviewRoles.Contains(e.Role))
+            .Select(e => e.Email)
+            .Distinct()
+            .ToListAsync();
+
+        if (reviewers.Count > 0)
+        {
+            await _email.SendNotificationAsync(
+                Constants.EmailTemplateKeys.VendorBillSubmitted,
+                new Dictionary<string, string>
+                {
+                    ["bill_id"] = bill.BillCode,
+                    ["vendor_name"] = vendor.Name,
+                    ["vendor_bill_number"] = bill.vendorBillNumber,
+                    ["amount"] = $"₹{bill.Amount:N2}",
+                    ["total_payable"] = $"₹{bill.TotalPayable:N2}",
+                    ["bill_date"] = bill.BillDate.ToString("dd MMM yyyy"),
+                    ["due_date"] = bill.DueDate.ToString("dd MMM yyyy"),
+                    ["description"] = bill.Description,
+                    ["submitted_by"] = emp.FullName,
+                    ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
+                },
+                string.Join(",", reviewers),
+                bill.CCEmails);
+        }
+
         _log.LogInformation("Bill {Code} created by {Employee}", code, emp.FullName);
         return (await GetByIdAsync(bill.Id))!;
     }
@@ -122,6 +157,7 @@ public class VendorBillService : IVendorBillService
         var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var bill = await _db.VendorBills
+            .Include(x => x.Vendor)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Bill not found");
 
@@ -141,6 +177,30 @@ public class VendorBillService : IVendorBillService
         });
 
         await _db.SaveChangesAsync();
+
+        var submittedBy = await _db.Employees.FindAsync(bill.SubmittedByEmployeeId);
+        if (submittedBy != null && !string.IsNullOrWhiteSpace(submittedBy.Email))
+        {
+            await _email.SendNotificationAsync(
+                Constants.EmailTemplateKeys.VendorBillApproved,
+                new Dictionary<string, string>
+                {
+                    ["bill_id"] = bill.BillCode,
+                    ["vendor_name"] = bill.Vendor.Name,
+                    ["vendor_bill_number"] = bill.vendorBillNumber,
+                    ["amount"] = $"₹{bill.Amount:N2}",
+                    ["total_payable"] = $"₹{bill.TotalPayable:N2}",
+                    ["bill_date"] = bill.BillDate.ToString("dd MMM yyyy"),
+                    ["due_date"] = bill.DueDate.ToString("dd MMM yyyy"),
+                    ["description"] = bill.Description,
+                    ["actor_name"] = emp.FullName,
+                    ["details_text"] = dto.Comments ?? "",
+                    ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
+                },
+                submittedBy.Email,
+                bill.CCEmails);
+        }
+
         return (await GetByIdAsync(id))!;
     }
 
@@ -149,6 +209,7 @@ public class VendorBillService : IVendorBillService
         var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var bill = await _db.VendorBills
+            .Include(x => x.Vendor)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Bill not found");
 
@@ -165,6 +226,30 @@ public class VendorBillService : IVendorBillService
         });
 
         await _db.SaveChangesAsync();
+
+        var submittedBy = await _db.Employees.FindAsync(bill.SubmittedByEmployeeId);
+        if (submittedBy != null && !string.IsNullOrWhiteSpace(submittedBy.Email))
+        {
+            await _email.SendNotificationAsync(
+                Constants.EmailTemplateKeys.VendorBillRejected,
+                new Dictionary<string, string>
+                {
+                    ["bill_id"] = bill.BillCode,
+                    ["vendor_name"] = bill.Vendor.Name,
+                    ["vendor_bill_number"] = bill.vendorBillNumber,
+                    ["amount"] = $"₹{bill.Amount:N2}",
+                    ["total_payable"] = $"₹{bill.TotalPayable:N2}",
+                    ["bill_date"] = bill.BillDate.ToString("dd MMM yyyy"),
+                    ["due_date"] = bill.DueDate.ToString("dd MMM yyyy"),
+                    ["description"] = bill.Description,
+                    ["actor_name"] = emp.FullName,
+                    ["details_text"] = dto.Comments,
+                    ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
+                },
+                submittedBy.Email,
+                bill.CCEmails);
+        }
+
         return (await GetByIdAsync(id))!;
     }
 
@@ -173,6 +258,7 @@ public class VendorBillService : IVendorBillService
         var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var bill = await _db.VendorBills
+            .Include(x => x.Vendor)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Bill not found");
 
@@ -194,6 +280,31 @@ public class VendorBillService : IVendorBillService
         });
 
         await _db.SaveChangesAsync();
+
+        var submittedBy = await _db.Employees.FindAsync(bill.SubmittedByEmployeeId);
+        if (submittedBy != null && !string.IsNullOrWhiteSpace(submittedBy.Email))
+        {
+            await _email.SendNotificationAsync(
+                Constants.EmailTemplateKeys.VendorBillPaid,
+                new Dictionary<string, string>
+                {
+                    ["bill_id"] = bill.BillCode,
+                    ["vendor_name"] = bill.Vendor.Name,
+                    ["vendor_bill_number"] = bill.vendorBillNumber,
+                    ["amount"] = $"₹{bill.Amount:N2}",
+                    ["total_payable"] = $"₹{bill.TotalPayable:N2}",
+                    ["bill_date"] = bill.BillDate.ToString("dd MMM yyyy"),
+                    ["due_date"] = bill.DueDate.ToString("dd MMM yyyy"),
+                    ["description"] = bill.Description,
+                    ["actor_name"] = emp.FullName,
+                    ["details_text"] = dto.Notes ?? "",
+                    ["payment_reference"] = dto.PaymentReference,
+                    ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
+                },
+                submittedBy.Email,
+                bill.CCEmails);
+        }
+
         return (await GetByIdAsync(id))!;
     }
 
@@ -201,7 +312,7 @@ public class VendorBillService : IVendorBillService
     {
         var submittedBy = await _db.Employees.FindAsync(b.SubmittedByEmployeeId);
         return new BillDto(
-            b.Id, b.BillCode, b.VendorId, b.Vendor.Name, b.Vendor.GSTIN, b.Vendor.Email,
+            b.Id, b.BillCode, b.VendorId, b.Vendor.Name, b.vendorBillNumber, b.Vendor.GSTIN, b.Vendor.Email,
             b.Amount, b.TaxConfig?.Name, b.TDSAmount, b.TotalPayable,
             b.Description, b.BillDate, b.DueDate, b.PaymentTerms,
             b.Status.ToString(), b.AttachmentUrl, b.PaymentReference, b.PaidAt,

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using QubiqonFinanceHub.API.Data;
 
@@ -11,9 +12,11 @@ using QubiqonFinanceHub.API.Data;
 namespace QubiqonFinanceHub.API.Migrations
 {
     [DbContext(typeof(FinanceHubDbContext))]
-    partial class FinanceHubDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260317071714_employeeDelete")]
+    partial class employeeDelete
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -377,6 +380,11 @@ namespace QubiqonFinanceHub.API.Migrations
                         .HasMaxLength(2048)
                         .HasColumnType("nvarchar(2048)");
 
+                    b.Property<string>("BillNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -454,6 +462,10 @@ namespace QubiqonFinanceHub.API.Migrations
                     b.Property<DateTime>("InvoiceDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("InvoiceNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -506,9 +518,6 @@ namespace QubiqonFinanceHub.API.Migrations
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<decimal>("paidAmound")
-                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
 
@@ -668,9 +677,6 @@ namespace QubiqonFinanceHub.API.Migrations
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("OrganizationId1")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -679,8 +685,6 @@ namespace QubiqonFinanceHub.API.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("OrganizationId1");
 
                     b.HasIndex("OrganizationId", "Key")
                         .IsUnique();
@@ -873,11 +877,6 @@ namespace QubiqonFinanceHub.API.Migrations
                     b.Property<Guid>("VendorId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("vendorBillNumber")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
                     b.HasKey("Id");
 
                     b.HasIndex("TaxConfigId");
@@ -1000,14 +999,10 @@ namespace QubiqonFinanceHub.API.Migrations
             modelBuilder.Entity("QubiqonFinanceHub.API.Models.Entities.OrganizationSetting", b =>
                 {
                     b.HasOne("QubiqonFinanceHub.API.Models.Entities.Organization", "Organization")
-                        .WithMany()
+                        .WithMany("Settings")
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("QubiqonFinanceHub.API.Models.Entities.Organization", null)
-                        .WithMany("Settings")
-                        .HasForeignKey("OrganizationId1");
 
                     b.Navigation("Organization");
                 });

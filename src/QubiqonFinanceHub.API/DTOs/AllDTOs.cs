@@ -82,6 +82,29 @@ public record OrganizationDto(
 );
 
 // ═══════════════════════════════════════════════════
+//  ORGANIZATION SETTINGS
+// ═══════════════════════════════════════════════════
+public class OrganizationSettingDto
+{
+    public string Key { get; set; } = "";
+    public string Value { get; set; } = "";
+    public DateTime UpdatedAt { get; set; }
+}
+
+public class SettingDto
+{
+    public Guid Id { get; set; }
+    public string Value { get; set; }
+}
+
+public class BulkSettingItemDto
+{
+    public Guid? Id { get; set; }
+    public string Key { get; set; } = "";
+    public string Value { get; set; } = "";
+}
+
+// ═══════════════════════════════════════════════════
 //  EXPENSE
 // ═══════════════════════════════════════════════════
 public class CreateExpenseRequest
@@ -89,7 +112,6 @@ public class CreateExpenseRequest
     public decimal Amount { get; set; }
     public string Purpose { get; set; } = "";
     public DateOnly BillDate { get; set; }
-    public string BillNumber { get; set; } = "";
     public Guid? OnBehalfOfEmployeeId { get; set; }
     public IFormFile? BillImage { get; set; }
 }
@@ -99,7 +121,6 @@ public class UpdateExpenseRequest
     public decimal Amount { get; set; }
     public string Purpose { get; set; } = "";
     public DateOnly BillDate { get; set; }
-    public string BillNumber { get; set; } = "";
     public IFormFile? BillImage { get; set; }  // null = keep existing
 }
 
@@ -108,7 +129,7 @@ public class UploadBillRequest
     public IFormFile BillImage { get; set; } = null!;
 }
 
-public record ExpenseDto(Guid Id, string ExpenseCode, Guid EmployeeId, string EmployeeName, string Department, decimal Amount, string Purpose, DateOnly BillDate, string BillNumber, string Status, string? AttachmentUrl, string? PaymentReference, DateTime CreatedAt, List<CommentDto> Comments);
+public record ExpenseDto(Guid Id, string ExpenseCode, Guid EmployeeId, string EmployeeName, string Department, decimal Amount, string Purpose, DateOnly BillDate, string Status, string? AttachmentUrl, string? PaymentReference, DateTime CreatedAt, List<CommentDto> Comments);
 
 // ═══════════════════════════════════════════════════
 //  ADVANCE
@@ -166,6 +187,7 @@ public class CreateBillRequest
 {
     public Guid VendorId { get; set; }
     public decimal Amount { get; set; }
+    public string vendorBillNumber { get; set; }
     public Guid? TaxConfigId { get; set; }
     public string Description { get; set; } = "";
     public DateTime BillDate { get; set; }
@@ -174,7 +196,7 @@ public class CreateBillRequest
     public string? CCEmails { get; set; }
     public IFormFile? Attachment { get; set; }
 }
-public record BillDto(Guid Id, string BillCode, Guid VendorId, string VendorName, string? VendorGSTIN, string VendorEmail, decimal Amount, string? TaxName, decimal TDSAmount, decimal TotalPayable, string Description, DateTime BillDate, DateTime DueDate, string PaymentTerms, string Status, string? AttachmentUrl, string? PaymentReference, DateTime? PaidAt, string SubmittedByName, DateTime CreatedAt, List<CommentDto> Comments);
+public record BillDto(Guid Id, string BillCode, Guid VendorId, string VendorName,string? vendorBillNumber, string? VendorGSTIN, string VendorEmail, decimal Amount, string? TaxName, decimal TDSAmount, decimal TotalPayable, string Description, DateTime BillDate, DateTime DueDate, string PaymentTerms, string Status, string? AttachmentUrl, string? PaymentReference, DateTime? PaidAt, string SubmittedByName, DateTime CreatedAt, List<CommentDto> Comments);
 
 // ═══════════════════════════════════════════════════
 //  CLIENT
@@ -227,13 +249,12 @@ public record ClientDto(
 //  INVOICE
 // ═══════════════════════════════════════════════════
 public record CreateInvoiceLineItemRequest(string Description, string? HSNCode, decimal Quantity, decimal Rate, Guid? GSTConfigId);
-public record CreateInvoiceRequest(Guid ClientId, string Currency, List<CreateInvoiceLineItemRequest> LineItems, Guid? TaxConfigId, DateTime InvoiceDate, DateTime DueDate, string PaymentTerms, string? PurchaseOrder, string? Notes, bool SendImmediately, string? InvoiceNumber);
+public record CreateInvoiceRequest(Guid ClientId, string Currency, List<CreateInvoiceLineItemRequest> LineItems, Guid? TaxConfigId, DateTime InvoiceDate, DateTime DueDate, string PaymentTerms, string? PurchaseOrder, string? Notes, bool SendImmediately);
 
 public record InvoiceLineItemDto(int LineNumber, string Description, string? HSNCode, decimal Quantity, decimal Rate, decimal Amount, string? GSTName, decimal GSTRate, decimal GSTAmount, decimal TotalAmount);
 public record InvoiceDto(
     Guid Id,
     string InvoiceCode,
-    string? InvoiceNumber,
     Guid ClientId,
     string ClientName,
     string ClientEmail,
@@ -245,6 +266,7 @@ public record InvoiceDto(
     string? TaxName,
     decimal TaxAmount,
     decimal Total,
+    decimal paidAmound,
     DateTime InvoiceDate,
     DateTime DueDate,
     string PaymentTerms,
@@ -270,7 +292,7 @@ public record TaxConfigDto(Guid Id, string Type, string Name, decimal Rate, stri
 // ═══════════════════════════════════════════════════
 public record ApproveRequest(string? Comments);
 public record RejectRequest(string Comments);
-public record ProcessPaymentRequest(string PaymentReference, PaymentMethod? Method, string? Notes);
+public record ProcessPaymentRequest(string PaymentReference, PaymentMethod? Method, string? Notes,decimal paidAmound);
 
 // ═══════════════════════════════════════════════════
 //  DASHBOARD

@@ -26,7 +26,7 @@ public class ClientService : IClientService
             Email = dto.Email,
             Country = dto.Country,
             Currency = dto.Currency,
-            TaxType = Enum.Parse<ClientTaxType>(dto.TaxType, true),
+            TaxType = dto.TaxType,
             CustomerType = Enum.Parse<CustomerType>(dto.CustomerType, true),
             ContactPerson = dto.ContactPerson,
             Phone = dto.Phone,
@@ -52,7 +52,7 @@ public class ClientService : IClientService
         if (dto.Email != null) client.Email = dto.Email;
         if (dto.Country != null) client.Country = dto.Country;
         if (dto.Currency != null) client.Currency = dto.Currency;
-        if (dto.TaxType != null) client.TaxType = Enum.Parse<ClientTaxType>(dto.TaxType, true);
+        if (dto.TaxType != null) client.TaxType = dto.TaxType;
         if (dto.CustomerType != null) client.CustomerType = Enum.Parse<CustomerType>(dto.CustomerType, true);
         if (dto.ContactPerson != null) client.ContactPerson = dto.ContactPerson;
         if (dto.Phone != null) client.Phone = dto.Phone;

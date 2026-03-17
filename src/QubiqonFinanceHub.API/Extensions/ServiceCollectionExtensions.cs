@@ -31,6 +31,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICodeGeneratorService, CodeGeneratorService>();
         services.AddScoped<IEmployeeService, EmployeeService>();
         services.AddScoped<ICategoryService, CategoryService>();
+        services.AddScoped<IOrganizationSettingsService, OrganizationSettingsService>();
 
         services.AddFluentValidationAutoValidation();
         return services;

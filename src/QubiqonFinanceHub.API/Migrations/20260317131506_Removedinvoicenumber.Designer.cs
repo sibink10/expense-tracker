@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using QubiqonFinanceHub.API.Data;
 
@@ -11,9 +12,11 @@ using QubiqonFinanceHub.API.Data;
 namespace QubiqonFinanceHub.API.Migrations
 {
     [DbContext(typeof(FinanceHubDbContext))]
-    partial class FinanceHubDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260317131506_Removedinvoicenumber")]
+    partial class Removedinvoicenumber
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -506,9 +509,6 @@ namespace QubiqonFinanceHub.API.Migrations
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<decimal>("paidAmound")
-                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
 

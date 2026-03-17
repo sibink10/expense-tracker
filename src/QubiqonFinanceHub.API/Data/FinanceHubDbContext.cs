@@ -34,6 +34,16 @@ public class FinanceHubDbContext : DbContext
             e.HasIndex(x => x.OrgName).IsUnique();
         });
 
+        //Organization settings
+        b.Entity<OrganizationSetting>(e => {
+            e.ToTable("OrganizationSettings");
+            e.HasIndex(x => new { x.OrganizationId, x.Key }).IsUnique();
+            e.HasOne(x => x.Organization)
+             .WithMany()
+             .HasForeignKey(x => x.OrganizationId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
         b.Entity<OrganizationSetting>(e => {
             e.ToTable("OrganizationSettings");
             e.HasIndex(x => new { x.OrganizationId, x.Key }).IsUnique();

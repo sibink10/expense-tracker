@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using QubiqonFinanceHub.API.Data;
 
@@ -11,9 +12,11 @@ using QubiqonFinanceHub.API.Data;
 namespace QubiqonFinanceHub.API.Migrations
 {
     [DbContext(typeof(FinanceHubDbContext))]
-    partial class FinanceHubDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260317121447_Removedbillnumber")]
+    partial class Removedbillnumber
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -454,6 +457,10 @@ namespace QubiqonFinanceHub.API.Migrations
                     b.Property<DateTime>("InvoiceDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("InvoiceNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -506,9 +513,6 @@ namespace QubiqonFinanceHub.API.Migrations
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<decimal>("paidAmound")
-                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
 
@@ -872,11 +876,6 @@ namespace QubiqonFinanceHub.API.Migrations
 
                     b.Property<Guid>("VendorId")
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("vendorBillNumber")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
 

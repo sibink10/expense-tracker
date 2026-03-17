@@ -14,7 +14,8 @@ public interface ITenantService
 
 public interface ICodeGeneratorService
 {
-    Task<string> GenerateCodeAsync(Guid orgId, string sequenceType);
+    Task<string> GenerateCodeAsync(Guid orgId, string sequenceType); 
+    Task<string> GenerateBillNumberAsync(Guid orgId, string type);
 }
 
 public interface IExpenseService
@@ -99,6 +100,13 @@ public interface IOrganizationService
     Task<OrganizationDto> SelectAsync(Guid id);
 }
 
+public interface IOrganizationSettingsService
+{
+    Task<Dictionary<string, SettingDto>> GetSettingsAsync();
+    Task SetSettingAsync(string key, string value);
+    Task BulkSetSettingsAsync(List<BulkSettingItemDto> settings);
+}
+
 public interface IEmailService
 {
     Task SendNotificationAsync(string templateKey, Dictionary<string, string> variables, string toEmail, string? ccEmails = null, string? attachmentPath = null);
@@ -116,6 +124,7 @@ public interface IEmployeeService
     Task<EmployeeDto> CreateAsync(CreateEmployeeRequest dto);
     Task<EmployeeDto> UpdateAsync(Guid id, UpdateEmployeeRequest dto);
     Task<EmployeeDto> ToggleActiveAsync(Guid id);
+    Task<EmployeeDto> DeleteAsync(Guid id);
 }
 
 public interface IStorageService

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
+using QubiqonFinanceHub.API.Models.Constants;
 using QubiqonFinanceHub.API.Models.Entities;
 using QubiqonFinanceHub.API.Models.Enums;
 using QubiqonFinanceHub.API.Services.Interfaces;
@@ -27,7 +28,7 @@ public class InvoiceService : IInvoiceService
         var client = await _db.Clients.FindAsync(dto.ClientId)
             ?? throw new KeyNotFoundException("Client not found");
 
-        var code = await _codeGen.GenerateCodeAsync(orgId, "invoice");
+        var code = await _codeGen.GenerateBillNumberAsync(orgId, "invoice");
 
         var invoice = new Invoice
         {
@@ -42,7 +43,6 @@ public class InvoiceService : IInvoiceService
             PurchaseOrder = dto.PurchaseOrder,
             Notes = dto.Notes,
             TaxConfigId = dto.TaxConfigId,
-            InvoiceNumber = dto.InvoiceNumber,  // ← added
             CreatedByEmployeeId = emp.Id,
             Status = dto.SendImmediately ? InvoiceStatus.Sent : InvoiceStatus.Draft,
             SentAt = dto.SendImmediately ? DateTime.UtcNow : null,
@@ -112,18 +112,29 @@ public class InvoiceService : IInvoiceService
         _db.Invoices.Add(invoice);
         await _db.SaveChangesAsync();
 
+        var reviewerEmails = await _db.Employees
+            .Where(e => e.OrganizationId == orgId &&
+                        e.IsActive &&
+                        !e.IsDelete &&
+                        !string.IsNullOrWhiteSpace(e.Email) &&
+                        (e.Role == UserRole.Admin || e.Role == UserRole.Finance || e.Role == UserRole.Approver))
+            .Select(e => e.Email)
+            .Distinct()
+            .ToListAsync();
+
+        if (reviewerEmails.Count > 0)
+        {
+            await _email.SendNotificationAsync(
+                Constants.EmailTemplateKeys.InvoiceCreated,
+                BuildInvoiceEmailVariables(invoice, client, emp.FullName, dto.SendImmediately ? "Sent" : "Draft", 0m, string.Empty),
+                string.Join(",", reviewerEmails));
+        }
+
         if (dto.SendImmediately)
         {
-            await _email.SendNotificationAsync("invoice_sent",
-                new Dictionary<string, string>
-                {
-                    ["client_name"] = client.Name,
-                    ["invoice_number"] = code,
-                    ["invoice_date"] = dto.InvoiceDate.ToString("dd/MM/yyyy"),
-                    ["due_date"] = dto.DueDate.ToString("dd/MM/yyyy"),
-                    ["amount"] = FormatCurrency(invoice.Total, dto.Currency),
-                    ["balance_due"] = FormatCurrency(invoice.Total, dto.Currency),
-                },
+            await _email.SendNotificationAsync(
+                Constants.EmailTemplateKeys.InvoiceSent,
+                BuildInvoiceEmailVariables(invoice, client, emp.FullName, "Sent", 0m, string.Empty),
                 client.Email);
         }
 
@@ -177,7 +188,9 @@ public class InvoiceService : IInvoiceService
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
-        var inv = await _db.Invoices.Include(x => x.Client)
+        var inv = await _db.Invoices
+            .Include(x => x.Client)
+            .Include(x => x.LineItems.OrderBy(l => l.LineNumber))
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Invoice not found");
 
@@ -193,14 +206,9 @@ public class InvoiceService : IInvoiceService
 
         await _db.SaveChangesAsync();
 
-        await _email.SendNotificationAsync("invoice_sent",
-            new Dictionary<string, string>
-            {
-                ["client_name"] = inv.Client.Name,
-                ["invoice_number"] = inv.InvoiceCode,
-                ["amount"] = FormatCurrency(inv.Total, inv.Currency),
-                ["due_date"] = inv.DueDate.ToString("dd/MM/yyyy"),
-            },
+        await _email.SendNotificationAsync(
+            Constants.EmailTemplateKeys.InvoiceSent,
+            BuildInvoiceEmailVariables(inv, inv.Client, emp.FullName, "Sent", inv.paidAmound, string.Empty),
             inv.Client.Email);
 
         return (await GetByIdAsync(id))!;
@@ -210,13 +218,22 @@ public class InvoiceService : IInvoiceService
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
-        var inv = await _db.Invoices.Include(x => x.Client)
+        var inv = await _db.Invoices
+            .Include(x => x.Client)
+            .Include(x => x.LineItems.OrderBy(l => l.LineNumber))
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Invoice not found");
-
-        inv.Status = InvoiceStatus.Paid;
+        if (dto.paidAmound < inv.Total)
+            {
+            inv.Status = InvoiceStatus.PartiallyPaid;
+            } 
+        else
+            {
+                inv.Status = InvoiceStatus.Paid;
+            }
         inv.PaymentReference = dto.PaymentReference;
         inv.PaidAt = DateTime.UtcNow;
+        inv.paidAmound = dto.paidAmound;
         inv.UpdatedAt = DateTime.UtcNow;
 
         _db.ActivityComments.Add(new ActivityComment
@@ -227,6 +244,12 @@ public class InvoiceService : IInvoiceService
         });
 
         await _db.SaveChangesAsync();
+
+        await _email.SendNotificationAsync(
+            Constants.EmailTemplateKeys.InvoicePaid,
+            BuildInvoiceEmailVariables(inv, inv.Client, emp.FullName, GetInvoiceStatusLabel(inv.Status), inv.paidAmound, dto.Notes ?? string.Empty),
+            inv.Client.Email);
+
         return (await GetByIdAsync(id))!;
     }
 
@@ -252,11 +275,78 @@ public class InvoiceService : IInvoiceService
             _ => $"₹{amount:N2}"
         };
 
+    private static string GetInvoiceStatusLabel(InvoiceStatus status) =>
+        status switch
+        {
+            InvoiceStatus.PartiallyPaid => "Partially Paid",
+            _ => status.ToString()
+        };
+
+    private Dictionary<string, string> BuildInvoiceEmailVariables(
+        Invoice invoice,
+        Client client,
+        string actorName,
+        string statusLabel,
+        decimal paymentMade,
+        string detailsText)
+    {
+        var balanceDue = Math.Max(invoice.Total - paymentMade, 0);
+
+        return new Dictionary<string, string>
+        {
+            ["invoice_number"] = invoice.InvoiceCode,
+            ["invoice_date"] = invoice.InvoiceDate.ToString("dd/MM/yyyy"),
+            ["due_date"] = invoice.DueDate.ToString("dd/MM/yyyy"),
+            ["payment_terms"] = string.IsNullOrWhiteSpace(invoice.PaymentTerms) ? "NA" : invoice.PaymentTerms,
+            ["purchase_order"] = string.IsNullOrWhiteSpace(invoice.PurchaseOrder) ? "NA" : invoice.PurchaseOrder,
+            ["client_name"] = client.Name,
+            ["client_email"] = client.Email,
+            ["client_billing_address"] = client.BillingAddress ?? client.Address ?? "",
+            ["client_shipping_address"] = client.ShippingAddress ?? client.BillingAddress ?? client.Address ?? "",
+            ["currency"] = invoice.Currency,
+            ["description"] = string.Join(", ", invoice.LineItems.Select(x => x.Description)),
+            ["sub_total"] = FormatCurrency(invoice.SubTotal, invoice.Currency),
+            ["total_gst"] = FormatCurrency(invoice.TotalGST, invoice.Currency),
+            ["tax_amount"] = FormatCurrency(invoice.TaxAmount, invoice.Currency),
+            ["amount"] = FormatCurrency(invoice.Total, invoice.Currency),
+            ["payment_made"] = FormatCurrency(paymentMade, invoice.Currency),
+            ["balance_due"] = FormatCurrency(balanceDue, invoice.Currency),
+            ["payment_reference"] = invoice.PaymentReference ?? "",
+            ["notes"] = invoice.Notes ?? "",
+            ["total_in_words"] = invoice.TotalInWords ?? "",
+            ["line_items_html"] = BuildInvoiceLineItemsHtml(invoice),
+            ["actor_name"] = actorName,
+            ["details_text"] = detailsText,
+            ["invoice_status"] = statusLabel,
+            ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
+        };
+    }
+
+    private static string BuildInvoiceLineItemsHtml(Invoice invoice)
+    {
+        var rows = invoice.LineItems
+            .OrderBy(x => x.LineNumber)
+            .Select(item =>
+                $"""
+                <tr>
+                    <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">{item.LineNumber}</td>
+                    <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;font-weight:500;">{System.Net.WebUtility.HtmlEncode(item.Description)}</td>
+                    <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">{System.Net.WebUtility.HtmlEncode(item.HSNCode ?? "—")}</td>
+                    <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:right;">{item.Quantity:N2}</td>
+                    <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:right;">{FormatCurrency(item.Rate, invoice.Currency)}</td>
+                    <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:right;">{FormatCurrency(item.GSTAmount, invoice.Currency)}</td>
+                    <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;">{FormatCurrency(item.TotalAmount, invoice.Currency)}</td>
+                </tr>
+                """);
+
+        return string.Join(string.Empty, rows);
+    }
+
     private static InvoiceDto MapToDto(Invoice inv) => new(
-     inv.Id, inv.InvoiceCode, inv.InvoiceNumber,
+     inv.Id, inv.InvoiceCode,
      inv.ClientId, inv.Client.Name, inv.Client.Email,
      inv.Client.ContactPerson, inv.Client.Country, inv.Currency,
-     inv.SubTotal, inv.TotalGST, inv.TaxConfig?.Name, inv.TaxAmount, inv.Total,
+     inv.SubTotal, inv.TotalGST, inv.TaxConfig?.Name, inv.TaxAmount, inv.Total, inv.paidAmound,
      inv.InvoiceDate, inv.DueDate, inv.PaymentTerms, inv.PurchaseOrder,
      inv.Status.ToString(), inv.Notes, inv.TotalInWords,
      inv.PaymentReference, inv.PaidAt, inv.CreatedAt,

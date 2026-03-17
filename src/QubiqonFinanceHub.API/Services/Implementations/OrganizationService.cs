@@ -90,6 +90,7 @@ public class OrganizationService(
         if (dto.Address != null) org.Address = dto.Address.Trim();
         if (dto.PaymentAddress != null) org.PaymentAddress = dto.PaymentAddress.Trim();
         if (dto.UseSeparatePaymentAddress != null) org.UseSeparatePaymentAddress = dto.UseSeparatePaymentAddress.Value;
+        if (dto.Fax != null) org.Fax = dto.Fax.Trim();
         if (dto.City != null) org.City = dto.City.Trim();
         if (dto.State != null) org.State = dto.State.Trim();
         if (dto.Country != null) org.Country = dto.Country.Trim();

@@ -68,6 +68,8 @@ public class TenantService : ITenantService
                 await _db.SaveChangesAsync();
             }
         }
+        if (emp != null && emp.IsActive == false)
+            throw new Exception("You have been deactivated from the application");
         return emp ?? new Employee { Id = DevEmpId, FullName = "Dev User", Email = "dev@local.com" };
     }
 

@@ -97,6 +97,7 @@ public class Employee
     [MaxLength(50)] public string? EmployeeCode { get; set; }
     public UserRole Role { get; set; } = UserRole.Employee;
     public bool IsActive { get; set; } = true;
+    public bool IsDelete { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 }
@@ -115,7 +116,6 @@ public class ExpenseRequest
     [Column(TypeName = "decimal(18,2)")] public decimal Amount { get; set; }
     [Required, MaxLength(500)] public string Purpose { get; set; } = "";
     public DateOnly BillDate { get; set; }
-    [Required, MaxLength(100)] public string BillNumber { get; set; } = "";
     public ExpenseStatus Status { get; set; } = ExpenseStatus.PendingApproval;
 
     [MaxLength(2048)] public string? BillImageUrl { get; set; }
@@ -176,6 +176,7 @@ public class VendorBill
     public Guid OrganizationId { get; set; }
     [Required, MaxLength(30)] public string BillCode { get; set; } = "";
     public Guid VendorId { get; set; }
+    [Required, MaxLength(20)] public string vendorBillNumber { get; set; } = string.Empty;
     [ForeignKey(nameof(VendorId))] public Vendor Vendor { get; set; } = null!;
     [Column(TypeName = "decimal(18,2)")] public decimal Amount { get; set; }
     public Guid? TaxConfigId { get; set; } // TDS
@@ -210,7 +211,7 @@ public class Client
     [MaxLength(20)] public string? Phone { get; set; }
     [MaxLength(100)] public string Country { get; set; } = "India";
     [MaxLength(3)] public string Currency { get; set; } = "INR";
-    public ClientTaxType TaxType { get; set; } = ClientTaxType.Domestic;
+    public string TaxType { get; set; } = "";
     [MaxLength(20)] public string? GSTIN { get; set; }
     [MaxLength(500)] public string? Address { get; set; }
     public bool IsActive { get; set; } = true;
@@ -239,6 +240,7 @@ public class Invoice
     [ForeignKey(nameof(TaxConfigId))] public TaxConfiguration? TaxConfig { get; set; }
     [Column(TypeName = "decimal(18,2)")] public decimal TaxAmount { get; set; }
     [Column(TypeName = "decimal(18,2)")] public decimal Total { get; set; }
+    [Column(TypeName = "decimal(18,2)")] public decimal paidAmound { get; set; }
     public DateTime InvoiceDate { get; set; }
     public DateTime DueDate { get; set; }
     [MaxLength(20)] public string PaymentTerms { get; set; } = "net30";
@@ -254,7 +256,6 @@ public class Invoice
     public DateTime? UpdatedAt { get; set; }
     public ICollection<InvoiceLineItem> LineItems { get; set; } = new List<InvoiceLineItem>();
     public ICollection<ActivityComment> Comments { get; set; } = new List<ActivityComment>();
-    [MaxLength(50)] public string? InvoiceNumber { get; set; }
 }
 
 // ═══════════════════════════════════════════════════

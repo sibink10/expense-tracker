@@ -19,7 +19,7 @@ public class EmployeeService : IEmployeeService
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
         var q = _db.Employees
-            .Where(e => e.OrganizationId == orgId)
+            .Where(e => e.OrganizationId == orgId && !e.IsDelete)
             .AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(f.Search))
@@ -91,6 +91,23 @@ public class EmployeeService : IEmployeeService
             ?? throw new KeyNotFoundException("Employee not found");
 
         emp.IsActive = !emp.IsActive;
+        emp.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return MapToDto(emp);
+    }
+
+
+    public async Task<EmployeeDto> DeleteAsync(Guid id)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var emp = await _db.Employees
+            .FirstOrDefaultAsync(e => e.Id == id && e.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Employee not found");
+
+        if (emp.IsDelete)
+            throw new InvalidOperationException("Employee is already deleted");
+
+        emp.IsDelete = true;
         emp.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return MapToDto(emp);
