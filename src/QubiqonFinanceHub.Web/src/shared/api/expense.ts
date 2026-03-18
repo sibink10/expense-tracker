@@ -181,7 +181,7 @@ export async function createExpenseForm(formData: FormData): Promise<unknown> {
   return data;
 }
 
-export async function approveExpense(id: string, comments: string): Promise<unknown> {
+export async function approveExpense(id: string, comments?: string): Promise<unknown> {
   const { data } = await apiClient.post(`/expenses/${id}/approve`, { comments });
   return data;
 }

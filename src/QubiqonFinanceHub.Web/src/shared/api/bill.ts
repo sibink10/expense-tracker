@@ -193,7 +193,7 @@ export async function createBill(payload: CreateBillPayload, files: File[]): Pro
   return data;
 }
 
-export async function approveBill(id: string, comments: string): Promise<unknown> {
+export async function approveBill(id: string, comments?: string): Promise<unknown> {
   const { data } = await apiClient.post(`/bills/${id}/approve`, { comments });
   return data;
 }

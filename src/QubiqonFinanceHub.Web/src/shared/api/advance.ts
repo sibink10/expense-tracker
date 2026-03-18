@@ -124,7 +124,7 @@ export async function createAdvance(payload: CreateAdvancePayload): Promise<unkn
   return data;
 }
 
-export async function approveAdvance(id: string, comments: string): Promise<unknown> {
+export async function approveAdvance(id: string, comments?: string): Promise<unknown> {
   const { data } = await apiClient.post(`/advances/${id}/approve`, { comments });
   return data;
 }

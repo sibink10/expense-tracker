@@ -25,7 +25,7 @@ export default function AdvanceListPage() {
   const [pageSize] = useState(12);
   const [search, setSearch] = useState("");
   const validStatusValues = new Set(STATUS_TABS.map((tab) => tab.value));
-  const statusParam = searchParams.get("status") ?? "";
+  const statusParam:any = searchParams.get("status") ?? "";
   const status = validStatusValues.has(statusParam) ? statusParam : "";
   const [data, setData] = useState<Advance[]>([]);
   const [totalCount, setTotalCount] = useState(0);
