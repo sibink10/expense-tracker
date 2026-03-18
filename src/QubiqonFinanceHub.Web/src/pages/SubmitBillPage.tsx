@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
 import { PAY_TERMS } from "../shared/constants";
-import { genCode, addDays, fmtCur, isEmailListValid } from "../shared/utils";
-import { Inp, Btn, FileUp } from "../components/ui";
+import { addDays, fmtCur, isEmailListValid } from "../shared/utils";
+import { Inp, Btn, FileUp, Alert } from "../components/ui";
 import { AsyncSelectInput } from "../components/AsyncSelectInput";
 import { useAppContext } from "../context/AppContext";
 import { createBill } from "../shared/api/bill";
@@ -44,7 +44,7 @@ export default function SubmitBillPage() {
       const res = await getVendors(1, 50, query);
       return res.items.map((v) => ({
         value: v.id,
-        label: `${v.name} (${v.gstin})`,
+        label: v.gstin?.trim() ? `${v.name} (${v.gstin})` : v.name,
       }));
     } catch {
       return [];
@@ -63,8 +63,6 @@ export default function SubmitBillPage() {
   const tdsRate = tx?.rate || 0;
   const a = parseFloat(amt) || 0;
   const tdsA = Math.round((a * tdsRate) / 100);
-  const nextCode = genCode(cfg.billFmt, cfg.billSeq + 1);
-
   const gridStyle: React.CSSProperties = {
     display: "grid",
     gridTemplateColumns: narrow ? "1fr" : "1fr 1fr",
@@ -115,9 +113,6 @@ export default function SubmitBillPage() {
       <h1 style={{ fontSize: "20px", fontWeight: 700, margin: "0 0 2px" }}>
         <span style={{ color: C.vendor }}>📋</span> Submit vendor bill
       </h1>
-      <p style={{ color: C.muted, margin: "0 0 20px", fontSize: "12px" }}>
-        Auto # <span style={{ color: C.vendor, fontWeight: 600 }}>{nextCode}</span>
-      </p>
       <div
         style={{
           background: "#fff",
@@ -260,9 +255,7 @@ export default function SubmitBillPage() {
               req
             />
           </div>
-          {error && (
-            <div style={{ ...fullWidth, color: C.danger, fontSize: "12px" }}>{error}</div>
-          )}
+          {error && <Alert sx={{ ...fullWidth }}>{error}</Alert>}
           <div style={{ ...fullWidth, display: "flex", justifyContent: "flex-end" }}>
             <Btn
               v="vendor"

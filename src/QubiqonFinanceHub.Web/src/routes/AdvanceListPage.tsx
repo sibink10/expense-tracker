@@ -4,7 +4,7 @@ import type { Advance } from "../types";
 import { C } from "../shared/theme";
 import { ADV_S } from "../shared/constants";
 import { fmtCur } from "../shared/utils";
-import { Btn, Badge, Tbl } from "../components/ui";
+import { Btn, Badge, Tbl, Empty } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
 import { getAdvancesMyMapped } from "../shared/api/advance";
 
@@ -117,9 +117,9 @@ export default function AdvanceListPage() {
               style={{
                 display: "flex",
                 gap: "4px",
-                padding: "4px",
+                padding: "2px",
                 background: "#f1f3f5",
-                borderRadius: "10px",
+                borderRadius: "8px",
                 width: "fit-content",
               }}
             >
@@ -132,13 +132,14 @@ export default function AdvanceListPage() {
                     setPage(1);
                   }}
                   style={{
-                    padding: "8px 14px",
+                    padding: "6px 12px",
                     border: "none",
-                    borderRadius: "8px",
+                    borderRadius: "6px",
                     background: status === tab.value ? "#e9ecef" : "transparent",
                     color: status === tab.value ? "#212529" : "#6c757d",
                     fontWeight: status === tab.value ? 600 : 400,
-                    fontSize: "13px",
+                    fontSize: "12px",
+                    lineHeight: 1.2,
                     cursor: "pointer",
                     boxShadow: status === tab.value ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
                   }}
@@ -151,7 +152,7 @@ export default function AdvanceListPage() {
           {loading ? (
             <div style={{ padding: "40px", textAlign: "center", color: C.muted }}>Loading...</div>
           ) : data.length === 0 ? (
-            <div style={{ padding: "40px", textAlign: "center", color: C.muted }}>No data found</div>
+            <Empty icon="💸" title="No advance requests" sub="" />
           ) : (
             <Tbl
               cols={[

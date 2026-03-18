@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
-import { Inp, Btn } from "../components/ui";
+import { Inp, Btn, Alert } from "../components/ui";
 import { createClient } from "../shared/api/clients";
 import { getTaxConfigs } from "../shared/api/taxConfig";
 import { isEmailValid } from "../shared/utils";
@@ -27,7 +27,7 @@ const CURRENCY_OPTS = [
 
 export default function AddClientPage() {
   const navigate = useNavigate();
-  const { is } = useAppContext();
+  const { is, t } = useAppContext();
 
   const [narrow, setNarrow] = useState(typeof window !== "undefined" && window.innerWidth < GRID_BREAKPOINT);
   const [name, setName] = useState("");
@@ -73,7 +73,7 @@ export default function AddClientPage() {
         setTaxType((current) =>
           current && clientTaxes.some((config) => config.name === current)
             ? current
-            : (clientTaxes[0]?.name ?? "")
+            : ""
         );
       })
       .catch(() => {
@@ -95,7 +95,7 @@ export default function AddClientPage() {
       setEmailError("Enter a valid email address");
       return;
     }
-    if (!name.trim() || !email.trim() || !contactPerson.trim()) return;
+    if (!name.trim() || !email.trim() || !contactPerson.trim() || !taxType.trim() || !shippingAddress.trim() || !(sameAddress ? shippingAddress.trim() : billingAddress.trim())) return;
 
     setLoading(true);
     setError(null);
@@ -107,12 +107,13 @@ export default function AddClientPage() {
         phone: phone.trim(),
         country: country.trim(),
         currency: currency.trim() || "INR",
-        taxType: taxType.trim() || CLIENT_TAX_TYPE,
+        taxType: taxType.trim() || null,
         gstin: gstin.trim(),
         shippingAddress: shippingAddress.trim(),
         billingAddress: sameAddress ? shippingAddress.trim() : billingAddress.trim(),
         customerType,
       });
+      t("Client added");
       navigate("/clients");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to add client");
@@ -128,7 +129,14 @@ export default function AddClientPage() {
   };
   const fullWidth = { gridColumn: "1 / -1" as const };
   const cellStyle = { marginBottom: 0 };
-  const canSubmit = name.trim() && email.trim() && contactPerson.trim() && isEmailValid(email) && taxType.trim() !== "";
+  const canSubmit =
+    name.trim() &&
+    email.trim() &&
+    contactPerson.trim() &&
+    taxType.trim() &&
+    shippingAddress.trim() &&
+    (sameAddress ? shippingAddress.trim() : billingAddress.trim()) &&
+    isEmailValid(email);
 
   return (
     <div style={{ width: "100%", maxWidth: "100%" }}>
@@ -213,10 +221,14 @@ export default function AddClientPage() {
             type="select"
             value={taxType}
             onChange={(e) => setTaxType(e.target.value)}
-            disabled={taxLoading || clientTaxOptions.length === 0}
+            req
+            disabled={taxLoading}
             opts={
               clientTaxOptions.length > 0
-                ? clientTaxOptions.map((config) => ({ v: config.name, l: `${config.name} (${config.rate}%)` }))
+                ? [
+                    { v: "", l: "Select tax config" },
+                    ...clientTaxOptions.map((config) => ({ v: config.name, l: `${config.name} (${config.rate}%)` })),
+                  ]
                 : [{ v: "", l: taxLoading ? "Loading..." : "No client tax configs" }]
             }
             style={cellStyle}
@@ -232,6 +244,7 @@ export default function AddClientPage() {
               type="textarea"
               value={shippingAddress}
               onChange={(e) => setShippingAddress(e.target.value)}
+              req
               ph="Full shipping address"
               style={{ ...cellStyle, ...fullWidth }}
             />
@@ -248,26 +261,14 @@ export default function AddClientPage() {
               type="textarea"
               value={sameAddress ? shippingAddress : billingAddress}
               onChange={(e) => setBillingAddress(e.target.value)}
+              req
               ph="Full billing address"
               disabled={sameAddress}
               style={{ ...cellStyle, ...fullWidth }}
             />
           </div>
 
-          {error && (
-            <div
-              style={{
-                ...fullWidth,
-                padding: "10px 14px",
-                background: C.dangerBg,
-                color: C.danger,
-                borderRadius: "8px",
-                fontSize: "12px",
-              }}
-            >
-              {error}
-            </div>
-          )}
+          {error && <Alert sx={{ ...fullWidth }}>{error}</Alert>}
           <div style={{ ...fullWidth, display: "flex", justifyContent: "flex-end" }}>
             <Btn onClick={submit} disabled={!canSubmit || loading}>
               {loading ? "Adding..." : "Add client"}

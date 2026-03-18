@@ -3,11 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
 import { PAY_TERMS, CURRENCIES } from "../shared/constants";
 import { addDays, fmtCur } from "../shared/utils";
-import { Inp, Btn, Toggle } from "../components/ui";
+import { Inp, Btn, Toggle, Alert } from "../components/ui";
 import { AsyncSelectInput } from "../components/AsyncSelectInput";
 import { createInvoice } from "../shared/api/invoice";
 import { getClients } from "../shared/api/clients";
 import { getTaxConfigs } from "../shared/api/taxConfig";
+import { useAppContext } from "../context/AppContext";
 import type { Client, TaxConfig } from "../types";
 import type { CreateInvoiceLineItem } from "../shared/api/invoice";
 
@@ -23,6 +24,7 @@ const defaultLineItem: CreateInvoiceLineItem = {
 
 export default function InvoiceAddPage() {
   const navigate = useNavigate();
+  const { t } = useAppContext();
   const [clients, setClients] = useState<Client[]>([]);
   const [gstConfigs, setGstConfigs] = useState<TaxConfig[]>([]);
   const [tdsConfigs, setTdsConfigs] = useState<TaxConfig[]>([]);
@@ -172,6 +174,7 @@ export default function InvoiceAddPage() {
         etc: etc.trim() || undefined,
       });
       window.dispatchEvent(new CustomEvent("invoices-refresh"));
+      t("Invoice created");
       navigate("/invoices");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to create invoice");
@@ -505,9 +508,7 @@ export default function InvoiceAddPage() {
             </div>
           )}
 
-          {error && (
-            <div style={{ ...fullWidth, color: C.danger, fontSize: "12px" }}>{error}</div>
-          )}
+          {error && <Alert sx={{ ...fullWidth }}>{error}</Alert>}
 
           <div style={{ ...fullWidth, display: "flex", gap: "8px", justifyContent: "flex-end" }}>
             <Btn v="secondary" onClick={() => navigate("/invoices")} disabled={loading}>

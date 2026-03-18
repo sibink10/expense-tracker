@@ -42,6 +42,41 @@ function createClient(): AxiosInstance {
     (err) => Promise.reject(err)
   );
 
+  client.interceptors.response.use(
+    (response) => response,
+    (err: unknown) => {
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data as
+          | { message?: string; error?: { message?: string } | string; errors?: Record<string, string[] | string> }
+          | undefined;
+
+        const nestedError =
+          typeof data?.error === "string"
+            ? data.error
+            : data?.error && typeof data.error === "object"
+            ? data.error.message
+            : undefined;
+
+        const validationError = data?.errors
+          ? Object.values(data.errors)
+              .flatMap((value) => (Array.isArray(value) ? value : [value]))
+              .find((value) => typeof value === "string" && value.trim())
+          : undefined;
+
+        const message =
+          nestedError?.trim() ||
+          data?.message?.trim() ||
+          validationError?.trim() ||
+          err.message ||
+          "Request failed";
+
+        return Promise.reject(new Error(message));
+      }
+
+      return Promise.reject(err);
+    }
+  );
+
   return client;
 }
 

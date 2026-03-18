@@ -1,7 +1,8 @@
-﻿using QubiqonFinanceHub.API.Data;
+using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Constants;
 using QubiqonFinanceHub.API.Models.Entities;
+using QubiqonFinanceHub.API.Models.Enums;
 using QubiqonFinanceHub.API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -120,7 +121,16 @@ public class OrganizationService(
 
     public async Task<List<OrganizationDto>> GetAllAsync()
     {
-        var orgs = await _db.Organizations.Where(o => o.IsActive).ToListAsync();
+        var currentEmployee = await _tenant.GetCurrentEmployeeAsync();
+        var orgsQuery = _db.Organizations.Where(o => o.IsActive);
+
+        if (currentEmployee.Role != UserRole.Admin)
+        {
+            var currentOrgId = await _tenant.GetCurrentOrganizationId();
+            orgsQuery = orgsQuery.Where(o => o.Id == currentOrgId);
+        }
+
+        var orgs = await orgsQuery.ToListAsync();
         return orgs.Select(o =>
         {
             var dto = MapToDto(o);

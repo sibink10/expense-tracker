@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { C } from "../shared/theme";
-import { Inp, Btn, Mdl } from "../components/ui";
+import { Inp, Btn, Mdl, Alert } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
 import { updateClient } from "../shared/api/clients";
 import { getTaxConfigs } from "../shared/api/taxConfig";
@@ -78,7 +78,7 @@ export default function ClientEditModal() {
         setTaxType((current) =>
           current && clientTaxes.some((config) => config.name === current)
             ? current
-            : (clientTaxes[0]?.name ?? current)
+            : ""
         );
       })
       .catch(() => {
@@ -113,7 +113,7 @@ export default function ClientEditModal() {
         phone: phone.trim(),
         country: country.trim(),
         currency: currency.trim() || "INR",
-        taxType: taxType.trim() || CLIENT_TAX_TYPE,
+        taxType: taxType.trim() || null,
         gstin: gstin.trim(),
         shippingAddress: shippingAddress.trim(),
         billingAddress: sameAddress ? shippingAddress.trim() : billingAddress.trim(),
@@ -167,10 +167,13 @@ export default function ClientEditModal() {
         type="select"
         value={taxType}
         onChange={(e) => setTaxType(e.target.value)}
-        disabled={taxLoading || clientTaxOptions.length === 0}
+        disabled={taxLoading}
         opts={
           clientTaxOptions.length > 0
-            ? clientTaxOptions.map((config) => ({ v: config.name, l: `${config.name} (${config.rate}%)` }))
+            ? [
+                { v: "", l: "Select tax config" },
+                ...clientTaxOptions.map((config) => ({ v: config.name, l: `${config.name} (${config.rate}%)` })),
+              ]
             : [{ v: "", l: taxLoading ? "Loading..." : "No client tax configs" }]
         }
       />
@@ -188,11 +191,9 @@ export default function ClientEditModal() {
         ph="Full billing address"
         disabled={sameAddress}
       />
-      {error && (
-        <div style={{ color: C.danger, fontSize: "12px", marginBottom: "8px" }}>{error}</div>
-      )}
+      {error && <Alert sx={{ marginBottom: "8px" }}>{error}</Alert>}
       <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
-        <Btn v="invoice" onClick={handleSubmit} disabled={!name.trim() || !email.trim() || !contactPerson.trim() || !isEmailValid(email) || !taxType.trim() || loading}>
+        <Btn v="invoice" onClick={handleSubmit} disabled={!name.trim() || !email.trim() || !contactPerson.trim() || !isEmailValid(email) || loading}>
           {loading ? "Saving..." : "Save"}
         </Btn>
         <Btn v="secondary" onClick={() => setMdl(null)} disabled={loading}>

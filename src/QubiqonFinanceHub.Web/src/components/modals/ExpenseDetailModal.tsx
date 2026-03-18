@@ -2,7 +2,7 @@ import { useState } from "react";
 import { C } from "../../shared/theme";
 import { EXP_S } from "../../shared/constants";
 import { fmtCur, downloadFromSasUrl, buildDownloadFilename } from "../../shared/utils";
-import { Btn, Badge, Mdl, CLog, Inp, FileUp } from "../ui";
+import { Btn, Badge, Mdl, CLog, Inp, FileUp, Alert } from "../ui";
 import { EditIcon } from "../icons";
 import { useAppContext } from "../../context/AppContext";
 import { updateExpenseForm, uploadExpenseBill, getExpenseBill } from "../../shared/api/expense";
@@ -304,11 +304,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
         </div>
       )}
 
-      {error && (
-        <div style={{ padding: "10px 14px", background: C.dangerBg, color: C.danger, borderRadius: "8px", fontSize: "12px", marginBottom: "12px" }}>
-          {error}
-        </div>
-      )}
+      {error && <Alert sx={{ marginBottom: "12px" }}>{error}</Alert>}
 
       <CLog comments={e.comments} />
 

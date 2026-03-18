@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { C } from "../shared/theme";
-import { Inp, Btn, Empty, Toggle } from "../components/ui";
+import { Inp, Btn, Empty, Toggle, Alert } from "../components/ui";
 import { getCategories, createCategory, toggleCategory, type Category } from "../shared/api";
+import { useAppContext } from "../context/AppContext";
 
 export default function AdminCategoriesPage() {
+  const { t } = useAppContext();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -30,6 +32,7 @@ export default function AdminCategoriesPage() {
       setName("");
       setRefreshKey((k) => k + 1);
       setModalOpen(false);
+      t("Category added");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to add category");
     } finally {
@@ -193,17 +196,7 @@ export default function AdminCategoriesPage() {
               req
               ph="e.g. Software, Utilities..."
             />
-            {error && (
-              <div
-                style={{
-                  color: C.danger,
-                  fontSize: "12px",
-                  marginBottom: "8px",
-                }}
-              >
-                {error}
-              </div>
-            )}
+            {error && <Alert sx={{ marginBottom: "8px" }}>{error}</Alert>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px", marginTop: "4px" }}>
               <Btn v="secondary" onClick={() => setModalOpen(false)} disabled={submitLoading}>
                 Close

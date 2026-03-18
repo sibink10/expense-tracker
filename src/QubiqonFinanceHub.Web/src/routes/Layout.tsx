@@ -61,6 +61,14 @@ export default function Layout() {
     pendAdv,
     payableExp: payableExp.length,
   });
+  const visibleNav = nav
+    .map((sec) => ({
+      ...sec,
+      items: sec.items.filter((n) =>
+        n.r.includes(user.role as "employee" | "approver" | "finance" | "admin")
+      ),
+    }))
+    .filter((sec) => sec.items.length > 0);
 
   return (
     <>
@@ -305,7 +313,7 @@ export default function Layout() {
                 zIndex: isMobile ? 100 : 0,
               }}
             >
-              {nav.map((sec, si) => (
+              {visibleNav.map((sec, si) => (
                 <div key={si}>
                   <div
                     style={{
@@ -321,9 +329,7 @@ export default function Layout() {
                   >
                     {sec.s}
                   </div>
-                  {sec.items
-                    .filter((n) => n.r.includes(user.role as "employee" | "approver" | "finance" | "admin"))
-                    .map((item) => (
+                  {sec.items.map((item) => (
                       <NavLink
                         key={item.path}
                         to={item.path}

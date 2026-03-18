@@ -10,7 +10,7 @@ interface InpOpt {
 }
 
 export interface InpProps {
-  label?: string;
+  label?: ReactNode;
   type?: "text" | "number" | "date" | "select" | "textarea" | "email";
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
@@ -25,6 +25,7 @@ export interface InpProps {
   opts?: InpOpt[];
   hint?: string;
   style?: CSSProperties;
+  endAdornment?: ReactNode;
 }
 
 export const Inp: React.FC<InpProps> = ({
@@ -40,6 +41,7 @@ export const Inp: React.FC<InpProps> = ({
   disabled,
   opts,
   hint,
+  endAdornment,
   style: sx,max
 }) => (
   <div style={{ marginBottom: "14px", ...sx }}>
@@ -135,32 +137,68 @@ export const Inp: React.FC<InpProps> = ({
         }}
       />
     ) : (
-      <input
-        type={type === "email" ? "email" : type}
-        value={value}
-        onChange={onChange as React.ChangeEventHandler<HTMLInputElement>}
-        onBlur={onBlur as React.FocusEventHandler<HTMLInputElement>}
-        required={req}
-        min={min}
-        max={max}
-        placeholder={ph}
-        disabled={disabled}
-        style={{
-          width: "100%",
-          padding: "8px 12px",
-          border: `1.5px solid ${C.border}`,
-          borderRadius: "8px",
-          fontSize: "13px",
-          fontFamily: "'DM Sans'",
-          outline: "none",
-          boxSizing: "border-box",
-          background: disabled ? C.surface : "#fff",
-        }}
-      />
+      <div style={{ position: "relative" }}>
+        <input
+          type={type === "email" ? "email" : type}
+          value={value}
+          onChange={onChange as React.ChangeEventHandler<HTMLInputElement>}
+          onBlur={onBlur as React.FocusEventHandler<HTMLInputElement>}
+          required={req}
+          min={min}
+          max={max}
+          placeholder={ph}
+          disabled={disabled}
+          style={{
+            width: "100%",
+            padding: endAdornment ? "8px 40px 8px 12px" : "8px 12px",
+            border: `1.5px solid ${C.border}`,
+            borderRadius: "8px",
+            fontSize: "13px",
+            fontFamily: "'DM Sans'",
+            outline: "none",
+            boxSizing: "border-box",
+            background: disabled ? C.surface : "#fff",
+          }}
+        />
+        {endAdornment && (
+          <div
+            style={{
+              position: "absolute",
+              top: "50%",
+              right: "12px",
+              transform: "translateY(-50%)",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {endAdornment}
+          </div>
+        )}
+      </div>
     )}
     {hint && (
       <div style={{ fontSize: "11px", color: C.muted, marginTop: "3px" }}>{hint}</div>
     )}
+  </div>
+);
+
+export const Alert: React.FC<{
+  children: ReactNode;
+  sx?: CSSProperties;
+}> = ({ children, sx }) => (
+  <div
+    style={{
+      padding: "10px 14px",
+      background: C.dangerBg,
+      color: C.danger,
+      borderRadius: "8px",
+      fontSize: "12px",
+      border: `1px solid ${C.danger}22`,
+      ...sx,
+    }}
+  >
+    {children}
   </div>
 );
 
@@ -624,16 +662,27 @@ export const Filter: React.FC<{
       />
       <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", fontSize: "12px", color: C.muted }}>⌕</span>
     </div>
-    <div style={{ display: "flex", gap: "2px", background: C.surface, borderRadius: "8px", padding: "2px" }}>
+    <div
+      style={{
+        display: "flex",
+        gap: "2px",
+        background: C.surface,
+        borderRadius: "8px",
+        padding: "2px",
+        minHeight: "34px",
+        alignItems: "center",
+      }}
+    >
       {opts.map((s) => (
         <button
           key={s}
           onClick={() => onStatus(s)}
           style={{
-            padding: "4px 10px",
+            minHeight: "30px",
+            padding: "6px 10px",
             borderRadius: "6px",
             border: "none",
-            fontSize: "10px",
+            fontSize: "11px",
             fontWeight: 600,
             cursor: "pointer",
             fontFamily: "'DM Sans'",

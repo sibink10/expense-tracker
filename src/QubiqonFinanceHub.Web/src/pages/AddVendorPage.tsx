@@ -1,16 +1,18 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
-import { Inp, Btn } from "../components/ui";
+import { Inp, Btn, Alert } from "../components/ui";
 import { createVendor } from "../shared/api/vendor";
 import { getCategories, type Category } from "../shared/api";
 import type { Vendor } from "../types";
 import { isEmailValid } from "../shared/utils";
+import { useAppContext } from "../context/AppContext";
 
 const GRID_BREAKPOINT = 600;
 
 export default function AddVendorPage() {
   const navigate = useNavigate();
+  const { t } = useAppContext();
   const [narrow, setNarrow] = useState(typeof window !== "undefined" && window.innerWidth < GRID_BREAKPOINT);
   const [name, setName] = useState("");
   const [gstin, setGstin] = useState("");
@@ -90,6 +92,7 @@ export default function AddVendorPage() {
         accountNumber: accountNumber.trim() || undefined,
         ifscCode: ifscCode.trim(),
       });
+      t("Vendor added");
       navigate("/vendors");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to add vendor");
@@ -146,6 +149,7 @@ export default function AddVendorPage() {
                 setPhoneError(null);
               }}
               onBlur={() => phone.trim() && !isPhoneValid(phone) && setPhoneError("Enter a valid 10-digit phone number")}
+              req
               ph="Contact number"
               style={{ marginBottom: 0 }}
             />
@@ -184,21 +188,7 @@ export default function AddVendorPage() {
             <Inp label="Re-enter account number" value={accountNumberRe} onChange={(e) => setAccountNumberRe(e.target.value)} ph="Re-enter account number" req style={cellStyle} />
           </div>
         </div>
-        {error && (
-          <div
-            style={{
-              padding: "10px 14px",
-              background: C.dangerBg,
-              color: C.danger,
-              borderRadius: "8px",
-              fontSize: "12px",
-              marginTop: "16px",
-              marginBottom: "14px",
-            }}
-          >
-            {error}
-          </div>
-        )}
+        {error && <Alert sx={{ marginTop: "16px", marginBottom: "14px" }}>{error}</Alert>}
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "20px" }}>
           <Btn
             onClick={submit}

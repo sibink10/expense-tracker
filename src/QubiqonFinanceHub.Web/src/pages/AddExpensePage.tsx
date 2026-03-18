@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
-import { Inp, Btn, Av, FileUp } from "../components/ui";
+import { Inp, Btn, Av, FileUp, Alert } from "../components/ui";
 import { AsyncSelectInput } from "../components/AsyncSelectInput";
 import { useAppContext } from "../context/AppContext";
 import { createExpenseForm } from "../shared/api/expense";
@@ -157,20 +157,7 @@ export default function AddExpensePage() {
           }}
           onFileSelect={setFile}
         />
-        {error && (
-          <div
-            style={{
-              padding: "10px 14px",
-              background: C.dangerBg,
-              color: C.danger,
-              borderRadius: "8px",
-              fontSize: "12px",
-              marginBottom: "14px",
-            }}
-          >
-            {error}
-          </div>
-        )}
+        {error && <Alert sx={{ marginBottom: "14px" }}>{error}</Alert>}
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <Btn onClick={submit} disabled={!canSubmit}>
             {loading ? "Submitting..." : "Submit"}

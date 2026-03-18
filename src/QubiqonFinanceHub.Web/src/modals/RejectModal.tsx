@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Inp, Btn, Mdl } from "../components/ui";
+import { Inp, Btn, Mdl, Alert } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
 import { rejectExpense } from "../shared/api/expense";
 import { rejectAdvance } from "../shared/api/advance";
@@ -69,16 +69,14 @@ export default function RejectModal() {
   return (
     <Mdl open close={() => setMdl(null)} title={`Reject ${mdl.it}`}>
       <Inp
-        label="Comment *"
+        label="Comment"
         type="textarea"
         value={r}
         onChange={(e) => setR(e.target.value)}
         req
         ph="Add a comment..."
       />
-      {error && (
-        <div style={{ color: "var(--danger)", fontSize: "12px", marginBottom: "8px" }}>{error}</div>
-      )}
+      {error && <Alert sx={{ marginBottom: "8px" }}>{error}</Alert>}
       <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
         <Btn v="danger" onClick={handleReject} disabled={!r || loading}>
           {loading ? "Rejecting..." : "Reject"}

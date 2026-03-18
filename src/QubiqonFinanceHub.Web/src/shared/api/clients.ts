@@ -9,7 +9,7 @@ export interface ApiClient {
   phone: string;
   country: string;
   currency: string;
-  taxType: string;
+  taxType: string | null;
   gstin: string;
   address?: string;
   customerType?: string;
@@ -48,7 +48,7 @@ export interface ClientPayload {
   phone: string;
   country: string;
   currency: string;
-  taxType: string;
+  taxType: string | null;
   gstin: string;
   shippingAddress: string;
   billingAddress: string;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
 import { Inp, Btn, Toggle } from "../components/ui";
@@ -14,6 +14,8 @@ export default function AdminSettingsPage() {
   const [c, setC] = useState(cfg);
   const [ccError, setCcError] = useState<string | null>(null);
   const [cols, setCols] = useState(3);
+  const [openTip, setOpenTip] = useState<string | null>(null);
+  const tipRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const compute = () => {
@@ -31,6 +33,17 @@ export default function AdminSettingsPage() {
   useEffect(() => {
     setC(cfg);
   }, [cfg]);
+
+  useEffect(() => {
+    if (!openTip) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      if (tipRef.current && !tipRef.current.contains(event.target as Node)) {
+        setOpenTip(null);
+      }
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [openTip]);
 
   const handleSave = async () => {
     setCcError(null);
@@ -68,6 +81,60 @@ export default function AdminSettingsPage() {
     boxSizing: "border-box",
   };
 
+  const formatAdornment = (label: string, tipId: string, lines: string[]) => (
+    <div ref={openTip === tipId ? tipRef : null} style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+      <button
+        type="button"
+        onClick={() => setOpenTip((prev) => (prev === tipId ? null : tipId))}
+        style={{
+          width: "18px",
+          height: "18px",
+          borderRadius: "50%",
+          border: `1px solid ${C.border}`,
+          background: C.surface,
+          color: C.muted,
+          fontSize: "10px",
+          fontWeight: 700,
+          lineHeight: 1,
+          cursor: "pointer",
+          padding: 0,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "'DM Sans'",
+        }}
+        aria-label={`Format help for ${label}`}
+      >
+        i
+      </button>
+      {openTip === tipId && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: "calc(100% + 10px)",
+            right: 0,
+            width: "260px",
+            padding: "10px 12px",
+            borderRadius: "10px",
+            background: "#fff",
+            border: `1px solid ${C.border}`,
+            boxShadow: "0 10px 24px rgba(15,23,42,0.12)",
+            color: C.primary,
+            fontSize: "11px",
+            lineHeight: 1.45,
+            zIndex: 2000,
+          }}
+        >
+          {lines.map((line) => (
+            <div key={line} style={{ marginBottom: "4px" }}>
+              {line}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div style={{ width: "100%", maxWidth: "100%" }}>
       <div style={{ marginBottom: "20px" }}>
@@ -93,17 +160,44 @@ export default function AdminSettingsPage() {
           </div>
           <Inp
             label="Expense"
+            endAdornment={formatAdornment("Expense", "expFmt", [
+              "Use placeholders like {YYYY}, {YY} and {SEQ:N}.",
+              "{SEQ:N} increases the running count and N sets zero padding.",
+              "Example: EXP-{YYYY}-{SEQ:5} -> EXP-2026-00001",
+            ])}
             value={c.expFmt}
             onChange={(e) => setC({ ...c, expFmt: e.target.value })}
-            hint="{YYYY}, {YY}, {SEQ:N}"
           />
-          <Inp label="Bill" value={c.billFmt} onChange={(e) => setC({ ...c, billFmt: e.target.value })} />
-          <Inp label="Advance" value={c.advFmt} onChange={(e) => setC({ ...c, advFmt: e.target.value })} />
+          <Inp
+            label="Bill"
+            endAdornment={formatAdornment("Bill", "billFmt", [
+              "Use placeholders like {YYYY}, {YY} and {SEQ:N}.",
+              "{SEQ:N} increases the running count and N sets zero padding.",
+              "Example: BL-{SEQ:3}/{YY}-{YY+1} -> BL-001/26-27",
+            ])}
+            value={c.billFmt}
+            onChange={(e) => setC({ ...c, billFmt: e.target.value })}
+          />
+          <Inp
+            label="Advance"
+            endAdornment={formatAdornment("Advance", "advFmt", [
+              "Use placeholders like {YYYY}, {YY} and {SEQ:N}.",
+              "{SEQ:N} increases the running count and N sets zero padding.",
+              "Example: ADV-{YYYY}-{SEQ:4} -> ADV-2026-0001",
+            ])}
+            value={c.advFmt}
+            onChange={(e) => setC({ ...c, advFmt: e.target.value })}
+          />
           <Inp
             label="Invoice"
+            endAdornment={formatAdornment("Invoice", "invFmt", [
+              "Use placeholders like {TYPE}, {YYYY}, {YYMM} and {SEQ:N}.",
+              "{TYPE} can be SEZ, DOM or EXP.",
+              "{SEQ:N} increases the running count and N sets zero padding.",
+              "Example: QINV-{TYPE}-{YYMM}{SEQ:3} -> QINV-DOM-2604001",
+            ])}
             value={c.invFmt}
             onChange={(e) => setC({ ...c, invFmt: e.target.value })}
-            hint="{TYPE}=SEZ/DOM/EXP, {YYMM}, {SEQ:N}"
           />
         </div>
 

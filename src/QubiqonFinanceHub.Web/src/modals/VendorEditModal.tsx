@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { C } from "../shared/theme";
-import { Inp, Btn, Mdl } from "../components/ui";
+import { Inp, Btn, Mdl, Alert } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
 import { updateVendor } from "../shared/api/vendor";
 import { getCategories, type Category } from "../shared/api";
@@ -161,9 +161,7 @@ export default function VendorEditModal() {
         <Inp label="Account number" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} ph="Account number" req />
         <Inp label="Re-enter account number" value={accountNumberRe} onChange={(e) => setAccountNumberRe(e.target.value)} ph="Re-enter account number" req />
       </div>
-      {error && (
-        <div style={{ color: "var(--danger)", fontSize: "12px", marginBottom: "8px" }}>{error}</div>
-      )}
+      {error && <Alert sx={{ marginBottom: "8px" }}>{error}</Alert>}
       <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
         <Btn
           v="vendor"

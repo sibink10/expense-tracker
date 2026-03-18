@@ -2,10 +2,10 @@
 // ADMIN CONFIG
 // ═══════════════════════════════════════════════════════
 export const INIT_CONFIG = {
-  expFmt: "EXP-{YYYY}-{SEQ:5}",
-  billFmt: "BL-{SEQ:3}/{YY}-{YY+1}",
-  advFmt: "ADV-{YYYY}-{SEQ:4}",
-  invFmt: "QINV-{TYPE}-{YYMM}{SEQ:3}",
+  expFmt: "",
+  billFmt: "",
+  advFmt: "",
+  invFmt: "",
   advEnabled: true,
   advCap: 0,
   balanceCap: 0,

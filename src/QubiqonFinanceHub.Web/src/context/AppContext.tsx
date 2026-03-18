@@ -180,10 +180,10 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
       const advCap = parseSettingNumber(settings.advCap?.value, 0);
       setCfg((prev) => ({
         ...prev,
-        expFmt: settings.expFmt?.value ?? prev.expFmt,
-        billFmt: settings.billFmt?.value ?? prev.billFmt,
-        advFmt: settings.advFmt?.value ?? prev.advFmt,
-        invFmt: settings.invFmt?.value ?? prev.invFmt,
+        expFmt: settings.expFmt?.value ?? "",
+        billFmt: settings.billFmt?.value ?? "",
+        advFmt: settings.advFmt?.value ?? "",
+        invFmt: settings.invFmt?.value ?? "",
         advEnabled: settings.advEnabled?.value
           ? settings.advEnabled.value === "true"
           : prev.advEnabled,

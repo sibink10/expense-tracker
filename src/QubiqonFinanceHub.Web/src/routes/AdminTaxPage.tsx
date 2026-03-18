@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
 import { C } from "../shared/theme";
-import { Inp, Btn, Empty, Toggle } from "../components/ui";
+import { Inp, Btn, Empty, Toggle, Alert } from "../components/ui";
 import { getTaxConfigs, createTaxConfig, toggleTaxConfig } from "../shared/api/taxConfig";
+import { useAppContext } from "../context/AppContext";
 import type { TaxConfig } from "../types";
 
 const CLIENT_TAX_TYPE = "ClientTax";
 const formatTaxType = (value?: string) => value === CLIENT_TAX_TYPE ? "Client Tax" : (value ?? "—");
 
 export default function AdminTaxPage() {
+  const { t } = useAppContext();
   const [items, setItems] = useState<TaxConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -57,6 +59,7 @@ export default function AdminTaxPage() {
       setSection("");
       setSubType("");
       window.dispatchEvent(new CustomEvent("tax-config-refresh"));
+      t("Tax config added");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to add tax config");
     } finally {
@@ -107,14 +110,14 @@ export default function AdminTaxPage() {
             ]}
           />
           <Inp
-            label="Name *"
+            label="Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             req
             ph="e.g. Professional Fees"
           />
           <Inp
-            label="Rate (%) *"
+            label="Rate (%)"
             type="number"
             value={rate}
             onChange={(e) => setRate(e.target.value)}
@@ -135,17 +138,7 @@ export default function AdminTaxPage() {
             ph="Optional"
           />
         </div>
-        {error && (
-          <div
-            style={{
-              color: C.danger,
-              fontSize: "12px",
-              marginBottom: "12px",
-            }}
-          >
-            {error}
-          </div>
-        )}
+        {error && <Alert sx={{ marginBottom: "12px" }}>{error}</Alert>}
         <Btn v="primary" onClick={handleAdd} disabled={!name.trim() || submitLoading}>
           {submitLoading ? "Adding..." : "Add"}
         </Btn>

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.Models.Entities;
 using QubiqonFinanceHub.API.Services.Interfaces;
@@ -67,14 +67,14 @@ public class CodeGeneratorService : ICodeGeneratorService
             .Select(s => s.Value)
             .FirstOrDefaultAsync();
 
-        if (string.IsNullOrWhiteSpace(format))
-            throw new Exception($"Format not configured for {type}");
-
         // 🔹 3. Get last number
         var lastNumber = await GetLastBillNumberAsync(orgId, type);
 
         // 🔹 4. Extract next sequence
-        int nextSeq = ExtractNextSequence(lastNumber);
+        int nextSeq = ExtractNextSequence(lastNumber, format);
+
+        if (string.IsNullOrWhiteSpace(format))
+            return nextSeq.ToString("D4");
 
         // 🔹 5. Handle year reset
         var currentYear = DateTime.UtcNow.Year.ToString();
@@ -124,10 +124,29 @@ public class CodeGeneratorService : ICodeGeneratorService
         };
     }
 
-    private int ExtractNextSequence(string? lastNumber)
+    private int ExtractNextSequence(string? lastNumber, string? format)
     {
         if (string.IsNullOrEmpty(lastNumber))
             return 1;
+
+        if (!string.IsNullOrWhiteSpace(format))
+        {
+            var seqTokenMatch = Regex.Match(format, @"\{SEQ:(\d+)\}");
+            if (seqTokenMatch.Success)
+            {
+                var token = seqTokenMatch.Value;
+                var pattern = Regex.Escape(format);
+                pattern = pattern.Replace(Regex.Escape("{YYYY}"), @"\d{4}");
+                pattern = pattern.Replace(Regex.Escape("{YY+1}"), @"\d{2}");
+                pattern = pattern.Replace(Regex.Escape("{YY}"), @"\d{2}");
+                pattern = pattern.Replace(Regex.Escape("{MM}"), @"\d{2}");
+                pattern = pattern.Replace(Regex.Escape(token), $@"(?<seq>\d{{{seqTokenMatch.Groups[1].Value}}})");
+
+                var match = Regex.Match(lastNumber, $"^{pattern}$");
+                if (match.Success && int.TryParse(match.Groups["seq"].Value, out var extractedSeq))
+                    return extractedSeq + 1;
+            }
+        }
 
         var parts = lastNumber.Split('-');
         var lastPart = parts.Last();
@@ -154,6 +173,9 @@ public class CodeGeneratorService : ICodeGeneratorService
 
         // Replace {YY+1} → 2-digit next year e.g. "26"
         result = result.Replace("{YY+1}", (now.Year + 1).ToString().Substring(2));
+
+        // Replace {MM} → 2-digit current month e.g. "03"
+        result = result.Replace("{MM}", now.ToString("MM"));
 
         // Replace {SEQ:n} → zero-padded sequence e.g. "001"
         var match = Regex.Match(result, @"\{SEQ:(\d+)\}");

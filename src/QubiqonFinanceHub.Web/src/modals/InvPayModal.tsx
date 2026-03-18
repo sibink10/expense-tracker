@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { C } from "../shared/theme";
 import { fmtCur } from "../shared/utils";
-import { Inp, Btn, Mdl } from "../components/ui";
+import { Inp, Btn, Mdl, Alert } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
 import { markInvoicePaid } from "../shared/api/invoice";
 import type { Invoice } from "../types";
@@ -140,12 +140,8 @@ export default function InvPayModal() {
         onChange={(e) => setNotes(e.target.value)}
         ph="Optional notes..."
       />
-      {amountError && (
-        <div style={{ color: C.danger, fontSize: "12px", marginBottom: "8px" }}>{amountError}</div>
-      )}
-      {error && (
-        <div style={{ color: C.danger, fontSize: "12px", marginBottom: "8px" }}>{error}</div>
-      )}
+      {amountError && <Alert sx={{ marginBottom: "8px" }}>{amountError}</Alert>}
+      {error && <Alert sx={{ marginBottom: "8px" }}>{error}</Alert>}
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <Btn v="success" onClick={handleConfirm} disabled={!paymentReference.trim() || !!amountError || loading}>
           {loading ? "Saving..." : "Confirm"}

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
 import { fmtCur } from "../shared/utils";
-import { Inp, Btn, Av } from "../components/ui";
+import { Inp, Btn, Av, Alert } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
 import { createAdvance } from "../shared/api/advance";
 
@@ -14,7 +14,9 @@ export default function RequestAdvancePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const balanceCap = cfg.balanceCap ?? 0;
-  const over = parseFloat(amt) > balanceCap;
+  const parsedAmount = parseFloat(amt);
+  const invalidAmount = amt.trim() !== "" && (isNaN(parsedAmount) || parsedAmount <= 0);
+  const over = !invalidAmount && parsedAmount > balanceCap;
 
   useEffect(() => {
     void refreshOrgSettings().catch(() => undefined);
@@ -22,7 +24,11 @@ export default function RequestAdvancePage() {
 
   const submit = async () => {
     const amount = parseFloat(amt);
-    if (isNaN(amount) || amount <= 0 || !pur) return;
+    if (isNaN(amount) || amount <= 0) {
+      setError("Amount must be greater than 0");
+      return;
+    }
+    if (!pur) return;
 
     setLoading(true);
     setError(null);
@@ -85,7 +91,7 @@ export default function RequestAdvancePage() {
           req
           min="1"
           ph={`Max ${fmtCur(balanceCap)}`}
-        />
+        />    
         {over && (
           <div
             style={{
@@ -106,24 +112,11 @@ export default function RequestAdvancePage() {
           req
           ph="Why do you need this advance?"
         />
-        {error && (
-          <div
-            style={{
-              padding: "10px 14px",
-              background: C.dangerBg,
-              color: C.danger,
-              borderRadius: "8px",
-              fontSize: "12px",
-              marginBottom: "14px",
-            }}
-          >
-            {error}
-          </div>
-        )}
+        {error && <Alert sx={{ marginBottom: "14px" }}>{error}</Alert>}
         <Btn
           v="advance"
           onClick={submit}
-          disabled={!amt || !pur || over || loading}
+          disabled={!amt || !pur || invalidAmount || over || loading}
         >
           {loading ? "Submitting..." : "Submit"}
         </Btn>
