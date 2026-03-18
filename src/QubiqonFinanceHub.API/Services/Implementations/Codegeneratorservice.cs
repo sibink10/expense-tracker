@@ -77,12 +77,11 @@ public class CodeGeneratorService : ICodeGeneratorService
             return nextSeq.ToString("D4");
 
         // 🔹 5. Handle year reset
-        var currentYear = DateTime.UtcNow.Year.ToString();
-
-        if (!string.IsNullOrEmpty(lastNumber) && (format.Contains("{YYYY}") || format.Contains("{YY}")))
+        if (!string.IsNullOrEmpty(lastNumber) && (format.Contains("{YYYY}") || format.Contains("{YY}") || format.Contains("{YY+1}")))
         {
-            var lastYear = ExtractYear(lastNumber);
-            if (lastYear != currentYear)
+            var lastYear = ExtractYear(lastNumber, format);
+            var currentYear = GetExpectedYearValue(format, DateTime.UtcNow);
+            if (!string.IsNullOrEmpty(lastYear) && !string.IsNullOrEmpty(currentYear) && lastYear != currentYear)
                 nextSeq = 1;
         }
 
@@ -135,17 +134,10 @@ public class CodeGeneratorService : ICodeGeneratorService
             if (seqTokenMatch.Success)
             {
                 var token = seqTokenMatch.Value;
-                var pattern = Regex.Escape(format);
-                pattern = pattern.Replace(Regex.Escape("{YYYY}"), @"\d{4}");
-                pattern = pattern.Replace(Regex.Escape("{YY+1}"), @"\d{2}");
-                pattern = pattern.Replace(Regex.Escape("{YY}"), @"\d{2}");
-                pattern = pattern.Replace(Regex.Escape("{MM}"), @"\d{2}");
-                pattern = pattern.Replace(Regex.Escape(token), $@"(?<seq>\d{{{seqTokenMatch.Groups[1].Value}}})");
-
-                var match = Regex.Match(lastNumber, $"^{pattern}$");
-                if (match.Success && int.TryParse(match.Groups["seq"].Value, out var extractedSeq))
+                var sequenceValue = ExtractTokenValue(lastNumber, format, token, int.Parse(seqTokenMatch.Groups[1].Value));
+                if (int.TryParse(sequenceValue, out var extractedSeq))
                     return extractedSeq + 1;
-            }
+            } 
         }
 
         var parts = lastNumber.Split('-');
@@ -154,10 +146,62 @@ public class CodeGeneratorService : ICodeGeneratorService
         return int.TryParse(lastPart, out int seq) ? seq + 1 : 1;
     }
 
-    private string? ExtractYear(string code)
+    private string? ExtractYear(string code, string format)
     {
-        var parts = code.Split('-');
-        return parts.Length >= 2 ? parts[1] : null;
+        if (format.Contains("{YYYY}"))
+            return ExtractTokenValue(code, format, "{YYYY}", 4);
+
+        if (format.Contains("{YY+1}"))
+            return ExtractTokenValue(code, format, "{YY+1}", 2);
+
+        if (format.Contains("{YY}"))
+            return ExtractTokenValue(code, format, "{YY}", 2);
+
+        return null;
+    }
+
+    private static string? GetExpectedYearValue(string format, DateTime now)
+    {
+        if (format.Contains("{YYYY}"))
+            return now.Year.ToString();
+
+        if (format.Contains("{YY+1}"))
+            return (now.Year + 1).ToString()[^2..];
+
+        if (format.Contains("{YY}"))
+            return now.ToString("yy");
+
+        return null;
+    }
+
+    private static string? ExtractTokenValue(string code, string format, string token, int renderedTokenLength)
+    {
+        var tokenIndex = format.IndexOf(token, StringComparison.Ordinal);
+        if (tokenIndex < 0)
+            return null;
+
+        var renderedPrefixLength = GetRenderedLength(format[..tokenIndex]);
+        if (code.Length < renderedPrefixLength + renderedTokenLength)
+            return null;
+
+        return code.Substring(renderedPrefixLength, renderedTokenLength);
+    }
+
+    private static int GetRenderedLength(string formatSegment)
+    {
+        var rendered = Regex.Replace(formatSegment, @"\{SEQ:(\d+)\}", match =>
+        {
+            var pad = int.Parse(match.Groups[1].Value);
+            return new string('0', pad);
+        });
+
+        rendered = rendered
+            .Replace("{YYYY}", "0000")
+            .Replace("{YY+1}", "00")
+            .Replace("{YY}", "00")
+            .Replace("{MM}", "00");
+
+        return rendered.Length;
     }
 
     private string ApplyFormat(string format, int seq)

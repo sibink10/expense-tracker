@@ -19,9 +19,8 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
   const isFinance = is("finance");
   const hasBill = !!(e.file || e.attachmentUrl);
   const isPending = e.status === EXP_S.PENDING || e.status === EXP_S.PENDING_BILL_APPROVAL;
-  const canApproveReject =
-    (e.status === EXP_S.PENDING && (isApprover || isAdmin)) ||
-    (e.status === EXP_S.PENDING_BILL_APPROVAL && (isFinance || isAdmin));
+  const canApproveReject = e.status === EXP_S.PENDING && (isApprover || isAdmin);
+  const canPay = (isFinance || isAdmin) && (e.status === EXP_S.APPROVED || e.status === EXP_S.PENDING_BILL_APPROVAL);
   const showBillUploadPanel = e.status === EXP_S.AWAITING_BILL && !e.file && !e.attachmentUrl;
 
   const [editing, setEditing] = useState(false);
@@ -348,10 +347,10 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
               <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "reject", d: e, it: "expense" }), 50); }}>Reject</Btn>
             </>
           )}
-          {(is("finance") || is("admin")) && e.status === EXP_S.APPROVED && (
+          {canPay && (
             <Btn v="info" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "pay", d: e, it: "expense" }), 50); }}>Pay</Btn>
           )}
-          {!(isPending || canApproveReject || ((isFinance || isAdmin) && e.status === EXP_S.APPROVED)) && (
+          {!(isPending || canApproveReject || canPay) && (
             <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>
           )}
         </div>
