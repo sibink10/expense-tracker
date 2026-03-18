@@ -127,6 +127,10 @@ export async function toggleEmployee(id: string): Promise<Employee> {
   return mapApiEmployeeToApp(data);
 }
 
+export async function deleteEmployee(id: string): Promise<void> {
+  await apiClient.patch(`/employees/${id}/delete`);
+}
+
 /** Employees with role "employee" only (for on-behalf dropdowns). */
 export async function getEmployeeRoleEmployees(): Promise<Employee[]> {
   const all = await getEmployees();

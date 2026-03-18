@@ -24,7 +24,6 @@ export function buildNav(
       items: [
         { path: "/expenses", l: "Expense requests", i: "☰", r: allRoles, b: isApprover ? pendExp : 0, end: true },
         { path: "/expenses/add", l: "Add expense", i: "＋", r: ["employee", "finance", "admin"] as UserRole[] },
-        { path: "/expenses/pay", l: "Payments", i: "₹", r: ["finance"] as UserRole[], b: payableExp },
       ],
     },
     ...(advEnabled
@@ -73,7 +72,6 @@ export function buildNav(
         { path: "/admin", l: "Settings", i: "⚙", r: ["admin"] as UserRole[], end: true },
         { path: "/admin/org", l: "Organization", i: "🏢", r: ["admin"] as UserRole[] },
         { path: "/admin/tax", l: "Tax config", i: "📊", r: ["admin"] as UserRole[] },
-        { path: "/admin/gst", l: "GST config", i: "📊", r: ["admin"] as UserRole[] },
         { path: "/admin/categories", l: "Categories", i: "🏷", r: ["admin"] as UserRole[] },
         { path: "/admin/email", l: "Email templates", i: "✉", r: ["admin"] as UserRole[] },
       ],

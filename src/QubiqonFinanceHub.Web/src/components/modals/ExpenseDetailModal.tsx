@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { C } from "../../shared/theme";
 import { EXP_S } from "../../shared/constants";
-import { fmtCur, downloadFromSasUrl } from "../../shared/utils";
+import { fmtCur, downloadFromSasUrl, buildDownloadFilename } from "../../shared/utils";
 import { Btn, Badge, Mdl, CLog, Inp, FileUp } from "../ui";
 import { EditIcon } from "../icons";
 import { useAppContext } from "../../context/AppContext";
@@ -27,7 +27,6 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
   const [editing, setEditing] = useState(false);
   const [amt, setAmt] = useState(String(e.amt));
   const [pur, setPur] = useState(e.purpose);
-  const [billNumber, setBillNumber] = useState(e.billNumber ?? "");
   const [billDate, setBillDate] = useState(e.billDate ?? "");
   const [billFile, setBillFile] = useState<{ n: string; s: string } | null>(null);
   const [billFileRaw, setBillFileRaw] = useState<File | null>(null);
@@ -36,6 +35,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
   const [billSidebarOpen, setBillSidebarOpen] = useState(false);
   const [billViewUrl, setBillViewUrl] = useState<string | null>(null);
   const [billViewLoading, setBillViewLoading] = useState(false);
+  const billViewerUrl = billViewUrl ? `${billViewUrl}#toolbar=0&navpanes=0&zoom=page-width` : null;
 
   const openBillView = async () => {
     const id = e.apiId ?? e.id;
@@ -68,13 +68,17 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
       t("Failed to download bill");
       return;
     }
-    await downloadFromSasUrl(sasUrl, e.file?.n || "bill.pdf", () => t("Failed to download bill"));
+    await downloadFromSasUrl(
+      sasUrl,
+      buildDownloadFilename(e.billNumber || e.id, e.file?.n, ".pdf"),
+      () => t("Failed to download bill")
+    );
   };
 
 
   const handleUpdate = async () => {
     const amount = parseFloat(amt);
-    if (isNaN(amount) || amount <= 0 || !pur.trim() || !billNumber.trim() || !billDate) {
+    if (isNaN(amount) || amount <= 0 || !pur.trim() || !billDate) {
       setError("Please fill all fields.");
       return;
     }
@@ -86,7 +90,6 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
       formData.append("Amount", String(amount));
       formData.append("Purpose", pur.trim());
       formData.append("BillDate", billDate);
-      formData.append("BillNumber", billNumber.trim());
       if (billFileRaw) formData.append("BillImage", billFileRaw);
       await updateExpenseForm(id, formData);
       t("Expense updated");
@@ -119,7 +122,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
     }
   };
 
-  const canUpdate = amt.trim() !== "" && pur.trim() !== "" && billNumber.trim() !== "" && billDate !== "";
+  const canUpdate = amt.trim() !== "" && pur.trim() !== "" && billDate !== "";
 
   return (
     <Mdl open close={() => setMdl(null)} title={e.id} w>
@@ -130,13 +133,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
         </div>
         <div>
           <div style={{ fontSize: "10px", color: C.muted }}>Amount</div>
-          <div style={{ fontSize: "20px", fontWeight: 700 }}>
-            {isPending && editing ? (
-              <Inp type="number" value={amt} onChange={(ev) => setAmt(ev.target.value)} min="1" style={{ marginBottom: 0, maxWidth: "140px" }} />
-            ) : (
-              fmtCur(e.amt)
-            )}
-          </div>
+          <div style={{ fontSize: "20px", fontWeight: 700 }}>{fmtCur(e.amt)}</div>
         </div>
         <div style={{ display: "flex", alignItems: "center" }}><Badge s={e.status} /></div>
       </div>
@@ -144,24 +141,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
       {/* Bill # & Bill date: view or edit inline */}
       {(e.billNumber != null || e.billDate || isPending) && (
         <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "12px", fontSize: "12px", alignItems: "flex-start" }}>
-          {isPending && editing ? (
-            <>
-              <div style={{ flex: "1 1 120px" }}>
-                <Inp label="Bill #" type="text" value={billNumber} onChange={(ev) => setBillNumber(ev.target.value)} req style={{ marginBottom: 0 }} />
-              </div>
-              <div style={{ flex: "1 1 120px" }}>
-                <Inp
-                  label="Bill date"
-                  type="date"
-                  value={billDate}
-                  onChange={(ev) => setBillDate(ev.target.value)}
-                  max={new Date().toISOString().split("T")[0]}
-                  req
-                  style={{ marginBottom: 0 }}
-                />
-              </div>
-            </>
-          ) : (
+          {!editing ? (
             <>
               {e.billNumber != null && (
                 <div>
@@ -174,7 +154,32 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
                 </div>
               )}
             </>
-          )}
+          ) : null}
+        </div>
+      )}
+
+      {isPending && editing && (
+        <div style={{ marginBottom: "12px" }}>
+          <div style={{ display: "flex", gap: "12px", alignItems: "flex-start", flexWrap: "wrap" }}>
+            <Inp
+              label="Amount"
+              type="number"
+              value={amt}
+              onChange={(ev) => setAmt(ev.target.value)}
+              min="1"
+              req
+              style={{ marginBottom: 0, flex: "1 1 160px" }}
+            />
+            <Inp
+              label="Bill date"
+              type="date"
+              value={billDate}
+              onChange={(ev) => setBillDate(ev.target.value)}
+              max={new Date().toISOString().split("T")[0]}
+              req
+              style={{ marginBottom: 0, flex: "1 1 160px" }}
+            />
+          </div>
         </div>
       )}
 
@@ -263,10 +268,10 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
               </button>
             </div>
             <div style={{ flex: 1, minHeight: 0 }}>
-              {billViewUrl ? (
+              {billViewerUrl ? (
                 <iframe
                   title="Bill document"
-                  src={billViewUrl}
+                  src={billViewerUrl}
                   style={{ width: "100%", height: "100%", border: "none" }}
                 />
               ) : (
@@ -338,7 +343,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
               <Btn onClick={handleUpdate} disabled={!canUpdate || loading}>
                 {loading ? "Saving..." : "Save"}
               </Btn>
-              <Btn v="secondary" onClick={() => { setEditing(false); setError(null); setAmt(String(e.amt)); setPur(e.purpose); setBillNumber(e.billNumber ?? ""); setBillDate(e.billDate ?? ""); }}>Cancel</Btn>
+              <Btn v="secondary" onClick={() => { setEditing(false); setError(null); setAmt(String(e.amt)); setPur(e.purpose); setBillDate(e.billDate ?? ""); }}>Cancel</Btn>
             </>
           )}
           {canApproveReject && !editing && (

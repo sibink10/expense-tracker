@@ -30,7 +30,6 @@ export default function InvoiceAddPage() {
   const [currency, setCurrency] = useState("INR");
   const [lineItems, setLineItems] = useState<CreateInvoiceLineItem[]>([{ ...defaultLineItem }]);
   const [taxConfigId, setTaxConfigId] = useState("");
-  const [invoiceNumber, setInvoiceNumber] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [paymentTerms, setPaymentTerms] = useState("net30");
   const [purchaseOrder, setPurchaseOrder] = useState("");
@@ -117,14 +116,12 @@ export default function InvoiceAddPage() {
   const totalAfterTds = subTotal - tdsAmount;
 
   const validLineItems = lineItems.filter(
-    (it) => it.description.trim() && it.gstConfigId && it.quantity > 0 && it.rate >= 0
+    (it) => it.description.trim() && it.quantity > 0 && it.rate >= 0
   );
   const hasValidLineItems = validLineItems.length > 0;
   const canSubmit =
     !!clientId.trim() &&
     !!currency.trim() &&
-    !!invoiceNumber.trim() &&
-    !!taxConfigId.trim() &&
     !!invoiceDate &&
     !!purchaseOrder.trim() &&
     hasValidLineItems;
@@ -139,16 +136,8 @@ export default function InvoiceAddPage() {
       setError("Currency is required");
       return;
     }
-    if (!invoiceNumber.trim()) {
-      setError("Invoice number is required");
-      return;
-    }
-    if (!taxConfigId.trim()) {
-      setError("TDS is required");
-      return;
-    }
     if (!hasValidLineItems) {
-      setError("Add at least one line item with description, Tax, quantity and rate");
+      setError("Add at least one line item with description, quantity and rate");
       return;
     }
     if (!invoiceDate) {
@@ -171,16 +160,15 @@ export default function InvoiceAddPage() {
           hsnCode: it.hsnCode.trim() || "998314",
           quantity: it.quantity,
           rate: it.rate,
-          gstConfigId: it.gstConfigId,
+          gstConfigId: it.gstConfigId || null,
         })),
-        taxConfigId: taxConfigId.trim() || "",
+        taxConfigId: taxConfigId.trim() || null,
         invoiceDate: new Date(invoiceDate).toISOString(),
         dueDate: new Date(dueDate).toISOString(),
         paymentTerms,
         purchaseOrder: purchaseOrder.trim(),
         notes: notes.trim(),
         sendImmediately,
-        invoiceNumber: invoiceNumber.trim(),
         etc: etc.trim() || undefined,
       });
       window.dispatchEvent(new CustomEvent("invoices-refresh"));
@@ -237,17 +225,7 @@ export default function InvoiceAddPage() {
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
             req
-            showReqStar={false}
             opts={CURRENCIES.map((c) => ({ v: c.v, l: c.l }))}
-            style={cellStyle}
-          />
-          <Inp
-            label="Invoice number"
-            value={invoiceNumber}
-            onChange={(e) => setInvoiceNumber(e.target.value)}
-            req
-            showReqStar={false}
-            ph="e.g. INV-001"
             style={cellStyle}
           />
           <Inp
@@ -255,11 +233,9 @@ export default function InvoiceAddPage() {
             type="select"
             value={taxConfigId}
             onChange={(e) => setTaxConfigId(e.target.value)}
-            req
-            showReqStar={false}
             disabled={taxLoading}
             opts={[
-              { v: "", l: taxLoading ? "Loading..." : "Select TDS..." },
+              { v: "", l: taxLoading ? "Loading..." : "No TDS" },
               ...tdsConfigs.map((t) => ({ v: t.id, l: `${t.name} (${t.rate}%)` })),
             ]}
             style={cellStyle}
@@ -389,7 +365,7 @@ export default function InvoiceAddPage() {
                       </td>
                       <td style={{ padding: "10px 12px", verticalAlign: "middle" }}>
                         <select
-                          value={item.gstConfigId}
+                          value={item.gstConfigId ?? ""}
                           onChange={(e) => updateLineItem(idx, "gstConfigId", e.target.value)}
                           style={{
                             width: "100%",
@@ -443,7 +419,6 @@ export default function InvoiceAddPage() {
             onChange={(e) => setInvoiceDate(e.target.value)}
             max={new Date().toISOString().split("T")[0]}
             req
-            showReqStar={false}
             style={cellStyle}
           />
           <Inp
@@ -464,7 +439,6 @@ export default function InvoiceAddPage() {
             value={purchaseOrder}
             onChange={(e) => setPurchaseOrder(e.target.value)}
             req
-            showReqStar={false}
             ph="PO reference"
             style={cellStyle}
           />

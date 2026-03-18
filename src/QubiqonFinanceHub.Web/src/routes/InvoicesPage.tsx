@@ -7,7 +7,6 @@ import { fmtCur } from "../shared/utils";
 import { Btn, Badge, Tbl, Filter, Stat, Empty } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
 import { getInvoices } from "../shared/api/invoice";
-import { downloadInvoicePdf } from "../shared/invoicePdf";
 
 export default function InvoicesPage() {
   const navigate = useNavigate();
@@ -52,10 +51,6 @@ export default function InvoicesPage() {
   const startIndex = totalCount === 0 ? 0 : (page - 1) * pageSize;
   const endIndex = totalCount === 0 ? 0 : Math.min(startIndex + pageSize, totalCount);
   const paged = f;
-
-  const handleDownloadPdf = (inv: Invoice) => {
-    downloadInvoicePdf(inv).catch(() => {});
-  };
 
   return (
     <div>
@@ -108,13 +103,14 @@ export default function InvoicesPage() {
           <>
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
               <Tbl
-                cols={["Invoice #", "Client", "Amount", "Currency", "Due", "Status", "Action"]}
+                cols={["Invoice #", "Client", "Amount", "Paid amount", "Currency", "Due", "Status", "Action"]}
                 rows={paged.map((inv) => ({
                   ...inv,
                   _cells: [
                     { v: <span style={{ fontWeight: 600, color: C.invoice, fontSize: "11px" }}>{inv.id}</span> },
                     { v: <span style={{ fontSize: "11px", fontWeight: 600 }}>{inv.cName}</span> },
                     { v: <span style={{ fontWeight: 700 }}>{fmtCur(inv.total, inv.currency)}</span> },
+                    { v: <span style={{ fontWeight: 600, color: C.info }}>{fmtCur(inv.paidAmound ?? 0, inv.currency)}</span> },
                     { v: <span style={{ fontSize: "11px" }}>{inv.currency}</span> },
                     { v: <span style={{ fontSize: "11px", color: C.muted }}>{inv.due}</span> },
                     { v: <Badge s={inv.status} /> },
@@ -128,11 +124,6 @@ export default function InvoicesPage() {
                               onClick={() => setMdl({ t: "inv-pay", d: inv })}
                             >
                               Mark paid
-                            </Btn>
-                          )}
-                          {(inv.status === INV_S.SENT || inv.status === INV_S.PAID) && (
-                            <Btn sm v="invoice" onClick={() => handleDownloadPdf(inv)}>
-                              ↓
                             </Btn>
                           )}
                         </div>

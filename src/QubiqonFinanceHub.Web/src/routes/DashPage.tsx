@@ -10,7 +10,6 @@ const ADMIN_LINKS = [
   { path: "/admin", label: "Settings", icon: "⚙" },
   { path: "/admin/org", label: "Organization", icon: "🏢" },
   { path: "/admin/tax", label: "Tax config", icon: "📊" },
-  { path: "/admin/gst", label: "GST config", icon: "📊" },
   { path: "/admin/email", label: "Email templates", icon: "✉" },
 ];
 

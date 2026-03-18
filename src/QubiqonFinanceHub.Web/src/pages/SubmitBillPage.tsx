@@ -19,6 +19,7 @@ export default function SubmitBillPage() {
   const [narrow, setNarrow] = useState(typeof window !== "undefined" && window.innerWidth < GRID_BREAKPOINT);
   const [tdsOptions, setTdsOptions] = useState<TaxConfig[]>([]);
   const [vId, setVId] = useState("");
+  const [vendorBillNumber, setVendorBillNumber] = useState("");
   const [amt, setAmt] = useState("");
   const [desc, setDesc] = useState("");
   const [bd, setBd] = useState("");
@@ -78,7 +79,7 @@ export default function SubmitBillPage() {
       setCcError("Enter valid email addresses (comma-separated)");
       return;
     }
-    if (!vId || !amt || !desc || !bd || !file) return;
+    if (!vId || !vendorBillNumber.trim() || !amt || !desc || !bd || !file) return;
     setLoading(true);
     setError(null);
     try {
@@ -87,6 +88,7 @@ export default function SubmitBillPage() {
       await createBill(
         {
           vendorId: vId,
+          vendorBillNumber: vendorBillNumber.trim(),
           amount: a,
           taxConfigId: tds === "none" ? "" : tds,
           description: desc,
@@ -137,6 +139,14 @@ export default function SubmitBillPage() {
               placeholder="Search vendors..."
             />
           </div>
+          <Inp
+            label="Vendor bill number"
+            value={vendorBillNumber}
+            onChange={(e) => setVendorBillNumber(e.target.value)}
+            req
+            ph="Enter vendor bill number"
+            style={cellStyle}
+          />
           <Inp
             label="Bill amount (₹)"
             type="number"
@@ -257,7 +267,7 @@ export default function SubmitBillPage() {
             <Btn
               v="vendor"
               onClick={handleSubmit}
-              disabled={!vId || !amt || !desc || !bd || !file || (cc.trim() !== "" && !isEmailListValid(cc)) || loading}
+              disabled={!vId || !vendorBillNumber.trim() || !amt || !desc || !bd || !file || (cc.trim() !== "" && !isEmailListValid(cc)) || loading}
             >
               {loading ? "Submitting..." : "Submit bill"}
             </Btn>

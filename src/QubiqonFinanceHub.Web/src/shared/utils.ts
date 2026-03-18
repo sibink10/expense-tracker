@@ -72,6 +72,17 @@ export async function downloadFromSasUrl(
   }
 }
 
+export function buildDownloadFilename(
+  baseName: string,
+  sourceName?: string | null,
+  fallbackExt = ".pdf"
+): string {
+  const safeBase = (baseName || "download").replace(/[<>:"/\\|?*\u0000-\u001F]+/g, "-").trim() || "download";
+  const extMatch = sourceName?.match(/(\.[a-zA-Z0-9]+)(?:$|\?)/);
+  const ext = extMatch?.[1] || fallbackExt;
+  return `${safeBase}${ext.startsWith(".") ? ext : `.${ext}`}`;
+}
+
 export const fmtCur = (a: number | string, cur = "INR"): string => {
   const s = CURRENCIES.find((c) => c.v === cur)?.s || "₹";
   return (

@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
 import { C } from "../shared/theme";
 import { Btn, Empty, Inp, Mdl, Tbl, Toggle } from "../components/ui";
-import { getEmployees, saveEmployee, toggleEmployee, type Employee } from "../shared/api/employees";
+import { TrashIcon } from "../components/icons";
+import { useAppContext } from "../context/AppContext";
+import { getEmployees, saveEmployee, toggleEmployee, deleteEmployee, type Employee } from "../shared/api/employees";
 
 export default function EmployeesPage() {
+  const { t, user } = useAppContext();
+  const isCurrentUser = (emp: Employee) =>
+    (user.email || "").toLowerCase().trim() === (emp.email || "").toLowerCase().trim();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -11,6 +16,7 @@ export default function EmployeesPage() {
   const [pageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [mdlOpen, setMdlOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [form, setForm] = useState({
     name: "",
@@ -110,8 +116,8 @@ export default function EmployeesPage() {
         v: (
           <Toggle
             checked={e.isActive ?? true}
+            disabled={isCurrentUser(e)}
             onChange={async (next) => {
-              // Backend exposes /api/employees/{id}/toggle
               await toggleEmployee(e.id);
               load();
             }}
@@ -120,9 +126,14 @@ export default function EmployeesPage() {
       },
       {
         v: (
-          <Btn sm v="secondary" onClick={() => openEdit(e)}>
-            ✎
-          </Btn>
+          <span style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+            <Btn sm v="secondary" onClick={() => openEdit(e)}>
+              ✎
+            </Btn>
+            <Btn sm v="danger" onClick={() => setDeleteTarget(e)} disabled={isCurrentUser(e)}>
+              <TrashIcon size={16} color="#fff" />
+            </Btn>
+          </span>
         ),
         sx: {
           display: "flex",
@@ -266,6 +277,7 @@ export default function EmployeesPage() {
               type="email"
               value={form.email}
               onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              disabled={!!editing}
               req
             />
             <Inp
@@ -309,6 +321,37 @@ export default function EmployeesPage() {
             Save
           </Btn>
         </div>
+      </Mdl>
+
+      <Mdl open={!!deleteTarget} close={() => setDeleteTarget(null)} title="Delete employee">
+        {deleteTarget && (
+          <>
+            <p style={{ margin: "0 0 20px", fontSize: "14px", color: C.muted }}>
+              Are you sure you want to delete <strong>{deleteTarget.name}</strong>? This cannot be undone.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+              <Btn v="secondary" sm onClick={() => setDeleteTarget(null)}>
+                Cancel
+              </Btn>
+              <Btn
+                v="danger"
+                sm
+                onClick={async () => {
+                  try {
+                    await deleteEmployee(deleteTarget.id);
+                    t("Employee deleted");
+                    setDeleteTarget(null);
+                    load();
+                  } catch {
+                    t("Failed to delete employee");
+                  }
+                }}
+              >
+                Delete
+              </Btn>
+            </div>
+          </>
+        )}
       </Mdl>
     </div>
   );

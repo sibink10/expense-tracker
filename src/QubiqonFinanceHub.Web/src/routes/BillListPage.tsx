@@ -106,6 +106,7 @@ export default function BillListPage() {
                 cols={[
                   "Bill #",
                   "Vendor",
+                  "Vendor bill #",
                   "Amount",
                   "TDS",
                   "Payable",
@@ -125,6 +126,13 @@ export default function BillListPage() {
                         </div>
                       ),
                     },
+                    {
+                      v: (
+                        <span style={{ fontSize: "11px", fontWeight: 600, color: C.primary }}>
+                          {b.vendorBillNumber || "—"}
+                        </span>
+                      ),
+                    },
                     { v: <span style={{ fontWeight: 600 }}>{fmtCur(b.amt)}</span> },
                     { v: <span style={{ fontSize: "11px", color: C.danger }}>-{fmtCur(b.tdsAmt)}</span> },
                     { v: <span style={{ fontWeight: 700 }}>{fmtCur(b.pay)}</span> },
@@ -141,7 +149,7 @@ export default function BillListPage() {
                                     <Btn sm v="danger" onClick={() => setMdl({ t: "reject", d: b, it: "bill" })}>✕</Btn>
                                   </>
                                 )}
-                                {is("finance") && (b.status === BILL_S.APPROVED || b.status === BILL_S.OVERDUE) && (
+                                {(is("finance") || is("admin")) && (b.status === BILL_S.APPROVED || b.status === BILL_S.OVERDUE) && (
                                   <Btn sm v="vendor" onClick={() => setMdl({ t: "pay", d: b, it: "bill" })}>Pay</Btn>
                                 )}
                               </div>

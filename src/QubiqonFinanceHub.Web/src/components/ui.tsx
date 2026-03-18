@@ -307,8 +307,29 @@ export const Mdl: React.FC<{
           backdropFilter: "blur(3px)",
         }}
       />
+      <style>{`
+        .app-modal-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: ${C.border} transparent;
+        }
+        .app-modal-scroll::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        .app-modal-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .app-modal-scroll::-webkit-scrollbar-thumb {
+          background: ${C.border};
+          border-radius: 999px;
+        }
+        .app-modal-scroll::-webkit-scrollbar-thumb:hover {
+          background: ${C.muted};
+        }
+      `}</style>
       <div
         onClick={(e) => e.stopPropagation()}
+        className="app-modal-scroll"
         style={{
           position: "relative",
           background: "#fff",
@@ -331,7 +352,7 @@ export const Mdl: React.FC<{
             top: 0,
             background: "#fff",
             borderRadius: "14px 14px 0 0",
-            zIndex: 1,
+            zIndex: 10,
           }}
         >
           <h2 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: C.primary }}>{title}</h2>
@@ -348,7 +369,7 @@ export const Mdl: React.FC<{
             ✕
           </button>
         </div>
-        <div style={{ padding: "16px 24px 20px" }}>{children}</div>
+        <div style={{ padding: "16px 24px 20px", position: "relative", zIndex: 1 }}>{children}</div>
       </div>
     </div>
   );
@@ -477,19 +498,23 @@ export const FileUp: React.FC<{
 export const Toggle: React.FC<{
   checked: boolean;
   onChange: (next: boolean) => void;
-}> = ({ checked, onChange }) => (
+  disabled?: boolean;
+}> = ({ checked, onChange, disabled }) => (
   <label
     style={{
       position: "relative",
       display: "inline-flex",
       alignItems: "center",
-      cursor: "pointer",
+      cursor: disabled ? "not-allowed" : "pointer",
+      opacity: disabled ? 0.6 : 1,
+      pointerEvents: disabled ? "none" : "auto",
     }}
   >
     <input
       type="checkbox"
       checked={checked}
       onChange={(e) => onChange(e.target.checked)}
+      disabled={disabled}
       style={{ position: "absolute", opacity: 0, pointerEvents: "none" }}
     />
     <span

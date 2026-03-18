@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { C } from "../shared/theme";
 import { fmtCur } from "../shared/utils";
 import { Inp, Btn, Mdl } from "../components/ui";
@@ -19,6 +19,7 @@ const PAYMENT_METHODS = [
 export default function InvPayModal() {
   const { mdl, setMdl, t } = useAppContext();
   const [paymentReference, setPaymentReference] = useState("");
+  const [paidAmount, setPaidAmount] = useState("");
   const [method, setMethod] = useState("NEFT");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
@@ -26,10 +27,34 @@ export default function InvPayModal() {
 
   if (!mdl?.d || !("cName" in mdl.d)) return null;
   const inv = mdl.d as Invoice;
+  const alreadyPaid = inv.paidAmound ?? 0;
+  const remainingAmount = Math.max(inv.total - alreadyPaid, 0);
+  const parsedPaidAmount = Number(paidAmount);
+  const amountError = useMemo(() => {
+    if (paidAmount.trim() === "") return "Paid amount is required";
+    if (!Number.isFinite(parsedPaidAmount)) return "Enter a valid paid amount";
+    if (parsedPaidAmount < 0) return "Paid amount cannot be less than 0";
+    if (parsedPaidAmount > remainingAmount) {
+      return `Paid amount cannot be more than ${fmtCur(remainingAmount, inv.currency)}`;
+    }
+    return null;
+  }, [inv.currency, paidAmount, parsedPaidAmount, remainingAmount]);
+
+  useEffect(() => {
+    setPaymentReference("");
+    setPaidAmount(String(remainingAmount));
+    setMethod("NEFT");
+    setNotes("");
+    setError(null);
+  }, [inv.id, remainingAmount]);
 
   const handleConfirm = async () => {
     if (!paymentReference.trim()) {
       setError("Payment reference is required");
+      return;
+    }
+    if (amountError) {
+      setError(amountError);
       return;
     }
     const id = inv.apiId ?? inv.id;
@@ -38,10 +63,11 @@ export default function InvPayModal() {
     try {
       await markInvoicePaid(id, {
         paymentReference: paymentReference.trim(),
+        paidAmound: parsedPaidAmount,
         method,
         notes: notes.trim(),
       });
-      t("Invoice marked paid");
+      t(parsedPaidAmount >= remainingAmount ? "Invoice marked paid" : "Invoice marked partially paid");
       setMdl(null);
       window.dispatchEvent(new CustomEvent("invoices-refresh"));
     } catch (err: unknown) {
@@ -75,7 +101,24 @@ export default function InvPayModal() {
         >
           {fmtCur(inv.total, inv.currency)}
         </div>
+        {alreadyPaid > 0 && (
+          <div style={{ marginTop: "6px", color: C.muted }}>
+            Paid: <strong style={{ color: C.primary }}>{fmtCur(alreadyPaid, inv.currency)}</strong> · Remaining:{" "}
+            <strong style={{ color: C.invoice }}>{fmtCur(remainingAmount, inv.currency)}</strong>
+          </div>
+        )}
       </div>
+      <Inp
+        label="Paid amount"
+        type="number"
+        value={paidAmount}
+        onChange={(e) => setPaidAmount(e.target.value)}
+        req
+        min="0"
+        max={String(remainingAmount)}
+        ph={String(remainingAmount)}
+        hint={`Enter an amount between 0 and ${fmtCur(remainingAmount, inv.currency)}`}
+      />
       <Inp
         label="Payment reference"
         value={paymentReference}
@@ -97,11 +140,14 @@ export default function InvPayModal() {
         onChange={(e) => setNotes(e.target.value)}
         ph="Optional notes..."
       />
+      {amountError && (
+        <div style={{ color: C.danger, fontSize: "12px", marginBottom: "8px" }}>{amountError}</div>
+      )}
       {error && (
-        <div style={{ color: "var(--danger)", fontSize: "12px", marginBottom: "8px" }}>{error}</div>
+        <div style={{ color: C.danger, fontSize: "12px", marginBottom: "8px" }}>{error}</div>
       )}
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <Btn v="success" onClick={handleConfirm} disabled={!paymentReference.trim() || loading}>
+        <Btn v="success" onClick={handleConfirm} disabled={!paymentReference.trim() || !!amountError || loading}>
           {loading ? "Saving..." : "Confirm"}
         </Btn>
       </div>

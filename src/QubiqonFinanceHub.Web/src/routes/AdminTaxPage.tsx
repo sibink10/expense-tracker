@@ -4,11 +4,14 @@ import { Inp, Btn, Empty, Toggle } from "../components/ui";
 import { getTaxConfigs, createTaxConfig, toggleTaxConfig } from "../shared/api/taxConfig";
 import type { TaxConfig } from "../types";
 
+const CLIENT_TAX_TYPE = "ClientTax";
+const formatTaxType = (value?: string) => value === CLIENT_TAX_TYPE ? "Client Tax" : (value ?? "—");
+
 export default function AdminTaxPage() {
   const [items, setItems] = useState<TaxConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [type, setType] = useState<"TDS" | "GST">("TDS");
+  const [type, setType] = useState<"TDS" | "GST" | typeof CLIENT_TAX_TYPE>("TDS");
   const [name, setName] = useState("");
   const [rate, setRate] = useState("");
   const [section, setSection] = useState("");
@@ -96,10 +99,11 @@ export default function AdminTaxPage() {
             label="Type"
             type="select"
             value={type}
-            onChange={(e) => setType(e.target.value as "TDS" | "GST")}
+            onChange={(e) => setType(e.target.value as "TDS" | "GST" | typeof CLIENT_TAX_TYPE)}
             opts={[
               { v: "TDS", l: "TDS" },
               { v: "GST", l: "GST" },
+              { v: CLIENT_TAX_TYPE, l: "Client Tax" },
             ]}
           />
           <Inp
@@ -258,7 +262,7 @@ export default function AdminTaxPage() {
                       borderBottom: `1px solid ${C.border}`,
                     }}
                   >
-                    <td style={{ padding: "10px 12px" }}>{t.type ?? "—"}</td>
+                    <td style={{ padding: "10px 12px" }}>{formatTaxType(t.type)}</td>
                     <td style={{ padding: "10px 12px", fontWeight: 600 }}>{t.name}</td>
                     <td style={{ padding: "10px 12px", textAlign: "right" }}>{t.rate}%</td>
                     <td style={{ padding: "10px 12px" }}>{t.section || "—"}</td>

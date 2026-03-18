@@ -64,6 +64,7 @@ export interface Bill {
   id: string;
   /** Backend API id (GUID) for approve/reject/pay endpoints */
   apiId?: string;
+  vendorBillNumber?: string;
   vId: string;
   vName: string;
   vGst: string;
@@ -131,6 +132,7 @@ export interface Invoice {
   at: string;
   comments: ActivityComment[];
   paidRef?: string;
+  paidAmound?: number;
 }
 
 export interface Vendor {
@@ -217,6 +219,7 @@ export interface AppConfig {
   invFmt: string;
   advEnabled: boolean;
   advCap: number;
+  balanceCap: number;
   ccEmails: string[];
   expSeq: number;
   billSeq: number;

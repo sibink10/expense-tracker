@@ -14,6 +14,7 @@ interface AsyncSelectInputProps {
   loadOptions: (query: string) => Promise<Option[]>;
   disabled?: boolean;
   placeholder?: string;
+  req?: boolean;
 }
 
 export function AsyncSelectInput({
@@ -23,6 +24,7 @@ export function AsyncSelectInput({
   loadOptions,
   disabled,
   placeholder,
+  req = true,
 }: AsyncSelectInputProps) {
   const [options, setOptions] = useState<Option[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,7 +79,7 @@ export function AsyncSelectInput({
           marginBottom: "4px",
         }}
       >
-        {label} <span style={{ color: C.accent }}>*</span>
+        {label} {req && <span style={{ color: C.accent }}>*</span>}
       </label>
       <Select
         value={selected}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
 import { fmtCur } from "../shared/utils";
@@ -8,12 +8,17 @@ import { createAdvance } from "../shared/api/advance";
 
 export default function RequestAdvancePage() {
   const navigate = useNavigate();
-  const { cfg, user, setEmail, t } = useAppContext();
+  const { cfg, user, setEmail, t, refreshOrgSettings } = useAppContext();
   const [amt, setAmt] = useState("");
   const [pur, setPur] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const over = parseFloat(amt) > cfg.advCap;
+  const balanceCap = cfg.balanceCap ?? 0;
+  const over = parseFloat(amt) > balanceCap;
+
+  useEffect(() => {
+    void refreshOrgSettings().catch(() => undefined);
+  }, [refreshOrgSettings]);
 
   const submit = async () => {
     const amount = parseFloat(amt);
@@ -68,7 +73,7 @@ export default function RequestAdvancePage() {
           <div>
             <div style={{ fontSize: "12px", fontWeight: 600 }}>{user.name}</div>
             <div style={{ fontSize: "10px", color: C.muted }}>
-              {user.dept} · Cap: {fmtCur(cfg.advCap)}
+              {user.dept} · Balance cap: {fmtCur(balanceCap)}
             </div>
           </div>
         </div>
@@ -79,7 +84,7 @@ export default function RequestAdvancePage() {
           onChange={(e) => setAmt(e.target.value)}
           req
           min="1"
-          ph={`Max ${fmtCur(cfg.advCap)}`}
+          ph={`Max ${fmtCur(balanceCap)}`}
         />
         {over && (
           <div
@@ -90,7 +95,7 @@ export default function RequestAdvancePage() {
               marginBottom: "14px",
             }}
           >
-            ⚠ Exceeds cap
+            ⚠ Exceeds balance cap
           </div>
         )}
         <Inp

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { C } from "../../shared/theme";
 import { BILL_S } from "../../shared/constants";
-import { fmtCur, downloadFromSasUrl } from "../../shared/utils";
+import { fmtCur, downloadFromSasUrl, buildDownloadFilename } from "../../shared/utils";
 import { Av, Btn, Badge, Mdl, CLog } from "../ui";
 import { useAppContext } from "../../context/AppContext";
 import { getBillAttachment } from "../../shared/api/bill";
@@ -18,6 +18,7 @@ export default function BillDetailModal({ bill: b }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewUrl, setViewUrl] = useState<string | null>(null);
   const [viewLoading, setViewLoading] = useState(false);
+  const viewerUrl = viewUrl ? `${viewUrl}#toolbar=0&navpanes=0&zoom=page-width` : null;
 
   const openView = async () => {
     const id = b.apiId ?? b.id;
@@ -50,7 +51,11 @@ export default function BillDetailModal({ bill: b }: Props) {
       t("Failed to download attachment");
       return;
     }
-    await downloadFromSasUrl(sasUrl, b.file?.n || "bill-attachment.pdf", () => t("Failed to download attachment"));
+    await downloadFromSasUrl(
+      sasUrl,
+      buildDownloadFilename(b.vendorBillNumber || b.id, b.file?.n, ".pdf"),
+      () => t("Failed to download attachment")
+    );
   };
 
   return (
@@ -108,10 +113,10 @@ export default function BillDetailModal({ bill: b }: Props) {
             <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "reject", d: b, it: "bill" }), 50); }}>Reject</Btn>
           </>
         )}
-        {is("finance") && (b.status === BILL_S.APPROVED || b.status === BILL_S.OVERDUE) && (
+        {(is("finance") || is("admin")) && (b.status === BILL_S.APPROVED || b.status === BILL_S.OVERDUE) && (
           <Btn v="vendor" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "pay", d: b, it: "bill" }), 50); }}>Pay</Btn>
         )}
-        {!(((is("approver") || is("admin")) && b.status === BILL_S.SUBMITTED) || (is("finance") && (b.status === BILL_S.APPROVED || b.status === BILL_S.OVERDUE))) && (
+        {!(((is("approver") || is("admin")) && b.status === BILL_S.SUBMITTED) || ((is("finance") || is("admin")) && (b.status === BILL_S.APPROVED || b.status === BILL_S.OVERDUE))) && (
           <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>
         )}
       </div>
@@ -144,8 +149,8 @@ export default function BillDetailModal({ bill: b }: Props) {
               <button type="button" onClick={closeSidebar} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "20px", lineHeight: 1, color: C.muted }}>×</button>
             </div>
             <div style={{ flex: 1, minHeight: 0 }}>
-              {viewUrl ? (
-                <iframe title="Bill attachment" src={viewUrl} style={{ width: "100%", height: "100%", border: "none" }} />
+              {viewerUrl ? (
+                <iframe title="Bill attachment" src={viewerUrl} style={{ width: "100%", height: "100%", border: "none" }} />
               ) : (
                 <div style={{ padding: "24px", textAlign: "center", color: C.muted }}>Loading…</div>
               )}

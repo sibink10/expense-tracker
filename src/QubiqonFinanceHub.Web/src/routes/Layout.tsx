@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { C } from "../shared/theme";
-import { Av, EmailBanner } from "../components/ui";
+import { Av } from "../components/ui";
 import { buildNav } from "../shared/nav";
 import Modals from "../components/Modals";
 import { useAppContext } from "../context/AppContext";
@@ -14,7 +14,6 @@ export default function Layout() {
     setUser,
     instance,
     cfg,
-    email,
     toast,
     pendExp,
     pendAdv,
@@ -373,10 +372,7 @@ export default function Layout() {
             </nav>
           </>
         )}
-        <main style={{ flex: 1, padding: "20px 24px", overflow: "auto" }}>
-          {email && <EmailBanner to={email.to} cc={email.cc} subj={email.subj} />}
-          <Outlet />
-        </main>
+        <main style={{ flex: 1, padding: "20px 24px", overflow: "auto" }}><Outlet /></main>
       </div>
       <Modals />
       {toast && (

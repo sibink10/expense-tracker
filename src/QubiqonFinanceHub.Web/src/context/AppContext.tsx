@@ -21,6 +21,10 @@ import {
 } from "../shared/initData";
 import { EXP_S, BILL_S, ADV_S } from "../shared/constants";
 import { getOrganizations, type OrganizationPayload } from "../shared/api";
+import {
+  getOrganizationSettings,
+  type OrganizationSettingsResponse,
+} from "../shared/api/organizationSettings";
 import type {
   AppUser,
   AppConfig,
@@ -91,6 +95,8 @@ export interface AppContextValue {
   orgs: OrganizationPayload[];
   activeOrg: OrganizationPayload | null;
   setActiveOrg: React.Dispatch<React.SetStateAction<OrganizationPayload | null>>;
+  orgSettings: OrganizationSettingsResponse;
+  refreshOrgSettings: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -112,6 +118,12 @@ const MSAL_PLACEHOLDER = "00000000-0000-0000-0000-000000000000";
 const isMsalConfigured = () => {
   const id = import.meta.env.VITE_AZURE_CLIENT_ID;
   return id && id !== MSAL_PLACEHOLDER;
+};
+
+const parseSettingNumber = (value: string | undefined, fallback: number) => {
+  if (value == null || value.trim() === "") return fallback;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 };
 
 export function AppProvider({ children, user, setUser }: AppProviderProps) {
@@ -149,6 +161,7 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
   const [sf, setSf] = useState("all");
   const [orgs, setOrgs] = useState<OrganizationPayload[]>([]);
   const [activeOrg, setActiveOrg] = useState<OrganizationPayload | null>(null);
+  const [orgSettings, setOrgSettings] = useState<OrganizationSettingsResponse>({});
 
   const t = useCallback((m: string, type = "ok") => {
     setToast({ m, type });
@@ -158,6 +171,39 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
   const rf = useCallback(() => {
     setSearch("");
     setSf("all");
+  }, []);
+
+  const refreshOrgSettings = useCallback(async () => {
+    try {
+      const settings = await getOrganizationSettings();
+      setOrgSettings(settings);
+      const advCap = parseSettingNumber(settings.advCap?.value, 0);
+      setCfg((prev) => ({
+        ...prev,
+        expFmt: settings.expFmt?.value ?? prev.expFmt,
+        billFmt: settings.billFmt?.value ?? prev.billFmt,
+        advFmt: settings.advFmt?.value ?? prev.advFmt,
+        invFmt: settings.invFmt?.value ?? prev.invFmt,
+        advEnabled: settings.advEnabled?.value
+          ? settings.advEnabled.value === "true"
+          : prev.advEnabled,
+        advCap,
+        balanceCap: parseSettingNumber(settings.balanceCap?.value, advCap),
+        ccEmails: settings.ccEmails?.value
+          ? settings.ccEmails.value
+              .split(",")
+              .map((value) => value.trim())
+              .filter(Boolean)
+          : prev.ccEmails,
+      }));
+    } catch {
+      setOrgSettings({});
+      setCfg((prev) => ({
+        ...prev,
+        advCap: 0,
+        balanceCap: 0,
+      }));
+    }
   }, []);
 
   useEffect(() => {
@@ -179,6 +225,10 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    void refreshOrgSettings().catch(() => undefined);
+  }, [refreshOrgSettings]);
 
   const approve = useCallback(
     (item: Expense | Bill | Advance, type: "expense" | "bill" | "advance") => {
@@ -438,6 +488,8 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
       orgs,
       activeOrg,
       setActiveOrg,
+      orgSettings,
+      refreshOrgSettings,
     }),
     [
       user,
@@ -470,6 +522,8 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
       orgs,
       activeOrg,
       setActiveOrg,
+      orgSettings,
+      refreshOrgSettings,
     ],
   );
 

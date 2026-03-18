@@ -3,10 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
 import { Inp, Btn } from "../components/ui";
 import { createClient } from "../shared/api/clients";
+import { getTaxConfigs } from "../shared/api/taxConfig";
 import { isEmailValid } from "../shared/utils";
 import { useAppContext } from "../context/AppContext";
+import type { TaxConfig } from "../types";
 
 const GRID_BREAKPOINT = 600;
+const CLIENT_TAX_TYPE = "ClientTax";
+const isClientTaxType = (type?: string) => (type || "").replace(/\s+/g, "").toLowerCase() === "clienttax";
 
 const CURRENCY_OPTS = [
   { v: "INR", l: "INR" },
@@ -32,12 +36,14 @@ export default function AddClientPage() {
   const [phone, setPhone] = useState("");
   const [country, setCountry] = useState("");
   const [currency, setCurrency] = useState("INR");
-  const [taxType, setTaxType] = useState("Domestic");
+  const [taxType, setTaxType] = useState("");
   const [gstin, setGstin] = useState("");
   const [customerType, setCustomerType] = useState<"Business" | "Individual">("Business");
   const [shippingAddress, setShippingAddress] = useState("");
   const [billingAddress, setBillingAddress] = useState("");
   const [sameAddress, setSameAddress] = useState(false);
+  const [clientTaxOptions, setClientTaxOptions] = useState<TaxConfig[]>([]);
+  const [taxLoading, setTaxLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -55,6 +61,33 @@ export default function AddClientPage() {
   useEffect(() => {
     if (sameAddress) setBillingAddress(shippingAddress);
   }, [sameAddress, shippingAddress]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setTaxLoading(true);
+    getTaxConfigs()
+      .then((configs) => {
+        if (cancelled) return;
+        const clientTaxes = configs.filter((config) => config.isActive && isClientTaxType(config.type));
+        setClientTaxOptions(clientTaxes);
+        setTaxType((current) =>
+          current && clientTaxes.some((config) => config.name === current)
+            ? current
+            : (clientTaxes[0]?.name ?? "")
+        );
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setClientTaxOptions([]);
+        setTaxType("");
+      })
+      .finally(() => {
+        if (!cancelled) setTaxLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const submit = async () => {
     setEmailError(null);
@@ -74,7 +107,7 @@ export default function AddClientPage() {
         phone: phone.trim(),
         country: country.trim(),
         currency: currency.trim() || "INR",
-        taxType: taxType.trim(),
+        taxType: taxType.trim() || CLIENT_TAX_TYPE,
         gstin: gstin.trim(),
         shippingAddress: shippingAddress.trim(),
         billingAddress: sameAddress ? shippingAddress.trim() : billingAddress.trim(),
@@ -95,7 +128,7 @@ export default function AddClientPage() {
   };
   const fullWidth = { gridColumn: "1 / -1" as const };
   const cellStyle = { marginBottom: 0 };
-  const canSubmit = name.trim() && email.trim() && contactPerson.trim() && isEmailValid(email);
+  const canSubmit = name.trim() && email.trim() && contactPerson.trim() && isEmailValid(email) && taxType.trim() !== "";
 
   return (
     <div style={{ width: "100%", maxWidth: "100%" }}>
@@ -118,7 +151,6 @@ export default function AddClientPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             req
-            showReqStar={false}
             ph="Client name"
             style={cellStyle}
           />
@@ -130,7 +162,6 @@ export default function AddClientPage() {
               onBlur={() => email.trim() && !isEmailValid(email) && setEmailError("Enter a valid email address")}
               type="email"
               req
-              showReqStar={false}
               ph="email@example.com"
               style={{ marginBottom: 0 }}
             />
@@ -141,7 +172,6 @@ export default function AddClientPage() {
             value={contactPerson}
             onChange={(e) => setContactPerson(e.target.value)}
             req
-            showReqStar={false}
             ph="Contact name"
             style={cellStyle}
           />
@@ -183,11 +213,12 @@ export default function AddClientPage() {
             type="select"
             value={taxType}
             onChange={(e) => setTaxType(e.target.value)}
-            opts={[
-              { v: "Domestic", l: "Domestic" },
-              { v: "SEZ", l: "SEZ" },
-              { v: "Export", l: "Export" },
-            ]}
+            disabled={taxLoading || clientTaxOptions.length === 0}
+            opts={
+              clientTaxOptions.length > 0
+                ? clientTaxOptions.map((config) => ({ v: config.name, l: `${config.name} (${config.rate}%)` }))
+                : [{ v: "", l: taxLoading ? "Loading..." : "No client tax configs" }]
+            }
             style={cellStyle}
           />
           <Inp label="GSTIN" value={gstin} onChange={(e) => setGstin(e.target.value)} ph="GST number" style={cellStyle} />

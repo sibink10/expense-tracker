@@ -7,14 +7,14 @@ export interface CreateInvoiceLineItem {
   hsnCode: string;
   quantity: number;
   rate: number;
-  gstConfigId: string;
+  gstConfigId: string | null;
 }
 
 export interface CreateInvoicePayload {
   clientId: string;
   currency: string;
   lineItems: CreateInvoiceLineItem[];
-  taxConfigId: string;
+  taxConfigId: string | null;
   invoiceDate: string;
   dueDate: string;
   paymentTerms: string;
@@ -56,6 +56,7 @@ export interface ApiInvoice {
   createdAt?: string;
   comments?: { by: string; text: string; actionType?: string; createdAt?: string }[];
   paymentReference?: string | null;
+  paidAmound?: number;
 }
 
 const STATUS_MAP: Record<string, string> = {
@@ -115,6 +116,7 @@ function mapApiInvoiceToApp(item: ApiInvoice): Invoice {
       t: "ok" as const,
     })),
     paidRef: item.paymentReference ?? undefined,
+    paidAmound: item.paidAmound ?? 0,
   };
 }
 
@@ -183,6 +185,7 @@ export async function createInvoice(payload: CreateInvoicePayload): Promise<unkn
 
 export interface MarkInvoicePaidPayload {
   paymentReference: string;
+  paidAmound: number;
   method: string;
   notes: string;
 }

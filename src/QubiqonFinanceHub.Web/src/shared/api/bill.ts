@@ -4,6 +4,7 @@ import type { Bill } from "../../types";
 export interface ApiBill {
   id: string;
   billCode?: string;
+  vendorBillNumber?: string;
   vendorId: string;
   vendorName?: string;
   vendorGstin?: string;
@@ -44,6 +45,7 @@ function mapApiBillToApp(item: ApiBill): Bill {
   return {
     id: item.billCode ?? item.id,
     apiId: item.id,
+    vendorBillNumber: item.vendorBillNumber ?? undefined,
     vId: item.vendorId,
     vName: item.vendorName ?? "",
     vGst: item.vendorGstin ?? "",
@@ -132,6 +134,7 @@ export async function getBills(params: GetBillsParams = {}): Promise<{
 
 export interface CreateBillPayload {
   vendorId: string;
+  vendorBillNumber: string;
   amount: number;
   taxConfigId: string;
   description: string;
@@ -144,6 +147,7 @@ export interface CreateBillPayload {
 export async function createBill(payload: CreateBillPayload, file: File): Promise<unknown> {
   const form = new FormData();
   form.append("vendorId", payload.vendorId);
+  form.append("vendorBillNumber", payload.vendorBillNumber);
   form.append("amount", String(payload.amount));
   form.append("taxConfigId", payload.taxConfigId || "");
   form.append("description", payload.description);

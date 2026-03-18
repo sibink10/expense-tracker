@@ -16,7 +16,6 @@ export default function AddExpensePage() {
 
   const [amt, setAmt] = useState("");
   const [pur, setPur] = useState("");
-  const [billNumber, setBillNumber] = useState("");
   const [billDate, setBillDate] = useState("");
   const [fi, setFi] = useState<{ n: string; s: string } | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -39,18 +38,16 @@ export default function AddExpensePage() {
   };
 
   const submit = async () => {
-    const employeeId = ob || user.employeeId?.trim() || null;
+    const employeeId = is("finance") ? ob.trim() || null : user.employeeId?.trim() || null;
     const displayName = user.name;
     const amount = parseFloat(amt);
-    if (isNaN(amount) || amount <= 0 || !pur.trim() || !billNumber.trim() || !billDate) return;
-    if (is("finance") && !ob) return;
+    if (isNaN(amount) || amount <= 0 || !pur.trim() || !billDate) return;
     setLoading(true);
     setError(null);
     try {
       const formData = new FormData();
       formData.append("amount", String(amount));
       formData.append("purpose", pur.trim());
-      formData.append("billNumber", billNumber.trim());
       formData.append("billDate", billDate);
       if (employeeId) formData.append("onBehalfOfEmployeeId", employeeId);
       if (file) formData.append("BillImage", file);
@@ -74,9 +71,7 @@ export default function AddExpensePage() {
   const canSubmit =
     amt.trim() !== "" &&
     pur.trim() !== "" &&
-    billNumber.trim() !== "" &&
     billDate !== "" &&
-    !(is("finance") && !ob) &&
     !loading;
 
   return (
@@ -121,6 +116,7 @@ export default function AddExpensePage() {
               loadOptions={loadEmployeeOptions}
               disabled={loading}
               placeholder="Select employee..."
+              req={false}
             />
           )}
           <Inp
@@ -131,15 +127,6 @@ export default function AddExpensePage() {
             req
             min="1"
             ph="15000"
-            style={cellStyle}
-          />
-          <Inp
-            label="Bill number"
-            type="text"
-            value={billNumber}
-            onChange={(e) => setBillNumber(e.target.value)}
-            req
-            ph="e.g. INV-001"
             style={cellStyle}
           />
           <Inp

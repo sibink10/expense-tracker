@@ -3,8 +3,9 @@ import { C } from "../shared/theme";
 import { Inp, Btn, Mdl } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
 import { updateClient } from "../shared/api/clients";
+import { getTaxConfigs } from "../shared/api/taxConfig";
 import { isEmailValid } from "../shared/utils";
-import type { Client } from "../types";
+import type { Client, TaxConfig } from "../types";
 
 const CURRENCY_OPTS = [
   { v: "INR", l: "INR" },
@@ -19,6 +20,9 @@ const CURRENCY_OPTS = [
   { v: "CHF", l: "CHF" },
 ];
 
+const CLIENT_TAX_TYPE = "ClientTax";
+const isClientTaxType = (type?: string) => (type || "").replace(/\s+/g, "").toLowerCase() === "clienttax";
+
 export default function ClientEditModal() {
   const { mdl, setMdl } = useAppContext();
   const [name, setName] = useState("");
@@ -27,12 +31,14 @@ export default function ClientEditModal() {
   const [phone, setPhone] = useState("");
   const [country, setCountry] = useState("");
   const [currency, setCurrency] = useState("INR");
-  const [taxType, setTaxType] = useState("Domestic");
+  const [taxType, setTaxType] = useState("");
   const [gstin, setGstin] = useState("");
   const [customerType, setCustomerType] = useState<"Business" | "Individual">("Business");
   const [shippingAddress, setShippingAddress] = useState("");
   const [billingAddress, setBillingAddress] = useState("");
   const [sameAddress, setSameAddress] = useState(false);
+  const [clientTaxOptions, setClientTaxOptions] = useState<TaxConfig[]>([]);
+  const [taxLoading, setTaxLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -47,7 +53,7 @@ export default function ClientEditModal() {
       setPhone(c.phone || "");
       setCountry(c.country || "");
       setCurrency(c.currency || "INR");
-      setTaxType(c.taxType || "Domestic");
+      setTaxType(c.taxType || "");
       setGstin(c.gstin || "");
       setCustomerType((c.customerType === "Individual" ? "Individual" : "Business") as "Business" | "Individual");
       setShippingAddress(c.shippingAddress ?? c.addr ?? "");
@@ -60,6 +66,32 @@ export default function ClientEditModal() {
   useEffect(() => {
     if (sameAddress) setBillingAddress(shippingAddress);
   }, [sameAddress, shippingAddress]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setTaxLoading(true);
+    getTaxConfigs()
+      .then((configs) => {
+        if (cancelled) return;
+        const clientTaxes = configs.filter((config) => config.isActive && isClientTaxType(config.type));
+        setClientTaxOptions(clientTaxes);
+        setTaxType((current) =>
+          current && clientTaxes.some((config) => config.name === current)
+            ? current
+            : (clientTaxes[0]?.name ?? current)
+        );
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setClientTaxOptions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setTaxLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (!c) return null;
 
@@ -81,7 +113,7 @@ export default function ClientEditModal() {
         phone: phone.trim(),
         country: country.trim(),
         currency: currency.trim() || "INR",
-        taxType: taxType.trim(),
+        taxType: taxType.trim() || CLIENT_TAX_TYPE,
         gstin: gstin.trim(),
         shippingAddress: shippingAddress.trim(),
         billingAddress: sameAddress ? shippingAddress.trim() : billingAddress.trim(),
@@ -135,11 +167,12 @@ export default function ClientEditModal() {
         type="select"
         value={taxType}
         onChange={(e) => setTaxType(e.target.value)}
-        opts={[
-          { v: "Domestic", l: "Domestic" },
-          { v: "SEZ", l: "SEZ" },
-          { v: "Export", l: "Export" },
-        ]}
+        disabled={taxLoading || clientTaxOptions.length === 0}
+        opts={
+          clientTaxOptions.length > 0
+            ? clientTaxOptions.map((config) => ({ v: config.name, l: `${config.name} (${config.rate}%)` }))
+            : [{ v: "", l: taxLoading ? "Loading..." : "No client tax configs" }]
+        }
       />
       <Inp label="GSTIN" value={gstin} onChange={(e) => setGstin(e.target.value)} ph="GST number" />
       <Inp label="Shipping address" type="textarea" value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} ph="Full shipping address" />
@@ -159,7 +192,7 @@ export default function ClientEditModal() {
         <div style={{ color: C.danger, fontSize: "12px", marginBottom: "8px" }}>{error}</div>
       )}
       <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
-        <Btn v="invoice" onClick={handleSubmit} disabled={!name.trim() || !email.trim() || !contactPerson.trim() || !isEmailValid(email) || loading}>
+        <Btn v="invoice" onClick={handleSubmit} disabled={!name.trim() || !email.trim() || !contactPerson.trim() || !isEmailValid(email) || !taxType.trim() || loading}>
           {loading ? "Saving..." : "Save"}
         </Btn>
         <Btn v="secondary" onClick={() => setMdl(null)} disabled={loading}>

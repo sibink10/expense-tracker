@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
 import { C } from "../shared/theme";
-import { findUserByEmail } from "../shared/mockData";
 import { getAuthMe } from "../shared/api/auth";
 import type { AppUser } from "../types";
 
@@ -12,22 +11,58 @@ const isMsalConfigured = () => {
   return id && id !== MSAL_PLACEHOLDER;
 };
 
-/** Map MSAL account to AppUser. Unknown users default to Employee. */
-function msalAccountToAppUser(account: { username?: string; name?: string; preferred_username?: string }): AppUser {
-  const email = account.username || account.preferred_username || "";
-  const matched = findUserByEmail(email);
-  if (matched) return matched;
-  // Not in USERS list → default to Employee
-  const name = account.name || email.split("@")[0] || "User";
-  const initials = name.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase() || "?";
-  return {
-    id: 0,
-    name,
-    email,
-    role: "employee",
-    dept: "General",
-    av: initials,
-  };
+function NoAccessScreen({ onSignOut }: { onSignOut: () => void }) {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "24px",
+        background: `linear-gradient(160deg, ${C.primary} 0%, #2C3E6A 50%, ${C.accent} 100%)`,
+        fontFamily: "'DM Sans'",
+        padding: "16px",
+      }}
+    >
+      <div
+        style={{
+          width: "64px",
+          height: "64px",
+          borderRadius: "16px",
+          background: "rgba(255,255,255,0.15)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "28px",
+        }}
+      >
+        🚫
+      </div>
+      <h1 style={{ color: "#fff", fontSize: "22px", fontWeight: 700, margin: 0 }}>No access</h1>
+      <p style={{ color: "rgba(255,255,255,0.8)", margin: 0, fontSize: "14px", textAlign: "center", maxWidth: "360px" }}>
+        Your account is not authorized to use this application. Contact your administrator to get access.
+      </p>
+      <button
+        onClick={onSignOut}
+        type="button"
+        style={{
+          padding: "12px 24px",
+          background: "rgba(255,255,255,0.2)",
+          border: "1px solid rgba(255,255,255,0.4)",
+          borderRadius: "10px",
+          color: "#fff",
+          fontSize: "14px",
+          fontWeight: 600,
+          fontFamily: "'DM Sans'",
+          cursor: "pointer",
+        }}
+      >
+        Sign out
+      </button>
+    </div>
+  );
 }
 
 export function LoadingScreen({ message = "Checking login…" }: { message?: string }) {
@@ -66,10 +101,11 @@ interface AuthGateProps {
 }
 
 export default function AuthGate({ onAuth, renderLogin }: AuthGateProps) {
-  const { accounts, inProgress } = useMsal();
+  const { instance, accounts, inProgress } = useMsal();
   const isAuthenticated = useIsAuthenticated();
   const [mounted, setMounted] = useState(false);
   const [fetchingMe, setFetchingMe] = useState(false);
+  const [noAccess, setNoAccess] = useState(false);
   const fetchedRef = useRef(false);
 
   useEffect(() => {
@@ -83,12 +119,21 @@ export default function AuthGate({ onAuth, renderLogin }: AuthGateProps) {
     if (!useDevPicker && mounted && isAuthenticated && accounts[0] && !fetchedRef.current) {
       fetchedRef.current = true;
       setFetchingMe(true);
+      setNoAccess(false);
       getAuthMe()
         .then((user) => onAuth(user))
-        .catch(() => onAuth(msalAccountToAppUser(accounts[0])))
+        .catch(() => setNoAccess(true))
         .finally(() => setFetchingMe(false));
     }
   }, [useDevPicker, mounted, isAuthenticated, accounts, onAuth]);
+
+  const handleSignOut = () => {
+    instance.logoutRedirect();
+  };
+
+  if (noAccess) {
+    return <NoAccessScreen onSignOut={handleSignOut} />;
+  }
 
   if (isCheckingAuth || fetchingMe) {
     return <LoadingScreen message={fetchingMe ? "Loading profile…" : "Checking login status…"} />;
