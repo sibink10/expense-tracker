@@ -1,4 +1,4 @@
-﻿using QubiqonFinanceHub.API.DTOs;
+using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Entities;
 
 namespace QubiqonFinanceHub.API.Services.Interfaces;
@@ -76,6 +76,7 @@ public interface IInvoiceService
     Task<InvoiceDto> CreateAsync(CreateInvoiceRequest dto);
     Task<InvoiceDto?> GetByIdAsync(Guid id);
     Task<PaginatedResult<InvoiceDto>> ListAsync(FilterParams filters);
+    Task<InvoiceStatusCountsDto> GetStatusCountsAsync();
     Task<InvoiceDto> MarkSentAsync(Guid id);
     Task<InvoiceDto> MarkPaidAsync(Guid id, ProcessPaymentRequest dto);
     Task<byte[]> GeneratePdfAsync(Guid id);

@@ -161,6 +161,7 @@ public class InvoiceService : IInvoiceService
     public async Task<PaginatedResult<InvoiceDto>> ListAsync(FilterParams f)
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
+        var today = DateTime.UtcNow.Date;
         var q = _db.Invoices
             .Include(x => x.Client)
             .Include(x => x.LineItems.OrderBy(l => l.LineNumber)).ThenInclude(l => l.GSTConfig)
@@ -170,7 +171,18 @@ public class InvoiceService : IInvoiceService
             .AsNoTracking();
 
         if (f.Status != null && Enum.TryParse<InvoiceStatus>(f.Status, true, out var status))
-            q = q.Where(x => x.Status == status);
+        {
+            if (status == InvoiceStatus.Overdue)
+            {
+                q = q.Where(x => x.DueDate < today && x.paidAmound < x.Total && x.Status != InvoiceStatus.Paid);
+            }
+            else
+            {
+                q = q.Where(x =>
+                    x.Status == status &&
+                    !(x.DueDate < today && x.paidAmound < x.Total && x.Status != InvoiceStatus.Paid));
+            }
+        }
         if (!string.IsNullOrWhiteSpace(f.Search))
         {
             var s = f.Search.ToLower();
@@ -182,6 +194,33 @@ public class InvoiceService : IInvoiceService
         var items = await q.Skip((f.Page - 1) * f.PageSize).Take(f.PageSize).ToListAsync();
 
         return new PaginatedResult<InvoiceDto>(items.Select(MapToDto).ToList(), total, f.Page, f.PageSize);
+    }
+
+    public async Task<InvoiceStatusCountsDto> GetStatusCountsAsync()
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var today = DateTime.UtcNow.Date;
+
+        var invoices = _db.Invoices
+            .Where(x => x.OrganizationId == orgId)
+            .AsNoTracking();
+
+        var draft = await invoices.CountAsync(x =>
+            x.Status == InvoiceStatus.Draft &&
+            !(x.DueDate < today && x.paidAmound < x.Total));
+        var sent = await invoices.CountAsync(x =>
+            x.Status == InvoiceStatus.Sent &&
+            !(x.DueDate < today && x.paidAmound < x.Total));
+        var partiallyPaid = await invoices.CountAsync(x =>
+            x.Status == InvoiceStatus.PartiallyPaid &&
+            !(x.DueDate < today && x.paidAmound < x.Total));
+        var paid = await invoices.CountAsync(x => x.Status == InvoiceStatus.Paid);
+        var overdue = await invoices.CountAsync(x =>
+            x.DueDate < today &&
+            x.paidAmound < x.Total &&
+            x.Status != InvoiceStatus.Paid);
+
+        return new InvoiceStatusCountsDto(draft, sent, partiallyPaid, paid, overdue);
     }
 
     public async Task<InvoiceDto> MarkSentAsync(Guid id)
@@ -348,7 +387,7 @@ public class InvoiceService : IInvoiceService
      inv.Client.ContactPerson, inv.Client.Country, inv.Currency,
      inv.SubTotal, inv.TotalGST, inv.TaxConfig?.Name, inv.TaxAmount, inv.Total, inv.paidAmound,
      inv.InvoiceDate, inv.DueDate, inv.PaymentTerms, inv.PurchaseOrder,
-     inv.Status.ToString(), inv.Notes, inv.TotalInWords,
+     GetDisplayStatus(inv), inv.Notes, inv.TotalInWords,
      inv.PaymentReference, inv.PaidAt, inv.CreatedAt,
      inv.LineItems.Select(l => new InvoiceLineItemDto(
          l.LineNumber, l.Description, l.HSNCode, l.Quantity, l.Rate, l.Amount,
@@ -358,4 +397,11 @@ public class InvoiceService : IInvoiceService
          c.Id, c.CommentByEmployee.FullName, c.Text, c.ActionType.ToString(), c.CreatedAt
      )).ToList()
  );
+
+    private static string GetDisplayStatus(Invoice inv)
+    {
+        var today = DateTime.UtcNow.Date;
+        var isOverdue = inv.DueDate < today && inv.paidAmound < inv.Total && inv.Status != InvoiceStatus.Paid;
+        return isOverdue ? InvoiceStatus.Overdue.ToString() : inv.Status.ToString();
+    }
 }

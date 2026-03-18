@@ -136,6 +136,14 @@ export interface GetInvoicesParams {
   status?: string;
 }
 
+export interface InvoiceCounts {
+  draft?: number;
+  sent?: number;
+  paid?: number;
+  partiallyPaid?: number;
+  overdue?: number;
+}
+
 export async function getInvoicesRaw(params: GetInvoicesParams = {}): Promise<ApiInvoicesResponse> {
   const apiParams: Record<string, unknown> = {
     Page: params.page,
@@ -176,6 +184,11 @@ export async function getInvoices(params: GetInvoicesParams = {}): Promise<{
     ...res,
     items: res.items.map(mapApiInvoiceToApp),
   };
+}
+
+export async function getInvoiceCounts(): Promise<InvoiceCounts> {
+  const { data } = await apiClient.get<InvoiceCounts>("/invoices/counts");
+  return data ?? {};
 }
 
 export async function createInvoice(payload: CreateInvoicePayload): Promise<unknown> {

@@ -281,6 +281,14 @@ public record InvoiceDto(
     List<CommentDto> Comments
 );
 
+public record InvoiceStatusCountsDto(
+    int Draft,
+    int Sent,
+    int PartiallyPaid,
+    int Paid,
+    int Overdue
+);
+
 // ═══════════════════════════════════════════════════
 //  TAX
 // ═══════════════════════════════════════════════════

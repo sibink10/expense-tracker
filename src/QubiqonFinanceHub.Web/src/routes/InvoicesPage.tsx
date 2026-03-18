@@ -6,7 +6,7 @@ import { INV_S } from "../shared/constants";
 import { fmtCur } from "../shared/utils";
 import { Btn, Badge, Tbl, Filter, Stat, Empty } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
-import { getInvoices } from "../shared/api/invoice";
+import { getInvoiceCounts, getInvoices } from "../shared/api/invoice";
 
 export default function InvoicesPage() {
   const navigate = useNavigate();
@@ -18,6 +18,13 @@ export default function InvoicesPage() {
   const [pageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [counts, setCounts] = useState({
+    draftInvoices: 0,
+    sentInvoices: 0,
+    paidInvoices: 0,
+    partiallyPaidInvoices: 0,
+    overdueInvoices: 0,
+  });
 
   useEffect(() => {
     const handler = () => setRefreshKey((k) => k + 1);
@@ -46,6 +53,28 @@ export default function InvoicesPage() {
       .finally(() => setLoading(false));
   }, [page, pageSize, search, sf, refreshKey]);
 
+  useEffect(() => {
+    getInvoiceCounts()
+      .then((res) => {
+        setCounts({
+          draftInvoices: res.draft ?? 0,
+          sentInvoices: res.sent ?? 0,
+          paidInvoices: res.paid ?? 0,
+          partiallyPaidInvoices: res.partiallyPaid ?? 0,
+          overdueInvoices: res.overdue ?? 0,
+        });
+      })
+      .catch(() => {
+        setCounts({
+          draftInvoices: 0,
+          sentInvoices: 0,
+          paidInvoices: 0,
+          partiallyPaidInvoices: 0,
+          overdueInvoices: 0,
+        });
+      });
+  }, [refreshKey]);
+
   const f = fil(invoices);
 
   const startIndex = totalCount === 0 ? 0 : (page - 1) * pageSize;
@@ -72,10 +101,11 @@ export default function InvoicesPage() {
         )}
       </div>
       <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>
-        <Stat label="Draft" value={invoices.filter((i) => i.status === INV_S.DRAFT).length} />
-        <Stat label="Sent" value={invoices.filter((i) => i.status === INV_S.SENT).length} />
-        <Stat label="Paid" value={invoices.filter((i) => i.status === INV_S.PAID).length} />
-        <Stat label="Overdue" value={invoices.filter((i) => i.status === INV_S.OVERDUE).length} />
+        <Stat label="Draft" value={counts.draftInvoices} />
+        <Stat label="Sent" value={counts.sentInvoices} />
+        <Stat label="Paid" value={counts.paidInvoices} />
+        <Stat label="Partially paid" value={counts.partiallyPaidInvoices} />
+        <Stat label="Overdue" value={counts.overdueInvoices} />
       </div>
       <div
         style={{

@@ -205,6 +205,7 @@ public class InvoicesController(IInvoiceService svc) : ControllerBase
     [HttpPost] public async Task<IActionResult> Create([FromBody] CreateInvoiceRequest dto) => Ok(await svc.CreateAsync(dto));
     [HttpGet("{id:guid}")] public async Task<IActionResult> GetById(Guid id) { var r = await svc.GetByIdAsync(id); return r != null ? Ok(r) : NotFound(); }
     [HttpGet] public async Task<IActionResult> List([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
+    [HttpGet("counts")] public async Task<IActionResult> Counts() => Ok(await svc.GetStatusCountsAsync());
     [HttpPost("{id:guid}/send")] public async Task<IActionResult> Send(Guid id) => Ok(await svc.MarkSentAsync(id));
     [HttpPost("{id:guid}/paid")] public async Task<IActionResult> Paid(Guid id, [FromBody] ProcessPaymentRequest dto) => Ok(await svc.MarkPaidAsync(id, dto));
     [HttpGet("{id:guid}/pdf")] public async Task<IActionResult> Pdf(Guid id) { var pdf = await svc.GeneratePdfAsync(id); return File(pdf, "application/pdf"); }
