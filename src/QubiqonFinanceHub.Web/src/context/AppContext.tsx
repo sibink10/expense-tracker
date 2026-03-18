@@ -240,13 +240,13 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
       };
       if (type === "expense") {
         const exp = item as Expense;
-        const hasBill = exp.file != null;
+        const hasBill = exp.documents.length > 0 || exp.file != null;
         setExps((prev) =>
           prev.map((e) =>
             e.id === exp.id
               ? {
                   ...e,
-                  status: hasBill ? EXP_S.APPROVED : EXP_S.AWAITING_BILL,
+                  status: EXP_S.APPROVED,
                   comments: [...e.comments, c],
                 }
               : e,
@@ -417,7 +417,7 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
   const payableExp = useMemo(
     () =>
       exps.filter(
-        (e) => e.status === EXP_S.APPROVED || e.status === EXP_S.AWAITING_BILL,
+        (e) => e.status === EXP_S.APPROVED && (e.documents.length > 0 || e.file != null),
       ),
     [exps],
   );

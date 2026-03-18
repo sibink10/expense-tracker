@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import type { Invoice } from "../types";
 import { C } from "../shared/theme";
 import { INV_S } from "../shared/constants";
@@ -10,6 +10,7 @@ import { getInvoiceCounts, getInvoices } from "../shared/api/invoice";
 
 export default function InvoicesPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { search, setSearch, sf, setSf, fil, is, setMdl } = useAppContext();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,12 +26,22 @@ export default function InvoicesPage() {
     partiallyPaidInvoices: 0,
     overdueInvoices: 0,
   });
+  const validStatusValues = new Set(["all", INV_S.DRAFT, INV_S.SENT, INV_S.PAID, INV_S.OVERDUE]);
+  const statusParam = searchParams.get("status") ?? "all";
+  const normalizedStatus = validStatusValues.has(statusParam) ? statusParam : "all";
 
   useEffect(() => {
     const handler = () => setRefreshKey((k) => k + 1);
     window.addEventListener("invoices-refresh", handler);
     return () => window.removeEventListener("invoices-refresh", handler);
   }, []);
+
+  useEffect(() => {
+    if (sf !== normalizedStatus) {
+      setSf(normalizedStatus);
+      setPage(1);
+    }
+  }, [normalizedStatus, setSf, sf]);
 
   useEffect(() => {
     setLoading(true);
@@ -122,7 +133,14 @@ export default function InvoicesPage() {
           search={search}
           onSearch={setSearch}
           status={sf}
-          onStatus={setSf}
+          onStatus={(nextStatus) => {
+            setSf(nextStatus);
+            const nextParams = new URLSearchParams(searchParams);
+            if (nextStatus && nextStatus !== "all") nextParams.set("status", nextStatus);
+            else nextParams.delete("status");
+            setSearchParams(nextParams, { replace: true });
+            setPage(1);
+          }}
           opts={["all", INV_S.DRAFT, INV_S.SENT, INV_S.PAID, INV_S.OVERDUE]}
         />
         {loading ? (

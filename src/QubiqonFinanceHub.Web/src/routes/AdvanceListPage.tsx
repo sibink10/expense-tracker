@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import type { Advance } from "../types";
 import { C } from "../shared/theme";
 import { ADV_S } from "../shared/constants";
@@ -18,12 +18,15 @@ const STATUS_TABS = [
 
 export default function AdvanceListPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { is, setMdl } = useAppContext();
   const myOnly = is("employee");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(12);
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
+  const validStatusValues = new Set(STATUS_TABS.map((tab) => tab.value));
+  const statusParam = searchParams.get("status") ?? "";
+  const status = validStatusValues.has(statusParam) ? statusParam : "";
   const [data, setData] = useState<Advance[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -128,7 +131,10 @@ export default function AdvanceListPage() {
                   key={tab.value || "all"}
                   type="button"
                   onClick={() => {
-                    setStatus(tab.value);
+                    const nextParams = new URLSearchParams(searchParams);
+                    if (tab.value) nextParams.set("status", tab.value);
+                    else nextParams.delete("status");
+                    setSearchParams(nextParams, { replace: true });
                     setPage(1);
                   }}
                   style={{

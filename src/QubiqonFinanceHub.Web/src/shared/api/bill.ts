@@ -1,5 +1,6 @@
 import { apiClient } from "./client";
 import type { Bill } from "../../types";
+import type { UploadedDocument } from "../../types";
 
 export interface ApiBill {
   id: string;
@@ -19,11 +20,20 @@ export interface ApiBill {
   paymentTerms: string;
   status: string;
   attachmentUrl?: string | null;
+  documents?: ApiBillDocument[];
   submittedBy?: string;
   submittedAt?: string;
   comments?: { by: string; text: string; actionType: string; createdAt: string }[];
   ccEmails?: string[];
   paymentReference?: string | null;
+}
+
+export interface ApiBillDocument {
+  id: string;
+  fileName: string;
+  contentType?: string | null;
+  fileSizeBytes: number;
+  uploadedAt: string;
 }
 
 function mapStatus(s: string): string {
@@ -37,11 +47,32 @@ function mapStatus(s: string): string {
   return m[s] ?? s;
 }
 
+function formatFileSize(sizeBytes: number): string {
+  if (!sizeBytes) return "0 KB";
+  if (sizeBytes < 1024 * 1024) return `${Math.max(1, Math.round(sizeBytes / 1024))} KB`;
+  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function mapDocument(doc: ApiBillDocument): UploadedDocument {
+  return {
+    id: doc.id,
+    name: doc.fileName,
+    contentType: doc.contentType ?? undefined,
+    sizeBytes: doc.fileSizeBytes,
+    sizeLabel: formatFileSize(doc.fileSizeBytes),
+    uploadedAt: doc.uploadedAt?.split("T")[0] ?? "",
+  };
+}
+
 function mapApiBillToApp(item: ApiBill): Bill {
   const pay = item.payableAmount ?? item.amount - (item.tdsAmount ?? 0);
-  const file = item.attachmentUrl
-    ? { n: item.attachmentUrl.split("/").pop() || "file", s: "—" }
-    : null;
+  const documents = (item.documents ?? []).map(mapDocument);
+  const primaryDocument = documents[documents.length - 1];
+  const file = primaryDocument
+    ? { n: primaryDocument.name, s: primaryDocument.sizeLabel }
+    : item.attachmentUrl
+      ? { n: item.attachmentUrl.split("/").pop() || "file", s: "—" }
+      : null;
   return {
     id: item.billCode ?? item.id,
     apiId: item.id,
@@ -60,6 +91,7 @@ function mapApiBillToApp(item: ApiBill): Bill {
     terms: item.paymentTerms ?? "",
     status: mapStatus(item.status),
     file,
+    documents,
     by: 0,
     byName: item.submittedBy ?? "",
     at: item.submittedAt?.split("T")[0] ?? "",
@@ -144,7 +176,7 @@ export interface CreateBillPayload {
   ccEmails: string;
 }
 
-export async function createBill(payload: CreateBillPayload, file: File): Promise<unknown> {
+export async function createBill(payload: CreateBillPayload, files: File[]): Promise<unknown> {
   const form = new FormData();
   form.append("vendorId", payload.vendorId);
   form.append("vendorBillNumber", payload.vendorBillNumber);
@@ -155,7 +187,7 @@ export async function createBill(payload: CreateBillPayload, file: File): Promis
   form.append("dueDate", payload.dueDate);
   form.append("paymentTerms", payload.paymentTerms);
   form.append("ccEmails", payload.ccEmails);
-  form.append("attachment", file);
+  files.forEach((file) => form.append("attachments", file));
 
   const { data } = await apiClient.post("/bills", form);
   return data;
@@ -184,6 +216,11 @@ export interface GetBillAttachmentResponse {
 /** Get bill attachment URL (GET /api/bills/{id}/attachment). Returns signed URL for viewing in iframe. */
 export async function getBillAttachment(id: string): Promise<string> {
   const { data } = await apiClient.get<GetBillAttachmentResponse>(`/bills/${id}/attachment`);
+  return data?.url ?? "";
+}
+
+export async function getBillDocument(id: string, documentId: string): Promise<string> {
+  const { data } = await apiClient.get<GetBillAttachmentResponse>(`/bills/${id}/documents/${documentId}`);
   return data?.url ?? "";
 }
 

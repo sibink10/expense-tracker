@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
 import { fmtCur } from "../shared/utils";
 import { useAppContext } from "../context/AppContext";
@@ -11,6 +12,7 @@ interface StatItem {
   value: number | string;
   icon: string;
   tone: StatTone;
+  to?: string;
 }
 
 const TONE_STYLES: Record<StatTone, { color: string; bg: string }> = {
@@ -24,7 +26,7 @@ const TONE_STYLES: Record<StatTone, { color: string; bg: string }> = {
   invoice: { color: C.invoice, bg: C.invoiceBg },
 };
 
-function StatCard({ label, value, icon, tone }: StatItem) {
+function StatCard({ label, value, icon, tone, to }: StatItem) {
   const palette = TONE_STYLES[tone];
   return (
     <div
@@ -37,6 +39,7 @@ function StatCard({ label, value, icon, tone }: StatItem) {
         display: "flex",
         alignItems: "center",
         gap: "12px",
+        cursor: to ? "pointer" : "default",
       }}
     >
       <div
@@ -87,6 +90,7 @@ function StatCard({ label, value, icon, tone }: StatItem) {
 
 export default function DashPage() {
   const { user, is } = useAppContext();
+  const navigate = useNavigate();
   const [data, setData] = useState<{
     pendingExpenses: number;
     approvedExpenses: number;
@@ -159,6 +163,11 @@ export default function DashPage() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  const buildStatusPath = (path: string, status?: string) => {
+    if (!status) return path;
+    return `${path}?status=${encodeURIComponent(status)}`;
+  };
+
   const renderStats = (stats: StatItem[]) => (
     <div style={{ marginTop: "24px" }}>
       <div
@@ -171,47 +180,60 @@ export default function DashPage() {
         }}
       >
         {stats.map((s) => (
-          <StatCard key={s.label} {...s} />
+          <div
+            key={s.label}
+            role={s.to ? "button" : undefined}
+            tabIndex={s.to ? 0 : undefined}
+            onClick={s.to ? () => navigate(s.to!) : undefined}
+            onKeyDown={s.to ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                navigate(s.to!);
+              }
+            } : undefined}
+          >
+            <StatCard {...s} />
+          </div>
         ))}
       </div>
     </div>
   );
 
   const employeeStats: StatItem[] = [
-    { label: "Pending expenses", value: data.pendingExpenses, icon: "🧾", tone: "warning" },
-    { label: "Approved expenses", value: data.approvedExpenses, icon: "✅", tone: "success" },
-    { label: "Completed expenses", value: data.completedExpenses, icon: "✔", tone: "info" },
-    { label: "Pending advances", value: data.pendingAdvances, icon: "💸", tone: "advance" },
+    { label: "Pending expenses", value: data.pendingExpenses, icon: "🧾", tone: "warning", to: buildStatusPath("/expenses", "PendingApproval") },
+    { label: "Approved expenses", value: data.approvedExpenses, icon: "✅", tone: "success", to: buildStatusPath("/expenses", "Approved") },
+    { label: "Completed expenses", value: data.completedExpenses, icon: "✔", tone: "info", to: buildStatusPath("/expenses", "Completed") },
+    { label: "Pending advances", value: data.pendingAdvances, icon: "💸", tone: "advance", to: buildStatusPath("/advances", "Pending") },
   ];
 
   const approverStats: StatItem[] = [
-    { label: "Pending expenses", value: data.pendingExpenses, icon: "🧾", tone: "warning" },
-    { label: "Pending bills", value: data.pendingBills, icon: "📋", tone: "vendor" },
-    { label: "Pending advances", value: data.pendingAdvances, icon: "💸", tone: "advance" },
+    { label: "Pending expenses", value: data.pendingExpenses, icon: "🧾", tone: "warning", to: buildStatusPath("/expenses", "PendingApproval") },
+    { label: "Pending bills", value: data.pendingBills, icon: "📋", tone: "vendor", to: buildStatusPath("/bills", "Submitted") },
+    { label: "Pending advances", value: data.pendingAdvances, icon: "💸", tone: "advance", to: buildStatusPath("/advances", "Pending") },
   ];
 
   const financeStats: StatItem[] = [
-    { label: "Bills to pay", value: data.billsToPayCount, icon: "📋", tone: "vendor" },
-    { label: "Bills amount", value: fmtCur(data.billsToPayAmount), icon: "₹", tone: "danger" },
-    { label: "Draft invoices", value: data.draftInvoices, icon: "📝", tone: "invoice" },
-    { label: "Sent invoices", value: data.sentInvoices, icon: "📤", tone: "info" },
-    { label: "Paid invoices", value: data.paidInvoices, icon: "💰", tone: "success" },
-    { label: "Overdue invoices", value: data.overdueInvoices, icon: "⏰", tone: "danger" },
-    { label: "Total receivable", value: fmtCur(data.totalReceivable), icon: "🏦", tone: "primary" },
+    { label: "Bills to pay", value: data.billsToPayCount, icon: "📋", tone: "vendor", to: buildStatusPath("/bills", "Approved") },
+    { label: "Bills amount", value: fmtCur(data.billsToPayAmount), icon: "₹", tone: "danger", to: buildStatusPath("/bills", "Approved") },
+    { label: "Draft invoices", value: data.draftInvoices, icon: "📝", tone: "invoice", to: buildStatusPath("/invoices", "Draft") },
+    { label: "Sent invoices", value: data.sentInvoices, icon: "📤", tone: "info", to: buildStatusPath("/invoices", "Sent") },
+    { label: "Paid invoices", value: data.paidInvoices, icon: "💰", tone: "success", to: buildStatusPath("/invoices", "Paid") },
+    { label: "Overdue invoices", value: data.overdueInvoices, icon: "⏰", tone: "danger", to: buildStatusPath("/invoices", "Overdue") },
+    { label: "Total receivable", value: fmtCur(data.totalReceivable), icon: "🏦", tone: "primary", to: "/invoices" },
   ];
 
   const adminStats: StatItem[] = [
-    { label: "Pending expenses", value: data.pendingExpenses, icon: "🧾", tone: "warning" },
-    { label: "Approved expenses", value: data.approvedExpenses, icon: "✅", tone: "success" },
-    { label: "Completed expenses", value: data.completedExpenses, icon: "✔", tone: "info" },
-    { label: "Pending bills", value: data.pendingBills, icon: "📋", tone: "vendor" },
-    { label: "Bills to pay", value: data.billsToPayCount, icon: "₹", tone: "danger" },
-    { label: "Pending advances", value: data.pendingAdvances, icon: "💸", tone: "advance" },
-    { label: "Draft invoices", value: data.draftInvoices, icon: "📝", tone: "invoice" },
-    { label: "Sent invoices", value: data.sentInvoices, icon: "📤", tone: "info" },
-    { label: "Paid invoices", value: data.paidInvoices, icon: "💰", tone: "success" },
-    { label: "Overdue invoices", value: data.overdueInvoices, icon: "⏰", tone: "danger" },
-    { label: "Total receivable", value: fmtCur(data.totalReceivable), icon: "🏦", tone: "primary" },
+    { label: "Pending expenses", value: data.pendingExpenses, icon: "🧾", tone: "warning", to: buildStatusPath("/expenses", "PendingApproval") },
+    { label: "Approved expenses", value: data.approvedExpenses, icon: "✅", tone: "success", to: buildStatusPath("/expenses", "Approved") },
+    { label: "Completed expenses", value: data.completedExpenses, icon: "✔", tone: "info", to: buildStatusPath("/expenses", "Completed") },
+    { label: "Pending bills", value: data.pendingBills, icon: "📋", tone: "vendor", to: buildStatusPath("/bills", "Submitted") },
+    { label: "Bills to pay", value: data.billsToPayCount, icon: "₹", tone: "danger", to: buildStatusPath("/bills", "Approved") },
+    { label: "Pending advances", value: data.pendingAdvances, icon: "💸", tone: "advance", to: buildStatusPath("/advances", "Pending") },
+    { label: "Draft invoices", value: data.draftInvoices, icon: "📝", tone: "invoice", to: buildStatusPath("/invoices", "Draft") },
+    { label: "Sent invoices", value: data.sentInvoices, icon: "📤", tone: "info", to: buildStatusPath("/invoices", "Sent") },
+    { label: "Paid invoices", value: data.paidInvoices, icon: "💰", tone: "success", to: buildStatusPath("/invoices", "Paid") },
+    { label: "Overdue invoices", value: data.overdueInvoices, icon: "⏰", tone: "danger", to: buildStatusPath("/invoices", "Overdue") },
+    { label: "Total receivable", value: fmtCur(data.totalReceivable), icon: "🏦", tone: "primary", to: "/invoices" },
   ];
 
   const heroHighlights = isAdmin

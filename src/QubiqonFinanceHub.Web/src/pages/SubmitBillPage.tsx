@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
 import { PAY_TERMS } from "../shared/constants";
 import { addDays, fmtCur, isEmailListValid } from "../shared/utils";
-import { Inp, Btn, FileUp, Alert } from "../components/ui";
+import { Inp, Btn, MultiFileUp, Alert } from "../components/ui";
 import { AsyncSelectInput } from "../components/AsyncSelectInput";
 import { useAppContext } from "../context/AppContext";
 import { createBill } from "../shared/api/bill";
@@ -26,8 +26,7 @@ export default function SubmitBillPage() {
   const [trm, setTrm] = useState("net30");
   const [tds, setTds] = useState("none");
   const [tdsLoading, setTdsLoading] = useState(true);
-  const [fi, setFi] = useState<{ n: string; s: string } | null>(null);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [cc, setCc] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,26 +76,23 @@ export default function SubmitBillPage() {
       setCcError("Enter valid email addresses (comma-separated)");
       return;
     }
-    if (!vId || !vendorBillNumber.trim() || !amt || !desc || !bd || !file) return;
+    if (!vId || !vendorBillNumber.trim() || !amt || !desc || !bd || files.length === 0) return;
     setLoading(true);
     setError(null);
     try {
       const billDate = new Date(bd).toISOString();
       const dueDate = new Date(due).toISOString();
-      await createBill(
-        {
-          vendorId: vId,
-          vendorBillNumber: vendorBillNumber.trim(),
-          amount: a,
-          taxConfigId: tds === "none" ? "" : tds,
-          description: desc,
-          billDate,
-          dueDate,
-          paymentTerms: trm,
-          ccEmails: cc,
-        },
-        file,
-      );
+      await createBill({
+        vendorId: vId,
+        vendorBillNumber: vendorBillNumber.trim(),
+        amount: a,
+        taxConfigId: tds === "none" ? "" : tds,
+        description: desc,
+        billDate,
+        dueDate,
+        paymentTerms: trm,
+        ccEmails: cc,
+      }, files);
       setCfg((c) => ({ ...c, billSeq: c.billSeq + 1 }));
       window.dispatchEvent(new CustomEvent("bills-refresh"));
       t("Bill submitted");
@@ -248,19 +244,14 @@ export default function SubmitBillPage() {
             </div>
           )}
           <div style={fullWidth}>
-            <FileUp
-              file={fi}
-              onChange={setFi}
-              onFileSelect={setFile}
-              req
-            />
+            <MultiFileUp files={files} onChange={setFiles} req />
           </div>
           {error && <Alert sx={{ ...fullWidth }}>{error}</Alert>}
           <div style={{ ...fullWidth, display: "flex", justifyContent: "flex-end" }}>
             <Btn
               v="vendor"
               onClick={handleSubmit}
-              disabled={!vId || !vendorBillNumber.trim() || !amt || !desc || !bd || !file || (cc.trim() !== "" && !isEmailListValid(cc)) || loading}
+              disabled={!vId || !vendorBillNumber.trim() || !amt || !desc || !bd || files.length === 0 || (cc.trim() !== "" && !isEmailListValid(cc)) || loading}
             >
               {loading ? "Submitting..." : "Submit bill"}
             </Btn>

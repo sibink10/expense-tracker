@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
-import { Inp, Btn, Av, FileUp, Alert } from "../components/ui";
+import { Inp, Btn, Av, MultiFileUp, Alert } from "../components/ui";
 import { AsyncSelectInput } from "../components/AsyncSelectInput";
 import { useAppContext } from "../context/AppContext";
 import { createExpenseForm } from "../shared/api/expense";
@@ -17,8 +17,7 @@ export default function AddExpensePage() {
   const [amt, setAmt] = useState("");
   const [pur, setPur] = useState("");
   const [billDate, setBillDate] = useState("");
-  const [fi, setFi] = useState<{ n: string; s: string } | null>(null);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [ob, setOb] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +49,7 @@ export default function AddExpensePage() {
       formData.append("purpose", pur.trim());
       formData.append("billDate", billDate);
       if (employeeId) formData.append("onBehalfOfEmployeeId", employeeId);
-      if (file) formData.append("BillImage", file);
+      files.forEach((file) => formData.append("BillImages", file));
       await createExpenseForm(formData);
       setEmail({ to: "Approvers", subj: `New expense request from ${displayName}` });
       t("Expense submitted");
@@ -149,14 +148,10 @@ export default function AddExpensePage() {
           ph="Describe..."
           style={{ marginTop: "14px" }}
         />
-        <FileUp
-          file={fi}
-          onChange={(f) => {
-            setFi(f);
-            if (!f) setFile(null);
-          }}
-          onFileSelect={setFile}
-        />
+        <MultiFileUp files={files} onChange={setFiles} title="Attachments" />
+        <div style={{ fontSize: "11px", color: C.muted, marginTop: "-6px", marginBottom: "14px" }}>
+          Cash reimbursement is disbursed only after the expense is approved and the bill is uploaded.
+        </div>
         {error && <Alert sx={{ marginBottom: "14px" }}>{error}</Alert>}
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <Btn onClick={submit} disabled={!canSubmit}>

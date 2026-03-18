@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { C } from "../shared/theme";
 import { fmtCur } from "../shared/utils";
-import { Inp, Btn, Mdl, Alert } from "../components/ui";
+import { Inp, Btn, Mdl, Alert, INVOICE_MODAL_Z_INDEX } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
 import { markInvoicePaid } from "../shared/api/invoice";
 import type { Invoice } from "../types";
@@ -78,7 +78,7 @@ export default function InvPayModal() {
   };
 
   return (
-    <Mdl open close={() => setMdl(null)} title="Mark invoice paid">
+    <Mdl open close={() => setMdl(null)} title="Mark invoice paid" zIndex={INVOICE_MODAL_Z_INDEX}>
       <div
         style={{
           padding: "10px 14px",

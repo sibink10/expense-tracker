@@ -119,6 +119,12 @@ public class ExpensesController(IExpenseService svc) : ControllerBase
         var result = await svc.GetBillUrlAsync(id);
         return Ok(new { url = result });
     }
+    [HttpGet("{id:guid}/documents/{documentId:guid}")]
+    public async Task<IActionResult> GetBillDocumentUrl(Guid id, Guid documentId)
+    {
+        var result = await svc.GetDocumentUrlAsync(id, documentId);
+        return Ok(new { url = result });
+    }
     [HttpGet("{id:guid}")] public async Task<IActionResult> GetById(Guid id) { var r = await svc.GetByIdAsync(id); return r != null ? Ok(r) : NotFound(); }
     [HttpGet("my")] public async Task<IActionResult> ListMine([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f, true));
     [HttpGet] public async Task<IActionResult> ListAll([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
@@ -179,6 +185,12 @@ public class BillsController(IVendorBillService svc) : ControllerBase
     public async Task<IActionResult> GetAttachmentUrl(Guid id)
     {
         var result = await svc.GetAttachmentUrlAsync(id);
+        return Ok(new { url = result });
+    }
+    [HttpGet("{id:guid}/documents/{documentId:guid}")]
+    public async Task<IActionResult> GetDocumentUrl(Guid id, Guid documentId)
+    {
+        var result = await svc.GetDocumentUrlAsync(id, documentId);
         return Ok(new { url = result });
     }
 }

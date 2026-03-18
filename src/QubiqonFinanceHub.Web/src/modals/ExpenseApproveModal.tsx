@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { Inp, Btn, Mdl, Alert } from "../components/ui";
+import { Btn, Mdl, Alert } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
 import { approveExpense } from "../shared/api/expense";
 import type { Expense } from "../types";
 
 export default function ExpenseApproveModal() {
   const { mdl, setMdl } = useAppContext();
-  const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,7 +17,7 @@ export default function ExpenseApproveModal() {
     setLoading(true);
     setError(null);
     try {
-      await approveExpense(id, comment);
+      await approveExpense(id);
       setMdl(null);
       window.dispatchEvent(new CustomEvent("expenses-refresh"));
     } catch (err: unknown) {
@@ -30,13 +29,9 @@ export default function ExpenseApproveModal() {
 
   return (
     <Mdl open close={() => setMdl(null)} title={`Approve ${e.id}`}>
-      <Inp
-        label="Comment"
-        type="textarea"
-        value={comment}
-        onChange={(ev) => setComment(ev.target.value)}
-        ph="Add a comment (optional)"
-      />
+      <div style={{ marginBottom: "12px", fontSize: "12px" }}>
+        Are you sure you want to approve this expense request?
+      </div>
       {error && <Alert sx={{ marginBottom: "8px" }}>{error}</Alert>}
       <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
         <Btn v="success" onClick={handleSubmit} disabled={loading}>

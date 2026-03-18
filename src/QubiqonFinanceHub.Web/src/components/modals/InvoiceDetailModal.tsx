@@ -1,4 +1,4 @@
-import { Btn, Mdl, CLog } from "../ui";
+import { Btn, Mdl, CLog, INVOICE_MODAL_Z_INDEX } from "../ui";
 import { useAppContext } from "../../context/AppContext";
 import type { Invoice } from "../../types";
 import { downloadInvoicePdf } from "../../shared/invoicePdf";
@@ -12,7 +12,7 @@ export default function InvoiceDetailModal({ invoice: inv }: Props) {
   const { setMdl, activeOrg } = useAppContext();
 
   return (
-    <Mdl open close={() => setMdl(null)} title={inv.id} w>
+    <Mdl open close={() => setMdl(null)} title={inv.id} w zIndex={INVOICE_MODAL_Z_INDEX}>
       <div style={{ marginBottom: "16px" }}>
         <InvoiceDocument invoice={inv} organization={activeOrg} />
       </div>

@@ -37,10 +37,9 @@ public class VendorBillService : IVendorBillService
         }
 
         var billId = Guid.NewGuid();
-
-        var attachmentUrl = dto.Attachment != null
-            ? await _storage.UploadAsync(StorageFolders.InvoiceDoc, billId, dto.Attachment)
-            : null;
+        var uploadedAttachments = ResolveUploadedFiles(dto.Attachments, dto.Attachment);
+        var documents = await UploadBillDocumentsAsync(orgId, billId, emp.Id, uploadedAttachments);
+        var attachmentUrl = documents.LastOrDefault()?.FileUrl;
 
         var bill = new VendorBill
         {
@@ -63,6 +62,9 @@ public class VendorBillService : IVendorBillService
             Status = BillStatus.Submitted,
             CreatedAt = DateTime.UtcNow
         };
+
+        foreach (var document in documents)
+            bill.Documents.Add(document);
 
         bill.Comments.Add(new ActivityComment
         {
@@ -118,6 +120,7 @@ public class VendorBillService : IVendorBillService
         var bill = await _db.VendorBills
             .Include(x => x.Vendor)
             .Include(x => x.TaxConfig)
+            .Include(x => x.Documents)
             .Include(x => x.Comments).ThenInclude(c => c.CommentByEmployee)
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId);
@@ -131,6 +134,7 @@ public class VendorBillService : IVendorBillService
         var q = _db.VendorBills
             .Include(x => x.Vendor)
             .Include(x => x.TaxConfig)
+            .Include(x => x.Documents)
             .Include(x => x.Comments).ThenInclude(c => c.CommentByEmployee)
             .Where(x => x.OrganizationId == orgId)
             .AsNoTracking();
@@ -319,7 +323,17 @@ public class VendorBillService : IVendorBillService
             submittedBy?.FullName ?? "Unknown", b.CreatedAt,
             b.Comments.OrderBy(c => c.CreatedAt).Select(c => new CommentDto(
                 c.Id, c.CommentByEmployee.FullName, c.Text, c.ActionType.ToString(), c.CreatedAt
-            )).ToList()
+            )).ToList(),
+            b.Documents
+                .OrderBy(x => x.CreatedAt)
+                .Select(x => new DocumentDto(
+                    x.Id,
+                    x.FileName,
+                    x.ContentType,
+                    x.FileSizeBytes,
+                    x.CreatedAt
+                ))
+                .ToList()
         );
     }
 
@@ -327,12 +341,63 @@ public class VendorBillService : IVendorBillService
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
         var bill = await _db.VendorBills
+            .Include(x => x.Documents)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Bill not found");
 
-        if (bill.AttachmentUrl == null)
+        var fileUrl = bill.Documents
+            .OrderBy(x => x.CreatedAt)
+            .LastOrDefault()?.FileUrl ?? bill.AttachmentUrl;
+
+        if (fileUrl == null)
             throw new InvalidOperationException("No attachment uploaded for this bill.");
 
-        return _storage.GenerateSasUrl(bill.AttachmentUrl);
+        return _storage.GenerateSasUrl(fileUrl);
+    }
+
+    public async Task<string> GetDocumentUrlAsync(Guid id, Guid documentId)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var document = await _db.RequestDocuments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == documentId && x.VendorBillId == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Document not found");
+
+        return _storage.GenerateSasUrl(document.FileUrl);
+    }
+
+    private async Task<List<RequestDocument>> UploadBillDocumentsAsync(Guid orgId, Guid billId, Guid uploadedByEmployeeId, IReadOnlyCollection<IFormFile> files)
+    {
+        var documents = new List<RequestDocument>(files.Count);
+        foreach (var file in files)
+        {
+            var fileUrl = await _storage.UploadAsync(StorageFolders.InvoiceDoc, billId, file);
+            documents.Add(new RequestDocument
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = orgId,
+                VendorBillId = billId,
+                UploadedByEmployeeId = uploadedByEmployeeId,
+                FileName = file.FileName,
+                ContentType = file.ContentType,
+                FileSizeBytes = file.Length,
+                FileUrl = fileUrl,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        return documents;
+    }
+
+    private static List<IFormFile> ResolveUploadedFiles(IEnumerable<IFormFile>? files, IFormFile? legacyFile)
+    {
+        var resolved = files?
+            .Where(x => x != null && x.Length > 0)
+            .ToList() ?? new List<IFormFile>();
+
+        if (legacyFile != null && legacyFile.Length > 0 && !resolved.Contains(legacyFile))
+            resolved.Add(legacyFile);
+
+        return resolved;
     }
 }

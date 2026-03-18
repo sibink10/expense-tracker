@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import type { Bill } from "../types";
 import { C } from "../shared/theme";
 import { BILL_S } from "../shared/constants";
@@ -10,6 +10,7 @@ import { getBills } from "../shared/api/bill";
 
 export default function BillListPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { search, setSearch, sf, setSf, fil, is, setMdl } = useAppContext();
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,12 +19,22 @@ export default function BillListPage() {
   const [pageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const validStatusValues = new Set(["all", BILL_S.SUBMITTED, BILL_S.APPROVED, BILL_S.PAID, BILL_S.OVERDUE, BILL_S.REJECTED]);
+  const statusParam = searchParams.get("status") ?? "all";
+  const normalizedStatus = validStatusValues.has(statusParam) ? statusParam : "all";
 
   useEffect(() => {
     const handler = () => setRefreshKey((k) => k + 1);
     window.addEventListener("bills-refresh", handler);
     return () => window.removeEventListener("bills-refresh", handler);
   }, []);
+
+  useEffect(() => {
+    if (sf !== normalizedStatus) {
+      setSf(normalizedStatus);
+      setPage(1);
+    }
+  }, [normalizedStatus, setSf, sf]);
 
   useEffect(() => {
     setLoading(true);
@@ -85,7 +96,14 @@ export default function BillListPage() {
           search={search}
           onSearch={setSearch}
           status={sf}
-          onStatus={setSf}
+          onStatus={(nextStatus) => {
+            setSf(nextStatus);
+            const nextParams = new URLSearchParams(searchParams);
+            if (nextStatus && nextStatus !== "all") nextParams.set("status", nextStatus);
+            else nextParams.delete("status");
+            setSearchParams(nextParams, { replace: true });
+            setPage(1);
+          }}
           opts={[
             "all",
             BILL_S.SUBMITTED,

@@ -42,13 +42,13 @@ export default function ExpensePayPage() {
               </div>
               <div style={{ textAlign: "right" }}>
                 <div style={{ fontWeight: 700, fontSize: "14px" }}>{fmtCur(e.amt)}</div>
-                {e.file ? (
+                {e.documents.length > 0 || e.file ? (
                   <span style={{ fontSize: "10px", color: C.success }}>📎 Bill</span>
                 ) : (
                   <span style={{ fontSize: "10px", color: C.warning }}>⚠ No bill</span>
                 )}
               </div>
-              <Btn sm v="info" onClick={() => setMdl({ t: "pay", d: e, it: "expense" })}>
+              <Btn sm v="info" onClick={() => setMdl({ t: "pay", d: e, it: "expense" })} disabled={!(e.documents.length > 0 || e.file)}>
                 Pay
               </Btn>
             </div>

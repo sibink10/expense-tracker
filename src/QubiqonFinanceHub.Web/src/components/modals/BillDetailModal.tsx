@@ -2,9 +2,9 @@ import { useState } from "react";
 import { C } from "../../shared/theme";
 import { BILL_S } from "../../shared/constants";
 import { fmtCur, downloadFromSasUrl, buildDownloadFilename } from "../../shared/utils";
-import { Av, Btn, Badge, Mdl, CLog } from "../ui";
+import { Av, Btn, Badge, Mdl, CLog, MODAL_Z_INDEX } from "../ui";
 import { useAppContext } from "../../context/AppContext";
-import { getBillAttachment } from "../../shared/api/bill";
+import { getBillAttachment, getBillDocument } from "../../shared/api/bill";
 import type { Bill } from "../../types";
 
 interface Props {
@@ -14,18 +14,20 @@ interface Props {
 export default function BillDetailModal({ bill: b }: Props) {
   const { setMdl, approve, is, cfg, t } = useAppContext();
   const tx = cfg.taxes.find((x) => x.id === b.tds);
-  const hasAttachment = !!(b.file || b.apiId);
+  const hasAttachment = b.documents.length > 0 || !!b.file;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewUrl, setViewUrl] = useState<string | null>(null);
+  const [viewTitle, setViewTitle] = useState("Attachment");
   const [viewLoading, setViewLoading] = useState(false);
   const viewerUrl = viewUrl ? `${viewUrl}#toolbar=0&navpanes=0&zoom=page-width` : null;
 
-  const openView = async () => {
+  const openView = async (documentId?: string, fileName?: string) => {
     const id = b.apiId ?? b.id;
     setViewLoading(true);
     setViewUrl(null);
+    setViewTitle(fileName || "Attachment");
     try {
-      const url = await getBillAttachment(id);
+      const url = documentId ? await getBillDocument(id, documentId) : await getBillAttachment(id);
       if (url) {
         setViewUrl(url);
         setSidebarOpen(true);
@@ -46,14 +48,31 @@ export default function BillDetailModal({ bill: b }: Props) {
 
   const handleDownload = async () => {
     const id = b.apiId ?? b.id;
-    const sasUrl = await getBillAttachment(id);
+    const latestDocument = b.documents[b.documents.length - 1];
+    const sasUrl = latestDocument
+      ? await getBillDocument(id, latestDocument.id)
+      : await getBillAttachment(id);
     if (!sasUrl) {
       t("Failed to download attachment");
       return;
     }
     await downloadFromSasUrl(
       sasUrl,
-      buildDownloadFilename(b.vendorBillNumber || b.id, b.file?.n, ".pdf"),
+      buildDownloadFilename(b.vendorBillNumber || b.id, latestDocument?.name ?? b.file?.n, ".pdf"),
+      () => t("Failed to download attachment")
+    );
+  };
+
+  const handleDocumentDownload = async (documentId: string, fileName: string) => {
+    const id = b.apiId ?? b.id;
+    const sasUrl = await getBillDocument(id, documentId);
+    if (!sasUrl) {
+      t("Failed to download attachment");
+      return;
+    }
+    await downloadFromSasUrl(
+      sasUrl,
+      buildDownloadFilename(b.vendorBillNumber || b.id, fileName, ".pdf"),
       () => t("Failed to download attachment")
     );
   };
@@ -88,17 +107,33 @@ export default function BillDetailModal({ bill: b }: Props) {
       <div style={{ padding: "8px 12px", background: C.surface, borderRadius: "6px", marginBottom: "12px", fontSize: "11px" }}>{b.desc}</div>
       {hasAttachment && (
         <div style={{ marginBottom: "12px" }}>
-          <div style={{ fontSize: "10px", color: C.muted, marginBottom: "4px" }}>Attachment</div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-            {b.file && (
-              <span style={{ padding: "6px 10px", background: C.surface, borderRadius: "6px", fontSize: "11px" }}>
-                📎 {b.file.n}
-              </span>
+          <div style={{ fontSize: "10px", color: C.muted, marginBottom: "4px" }}>Attachments</div>
+          <div style={{ display: "grid", gap: "8px" }}>
+            {b.documents.length > 0 ? (
+              b.documents.map((document) => (
+                <div key={document.id} style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", padding: "8px 10px", background: C.surface, borderRadius: "8px" }}>
+                  <span style={{ fontSize: "11px", fontWeight: 600 }}>📎 {document.name}</span>
+                  <span style={{ fontSize: "10px", color: C.muted }}>{document.sizeLabel}</span>
+                  <span style={{ fontSize: "10px", color: C.muted }}>{document.uploadedAt}</span>
+                  <div style={{ marginLeft: "auto", display: "flex", gap: "6px" }}>
+                    <Btn sm v="secondary" onClick={() => openView(document.id, document.name)} disabled={viewLoading}>{viewLoading ? "Loading…" : "View"}</Btn>
+                    <Btn sm v="secondary" onClick={() => handleDocumentDownload(document.id, document.name)}>Download</Btn>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                {b.file && (
+                  <span style={{ padding: "6px 10px", background: C.surface, borderRadius: "6px", fontSize: "11px" }}>
+                    📎 {b.file.n}
+                  </span>
+                )}
+                <div style={{ marginLeft: "auto", display: "flex", gap: "6px" }}>
+                  <Btn sm v="secondary" onClick={() => openView()} disabled={viewLoading}>{viewLoading ? "Loading…" : "View"}</Btn>
+                  <Btn sm v="secondary" onClick={handleDownload}>Download</Btn>
+                </div>
+              </div>
             )}
-            <div style={{ marginLeft: "auto", display: "flex", gap: "6px" }}>
-              <Btn sm v="secondary" onClick={openView} disabled={viewLoading}>{viewLoading ? "Loading…" : "View"}</Btn>
-              <Btn sm v="secondary" onClick={handleDownload}>Download</Btn>
-            </div>
           </div>
         </div>
       )}
@@ -128,7 +163,7 @@ export default function BillDetailModal({ bill: b }: Props) {
             tabIndex={0}
             onClick={closeSidebar}
             onKeyDown={(ev) => ev.key === "Escape" && closeSidebar()}
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 1100 }}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: MODAL_Z_INDEX }}
           />
           <div
             style={{
@@ -139,13 +174,13 @@ export default function BillDetailModal({ bill: b }: Props) {
               width: "min(90vw, 560px)",
               background: "#fff",
               boxShadow: "-4px 0 24px rgba(0,0,0,0.15)",
-              zIndex: 1101,
+              zIndex: MODAL_Z_INDEX,
               display: "flex",
               flexDirection: "column",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: `1px solid ${C.border}` }}>
-              <span style={{ fontSize: "14px", fontWeight: 600 }}>Attachment</span>
+              <span style={{ fontSize: "14px", fontWeight: 600 }}>{viewTitle}</span>
               <button type="button" onClick={closeSidebar} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "20px", lineHeight: 1, color: C.muted }}>×</button>
             </div>
             <div style={{ flex: 1, minHeight: 0 }}>

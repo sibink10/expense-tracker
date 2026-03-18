@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
 import { Inp, Btn, Toggle } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
+import { getOrganization } from "../shared/api";
 import { isEmailListValid } from "../shared/utils";
 import { bulkUpsertOrganizationSettings } from "../shared/api/organizationSettings";
 
@@ -10,7 +11,7 @@ const GRID_COLS = { sm: 1, md: 2, lg: 3 };
 
 export default function AdminSettingsPage() {
   const navigate = useNavigate();
-  const { cfg, t, orgSettings, refreshOrgSettings } = useAppContext();
+  const { cfg, t, orgSettings, refreshOrgSettings, activeOrg, setActiveOrg } = useAppContext();
   const [c, setC] = useState(cfg);
   const [ccError, setCcError] = useState<string | null>(null);
   const [cols, setCols] = useState(3);
@@ -33,6 +34,28 @@ export default function AdminSettingsPage() {
   useEffect(() => {
     setC(cfg);
   }, [cfg]);
+
+  useEffect(() => {
+    void refreshOrgSettings().catch(() => undefined);
+  }, [refreshOrgSettings]);
+
+  useEffect(() => {
+    if (!activeOrg?.id) return;
+    let cancelled = false;
+    void getOrganization(activeOrg.id)
+      .then((org) => {
+        if (cancelled) return;
+        setActiveOrg((prev) => ({
+          ...(prev ?? {}),
+          ...org,
+          selected: org.selected ?? prev?.selected,
+        }));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [activeOrg?.id, setActiveOrg]);
 
   useEffect(() => {
     if (!openTip) return;

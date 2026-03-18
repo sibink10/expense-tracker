@@ -98,7 +98,7 @@ export default function VendorEditModal() {
   return (
     <Mdl open close={() => setMdl(null)} title={`Edit ${v.name}`} w>
       <Inp label="Name" value={name} onChange={(e) => setName(e.target.value)} req ph="Vendor name" />
-      <div>
+      <div style={{ marginBottom: "14px" }}>
         <Inp
           label="Email"
           value={email}
@@ -113,37 +113,17 @@ export default function VendorEditModal() {
       </div>
       <Inp label="Contact person" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} ph="Optional" />
       <Inp label="GSTIN" value={gstin} onChange={(e) => setGstin(e.target.value)} ph="GST number" />
-      <Inp label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} ph="Contact number" />
-      <div>
-        <Inp
-          label="Category"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          ph="Vendor category"
-          style={{ marginBottom: categories.length ? 6 : 14 }}
-        />
-        {categories.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-            {categories.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setCategory(c.name)}
-                style={{
-                  padding: "3px 8px",
-                  borderRadius: "999px",
-                  border: `1px solid ${C.border}`,
-                  background: category === c.name ? C.surface : "#fff",
-                  fontSize: "10px",
-                  cursor: "pointer",
-                }}
-              >
-                {c.name}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <Inp label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} ph="Optional" />
+      <Inp
+        label="Category"
+        type="select"
+        value={category}
+        onChange={(e) => setCategory(e.target.value)}
+        opts={[
+          { v: "", l: categories.length ? "Select category..." : "No categories" },
+          ...categories.map((c) => ({ v: c.name, l: c.name })),
+        ]}
+      />
       <Inp
         label="Address"
         type="textarea"

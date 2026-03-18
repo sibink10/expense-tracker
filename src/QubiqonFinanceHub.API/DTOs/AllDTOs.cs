@@ -14,6 +14,7 @@ public record PaginatedResult<T>(List<T> Items, int TotalCount, int Page, int Pa
 public record FilterParams(int Page = 1, int PageSize = 20, string? Status = null, string? Search = null, string SortBy = "CreatedAt", bool Desc = true);
 
 public record CommentDto(Guid Id, string By, string Text, string ActionType, DateTime CreatedAt);
+public record DocumentDto(Guid Id, string FileName, string? ContentType, long FileSizeBytes, DateTime UploadedAt);
 
 // ═══════════════════════════════════════════════════
 //  AUTH
@@ -113,6 +114,7 @@ public class CreateExpenseRequest
     public string Purpose { get; set; } = "";
     public DateOnly BillDate { get; set; }
     public Guid? OnBehalfOfEmployeeId { get; set; }
+    public List<IFormFile> BillImages { get; set; } = new();
     public IFormFile? BillImage { get; set; }
 }
 
@@ -121,15 +123,17 @@ public class UpdateExpenseRequest
     public decimal Amount { get; set; }
     public string Purpose { get; set; } = "";
     public DateOnly BillDate { get; set; }
+    public List<IFormFile> BillImages { get; set; } = new();
     public IFormFile? BillImage { get; set; }  // null = keep existing
 }
 
 public class UploadBillRequest
 {
-    public IFormFile BillImage { get; set; } = null!;
+    public List<IFormFile> BillImages { get; set; } = new();
+    public IFormFile? BillImage { get; set; }
 }
 
-public record ExpenseDto(Guid Id, string ExpenseCode, Guid EmployeeId, string EmployeeName, string Department, decimal Amount, string Purpose, DateOnly BillDate, string Status, string? AttachmentUrl, string? PaymentReference, DateTime CreatedAt, List<CommentDto> Comments);
+public record ExpenseDto(Guid Id, string ExpenseCode, Guid EmployeeId, string EmployeeName, string Department, decimal Amount, string Purpose, DateOnly BillDate, string Status, string? AttachmentUrl, string? PaymentReference, DateTime CreatedAt, List<CommentDto> Comments, List<DocumentDto> Documents);
 
 // ═══════════════════════════════════════════════════
 //  ADVANCE
@@ -194,9 +198,10 @@ public class CreateBillRequest
     public DateTime DueDate { get; set; }
     public string PaymentTerms { get; set; } = "";
     public string? CCEmails { get; set; }
+    public List<IFormFile> Attachments { get; set; } = new();
     public IFormFile? Attachment { get; set; }
 }
-public record BillDto(Guid Id, string BillCode, Guid VendorId, string VendorName,string? vendorBillNumber, string? VendorGSTIN, string VendorEmail, decimal Amount, string? TaxName, decimal TDSAmount, decimal TotalPayable, string Description, DateTime BillDate, DateTime DueDate, string PaymentTerms, string Status, string? AttachmentUrl, string? PaymentReference, DateTime? PaidAt, string SubmittedByName, DateTime CreatedAt, List<CommentDto> Comments);
+public record BillDto(Guid Id, string BillCode, Guid VendorId, string VendorName,string? vendorBillNumber, string? VendorGSTIN, string VendorEmail, decimal Amount, string? TaxName, decimal TDSAmount, decimal TotalPayable, string Description, DateTime BillDate, DateTime DueDate, string PaymentTerms, string Status, string? AttachmentUrl, string? PaymentReference, DateTime? PaidAt, string SubmittedByName, DateTime CreatedAt, List<CommentDto> Comments, List<DocumentDto> Documents);
 
 // ═══════════════════════════════════════════════════
 //  CLIENT

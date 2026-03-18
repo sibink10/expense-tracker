@@ -40,6 +40,15 @@ export interface FileRef {
   s: string;
 }
 
+export interface UploadedDocument {
+  id: string;
+  name: string;
+  contentType?: string;
+  sizeBytes: number;
+  sizeLabel: string;
+  uploadedAt: string;
+}
+
 export interface Expense {
   id: string;
   /** Backend API id (GUID) for approve/reject endpoints */
@@ -55,6 +64,7 @@ export interface Expense {
   file: FileRef | null;
   /** Full URL for view/download of bill image */
   attachmentUrl?: string | null;
+  documents: UploadedDocument[];
   billNumber?: string;
   billDate?: string;
   comments: ActivityComment[];
@@ -79,6 +89,7 @@ export interface Bill {
   terms: string;
   status: string;
   file: FileRef | null;
+  documents: UploadedDocument[];
   by: number;
   byName: string;
   at: string;

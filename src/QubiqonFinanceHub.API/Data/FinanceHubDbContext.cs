@@ -20,6 +20,7 @@ public class FinanceHubDbContext : DbContext
     public DbSet<InvoiceLineItem> InvoiceLineItems => Set<InvoiceLineItem>();
     public DbSet<TaxConfiguration> TaxConfigurations => Set<TaxConfiguration>();
     public DbSet<ActivityComment> ActivityComments => Set<ActivityComment>();
+    public DbSet<RequestDocument> RequestDocuments => Set<RequestDocument>();
     public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
     public DbSet<CodeSequence> CodeSequences => Set<CodeSequence>();
     public DbSet<Category> Categories => Set<Category>();
@@ -126,6 +127,26 @@ public class FinanceHubDbContext : DbContext
             e.HasIndex(x => x.InvoiceId).HasFilter("[InvoiceId] IS NOT NULL");
             e.Property(x => x.ActionType).HasConversion<string>().HasMaxLength(20);
             e.HasOne(x => x.CommentByEmployee).WithMany().HasForeignKey(x => x.CommentByEmployeeId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ─── Request Document ───────────────────────
+        b.Entity<RequestDocument>(e => {
+            e.ToTable("RequestDocuments");
+            e.HasIndex(x => x.ExpenseRequestId).HasFilter("[ExpenseRequestId] IS NOT NULL");
+            e.HasIndex(x => x.VendorBillId).HasFilter("[VendorBillId] IS NOT NULL");
+            e.HasIndex(x => new { x.OrganizationId, x.CreatedAt });
+            e.HasOne(x => x.ExpenseRequest)
+                .WithMany(x => x.Documents)
+                .HasForeignKey(x => x.ExpenseRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.VendorBill)
+                .WithMany(x => x.Documents)
+                .HasForeignKey(x => x.VendorBillId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.UploadedByEmployee)
+                .WithMany()
+                .HasForeignKey(x => x.UploadedByEmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // ─── Email Template ─────────────────────────

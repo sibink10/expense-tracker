@@ -317,20 +317,24 @@ export const Av: React.FC<{ n?: string; sz?: number; v?: boolean }> = ({ n, sz =
   );
 };
 
+export const MODAL_Z_INDEX = 900;
+export const INVOICE_MODAL_Z_INDEX = 1000;
+
 export const Mdl: React.FC<{
   open: boolean;
   close: () => void;
   title: string;
   w?: boolean;
+  zIndex?: number;
   children: ReactNode;
-}> = ({ open, close, title, w, children }) => {
+}> = ({ open, close, title, w, zIndex = MODAL_Z_INDEX, children }) => {
   if (!open) return null;
   return (
     <div
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 1000,
+        zIndex,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -367,7 +371,6 @@ export const Mdl: React.FC<{
       `}</style>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="app-modal-scroll"
         style={{
           position: "relative",
           background: "#fff",
@@ -375,7 +378,9 @@ export const Mdl: React.FC<{
           width: "100%",
           maxWidth: w ? "760px" : "500px",
           maxHeight: "88vh",
-          overflow: "auto",
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
           boxShadow: "0 20px 60px rgba(27,42,74,0.18)",
         }}
       >
@@ -390,7 +395,7 @@ export const Mdl: React.FC<{
             top: 0,
             background: "#fff",
             borderRadius: "14px 14px 0 0",
-            zIndex: 10,
+            zIndex: 0,
           }}
         >
           <h2 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: C.primary }}>{title}</h2>
@@ -407,7 +412,19 @@ export const Mdl: React.FC<{
             ✕
           </button>
         </div>
-        <div style={{ padding: "16px 24px 20px", position: "relative", zIndex: 1 }}>{children}</div>
+        <div
+          className="app-modal-scroll"
+          style={{
+            padding: "16px 24px 20px",
+            position: "relative",
+            zIndex: 0,
+            overflow: "auto",
+            flex: 1,
+            minHeight: 0,
+          }}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -527,6 +544,100 @@ export const FileUp: React.FC<{
             onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
             style={{ display: "none" }}
           />
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const MultiFileUp: React.FC<{
+  files: File[];
+  onChange: (files: File[]) => void;
+  req?: boolean;
+  title?: string;
+  accept?: string;
+  hint?: string;
+}> = ({ files, onChange, req, accept = ".pdf,.jpg,.jpeg,.png", hint, title = "Attachments" }) => {
+  const ref = useRef<HTMLInputElement>(null);
+  const hintText = hint ?? (accept === ".pdf" ? "PDF only" : "PDF, JPG, PNG up to 10 MB");
+
+  const handleAddFiles = (pickedFiles: FileList | null) => {
+    if (!pickedFiles?.length) return;
+    const nextFiles = [...(files ?? []), ...Array.from(pickedFiles)];
+    const uniqueByNameAndSize = new Map<string, File>();
+    nextFiles.forEach((file) => {
+      uniqueByNameAndSize.set(`${file.name}:${file.size}:${file.lastModified}`, file);
+    });
+    onChange(Array.from(uniqueByNameAndSize.values()));
+    if (ref.current) ref.current.value = "";
+  };
+
+  const handleRemove = (index: number) => {
+    onChange(files.filter((_, fileIndex) => fileIndex !== index));
+  };
+
+  return (
+    <div style={{ marginBottom: "14px" }}>
+      <label
+        style={{
+          display: "block",
+          fontSize: "12px",
+          fontWeight: 600,
+          color: C.primary,
+          marginBottom: "4px",
+        }}
+      >
+        {title} {req && <span style={{ color: C.accent }}>*</span>}
+      </label>
+      <div
+        onClick={() => ref.current?.click()}
+        style={{
+          padding: "20px",
+          border: `2px dashed ${C.border}`,
+          borderRadius: "8px",
+          textAlign: "center",
+          cursor: "pointer",
+          background: C.surface,
+          marginBottom: files.length > 0 ? "10px" : 0,
+        }}
+      >
+        <div style={{ fontSize: "24px", opacity: 0.3, marginBottom: "4px" }}>📄</div>
+        <div style={{ fontSize: "12px", fontWeight: 600 }}>
+          Drop files or <span style={{ color: C.vendor }}>browse</span>
+        </div>
+        <div style={{ fontSize: "10px", color: C.muted }}>{hintText}</div>
+        <input
+          ref={ref}
+          type="file"
+          accept={accept}
+          multiple
+          onChange={(e) => handleAddFiles(e.target.files)}
+          style={{ display: "none" }}
+        />
+      </div>
+      {files.length > 0 && (
+        <div style={{ display: "grid", gap: "8px" }}>
+          {files.map((file, index) => (
+            <div
+              key={`${file.name}-${index}`}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "10px 14px",
+                background: C.vendorBg,
+                borderRadius: "8px",
+                border: `1px solid ${C.vendor}25`,
+              }}
+            >
+              <span>📎</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: "12px", fontWeight: 600 }}>{file.name}</div>
+                <div style={{ fontSize: "10px", color: C.muted }}>{(file.size / 1024).toFixed(0)} KB</div>
+              </div>
+              <button type="button" onClick={() => handleRemove(index)} style={{ background: "none", border: "none", cursor: "pointer", color: C.danger, fontSize: "13px" }}>✕</button>
+            </div>
+          ))}
         </div>
       )}
     </div>

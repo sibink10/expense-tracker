@@ -242,6 +242,38 @@ public class AdvanceService : IAdvanceService
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Advance not found");
 
+        if (advance.Status == AdvanceStatus.Rejected)
+            throw new InvalidOperationException("Advance is already rejected.");
+
+        if (advance.Status == AdvanceStatus.Disbursed || advance.Status == AdvanceStatus.Settled)
+            throw new InvalidOperationException($"Cannot reject advance in '{advance.Status}' status.");
+
+        if (advance.Status == AdvanceStatus.Approved)
+        {
+            var balanceSetting = await _db.OrganizationSettings
+                .FirstOrDefaultAsync(s => s.OrganizationId == orgId && s.Key == "balanceCap");
+
+            decimal currentBalance = balanceSetting != null ? decimal.Parse(balanceSetting.Value) : 0;
+            currentBalance += advance.Amount;
+
+            if (balanceSetting != null)
+            {
+                balanceSetting.Value = currentBalance.ToString();
+                balanceSetting.UpdatedAt = DateTime.UtcNow;
+            }
+            else
+            {
+                _db.OrganizationSettings.Add(new OrganizationSetting
+                {
+                    Id = Guid.NewGuid(),
+                    OrganizationId = orgId,
+                    Key = "balanceCap",
+                    Value = currentBalance.ToString(),
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+        }
+
         advance.Status = AdvanceStatus.Rejected;
 
         _db.ActivityComments.Add(new ActivityComment

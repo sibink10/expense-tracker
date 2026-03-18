@@ -31,6 +31,7 @@ public interface IExpenseService
     Task<ExpenseDto> ProcessPaymentAsync(Guid id, ProcessPaymentRequest dto);
     Task AttachBillAsync(Guid id, string attachmentUrl);
     Task<string> GetBillUrlAsync(Guid id);
+    Task<string> GetDocumentUrlAsync(Guid id, Guid documentId);
 }
 
 public interface IAdvanceService
@@ -61,6 +62,7 @@ public interface IVendorBillService
     Task<BillDto> RejectAsync(Guid id, RejectRequest dto);
     Task<BillDto> ProcessPaymentAsync(Guid id, ProcessPaymentRequest dto);
     Task<string> GetAttachmentUrlAsync(Guid id);
+    Task<string> GetDocumentUrlAsync(Guid id, Guid documentId);
 }
 
 public interface IClientService

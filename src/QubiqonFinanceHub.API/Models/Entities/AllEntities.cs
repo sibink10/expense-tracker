@@ -124,6 +124,7 @@ public class ExpenseRequest
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
     public ICollection<ActivityComment> Comments { get; set; } = new List<ActivityComment>();
+    public ICollection<RequestDocument> Documents { get; set; } = new List<RequestDocument>();
 }
 
 // ═══════════════════════════════════════════════════
@@ -196,6 +197,27 @@ public class VendorBill
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
     public ICollection<ActivityComment> Comments { get; set; } = new List<ActivityComment>();
+    public ICollection<RequestDocument> Documents { get; set; } = new List<RequestDocument>();
+}
+
+// ═══════════════════════════════════════════════════
+//  REQUEST DOCUMENT
+// ═══════════════════════════════════════════════════
+public class RequestDocument
+{
+    [Key] public Guid Id { get; set; }
+    public Guid OrganizationId { get; set; }
+    public Guid? ExpenseRequestId { get; set; }
+    [ForeignKey(nameof(ExpenseRequestId))] public ExpenseRequest? ExpenseRequest { get; set; }
+    public Guid? VendorBillId { get; set; }
+    [ForeignKey(nameof(VendorBillId))] public VendorBill? VendorBill { get; set; }
+    public Guid UploadedByEmployeeId { get; set; }
+    [ForeignKey(nameof(UploadedByEmployeeId))] public Employee UploadedByEmployee { get; set; } = null!;
+    [Required, MaxLength(260)] public string FileName { get; set; } = "";
+    [MaxLength(200)] public string? ContentType { get; set; }
+    public long FileSizeBytes { get; set; }
+    [Required, MaxLength(2048)] public string FileUrl { get; set; } = "";
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
 // ═══════════════════════════════════════════════════

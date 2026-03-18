@@ -35,10 +35,9 @@ public class ExpenseService : IExpenseService
         var code = await _codeGen.GenerateBillNumberAsync(orgId, "expense");
 
         var expenseId = Guid.NewGuid(); // Generate ID early for storage path
-
-        var billImageUrl = dto.BillImage != null
-            ? await _storage.UploadAsync(StorageFolders.ExpenseBill, expenseId, dto.BillImage)
-            : null;
+        var uploadedBills = ResolveUploadedFiles(dto.BillImages, dto.BillImage);
+        var documents = await UploadExpenseDocumentsAsync(orgId, expenseId, currentEmp.Id, uploadedBills);
+        var billImageUrl = documents.LastOrDefault()?.FileUrl;
 
         var expense = new ExpenseRequest
         {
@@ -54,6 +53,9 @@ public class ExpenseService : IExpenseService
             Status = ExpenseStatus.PendingApproval,
             CreatedAt = DateTime.UtcNow
         };
+
+        foreach (var document in documents)
+            expense.Documents.Add(document);
 
         expense.Comments.Add(new ActivityComment
         {
@@ -103,24 +105,46 @@ public class ExpenseService : IExpenseService
     public async Task<ExpenseDto> UploadBillAsync(Guid id, UploadBillRequest dto)
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
-        var empId = _tenant.GetCurrentEmployeeId();
+        var currentEmployee = await _tenant.GetCurrentEmployeeAsync();
+        var empId = currentEmployee.Id;
 
         var expense = await _db.ExpenseRequests
+            .Include(x => x.Documents)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
 
-        if (expense.SubmittedByEmployeeId != empId)
-            throw new UnauthorizedAccessException("Only the submitter can upload the bill.");
+        if (expense.SubmittedByEmployeeId != empId && currentEmployee.Role != UserRole.Admin)
+            throw new UnauthorizedAccessException("Only the submitter or an admin can upload the bill.");
 
-        if (expense.Status != ExpenseStatus.PendingApproval && expense.Status != ExpenseStatus.AwaitingBill)
-            throw new InvalidOperationException("Bill can only be uploaded for pending or awaiting bill expenses.");
+        var hasExistingDocuments = HasExpenseDocument(expense);
 
-        if (expense.BillImageUrl != null)
-            await _storage.DeleteAsync(expense.BillImageUrl);  // delete old if re-uploading
+        if (expense.Status == ExpenseStatus.Rejected || expense.Status == ExpenseStatus.Completed || expense.Status == ExpenseStatus.Cancelled)
+            throw new InvalidOperationException($"Bill cannot be uploaded when expense is in '{expense.Status}' status.");
 
-        expense.BillImageUrl = await _storage.UploadAsync(StorageFolders.ExpenseBill, expense.Id, dto.BillImage);
+        if (expense.Status == ExpenseStatus.Approved && hasExistingDocuments)
+            throw new InvalidOperationException("Bill documents have already been uploaded for this approved expense.");
 
-        expense.Status = ExpenseStatus.PendingBillApproval;
+        if (expense.Status != ExpenseStatus.PendingApproval &&
+            expense.Status != ExpenseStatus.PendingBillApproval &&
+            expense.Status != ExpenseStatus.Approved &&
+            expense.Status != ExpenseStatus.AwaitingBill)
+            throw new InvalidOperationException("Bill can only be uploaded for pending or approved expenses.");
+
+        var uploadedBills = ResolveUploadedFiles(dto.BillImages, dto.BillImage);
+        if (uploadedBills.Count == 0)
+            throw new InvalidOperationException("At least one bill document is required.");
+
+        var documents = await UploadExpenseDocumentsAsync(orgId, expense.Id, empId, uploadedBills);
+        foreach (var document in documents)
+            expense.Documents.Add(document);
+
+        expense.BillImageUrl = expense.Documents
+            .OrderBy(x => x.CreatedAt)
+            .LastOrDefault()?.FileUrl ?? expense.BillImageUrl;
+
+        expense.Status = expense.Status == ExpenseStatus.PendingApproval || expense.Status == ExpenseStatus.PendingBillApproval
+            ? ExpenseStatus.PendingBillApproval
+            : ExpenseStatus.Approved;
         expense.UpdatedAt = DateTime.UtcNow;
 
         _db.ActivityComments.Add(new ActivityComment
@@ -128,7 +152,9 @@ public class ExpenseService : IExpenseService
             Id = Guid.NewGuid(),
             ExpenseRequestId = id,
             CommentByEmployeeId = empId,
-            Text = "Bill uploaded. Awaiting bill approval.",
+            Text = expense.Status == ExpenseStatus.PendingBillApproval
+                ? "Bill uploaded. Awaiting bill approval."
+                : "Bill uploaded.",
             ActionType = CommentActionType.BillUploaded
         });
 
@@ -139,28 +165,38 @@ public class ExpenseService : IExpenseService
     public async Task<ExpenseDto> UpdateAsync(Guid id, UpdateExpenseRequest dto)
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
-        var empId = _tenant.GetCurrentEmployeeId();
+        var currentEmployee = await _tenant.GetCurrentEmployeeAsync();
+        var empId = currentEmployee.Id;
 
         var expense = await _db.ExpenseRequests
+            .Include(x => x.Documents)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
 
-        if (expense.SubmittedByEmployeeId != empId)
-            throw new UnauthorizedAccessException("Only the submitter can edit this expense.");
+        if (expense.SubmittedByEmployeeId != empId && currentEmployee.Role != UserRole.Admin)
+            throw new UnauthorizedAccessException("Only the submitter or an admin can edit this expense.");
 
-        if (expense.Status != ExpenseStatus.PendingApproval)
+        if (expense.Status == ExpenseStatus.Approved || expense.Status == ExpenseStatus.Completed)
             throw new InvalidOperationException("Only pending expenses can be edited.");
 
-        if (dto.BillImage != null)
+        var wasRejected = expense.Status == ExpenseStatus.Rejected;
+
+        var uploadedBills = ResolveUploadedFiles(dto.BillImages, dto.BillImage);
+        if (uploadedBills.Count > 0)
         {
-            if (expense.BillImageUrl != null)
-                await _storage.DeleteAsync(expense.BillImageUrl);  // delete old image
-            expense.BillImageUrl = await _storage.UploadAsync(StorageFolders.ExpenseBill, expense.Id, dto.BillImage);
+            var documents = await UploadExpenseDocumentsAsync(orgId, expense.Id, empId, uploadedBills);
+            foreach (var document in documents)
+                expense.Documents.Add(document);
+            expense.BillImageUrl = expense.Documents
+                .OrderBy(x => x.CreatedAt)
+                .LastOrDefault()?.FileUrl ?? expense.BillImageUrl;
         }
 
         expense.Amount = dto.Amount;
         expense.Purpose = dto.Purpose;
         expense.BillDate = dto.BillDate;
+        if (wasRejected)
+            expense.Status = ExpenseStatus.PendingApproval;
         expense.UpdatedAt = DateTime.UtcNow;
 
         _db.ActivityComments.Add(new ActivityComment
@@ -168,7 +204,9 @@ public class ExpenseService : IExpenseService
             Id = Guid.NewGuid(),
             ExpenseRequestId = id,
             CommentByEmployeeId = empId,
-            Text = $"Expense updated. Amount: ₹{dto.Amount:N2}."
+            Text = wasRejected
+                ? $"Rejected expense updated and resubmitted. Amount: ₹{dto.Amount:N2}."
+                : $"Expense updated. Amount: ₹{dto.Amount:N2}."
         });
 
         await _db.SaveChangesAsync();
@@ -180,6 +218,7 @@ public class ExpenseService : IExpenseService
         var orgId = await _tenant.GetCurrentOrganizationId();
         var e = await _db.ExpenseRequests
             .Include(x => x.Employee)
+            .Include(x => x.Documents)
             .Include(x => x.Comments).ThenInclude(c => c.CommentByEmployee)
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId);
@@ -193,6 +232,7 @@ public class ExpenseService : IExpenseService
         var orgId = await _tenant.GetCurrentOrganizationId();
         var q = _db.ExpenseRequests
             .Include(x => x.Employee)
+            .Include(x => x.Documents)
             .Include(x => x.Comments).ThenInclude(c => c.CommentByEmployee)
             .Where(x => x.OrganizationId == orgId)
             .AsNoTracking();
@@ -216,14 +256,17 @@ public class ExpenseService : IExpenseService
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
-        var expense = await _db.ExpenseRequests.Include(x => x.Employee)
+        var expense = await _db.ExpenseRequests
+            .Include(x => x.Employee)
+            .Include(x => x.Documents)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
 
         if (expense.Status != ExpenseStatus.PendingApproval && expense.Status != ExpenseStatus.PendingBillApproval)
             throw new InvalidOperationException($"Cannot approve expense in '{expense.Status}' status.");
 
-        expense.Status = expense.BillImageUrl != null ? ExpenseStatus.Approved : ExpenseStatus.AwaitingBill;
+        var hasDocuments = HasExpenseDocument(expense);
+        expense.Status = ExpenseStatus.Approved;
         expense.UpdatedAt = DateTime.UtcNow;
 
         _db.ActivityComments.Add(new ActivityComment
@@ -231,13 +274,13 @@ public class ExpenseService : IExpenseService
             Id = Guid.NewGuid(),
             ExpenseRequestId = id,
             CommentByEmployeeId = emp.Id,
-            Text = dto.Comments ?? (expense.BillImageUrl != null ? "Approved." : "Approved. Awaiting bill submission."),
+            Text = dto.Comments ?? (hasDocuments ? "Approved." : "Approved. Bill upload is required before payment."),
             ActionType = CommentActionType.Approved
         });
 
         await _db.SaveChangesAsync();
 
-        var templateKey = expense.Status == ExpenseStatus.Approved
+        var templateKey = hasDocuments
                     ? "expense_approved"
                     : "expense_awaiting_bill";
 
@@ -303,12 +346,14 @@ public class ExpenseService : IExpenseService
     public async Task<ExpenseDto> CancelAsync(Guid id)
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
-        var empId = _tenant.GetCurrentEmployeeId();
+        var currentEmployee = await _tenant.GetCurrentEmployeeAsync();
+        var empId = currentEmployee.Id;
         var expense = await _db.ExpenseRequests
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
 
-        if (expense.EmployeeId != empId) throw new UnauthorizedAccessException("Only submitter can cancel.");
+        if (expense.EmployeeId != empId && currentEmployee.Role != UserRole.Admin)
+            throw new UnauthorizedAccessException("Only the submitter or an admin can cancel.");
         if (expense.Status != ExpenseStatus.PendingApproval) throw new InvalidOperationException("Can only cancel pending expenses.");
 
         expense.Status = ExpenseStatus.Cancelled;
@@ -331,12 +376,17 @@ public class ExpenseService : IExpenseService
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
-        var expense = await _db.ExpenseRequests.Include(x => x.Employee)
+        var expense = await _db.ExpenseRequests
+            .Include(x => x.Employee)
+            .Include(x => x.Documents)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
 
-        if (expense.Status != ExpenseStatus.Approved && expense.Status != ExpenseStatus.PendingBillApproval)
+        if (expense.Status != ExpenseStatus.Approved)
             throw new InvalidOperationException("Expense not ready for payment.");
+
+        if (!HasExpenseDocument(expense))
+            throw new InvalidOperationException("Bill upload is required before payment.");
 
         expense.Status = ExpenseStatus.Completed;
         expense.PaymentReference = dto.PaymentReference;
@@ -375,10 +425,24 @@ public class ExpenseService : IExpenseService
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
         var expense = await _db.ExpenseRequests
+            .Include(x => x.Documents)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
 
         expense.BillImageUrl = billImageUrl;
+        var currentEmployee = await _tenant.GetCurrentEmployeeAsync();
+        expense.Documents.Add(new RequestDocument
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = orgId,
+            ExpenseRequestId = expense.Id,
+            UploadedByEmployeeId = currentEmployee.Id,
+            FileName = GetFileNameFromUrl(billImageUrl),
+            ContentType = null,
+            FileSizeBytes = 0,
+            FileUrl = billImageUrl,
+            CreatedAt = DateTime.UtcNow
+        });
         if (expense.Status == ExpenseStatus.AwaitingBill) expense.Status = ExpenseStatus.Approved;
         expense.UpdatedAt = DateTime.UtcNow;
 
@@ -389,13 +453,29 @@ public class ExpenseService : IExpenseService
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
         var expense = await _db.ExpenseRequests
+            .Include(x => x.Documents)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
 
-        if (expense.BillImageUrl == null)
+        var fileUrl = expense.Documents
+            .OrderBy(x => x.CreatedAt)
+            .LastOrDefault()?.FileUrl ?? expense.BillImageUrl;
+
+        if (fileUrl == null)
             throw new InvalidOperationException("No bill uploaded for this expense.");
 
-        return _storage.GenerateSasUrl(expense.BillImageUrl);
+        return _storage.GenerateSasUrl(fileUrl);
+    }
+
+    public async Task<string> GetDocumentUrlAsync(Guid id, Guid documentId)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var document = await _db.RequestDocuments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == documentId && x.ExpenseRequestId == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Document not found");
+
+        return _storage.GenerateSasUrl(document.FileUrl);
     }
 
     private static ExpenseDto MapToDto(ExpenseRequest e) => new(
@@ -420,6 +500,62 @@ public class ExpenseService : IExpenseService
                 c.ActionType.ToString(),
                 c.CreatedAt
             ))
+            .ToList(),
+        e.Documents
+            .OrderBy(x => x.CreatedAt)
+            .Select(x => new DocumentDto(
+                x.Id,
+                x.FileName,
+                x.ContentType,
+                x.FileSizeBytes,
+                x.CreatedAt
+            ))
             .ToList()
     );
+
+    private async Task<List<RequestDocument>> UploadExpenseDocumentsAsync(Guid orgId, Guid expenseId, Guid uploadedByEmployeeId, IReadOnlyCollection<IFormFile> files)
+    {
+        var documents = new List<RequestDocument>(files.Count);
+        foreach (var file in files)
+        {
+            var fileUrl = await _storage.UploadAsync(StorageFolders.ExpenseBill, expenseId, file);
+            documents.Add(new RequestDocument
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = orgId,
+                ExpenseRequestId = expenseId,
+                UploadedByEmployeeId = uploadedByEmployeeId,
+                FileName = file.FileName,
+                ContentType = file.ContentType,
+                FileSizeBytes = file.Length,
+                FileUrl = fileUrl,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        return documents;
+    }
+
+    private static List<IFormFile> ResolveUploadedFiles(IEnumerable<IFormFile>? files, IFormFile? legacyFile)
+    {
+        var resolved = files?
+            .Where(x => x != null && x.Length > 0)
+            .ToList() ?? new List<IFormFile>();
+
+        if (legacyFile != null && legacyFile.Length > 0 && !resolved.Contains(legacyFile))
+            resolved.Add(legacyFile);
+
+        return resolved;
+    }
+
+    private static bool HasExpenseDocument(ExpenseRequest expense) =>
+        expense.Documents.Count > 0 || !string.IsNullOrWhiteSpace(expense.BillImageUrl);
+
+    private static string GetFileNameFromUrl(string fileUrl)
+    {
+        if (Uri.TryCreate(fileUrl, UriKind.Absolute, out var uri))
+            return Path.GetFileName(uri.LocalPath);
+
+        return Path.GetFileName(fileUrl);
+    }
 }

@@ -48,6 +48,7 @@ public class EmailService : IEmailService
     {
         try
         {
+            NormalizeActionDateToIst(variables);
             var template = await ResolveTemplateAsync(templateKey, variables);
 
             // 3. Get user's incoming bearer token
@@ -141,7 +142,7 @@ public class EmailService : IEmailService
                 inlineLogo,
                 "Submitted",
                 "#0f766e",
-                $"New expense request {GetVariable(variables, "expense_id")} submitted",
+                BuildNewSubject("Expense", GetVariable(variables, "expense_id")),
                 "Expense Submitted For Review",
                 $"A new expense request <strong>{Encode(GetVariable(variables, "expense_id"))}</strong> has been submitted for review.",
                 "Please review the request and take the appropriate action.",
@@ -158,7 +159,7 @@ public class EmailService : IEmailService
                 inlineLogo,
                 "Approved",
                 "#22c55e",
-                $"Expense {GetVariable(variables, "expense_id")} approved",
+                BuildStatusSubject("Approved", "Expense", GetVariable(variables, "expense_id")),
                 "Expense Approved",
                 $"Your expense request <strong>{Encode(GetVariable(variables, "expense_id"))}</strong> has been approved.",
                 "No further action is needed from your side at this stage.",
@@ -175,7 +176,7 @@ public class EmailService : IEmailService
                 inlineLogo,
                 "Awaiting Bill",
                 "#f59e0b",
-                $"Expense {GetVariable(variables, "expense_id")} approved and awaiting bill",
+                BuildStatusSubject("Approved", "Expense", GetVariable(variables, "expense_id")),
                 "Expense Approved - Bill Required",
                 $"Your expense request <strong>{Encode(GetVariable(variables, "expense_id"))}</strong> has been approved and is now waiting for bill submission.",
                 "Please upload the supporting bill to complete the expense process.",
@@ -192,7 +193,7 @@ public class EmailService : IEmailService
                 inlineLogo,
                 "Rejected",
                 "#ef4444",
-                $"Expense {GetVariable(variables, "expense_id")} rejected",
+                BuildStatusSubject("Rejected", "Expense", GetVariable(variables, "expense_id")),
                 "Expense Rejected",
                 $"Your expense request <strong>{Encode(GetVariable(variables, "expense_id"))}</strong> has been rejected.",
                 "Please review the reason below and resubmit if required.",
@@ -209,7 +210,7 @@ public class EmailService : IEmailService
                 inlineLogo,
                 "Paid",
                 "#2563eb",
-                $"Payment released for expense {GetVariable(variables, "expense_id")}",
+                BuildStatusSubject("Paid", "Expense", GetVariable(variables, "expense_id")),
                 "Expense Payment Released",
                 $"Payment has been released for your expense request <strong>{Encode(GetVariable(variables, "expense_id"))}</strong>.",
                 "Please find the payment reference and processed details below.",
@@ -226,7 +227,7 @@ public class EmailService : IEmailService
                 inlineLogo,
                 "Submitted",
                 "#0f766e",
-                $"New advance request {GetVariable(variables, "advance_id")} submitted",
+                BuildNewSubject("Advance", GetVariable(variables, "advance_id")),
                 "Advance Request Submitted",
                 $"A new advance request <strong>{Encode(GetVariable(variables, "advance_id"))}</strong> has been submitted for review.",
                 "Please review the request and proceed with approval or rejection.",
@@ -243,7 +244,7 @@ public class EmailService : IEmailService
                 inlineLogo,
                 "Approved",
                 "#22c55e",
-                $"Advance request {GetVariable(variables, "advance_id")} approved",
+                BuildStatusSubject("Approved", "Advance", GetVariable(variables, "advance_id")),
                 "Advance Request Approved",
                 $"Your advance request <strong>{Encode(GetVariable(variables, "advance_id"))}</strong> has been approved.",
                 "The approved amount is reserved and can now move to disbursement.",
@@ -260,7 +261,7 @@ public class EmailService : IEmailService
                 inlineLogo,
                 "Rejected",
                 "#ef4444",
-                $"Advance request {GetVariable(variables, "advance_id")} rejected",
+                BuildStatusSubject("Rejected", "Advance", GetVariable(variables, "advance_id")),
                 "Advance Request Rejected",
                 $"Your advance request <strong>{Encode(GetVariable(variables, "advance_id"))}</strong> has been rejected.",
                 "Please review the reason below before submitting a new request.",
@@ -277,7 +278,7 @@ public class EmailService : IEmailService
                 inlineLogo,
                 "Disbursed",
                 "#2563eb",
-                $"Advance disbursed for request {GetVariable(variables, "advance_id")}",
+                BuildStatusSubject("Disbursed", "Advance", GetVariable(variables, "advance_id")),
                 "Advance Disbursed",
                 $"Your advance request <strong>{Encode(GetVariable(variables, "advance_id"))}</strong> has been disbursed.",
                 "Please find the payment reference and processing details below.",
@@ -294,7 +295,7 @@ public class EmailService : IEmailService
                 inlineLogo,
                 "Submitted",
                 "#0f766e",
-                $"New vendor bill {GetVariable(variables, "bill_id")} submitted",
+                BuildNewSubject("Vendor Bill", GetVariable(variables, "bill_id")),
                 "Vendor Bill Submitted",
                 $"A new vendor bill <strong>{Encode(GetVariable(variables, "bill_id"))}</strong> has been submitted for review.",
                 "Please review the bill and proceed with approval or rejection.",
@@ -311,7 +312,7 @@ public class EmailService : IEmailService
                 inlineLogo,
                 "Approved",
                 "#22c55e",
-                $"Vendor bill {GetVariable(variables, "bill_id")} approved",
+                BuildStatusSubject("Approved", "Vendor Bill", GetVariable(variables, "bill_id")),
                 "Vendor Bill Approved",
                 $"Vendor bill <strong>{Encode(GetVariable(variables, "bill_id"))}</strong> has been approved.",
                 "The bill is now ready for payment processing.",
@@ -328,7 +329,7 @@ public class EmailService : IEmailService
                 inlineLogo,
                 "Rejected",
                 "#ef4444",
-                $"Vendor bill {GetVariable(variables, "bill_id")} rejected",
+                BuildStatusSubject("Rejected", "Vendor Bill", GetVariable(variables, "bill_id")),
                 "Vendor Bill Rejected",
                 $"Vendor bill <strong>{Encode(GetVariable(variables, "bill_id"))}</strong> has been rejected.",
                 "Please review the rejection reason below and update the bill if required.",
@@ -345,7 +346,7 @@ public class EmailService : IEmailService
                 inlineLogo,
                 "Paid",
                 "#2563eb",
-                $"Payment processed for vendor bill {GetVariable(variables, "bill_id")}",
+                BuildStatusSubject("Paid", "Vendor Bill", GetVariable(variables, "bill_id")),
                 "Vendor Bill Paid",
                 $"Payment has been processed for vendor bill <strong>{Encode(GetVariable(variables, "bill_id"))}</strong>.",
                 "Please find the payment reference and processing details below.",
@@ -362,7 +363,7 @@ public class EmailService : IEmailService
                 inlineLogo,
                 GetVariable(variables, "invoice_status"),
                 GetVariable(variables, "invoice_status").Equals("Sent", StringComparison.OrdinalIgnoreCase) ? "#2563eb" : "#475569",
-                $"Invoice {GetVariable(variables, "invoice_number")} created",
+                BuildNewSubject("Invoice", GetVariable(variables, "invoice_number")),
                 "A new invoice has been created in the system.",
                 "Created By",
                 GetVariable(variables, "actor_name"),
@@ -377,7 +378,7 @@ public class EmailService : IEmailService
                 inlineLogo,
                 "Sent",
                 "#2563eb",
-                $"Invoice {GetVariable(variables, "invoice_number")} from {org.OrgName}",
+                BuildStatusSubject("Sent", "Invoice", GetVariable(variables, "invoice_number")),
                 "Please find your invoice details below.",
                 "Sent By",
                 GetVariable(variables, "actor_name"),
@@ -392,7 +393,12 @@ public class EmailService : IEmailService
                 inlineLogo,
                 GetVariable(variables, "invoice_status"),
                 GetVariable(variables, "invoice_status").Equals("Partially Paid", StringComparison.OrdinalIgnoreCase) ? "#f59e0b" : "#22c55e",
-                $"Payment received for invoice {GetVariable(variables, "invoice_number")}",
+                BuildStatusSubject(
+                    GetVariable(variables, "invoice_status").Equals("Partially Paid", StringComparison.OrdinalIgnoreCase)
+                        ? "Partially Paid"
+                        : "Paid",
+                    "Invoice",
+                    GetVariable(variables, "invoice_number")),
                 "Payment has been recorded for this invoice.",
                 "Updated By",
                 GetVariable(variables, "actor_name"),
@@ -534,6 +540,23 @@ public class EmailService : IEmailService
 
     private static string GetVariableOrEmpty(Dictionary<string, string> variables, string key) =>
         variables.TryGetValue(key, out var value) ? value : string.Empty;
+
+    private static string BuildStatusSubject(string status, string entity, string identifier) =>
+        $"{status.ToUpperInvariant()} - {entity} - {identifier}";
+
+    private static string BuildNewSubject(string entity, string identifier) =>
+        $"NEW {entity.ToUpperInvariant()} - {identifier}";
+
+    private static void NormalizeActionDateToIst(Dictionary<string, string> variables)
+    {
+        if (!variables.ContainsKey("action_date"))
+            return;
+
+        var indiaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
+        variables["action_date"] = TimeZoneInfo
+            .ConvertTimeFromUtc(DateTime.UtcNow, indiaTimeZone)
+            .ToString("dd MMM yyyy hh:mm tt 'IST'");
+    }
 
     private static string Encode(string? value) => WebUtility.HtmlEncode(value ?? string.Empty);
 

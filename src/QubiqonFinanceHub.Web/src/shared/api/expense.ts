@@ -1,6 +1,6 @@
 import { apiClient } from "./client";
 import type { Expense } from "../../types";
-import type { ActivityComment, FileRef } from "../../types";
+import type { ActivityComment, FileRef, UploadedDocument } from "../../types";
 import { EXP_S } from "../constants";
 
 // ─── API types ─────────────────────────────────────────────────
@@ -10,6 +10,14 @@ export interface ApiExpenseComment {
   text: string;
   actionType: string;
   createdAt: string;
+}
+
+export interface ApiExpenseDocument {
+  id: string;
+  fileName: string;
+  contentType?: string | null;
+  fileSizeBytes: number;
+  uploadedAt: string;
 }
 
 export interface ApiExpenseItem {
@@ -26,6 +34,7 @@ export interface ApiExpenseItem {
   paymentReference: string | null;
   createdAt: string;
   comments: ApiExpenseComment[];
+  documents?: ApiExpenseDocument[];
   billNumber?: string | null;
   billDate?: string | null;
 }
@@ -67,11 +76,32 @@ function mapApiComment(c: ApiExpenseComment): ActivityComment {
   };
 }
 
+function formatFileSize(sizeBytes: number): string {
+  if (!sizeBytes) return "0 KB";
+  if (sizeBytes < 1024 * 1024) return `${Math.max(1, Math.round(sizeBytes / 1024))} KB`;
+  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function mapApiDocument(doc: ApiExpenseDocument): UploadedDocument {
+  return {
+    id: doc.id,
+    name: doc.fileName,
+    contentType: doc.contentType ?? undefined,
+    sizeBytes: doc.fileSizeBytes,
+    sizeLabel: formatFileSize(doc.fileSizeBytes),
+    uploadedAt: doc.uploadedAt ? doc.uploadedAt.split("T")[0] : "",
+  };
+}
+
 function mapApiExpenseToApp(item: ApiExpenseItem): Expense {
   const status = STATUS_MAP[item.status] ?? item.status;
-  const file: FileRef | null = item.attachmentUrl
-    ? { n: item.attachmentUrl.split("/").pop() || "file", s: "—" }
-    : null;
+  const documents = (item.documents ?? []).map(mapApiDocument);
+  const primaryDocument = documents[documents.length - 1];
+  const file: FileRef | null = primaryDocument
+    ? { n: primaryDocument.name, s: primaryDocument.sizeLabel }
+    : item.attachmentUrl
+      ? { n: item.attachmentUrl.split("/").pop() || "file", s: "—" }
+      : null;
   const billDate = item.billDate ? (item.billDate.includes("T") ? item.billDate.split("T")[0] : item.billDate) : undefined;
   return {
     id: item.expenseCode,
@@ -86,6 +116,7 @@ function mapApiExpenseToApp(item: ApiExpenseItem): Expense {
     at: item.createdAt ? item.createdAt.split("T")[0] : "",
     file,
     attachmentUrl: item.attachmentUrl ?? undefined,
+    documents,
     billNumber: item.billNumber ?? undefined,
     billDate,
     comments: (item.comments || []).map(mapApiComment),
@@ -179,7 +210,7 @@ export async function updateExpenseForm(id: string, formData: FormData): Promise
   return data;
 }
 
-/** Upload bill document for expense in AwaitingBill status. */
+/** Upload bill document for expense after submission/approval. */
 export async function uploadExpenseBill(id: string, formData: FormData): Promise<unknown> {
   const { data } = await apiClient.post(`/expenses/${id}/upload-bill`, formData);
   return data;
@@ -196,6 +227,11 @@ export async function getExpenseBill(id: string): Promise<string> {
   return data?.url ?? "";
 }
 
+export async function getExpenseDocument(id: string, documentId: string): Promise<string> {
+  const { data } = await apiClient.get<GetExpenseBillResponse>(`/expenses/${id}/documents/${documentId}`);
+  return data?.url ?? "";
+}
+
 /** Get bill as blob for download (GET /api/expenses/{id}/bill/download). Use this to avoid CORS when downloading. */
 export async function getExpenseBillBlob(id: string): Promise<string> {
   const { data } = await apiClient.get(`/expenses/${id}/bill`);
@@ -205,14 +241,13 @@ export async function getExpenseBillBlob(id: string): Promise<string> {
 /** Lightweight fetch for counts (Dashboard, nav badges). */
 export async function getExpenseCounts(): Promise<ExpenseCounts> {
   try {
-    const [pendingRes, approvedRes, awaitingRes] = await Promise.all([
+    const [pendingRes, approvedRes] = await Promise.all([
       getExpenses({ page: 1, pageSize: 1, status: "PendingApproval" }),
       getExpenses({ page: 1, pageSize: 1, status: "Approved" }),
-      getExpenses({ page: 1, pageSize: 1, status: "AwaitingBill" }),
     ]);
     return {
       pendExp: pendingRes.totalCount ?? 0,
-      payableCount: (approvedRes.totalCount ?? 0) + (awaitingRes.totalCount ?? 0),
+      payableCount: approvedRes.totalCount ?? 0,
     };
   } catch {
     return { pendExp: 0, payableCount: 0 };

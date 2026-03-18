@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import type { Expense } from "../types";
 import { C } from "../shared/theme";
 import { EXP_S } from "../shared/constants";
@@ -20,11 +20,14 @@ const STATUS_TABS = [
 
 export default function ExpenseListPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { is, setMdl } = useAppContext();
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
+  const validStatusValues = new Set<string>(STATUS_TABS.map((tab) => tab.value));
+  const statusParam = searchParams.get("status") ?? "";
+  const status = validStatusValues.has(statusParam) ? statusParam : "";
   const [data, setData] = useState<Expense[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -125,7 +128,10 @@ export default function ExpenseListPage() {
                 key={tab.value || "all"}
                 type="button"
                 onClick={() => {
-                  setStatus(tab.value);
+                  const nextParams = new URLSearchParams(searchParams);
+                  if (tab.value) nextParams.set("status", tab.value);
+                  else nextParams.delete("status");
+                  setSearchParams(nextParams, { replace: true });
                   setPage(1);
                 }}
                 style={{
@@ -157,19 +163,20 @@ export default function ExpenseListPage() {
               !is("employee") && "Employee",
               "Purpose",
               "Amount",
-              "Bill #",
               "Bill date",
               "Status",
               (is("approver") || is("finance") || is("admin")) && "Action",
             ].filter(Boolean) as string[]}
-            rows={data.map((e) => ({
-              ...e,
-              _cells: [
+            rows={data.map((e) => {
+              const hasDocuments = e.documents.length > 0 || !!(e.file || e.attachmentUrl);
+              const canShowPayAction = (is("finance") || is("admin")) && (e.status === EXP_S.APPROVED || e.status === EXP_S.PENDING_BILL_APPROVAL);
+              return ({
+                ...e,
+                _cells: [
                 { v: <span style={{ fontWeight: 600, color: C.accent, fontSize: "11px" }}>{e.id}</span> },
                 ...(!is("employee") ? [{ v: <span style={{ fontSize: "11px" }}>{e.empName}</span> }] : []),
                 { v: <div style={{ maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.purpose}</div> },
                 { v: <span style={{ fontWeight: 700 }}>{fmtCur(e.amt)}</span> },
-                { v: <span style={{ fontSize: "11px" }}>{e.billNumber ?? "—"}</span> },
                 { v: <span style={{ fontSize: "11px" }}>{e.billDate ?? "—"}</span> },
                 { v: <Badge s={e.status} /> },
                 ...(is("approver") || is("finance") || is("admin")
@@ -183,16 +190,20 @@ export default function ExpenseListPage() {
                                 <Btn sm v="danger" onClick={() => setMdl({ t: "reject", d: e, it: "expense" })}>✕</Btn>
                               </>
                             )}
-                            {(is("finance") || is("admin")) && (e.status === EXP_S.APPROVED || e.status === EXP_S.PENDING_BILL_APPROVAL) && (
-                              <Btn sm v="info" onClick={() => setMdl({ t: "pay", d: e, it: "expense" })}>Pay</Btn>
+                            {canShowPayAction && (
+                              <>
+                                <Btn sm v="danger" onClick={() => setMdl({ t: "reject", d: e, it: "expense" })}>Reject</Btn>
+                                <Btn sm v="info" onClick={() => setMdl({ t: "pay", d: e, it: "expense" })} disabled={!hasDocuments}>Pay</Btn>
+                              </>
                             )}
                           </div>
                         ),
                       },
                     ]
                   : []),
-              ],
-            }))}
+                ],
+              });
+            })}
             onRow={(row) => setMdl({ t: "exp-detail", d: row as unknown as Expense })}
           />
         )}
