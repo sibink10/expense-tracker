@@ -13,8 +13,9 @@ const STATUS_TABS = [
   { label: EXP_S.PENDING, value: "PendingApproval" },
   { label: EXP_S.PENDING_BILL_APPROVAL, value: "PendingBillApproval" },
   { label: EXP_S.APPROVED, value: "Approved" },
-  { label: EXP_S.AWAITING_BILL, value: "AwaitingBill" },
+  { label: EXP_S.AWAITING_PAYMENT, value: "AwaitingPayment" },
   { label: EXP_S.COMPLETED, value: "Completed" },
+  { label: EXP_S.PARTIALLY_PAID, value: "PartiallyPaid" },
   { label: EXP_S.REJECTED, value: "Rejected" },
 ] as const;
 
@@ -163,13 +164,14 @@ export default function ExpenseListPage() {
               !is("employee") && "Employee",
               "Purpose",
               "Amount",
+              "Paid",
               "Bill date",
               "Status",
               (is("approver") || is("finance") || is("admin")) && "Action",
             ].filter(Boolean) as string[]}
             rows={data.map((e) => {
               const hasDocuments = e.documents.length > 0 || !!(e.file || e.attachmentUrl);
-              const canShowPayAction = (is("finance") || is("admin")) && (e.status === EXP_S.APPROVED || e.status === EXP_S.PENDING_BILL_APPROVAL);
+              const canShowPayAction = (is("finance") || is("admin")) && (e.status === EXP_S.AWAITING_PAYMENT || e.status === EXP_S.PARTIALLY_PAID || e.status === EXP_S.APPROVED || e.status === EXP_S.AWAITING_BILL);
               return ({
                 ...e,
                 _cells: [
@@ -177,6 +179,7 @@ export default function ExpenseListPage() {
                 ...(!is("employee") ? [{ v: <span style={{ fontSize: "11px" }}>{e.empName}</span> }] : []),
                 { v: <div style={{ maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.purpose}</div> },
                 { v: <span style={{ fontWeight: 700 }}>{fmtCur(e.amt)}</span> },
+                { v: <span style={{ fontSize: "11px", color: (e.paidAmount ?? 0) > 0 ? C.info : C.muted }}>{fmtCur(e.paidAmount ?? 0)}</span> },
                 { v: <span style={{ fontSize: "11px" }}>{e.billDate ?? "—"}</span> },
                 { v: <Badge s={e.status} /> },
                 ...(is("approver") || is("finance") || is("admin")

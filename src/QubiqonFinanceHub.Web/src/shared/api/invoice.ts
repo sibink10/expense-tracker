@@ -30,7 +30,7 @@ export interface ApiInvoiceLineItem {
   hsnCode: string;
   quantity: number;
   rate: number;
-  gstConfigId?: string;
+  gstConfigId?: string | null;
   gstRate?: number;
   gstAmount?: number;
 }
@@ -46,6 +46,7 @@ export interface ApiInvoice {
   lineItems?: ApiInvoiceLineItem[];
   subTotal?: number;
   taxAmount?: number;
+  taxConfigId?: string | null;
   total: number;
   invoiceDate: string;
   dueDate: string;
@@ -82,6 +83,7 @@ function mapLineItem(it: ApiInvoiceLineItem): InvoiceItem {
     rate: it.rate,
     gst: it.gstRate != null ? `${it.gstRate}%` : "0%",
     gstAmt,
+    gstConfigId: it.gstConfigId ?? null,
   };
 }
 
@@ -100,6 +102,7 @@ function mapApiInvoiceToApp(item: ApiInvoice): Invoice {
     items,
     subTotal,
     taxId: null,
+    taxConfigId: item.taxConfigId ?? null,
     taxAmt,
     total,
     invDate: item.invoiceDate?.split("T")[0] ?? "",
@@ -196,9 +199,49 @@ export async function createInvoice(payload: CreateInvoicePayload): Promise<unkn
   return data;
 }
 
+export interface UpdateInvoicePayload {
+  currency: string;
+  lineItems: CreateInvoiceLineItem[];
+  taxConfigId: string | null;
+  invoiceDate: string;
+  dueDate: string;
+  paymentTerms: string;
+  purchaseOrder: string;
+  notes: string;
+}
+
+export async function getInvoice(id: string): Promise<Invoice | null> {
+  try {
+    const { data } = await apiClient.get<ApiInvoice>(`/invoices/${id}`);
+    return data ? mapApiInvoiceToApp(data) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function updateInvoice(id: string, payload: UpdateInvoicePayload): Promise<unknown> {
+  const { data } = await apiClient.put(`/invoices/${id}`, {
+    currency: payload.currency,
+    lineItems: payload.lineItems.map((li) => ({
+      description: li.description,
+      hsnCode: li.hsnCode || null,
+      quantity: li.quantity,
+      rate: li.rate,
+      gstConfigId: li.gstConfigId || null,
+    })),
+    taxConfigId: payload.taxConfigId || null,
+    invoiceDate: payload.invoiceDate,
+    dueDate: payload.dueDate,
+    paymentTerms: payload.paymentTerms,
+    purchaseOrder: payload.purchaseOrder || null,
+    notes: payload.notes || null,
+  });
+  return data;
+}
+
 export interface MarkInvoicePaidPayload {
   paymentReference: string;
-  paidAmound: number;
+  paidAmount: number;
   method: string;
   notes: string;
 }

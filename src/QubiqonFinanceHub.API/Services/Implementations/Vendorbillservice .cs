@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Client.Extensions.Msal;
 using QubiqonFinanceHub.API.Data;
@@ -57,6 +58,8 @@ public class VendorBillService : IVendorBillService
             DueDate = dto.DueDate,
             PaymentTerms = dto.PaymentTerms,
             CCEmails = dto.CCEmails,
+            DiscountPercent = dto.DiscountPercent,
+            Rounding = dto.Rounding,
             AttachmentUrl = attachmentUrl,
             SubmittedByEmployeeId = emp.Id,
             Status = BillStatus.Submitted,
@@ -75,22 +78,52 @@ public class VendorBillService : IVendorBillService
             ActionType = CommentActionType.Submitted
         });
 
+        var lineItems = ParseLineItems(dto.Items);
+        var validLineItems = lineItems.Where(li => !string.IsNullOrWhiteSpace(li.Description) && li.Quantity > 0).ToList();
+        if (validLineItems.Count == 0)
+            throw new InvalidOperationException("At least one item with description and quantity is required.");
+
+        for (var i = 0; i < lineItems.Count; i++)
+        {
+            var li = lineItems[i];
+            if (string.IsNullOrWhiteSpace(li.Description) || li.Quantity <= 0) continue;
+            var lineAmt = li.Quantity * li.Rate;
+            decimal taxAmt = 0;
+            if (li.GSTConfigId.HasValue)
+            {
+                var gst = await _db.TaxConfigurations.FindAsync(li.GSTConfigId.Value);
+                if (gst != null) taxAmt = Math.Round(lineAmt * gst.Rate / 100, 2);
+            }
+            bill.LineItems.Add(new VendorBillLineItem
+            {
+                Id = Guid.NewGuid(),
+                VendorBillId = bill.Id,
+                LineNumber = i + 1,
+                Description = li.Description.Trim(),
+                Account = li.Account?.Trim(),
+                Quantity = li.Quantity,
+                Rate = li.Rate,
+                GSTConfigId = li.GSTConfigId,
+                Amount = lineAmt + taxAmt
+            });
+        }
+
         _db.VendorBills.Add(bill);
         await _db.SaveChangesAsync();
 
-        var reviewRoles = new[] { UserRole.Admin, UserRole.Finance, UserRole.Approver };
         var reviewers = await _db.Employees
             .Where(e => e.OrganizationId == orgId &&
                         e.IsActive &&
                         !e.IsDelete &&
                         !string.IsNullOrWhiteSpace(e.Email) &&
-                        reviewRoles.Contains(e.Role))
+                        e.Role == UserRole.Approver)
             .Select(e => e.Email)
             .Distinct()
             .ToListAsync();
 
         if (reviewers.Count > 0)
         {
+            var lineItemsHtml = BuildLineItemsHtml(bill);
             await _email.SendNotificationAsync(
                 Constants.EmailTemplateKeys.VendorBillSubmitted,
                 new Dictionary<string, string>
@@ -105,6 +138,9 @@ public class VendorBillService : IVendorBillService
                     ["description"] = bill.Description,
                     ["submitted_by"] = emp.FullName,
                     ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
+                    ["discount_percent"] = bill.DiscountPercent > 0 ? $"{bill.DiscountPercent:N1}%" : "—",
+                    ["rounding"] = bill.Rounding != 0 ? $"₹{bill.Rounding:N2}" : "—",
+                    ["line_items_html"] = lineItemsHtml,
                 },
                 string.Join(",", reviewers),
                 bill.CCEmails);
@@ -114,6 +150,140 @@ public class VendorBillService : IVendorBillService
         return (await GetByIdAsync(bill.Id))!;
     }
 
+    public async Task<BillDto> UpdateAsync(Guid id, UpdateBillRequest dto)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+
+        var bill = await _db.VendorBills
+            .Include(x => x.TaxConfig) // ✅ keep only what you need
+            .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Bill not found");
+
+        if (bill.Status != BillStatus.Submitted)
+            throw new InvalidOperationException("Only bills in Submitted status can be edited.");
+
+        var lineItems = ParseLineItems(dto.Items);
+        var validLineItems = lineItems
+            .Where(li => !string.IsNullOrWhiteSpace(li.Description) && li.Quantity > 0)
+            .ToList();
+
+        if (validLineItems.Count == 0)
+            throw new InvalidOperationException("At least one item with description and quantity is required.");
+
+        // ✅ Update bill fields
+        bill.vendorBillNumber = dto.vendorBillNumber?.Trim() ?? bill.vendorBillNumber;
+        bill.BillDate = dto.BillDate;
+        bill.DueDate = dto.DueDate;
+        bill.PaymentTerms = dto.PaymentTerms ?? bill.PaymentTerms;
+        bill.TaxConfigId = dto.TaxConfigId;
+        bill.CCEmails = string.IsNullOrWhiteSpace(dto.CCEmails) ? null : dto.CCEmails.Trim();
+        bill.Amount = dto.Amount;
+        bill.Description = dto.Description;
+        bill.DiscountPercent = dto.DiscountPercent;
+        bill.Rounding = dto.Rounding;
+
+        // ✅ Tax calculation
+        decimal tdsAmount = 0;
+        if (bill.TaxConfigId.HasValue)
+        {
+            var tax = await _db.TaxConfigurations.FindAsync(bill.TaxConfigId.Value);
+            if (tax != null)
+                tdsAmount = Math.Round(dto.Amount * tax.Rate / 100, 2);
+        }
+
+        bill.TDSAmount = tdsAmount;
+        bill.TotalPayable = dto.Amount - tdsAmount;
+
+        // 🔥 IMPORTANT FIX STARTS HERE
+
+        // ✅ Remove existing line items WITHOUT loading navigation
+        var existingItems = _db.VendorBillLineItems
+            .Where(x => x.VendorBillId == bill.Id);
+
+        _db.VendorBillLineItems.RemoveRange(existingItems);
+
+        // ✅ Prepare new items
+        var newLineItems = new List<VendorBillLineItem>();
+
+        for (var i = 0; i < lineItems.Count; i++)
+        {
+            var li = lineItems[i];
+            if (string.IsNullOrWhiteSpace(li.Description) || li.Quantity <= 0)
+                continue;
+
+            var lineAmt = li.Quantity * li.Rate;
+
+            decimal taxAmt = 0;
+            if (li.GSTConfigId.HasValue)
+            {
+                var gst = await _db.TaxConfigurations.FindAsync(li.GSTConfigId.Value);
+                if (gst != null)
+                    taxAmt = Math.Round(lineAmt * gst.Rate / 100, 2);
+            }
+
+            newLineItems.Add(new VendorBillLineItem
+            {
+                Id = Guid.NewGuid(),
+                VendorBillId = bill.Id,
+                LineNumber = i + 1,
+                Description = li.Description.Trim(),
+                Account = li.Account?.Trim(),
+                Quantity = li.Quantity,
+                Rate = li.Rate,
+                GSTConfigId = li.GSTConfigId,
+                Amount = lineAmt + taxAmt
+            });
+        }
+
+        // ✅ Add explicitly via DbSet
+        await _db.VendorBillLineItems.AddRangeAsync(newLineItems);
+
+        // 🔥 FIX ENDS HERE
+
+        bill.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+
+        return (await GetByIdAsync(id))!;
+    }
+
+    public async Task<BillDto> UploadBillAsync(Guid id, UploadVendorBillRequest dto)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var emp = await _tenant.GetCurrentEmployeeAsync();
+
+        var bill = await _db.VendorBills
+            .Include(x => x.Documents)
+            .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Bill not found");
+
+        if (bill.Status != BillStatus.Submitted)
+            throw new InvalidOperationException($"Documents can only be uploaded when bill is in '{BillStatus.Submitted}' status.");
+
+        var uploadedFiles = ResolveUploadedFiles(dto.Attachments, dto.Attachment);
+        if (uploadedFiles.Count == 0)
+            throw new InvalidOperationException("At least one document is required.");
+
+        var documents = await UploadBillDocumentsAsync(orgId, bill.Id, emp.Id, uploadedFiles);
+        _db.RequestDocuments.AddRange(documents);
+
+        var newAttachmentUrl = documents.OrderBy(x => x.CreatedAt).LastOrDefault()?.FileUrl ?? bill.AttachmentUrl;
+        bill.AttachmentUrl = newAttachmentUrl;
+        bill.UpdatedAt = DateTime.UtcNow;
+
+        _db.ActivityComments.Add(new ActivityComment
+        {
+            Id = Guid.NewGuid(),
+            VendorBillId = id,
+            CommentByEmployeeId = emp.Id,
+            Text = "Additional document(s) uploaded.",
+            ActionType = CommentActionType.Submitted
+        });
+
+        await _db.SaveChangesAsync();
+        return (await GetByIdAsync(id))!;
+    }
+
     public async Task<BillDto?> GetByIdAsync(Guid id)
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
@@ -121,6 +291,7 @@ public class VendorBillService : IVendorBillService
             .Include(x => x.Vendor)
             .Include(x => x.TaxConfig)
             .Include(x => x.Documents)
+            .Include(x => x.LineItems).ThenInclude(l => l.GSTConfig)
             .Include(x => x.Comments).ThenInclude(c => c.CommentByEmployee)
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId);
@@ -135,6 +306,7 @@ public class VendorBillService : IVendorBillService
             .Include(x => x.Vendor)
             .Include(x => x.TaxConfig)
             .Include(x => x.Documents)
+            .Include(x => x.LineItems).ThenInclude(l => l.GSTConfig)
             .Include(x => x.Comments).ThenInclude(c => c.CommentByEmployee)
             .Where(x => x.OrganizationId == orgId)
             .AsNoTracking();
@@ -182,8 +354,17 @@ public class VendorBillService : IVendorBillService
 
         await _db.SaveChangesAsync();
 
-        var submittedBy = await _db.Employees.FindAsync(bill.SubmittedByEmployeeId);
-        if (submittedBy != null && !string.IsNullOrWhiteSpace(submittedBy.Email))
+        var financeEmails = await _db.Employees
+            .Where(e => e.OrganizationId == orgId &&
+                        e.IsActive &&
+                        !e.IsDelete &&
+                        !string.IsNullOrWhiteSpace(e.Email) &&
+                        e.Role == UserRole.Finance)
+            .Select(e => e.Email)
+            .Distinct()
+            .ToListAsync();
+
+        if (financeEmails.Count > 0)
         {
             await _email.SendNotificationAsync(
                 Constants.EmailTemplateKeys.VendorBillApproved,
@@ -201,7 +382,7 @@ public class VendorBillService : IVendorBillService
                     ["details_text"] = dto.Comments ?? "",
                     ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
                 },
-                submittedBy.Email,
+                string.Join(",", financeEmails),
                 bill.CCEmails);
         }
 
@@ -266,37 +447,51 @@ public class VendorBillService : IVendorBillService
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Bill not found");
 
-        if (bill.Status != BillStatus.Approved)
+        if (bill.Status != BillStatus.Approved && bill.Status != BillStatus.PartiallyPaid)
             throw new InvalidOperationException("Bill must be approved before payment.");
 
-        bill.Status = BillStatus.Paid;
+        var balanceDue = bill.TotalPayable - bill.PaidAmount;
+        var paidAmount = dto.PaidAmount > 0 ? dto.PaidAmount : bill.TotalPayable;
+        if (paidAmount > balanceDue)
+            throw new InvalidOperationException($"Paid amount (₹{paidAmount:N2}) cannot exceed the remaining balance (₹{balanceDue:N2}).");
+        bill.PaidAmount += paidAmount;
         bill.PaymentReference = dto.PaymentReference;
         bill.PaidAt = DateTime.UtcNow;
         bill.UpdatedAt = DateTime.UtcNow;
+        bill.Status = bill.PaidAmount >= bill.TotalPayable ? BillStatus.Paid : BillStatus.PartiallyPaid;
 
         _db.ActivityComments.Add(new ActivityComment
         {
             Id = Guid.NewGuid(),
             VendorBillId = id,
             CommentByEmployeeId = emp.Id,
-            Text = $"Payment processed. Ref: {dto.PaymentReference}",
+            Text = $"Payment processed. Amount: ₹{paidAmount:N2}. Ref: {dto.PaymentReference}",
             ActionType = CommentActionType.PaymentProcessed
         });
 
         await _db.SaveChangesAsync();
 
-        var submittedBy = await _db.Employees.FindAsync(bill.SubmittedByEmployeeId);
-        if (submittedBy != null && !string.IsNullOrWhiteSpace(submittedBy.Email))
+        var vendorEmail = bill.Vendor?.Email;
+        if (!string.IsNullOrWhiteSpace(vendorEmail))
         {
+            var ccSettings = await _db.OrganizationSettings
+                .Where(s => s.OrganizationId == orgId && s.Key == "ccEmails")
+                .Select(s => s.Value)
+                .FirstOrDefaultAsync();
+            var ccEmails = ccSettings?.Trim();
+
+            var displayBillNumber = !string.IsNullOrWhiteSpace(bill.vendorBillNumber) ? bill.vendorBillNumber : bill.BillCode;
             await _email.SendNotificationAsync(
                 Constants.EmailTemplateKeys.VendorBillPaid,
                 new Dictionary<string, string>
                 {
-                    ["bill_id"] = bill.BillCode,
+                    ["bill_id"] = displayBillNumber,
                     ["vendor_name"] = bill.Vendor.Name,
-                    ["vendor_bill_number"] = bill.vendorBillNumber,
+                    ["vendor_bill_number"] = bill.vendorBillNumber ?? "",
                     ["amount"] = $"₹{bill.Amount:N2}",
                     ["total_payable"] = $"₹{bill.TotalPayable:N2}",
+                    ["paid_amount"] = $"₹{bill.PaidAmount:N2}",
+                    ["balance_due"] = balanceDue > 0 ? $"₹{balanceDue:N2}" : "₹0.00",
                     ["bill_date"] = bill.BillDate.ToString("dd MMM yyyy"),
                     ["due_date"] = bill.DueDate.ToString("dd MMM yyyy"),
                     ["description"] = bill.Description,
@@ -305,22 +500,82 @@ public class VendorBillService : IVendorBillService
                     ["payment_reference"] = dto.PaymentReference,
                     ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
                 },
-                submittedBy.Email,
-                bill.CCEmails);
+                vendorEmail,
+                string.IsNullOrWhiteSpace(ccEmails) ? null : ccEmails);
         }
 
         return (await GetByIdAsync(id))!;
     }
 
+    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+
+    private static string BuildLineItemsHtml(VendorBill bill)
+    {
+        var items = bill.LineItems?.OrderBy(l => l.LineNumber).ToList() ?? new List<VendorBillLineItem>();
+        if (items.Count == 0) return string.Empty;
+        var rows = string.Join("", items.Select((l, i) => $"""
+            <tr>
+                <td style="padding:10px 12px;border-top:1px solid #e2e8f0;font-size:13px;color:#0f172a;">{i + 1}</td>
+                <td style="padding:10px 12px;border-top:1px solid #e2e8f0;font-size:13px;color:#0f172a;">{System.Net.WebUtility.HtmlEncode(l.Description)}</td>
+                <td style="padding:10px 12px;border-top:1px solid #e2e8f0;font-size:13px;color:#0f172a;text-align:center;">{l.Quantity:N2}</td>
+                <td style="padding:10px 12px;border-top:1px solid #e2e8f0;font-size:13px;color:#0f172a;text-align:right;">₹{l.Rate:N2}</td>
+                <td style="padding:10px 12px;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#0f172a;text-align:right;">₹{l.Amount:N2}</td>
+            </tr>
+            """));
+        return $"""
+            <div style="margin-top:16px;">
+                <div style="font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#475569;margin-bottom:8px;">Items</div>
+                <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+                    <thead>
+                        <tr style="background:#f8fafc;">
+                            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:#475569;">#</th>
+                            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:#475569;">Description</th>
+                            <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:600;color:#475569;">Qty</th>
+                            <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:600;color:#475569;">Rate</th>
+                            <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:600;color:#475569;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>{rows}</tbody>
+                </table>
+            </div>
+            """;
+    }
+
+    private static List<CreateBillLineItemRequest> ParseLineItems(string? itemsJson)
+    {
+        if (string.IsNullOrWhiteSpace(itemsJson)) return new List<CreateBillLineItemRequest>();
+        try
+        {
+            var list = JsonSerializer.Deserialize<List<CreateBillLineItemRequest>>(itemsJson, JsonOpts);
+            return list ?? new List<CreateBillLineItemRequest>();
+        }
+        catch { return new List<CreateBillLineItemRequest>(); }
+    }
+
     private async Task<BillDto> MapToDtoAsync(VendorBill b)
     {
         var submittedBy = await _db.Employees.FindAsync(b.SubmittedByEmployeeId);
+        var lineItems = (b.LineItems ?? new List<VendorBillLineItem>())
+            .OrderBy(l => l.LineNumber)
+            .Select(l => new BillLineItemDto(
+                l.LineNumber,
+                l.Description,
+                l.Account,
+                l.Quantity,
+                l.Rate,
+                l.GSTConfigId,
+                l.GSTConfig?.Name,
+                l.GSTConfig?.Rate,
+                l.Amount
+            ))
+            .ToList();
         return new BillDto(
             b.Id, b.BillCode, b.VendorId, b.Vendor.Name, b.vendorBillNumber, b.Vendor.GSTIN, b.Vendor.Email,
-            b.Amount, b.TaxConfig?.Name, b.TDSAmount, b.TotalPayable,
+            b.Amount, b.DiscountPercent, b.Rounding, b.TaxConfig?.Name, b.TDSAmount, b.TotalPayable, b.PaidAmount,
             b.Description, b.BillDate, b.DueDate, b.PaymentTerms,
             b.Status.ToString(), b.AttachmentUrl, b.PaymentReference, b.PaidAt,
             submittedBy?.FullName ?? "Unknown", b.CreatedAt,
+            lineItems,
             b.Comments.OrderBy(c => c.CreatedAt).Select(c => new CommentDto(
                 c.Id, c.CommentByEmployee.FullName, c.Text, c.ActionType.ToString(), c.CreatedAt
             )).ToList(),
@@ -364,6 +619,38 @@ public class VendorBillService : IVendorBillService
             ?? throw new KeyNotFoundException("Document not found");
 
         return _storage.GenerateSasUrl(document.FileUrl);
+    }
+
+    public async Task RemoveDocumentAsync(Guid billId, Guid documentId)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var currentEmp = await _tenant.GetCurrentEmployeeAsync();
+
+        var bill = await _db.VendorBills
+            .Include(x => x.Documents)
+            .FirstOrDefaultAsync(x => x.Id == billId && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Bill not found");
+
+        if (bill.Status != BillStatus.Submitted)
+            throw new InvalidOperationException("Documents can only be removed when bill is in Submitted status.");
+
+        if (bill.SubmittedByEmployeeId != currentEmp.Id && currentEmp.Role != UserRole.Admin)
+            throw new UnauthorizedAccessException("Only the submitter or an admin can remove documents.");
+
+        var document = bill.Documents.FirstOrDefault(x => x.Id == documentId)
+            ?? throw new KeyNotFoundException("Document not found");
+
+        if (bill.Documents.Count <= 1)
+            throw new InvalidOperationException("Cannot remove the last document. At least one attachment is required.");
+
+        try { await _storage.DeleteAsync(document.FileUrl); } catch { /* best-effort blob delete */ }
+
+        _db.RequestDocuments.Remove(document);
+        var remaining = bill.Documents.Where(x => x.Id != documentId).OrderBy(x => x.CreatedAt).ToList();
+        bill.AttachmentUrl = remaining.LastOrDefault()?.FileUrl ?? null;
+        bill.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
     }
 
     private async Task<List<RequestDocument>> UploadBillDocumentsAsync(Guid orgId, Guid billId, Guid uploadedByEmployeeId, IReadOnlyCollection<IFormFile> files)

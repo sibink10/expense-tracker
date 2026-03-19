@@ -5,7 +5,7 @@ import { fmtCur, downloadFromSasUrl, buildDownloadFilename } from "../../shared/
 import { Btn, Badge, Mdl, CLog, Inp, MultiFileUp, Alert, MODAL_Z_INDEX } from "../ui";
 import { EditIcon } from "../icons";
 import { useAppContext } from "../../context/AppContext";
-import { updateExpenseForm, uploadExpenseBill, getExpenseBill, getExpenseDocument } from "../../shared/api/expense";
+import { updateExpenseForm, uploadExpenseBill, getExpenseBill, getExpenseDocument, removeExpenseDocument } from "../../shared/api/expense";
 import type { Expense } from "../../types";
 
 interface Props {
@@ -18,11 +18,13 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
   const isAdmin = is("admin");
   const isFinance = is("finance");
   const hasBill = e.documents.length > 0 || !!(e.file || e.attachmentUrl);
-  const canEdit = e.status !== EXP_S.APPROVED && e.status !== EXP_S.COMPLETED;
+  const canEdit = e.status !== EXP_S.APPROVED && e.status !== EXP_S.AWAITING_PAYMENT && e.status !== EXP_S.COMPLETED;
+  const canRemoveDoc = !["Rejected", "Completed", "Cancelled"].includes(e.status) && e.documents.length > 0;
+  const disableRemoveDoc = e.documents.length <= 1;
   const canApproveReject = e.status === EXP_S.PENDING && (isApprover || isAdmin);
-  const canShowPay = (isFinance || isAdmin) && e.status === EXP_S.APPROVED;
+  const canShowPay = (isFinance || isAdmin) && (e.status === EXP_S.AWAITING_PAYMENT || e.status === EXP_S.PARTIALLY_PAID || e.status === EXP_S.APPROVED || e.status === EXP_S.AWAITING_BILL);
   const canPay = canShowPay && hasBill;
-  const showBillUploadPanel = (e.status === EXP_S.APPROVED || e.status === EXP_S.AWAITING_BILL) && !hasBill;
+  const showBillUploadPanel = e.status === EXP_S.APPROVED && !hasBill;
 
   const [editing, setEditing] = useState(false);
   const [amt, setAmt] = useState(String(e.amt));
@@ -93,6 +95,22 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
     );
   };
 
+  const handleRemoveDocument = async (documentId: string) => {
+    if (!canRemoveDoc) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const id = e.apiId ?? e.id;
+      await removeExpenseDocument(id, documentId);
+      t("Document removed");
+      window.dispatchEvent(new CustomEvent("expenses-refresh"));
+      setMdl(null);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to remove document");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleUpdate = async () => {
     const amount = parseFloat(amt);
@@ -153,6 +171,12 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
           <div style={{ fontSize: "10px", color: C.muted }}>Amount</div>
           <div style={{ fontSize: "20px", fontWeight: 700 }}>{fmtCur(e.amt)}</div>
         </div>
+        {(e.paidAmount ?? 0) > 0 && (
+          <div>
+            <div style={{ fontSize: "10px", color: C.muted }}>Paid</div>
+            <div style={{ fontSize: "14px", fontWeight: 600, color: C.info }}>{fmtCur(e.paidAmount ?? 0)}</div>
+          </div>
+        )}
         <div style={{ display: "flex", alignItems: "center" }}><Badge s={e.status} /></div>
       </div>
 
@@ -236,6 +260,17 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
                       {billViewLoading ? "Loading…" : "View"}
                     </Btn>
                     <Btn sm v="secondary" onClick={() => handleDownloadDocument(document.id, document.name)}>Download</Btn>
+                    {canRemoveDoc && (
+                      <button
+                        type="button"
+                        title={disableRemoveDoc ? "Keep at least one document" : "Remove"}
+                        onClick={() => handleRemoveDocument(document.id)}
+                        disabled={loading || disableRemoveDoc}
+                        style={{ background: "none", border: "none", cursor: loading || disableRemoveDoc ? "not-allowed" : "pointer", color: disableRemoveDoc ? C.muted : C.danger, fontSize: "16px", lineHeight: 1, padding: "0 4px" }}
+                      >
+                        ×
+                      </button>
+                    )}
                   </div>
                 </div>
               ))
@@ -373,7 +408,10 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
             </>
           )}
           {canShowPay && !editing && (
-            <Btn v="info" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "pay", d: e, it: "expense" }), 50); }} disabled={!hasBill}>Pay</Btn>
+            <>
+              <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "reject", d: e, it: "expense" }), 50); }}>Reject</Btn>
+              <Btn v="info" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "pay", d: e, it: "expense" }), 50); }} disabled={!hasBill}>Pay</Btn>
+            </>
           )}
           {!(canEdit || canApproveReject || canShowPay) && (
             <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { C } from "../shared/theme";
 import { Inp, Btn, FileUp, Toggle } from "../components/ui";
 import { getOrganization, saveOrganization } from "../shared/api";
+import { COUNTRY_OPTS, normalizeCountry } from "../shared/countries";
 
 const GRID_BREAKPOINT = 720;
 
@@ -46,7 +47,7 @@ export default function AdminOrgPage() {
         setOrgName(org.orgName ?? "");
         setOrgSubName(org.subName ?? "");
         setIndustry(org.industry ?? "");
-        setCountry(org.country ?? "");
+        setCountry(normalizeCountry(org.country) ?? "");
         setAddress(org.address ?? "");
         setCity(org.city ?? "");
         setPostalCode(org.postalCode ?? "");
@@ -200,58 +201,7 @@ export default function AdminOrgPage() {
               value={country}
               onChange={(e) => setCountry(e.target.value)}
               req
-              opts={[
-                { v: "IN", l: "India" },
-                { v: "US", l: "United States" },
-                { v: "GB", l: "United Kingdom" },
-                { v: "AE", l: "United Arab Emirates" },
-                { v: "AU", l: "Australia" },
-                { v: "CA", l: "Canada" },
-                { v: "SG", l: "Singapore" },
-                { v: "MY", l: "Malaysia" },
-                { v: "DE", l: "Germany" },
-                { v: "FR", l: "France" },
-                { v: "NL", l: "Netherlands" },
-                { v: "ES", l: "Spain" },
-                { v: "IT", l: "Italy" },
-                { v: "CH", l: "Switzerland" },
-                { v: "IE", l: "Ireland" },
-                { v: "JP", l: "Japan" },
-                { v: "KR", l: "South Korea" },
-                { v: "CN", l: "China" },
-                { v: "HK", l: "Hong Kong" },
-                { v: "NZ", l: "New Zealand" },
-                { v: "SA", l: "Saudi Arabia" },
-                { v: "QA", l: "Qatar" },
-                { v: "BE", l: "Belgium" },
-                { v: "SE", l: "Sweden" },
-                { v: "NO", l: "Norway" },
-                { v: "DK", l: "Denmark" },
-                { v: "FI", l: "Finland" },
-                { v: "PL", l: "Poland" },
-                { v: "AT", l: "Austria" },
-                { v: "PT", l: "Portugal" },
-                { v: "BR", l: "Brazil" },
-                { v: "ZA", l: "South Africa" },
-                { v: "IL", l: "Israel" },
-                { v: "PH", l: "Philippines" },
-                { v: "TH", l: "Thailand" },
-                { v: "VN", l: "Vietnam" },
-                { v: "ID", l: "Indonesia" },
-                { v: "PK", l: "Pakistan" },
-                { v: "BD", l: "Bangladesh" },
-                { v: "LK", l: "Sri Lanka" },
-                { v: "EG", l: "Egypt" },
-                { v: "KE", l: "Kenya" },
-                { v: "NG", l: "Nigeria" },
-                { v: "MX", l: "Mexico" },
-                { v: "AR", l: "Argentina" },
-                { v: "CL", l: "Chile" },
-                { v: "CO", l: "Colombia" },
-                { v: "TR", l: "Turkey" },
-                { v: "RU", l: "Russia" },
-                { v: "UA", l: "Ukraine" },
-              ]}
+              opts={[{ v: "", l: "Select country" }, ...COUNTRY_OPTS]}
             />
           </div>
 

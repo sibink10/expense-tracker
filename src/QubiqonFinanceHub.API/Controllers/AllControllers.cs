@@ -125,6 +125,12 @@ public class ExpensesController(IExpenseService svc) : ControllerBase
         var result = await svc.GetDocumentUrlAsync(id, documentId);
         return Ok(new { url = result });
     }
+    [HttpDelete("{id:guid}/documents/{documentId:guid}")]
+    public async Task<IActionResult> RemoveDocument(Guid id, Guid documentId)
+    {
+        await svc.RemoveDocumentAsync(id, documentId);
+        return NoContent();
+    }
     [HttpGet("{id:guid}")] public async Task<IActionResult> GetById(Guid id) { var r = await svc.GetByIdAsync(id); return r != null ? Ok(r) : NotFound(); }
     [HttpGet("my")] public async Task<IActionResult> ListMine([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f, true));
     [HttpGet] public async Task<IActionResult> ListAll([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
@@ -176,6 +182,18 @@ public class BillsController(IVendorBillService svc) : ControllerBase
         var result = await svc.CreateAsync(dto);
         return Ok(result);
     }
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateBillRequest dto)
+    {
+        var result = await svc.UpdateAsync(id, dto);
+        return Ok(result);
+    }
+    [HttpPost("{id:guid}/upload-bill")]
+    public async Task<IActionResult> UploadBill(Guid id, [FromForm] UploadVendorBillRequest dto)
+    {
+        var result = await svc.UploadBillAsync(id, dto);
+        return Ok(result);
+    }
     [HttpGet("{id:guid}")] public async Task<IActionResult> GetById(Guid id) { var r = await svc.GetByIdAsync(id); return r != null ? Ok(r) : NotFound(); }
     [HttpGet] public async Task<IActionResult> List([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
     [HttpPost("{id:guid}/approve")] public async Task<IActionResult> Approve(Guid id, [FromBody] ApproveRequest dto) => Ok(await svc.ApproveAsync(id, dto));
@@ -192,6 +210,12 @@ public class BillsController(IVendorBillService svc) : ControllerBase
     {
         var result = await svc.GetDocumentUrlAsync(id, documentId);
         return Ok(new { url = result });
+    }
+    [HttpDelete("{id:guid}/documents/{documentId:guid}")]
+    public async Task<IActionResult> RemoveDocument(Guid id, Guid documentId)
+    {
+        await svc.RemoveDocumentAsync(id, documentId);
+        return NoContent();
     }
 }
 
@@ -215,6 +239,7 @@ public class ClientsController(IClientService svc) : ControllerBase
 public class InvoicesController(IInvoiceService svc) : ControllerBase
 {
     [HttpPost] public async Task<IActionResult> Create([FromBody] CreateInvoiceRequest dto) => Ok(await svc.CreateAsync(dto));
+    [HttpPut("{id:guid}")] public async Task<IActionResult> Update(Guid id, [FromBody] UpdateInvoiceRequest dto) => Ok(await svc.UpdateAsync(id, dto));
     [HttpGet("{id:guid}")] public async Task<IActionResult> GetById(Guid id) { var r = await svc.GetByIdAsync(id); return r != null ? Ok(r) : NotFound(); }
     [HttpGet] public async Task<IActionResult> List([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
     [HttpGet("counts")] public async Task<IActionResult> Counts() => Ok(await svc.GetStatusCountsAsync());
@@ -231,6 +256,8 @@ public class TaxConfigController(ITaxConfigService svc) : ControllerBase
 {
     [HttpPost] public async Task<IActionResult> Create([FromBody] CreateTaxConfigRequest dto) => Ok(await svc.CreateAsync(dto));
     [HttpGet] public async Task<IActionResult> List([FromQuery] string? type) => Ok(await svc.ListAsync(type));
+    [HttpGet("{id:guid}")] public async Task<IActionResult> GetById(Guid id) { var r = await svc.GetByIdAsync(id); return r == null ? NotFound() : Ok(r); }
+    [HttpPut("{id:guid}")] public async Task<IActionResult> Update(Guid id, [FromBody] UpdateTaxConfigRequest dto) => Ok(await svc.UpdateAsync(id, dto));
     [HttpPost("{id:guid}/toggle")] public async Task<IActionResult> Toggle(Guid id) => Ok(await svc.ToggleActiveAsync(id));
 }
 

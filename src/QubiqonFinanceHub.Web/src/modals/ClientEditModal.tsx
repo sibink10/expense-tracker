@@ -5,20 +5,8 @@ import { useAppContext } from "../context/AppContext";
 import { updateClient } from "../shared/api/clients";
 import { getTaxConfigs } from "../shared/api/taxConfig";
 import { isEmailValid } from "../shared/utils";
+import { COUNTRY_OPTS, CURRENCY_OPTS, getCurrencyByCountry, normalizeCountry } from "../shared/countries";
 import type { Client, TaxConfig } from "../types";
-
-const CURRENCY_OPTS = [
-  { v: "INR", l: "INR" },
-  { v: "USD", l: "USD" },
-  { v: "EUR", l: "EUR" },
-  { v: "GBP", l: "GBP" },
-  { v: "AED", l: "AED" },
-  { v: "SGD", l: "SGD" },
-  { v: "CAD", l: "CAD" },
-  { v: "AUD", l: "AUD" },
-  { v: "JPY", l: "JPY" },
-  { v: "CHF", l: "CHF" },
-];
 
 const CLIENT_TAX_TYPE = "ClientTax";
 const isClientTaxType = (type?: string) => (type || "").replace(/\s+/g, "").toLowerCase() === "clienttax";
@@ -51,7 +39,7 @@ export default function ClientEditModal() {
       setContactPerson(c.contact || "");
       setEmail(c.email || "");
       setPhone(c.phone || "");
-      setCountry(c.country || "");
+      setCountry(normalizeCountry(c.country) || "");
       setCurrency(c.currency || "INR");
       setTaxType(c.taxType || "");
       setGstin(c.gstin || "");
@@ -147,7 +135,17 @@ export default function ClientEditModal() {
         {emailError && <div style={{ fontSize: "11px", color: C.danger, marginTop: "4px" }}>{emailError}</div>}
       </div>
       <Inp label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} ph="Contact number" />
-      <Inp label="Country" value={country} onChange={(e) => setCountry(e.target.value)} ph="Country" />
+      <Inp
+        label="Country"
+        type="select"
+        value={country}
+        onChange={(e) => {
+          const v = e.target.value;
+          setCountry(v);
+          setCurrency(getCurrencyByCountry(v));
+        }}
+        opts={[{ v: "", l: "Select country" }, ...COUNTRY_OPTS]}
+      />
       <Inp label="Currency" type="select" value={currency} onChange={(e) => setCurrency(e.target.value)} opts={CURRENCY_OPTS} />
       <div style={{ marginBottom: "14px" }}>
         <div style={{ fontSize: "12px", fontWeight: 600, color: C.primary, marginBottom: "6px" }}>Customer type</div>

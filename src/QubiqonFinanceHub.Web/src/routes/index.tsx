@@ -11,6 +11,7 @@ import BillListPage from "../pages/BillListPage";
 import SubmitBillPage from "../pages/SubmitBillPage";
 import InvoicesPage from "../pages/InvoicesPage";
 import InvoiceAddPage from "../pages/InvoiceAddPage";
+import InvoiceEditPage from "../pages/InvoiceEditPage";
 import VendorsPage from "../pages/VendorsPage";
 import AddVendorPage from "../pages/AddVendorPage";
 import ClientsPage from "../pages/ClientsPage";
@@ -46,6 +47,7 @@ export const router = createBrowserRouter([
       { path: "vendors/add", element: <AddVendorPage /> },
       { path: "invoices", element: <InvoicesPage /> },
       { path: "invoices/add", element: <InvoiceAddPage /> },
+      { path: "invoices/edit/:id", element: <InvoiceEditPage /> },
       { path: "clients", element: <ClientsPage /> },
       { path: "clients/add", element: <AddClientPage /> },
       { path: "admin", element: <AdminSettingsPage /> },

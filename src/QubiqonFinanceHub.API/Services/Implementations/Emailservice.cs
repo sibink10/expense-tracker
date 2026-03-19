@@ -49,6 +49,7 @@ public class EmailService : IEmailService
         try
         {
             NormalizeActionDateToIst(variables);
+            InjectViewLink(variables);
             var template = await ResolveTemplateAsync(templateKey, variables);
 
             // 3. Get user's incoming bearer token
@@ -542,7 +543,7 @@ public class EmailService : IEmailService
         variables.TryGetValue(key, out var value) ? value : string.Empty;
 
     private static string BuildStatusSubject(string status, string entity, string identifier) =>
-        $"{status.ToUpperInvariant()} - {entity} - {identifier}";
+        $"{status} - {entity} : {identifier}";
 
     private static string BuildNewSubject(string entity, string identifier) =>
         $"NEW {entity.ToUpperInvariant()} - {identifier}";
@@ -556,6 +557,19 @@ public class EmailService : IEmailService
         variables["action_date"] = TimeZoneInfo
             .ConvertTimeFromUtc(DateTime.UtcNow, indiaTimeZone)
             .ToString("dd MMM yyyy hh:mm tt 'IST'");
+    }
+
+    private void InjectViewLink(Dictionary<string, string> variables)
+    {
+        var baseUrl = _config["FrontendUrl"]?.TrimEnd('/') ?? "https://finance.qubiqon.io";
+        if (variables.ContainsKey("expense_id"))
+            variables["view_link"] = $"{baseUrl}/expenses";
+        else if (variables.ContainsKey("advance_id"))
+            variables["view_link"] = $"{baseUrl}/advances";
+        else if (variables.ContainsKey("bill_id"))
+            variables["view_link"] = $"{baseUrl}/bills";
+        else if (variables.ContainsKey("invoice_id") || variables.ContainsKey("invoice_code") || variables.ContainsKey("invoice_number"))
+            variables["view_link"] = $"{baseUrl}/invoices";
     }
 
     private static string Encode(string? value) => WebUtility.HtmlEncode(value ?? string.Empty);
@@ -610,7 +624,14 @@ public class EmailService : IEmailService
         var paymentReferenceRow = includePaymentReference
             ? BuildOptionalTableRow("Payment Reference", GetVariableOrEmpty(variables, "payment_reference"))
             : string.Empty;
+        var paidAmountRow = includePaymentReference
+            ? BuildOptionalTableRow("Paid Amount", GetVariableOrEmpty(variables, "paid_amount"))
+            : string.Empty;
+        var balanceDueRow = includePaymentReference
+            ? BuildOptionalTableRow("Balance Due", GetVariableOrEmpty(variables, "balance_due"))
+            : string.Empty;
 
+        var viewLinkSection = BuildViewLinkSection(variables);
         var organizationDetails = BuildOrganizationDetails(org);
 
         var htmlBody = $$"""
@@ -666,6 +687,8 @@ public class EmailService : IEmailService
                                     <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Bill Date</td>
                                     <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "bill_date"))}}</td>
                                 </tr>
+                                {{paidAmountRow}}
+                                {{balanceDueRow}}
                                 {{paymentReferenceRow}}
                                 <tr>
                                     <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">{{Encode(actorLabel)}}</td>
@@ -679,6 +702,7 @@ public class EmailService : IEmailService
                         </div>
 
                         {{commentsSection}}
+                        {{viewLinkSection}}
 
                         <div style="margin-top:24px;padding-top:20px;border-top:1px solid #e2e8f0;font-size:13px;line-height:1.7;color:#64748b;">
                             This is an automated notification from {{Encode(org.OrgName)}}.
@@ -693,6 +717,18 @@ public class EmailService : IEmailService
             subject,
             htmlBody,
             inlineLogo == null ? [] : [inlineLogo]);
+    }
+
+    private static string BuildViewLinkSection(Dictionary<string, string> variables)
+    {
+        if (!variables.TryGetValue("view_link", out var link) || string.IsNullOrWhiteSpace(link))
+            return string.Empty;
+        var url = Encode(link);
+        return $"""
+            <div style="margin-top:24px;">
+                <a href="{url}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;">View in Finance Hub</a>
+            </div>
+            """;
     }
 
     private EmailContent BuildAdvanceEmailContent(
@@ -724,7 +760,14 @@ public class EmailService : IEmailService
         var paymentReferenceRow = includePaymentReference
             ? BuildOptionalTableRow("Payment Reference", GetVariableOrEmpty(variables, "payment_reference"))
             : string.Empty;
+        var paidAmountRow = includePaymentReference
+            ? BuildOptionalTableRow("Paid Amount", GetVariableOrEmpty(variables, "paid_amount"))
+            : string.Empty;
+        var balanceDueRow = includePaymentReference
+            ? BuildOptionalTableRow("Balance Due", GetVariableOrEmpty(variables, "balance_due"))
+            : string.Empty;
 
+        var viewLinkSection = BuildViewLinkSection(variables);
         var organizationDetails = BuildOrganizationDetails(org);
 
         var htmlBody = $$"""
@@ -780,6 +823,8 @@ public class EmailService : IEmailService
                                     <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Requested On</td>
                                     <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "request_date"))}}</td>
                                 </tr>
+                                {{paidAmountRow}}
+                                {{balanceDueRow}}
                                 {{paymentReferenceRow}}
                                 <tr>
                                     <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">{{Encode(actorLabel)}}</td>
@@ -793,6 +838,7 @@ public class EmailService : IEmailService
                         </div>
 
                         {{detailsSection}}
+                        {{viewLinkSection}}
 
                         <div style="margin-top:24px;padding-top:20px;border-top:1px solid #e2e8f0;font-size:13px;line-height:1.7;color:#64748b;">
                             This is an automated notification from {{Encode(org.OrgName)}}.
@@ -838,8 +884,18 @@ public class EmailService : IEmailService
         var paymentReferenceRow = includePaymentReference
             ? BuildOptionalTableRow("Payment Reference", GetVariableOrEmpty(variables, "payment_reference"))
             : string.Empty;
+        var paidAmountRow = includePaymentReference
+            ? BuildOptionalTableRow("Paid Amount", GetVariableOrEmpty(variables, "paid_amount"))
+            : string.Empty;
+        var balanceDueRow = includePaymentReference
+            ? BuildOptionalTableRow("Balance Due", GetVariableOrEmpty(variables, "balance_due"))
+            : string.Empty;
 
         var vendorBillNumberRow = BuildOptionalTableRow("Vendor Bill Number", GetVariableOrEmpty(variables, "vendor_bill_number"));
+        var discountPercentRow = BuildOptionalTableRow("Discount %", GetVariableOrEmpty(variables, "discount_percent"));
+        var roundingRow = BuildOptionalTableRow("Rounding", GetVariableOrEmpty(variables, "rounding"));
+        var lineItemsHtml = GetVariableOrEmpty(variables, "line_items_html");
+        var viewLinkSection = BuildViewLinkSection(variables);
         var organizationDetails = BuildOrganizationDetails(org);
 
         var htmlBody = $$"""
@@ -892,10 +948,14 @@ public class EmailService : IEmailService
                                     <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Amount</td>
                                     <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "amount"))}}</td>
                                 </tr>
+                                {{discountPercentRow}}
+                                {{roundingRow}}
                                 <tr>
                                     <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Total Payable</td>
                                     <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "total_payable"))}}</td>
                                 </tr>
+                                {{paidAmountRow}}
+                                {{balanceDueRow}}
                                 <tr>
                                     <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Bill Date</td>
                                     <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "bill_date"))}}</td>
@@ -916,7 +976,10 @@ public class EmailService : IEmailService
                             </table>
                         </div>
 
+                        {{lineItemsHtml}}
+
                         {{detailsSection}}
+                        {{viewLinkSection}}
 
                         <div style="margin-top:24px;padding-top:20px;border-top:1px solid #e2e8f0;font-size:13px;line-height:1.7;color:#64748b;">
                             This is an automated notification from {{Encode(org.OrgName)}}.
@@ -985,6 +1048,8 @@ public class EmailService : IEmailService
         var paymentReferenceLine = includePaymentReference && !string.IsNullOrWhiteSpace(GetVariableOrEmpty(variables, "payment_reference"))
             ? $"""<div style="margin-top:12px;font-size:11px;color:#64748b;">Payment ref: <strong style="color:#0f172a;">{Encode(GetVariableOrEmpty(variables, "payment_reference"))}</strong></div>"""
             : string.Empty;
+
+        var viewLinkSection = BuildViewLinkSection(variables);
 
         var htmlBody = $$"""
             <!DOCTYPE html>
@@ -1114,6 +1179,7 @@ public class EmailService : IEmailService
                             </td>
                         </tr>
                     </table>
+                    {viewLinkSection}
                 </div>
             </body>
             </html>

@@ -32,6 +32,7 @@ public interface IExpenseService
     Task AttachBillAsync(Guid id, string attachmentUrl);
     Task<string> GetBillUrlAsync(Guid id);
     Task<string> GetDocumentUrlAsync(Guid id, Guid documentId);
+    Task RemoveDocumentAsync(Guid expenseId, Guid documentId);
 }
 
 public interface IAdvanceService
@@ -56,6 +57,8 @@ public interface IVendorService
 public interface IVendorBillService
 {
     Task<BillDto> CreateAsync(CreateBillRequest dto);
+    Task<BillDto> UpdateAsync(Guid id, UpdateBillRequest dto);
+    Task<BillDto> UploadBillAsync(Guid id, UploadVendorBillRequest dto);
     Task<BillDto?> GetByIdAsync(Guid id);
     Task<PaginatedResult<BillDto>> ListAsync(FilterParams filters);
     Task<BillDto> ApproveAsync(Guid id, ApproveRequest dto);
@@ -63,6 +66,7 @@ public interface IVendorBillService
     Task<BillDto> ProcessPaymentAsync(Guid id, ProcessPaymentRequest dto);
     Task<string> GetAttachmentUrlAsync(Guid id);
     Task<string> GetDocumentUrlAsync(Guid id, Guid documentId);
+    Task RemoveDocumentAsync(Guid billId, Guid documentId);
 }
 
 public interface IClientService
@@ -76,6 +80,7 @@ public interface IClientService
 public interface IInvoiceService
 {
     Task<InvoiceDto> CreateAsync(CreateInvoiceRequest dto);
+    Task<InvoiceDto> UpdateAsync(Guid id, UpdateInvoiceRequest dto);
     Task<InvoiceDto?> GetByIdAsync(Guid id);
     Task<PaginatedResult<InvoiceDto>> ListAsync(FilterParams filters);
     Task<InvoiceStatusCountsDto> GetStatusCountsAsync();
@@ -87,6 +92,8 @@ public interface IInvoiceService
 public interface ITaxConfigService
 {
     Task<TaxConfigDto> CreateAsync(CreateTaxConfigRequest dto);
+    Task<TaxConfigDto> UpdateAsync(Guid id, UpdateTaxConfigRequest dto);
+    Task<TaxConfigDto?> GetByIdAsync(Guid id);
     Task<List<TaxConfigDto>> ListAsync(string? type = null);
     Task<TaxConfigDto> ToggleActiveAsync(Guid id);
 }

@@ -15,6 +15,7 @@ export default function AdminSettingsPage() {
   const [c, setC] = useState(cfg);
   const [ccError, setCcError] = useState<string | null>(null);
   const [cols, setCols] = useState(3);
+  const [saving, setSaving] = useState(false);
   const [openTip, setOpenTip] = useState<string | null>(null);
   const tipRef = useRef<HTMLDivElement | null>(null);
 
@@ -75,6 +76,7 @@ export default function AdminSettingsPage() {
       setCcError("Enter valid email addresses (comma-separated)");
       return;
     }
+    setSaving(true);
     try {
       await bulkUpsertOrganizationSettings([
         { id: orgSettings.expFmt?.id ?? null, key: "expFmt", value: c.expFmt },
@@ -89,6 +91,8 @@ export default function AdminSettingsPage() {
       t("Saved");
     } catch {
       t("Failed to save settings");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -325,7 +329,7 @@ export default function AdminSettingsPage() {
       </div>
 
       <div style={{ marginTop: "24px" }}>
-        <Btn onClick={handleSave}>Save settings</Btn>
+        <Btn onClick={handleSave} disabled={saving}>{saving ? "Saving..." : "Save settings"}</Btn>
       </div>
     </div>
   );

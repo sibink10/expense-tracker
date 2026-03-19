@@ -20,6 +20,12 @@ export default function AdvanceDetailModal({ advance: a, previousAdvances: hist 
           <div style={{ fontSize: "13px", fontWeight: 600 }}>{a.empName} · {a.dept}</div>
         </div>
         <div style={{ fontSize: "20px", fontWeight: 700, color: C.advance }}>{fmtCur(a.amt)}</div>
+        {(a.paidAmount ?? 0) > 0 && (
+          <div>
+            <div style={{ fontSize: "10px", color: C.muted }}>Paid</div>
+            <div style={{ fontSize: "14px", fontWeight: 600, color: C.advance }}>{fmtCur(a.paidAmount ?? 0)}</div>
+          </div>
+        )}
         <div style={{ display: "flex", alignItems: "center" }}><Badge s={a.status} /></div>
       </div>
       <div style={{ padding: "10px 14px", background: C.surface, borderRadius: "8px", marginBottom: "12px", fontSize: "12px" }}>{a.purpose}</div>
@@ -43,13 +49,13 @@ export default function AdvanceDetailModal({ advance: a, previousAdvances: hist 
             <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "reject", d: a, it: "advance" }), 50); }}>Reject</Btn>
           </>
         )}
-        {(is("finance") || is("admin")) && a.status === ADV_S.APPROVED && (
+        {(is("finance") || is("admin")) && (a.status === ADV_S.APPROVED || a.status === ADV_S.PARTIALLY_DISBURSED) && (
           <>
             <Btn v="advance" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "adv-disburse", d: a }), 50); }}>Disburse</Btn>
             <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "reject", d: a, it: "advance" }), 50); }}>Reject</Btn>
           </>
         )}
-        {!(((is("approver") || is("admin")) && a.status === ADV_S.PENDING) || ((is("finance") || is("admin")) && a.status === ADV_S.APPROVED)) && (
+        {!(((is("approver") || is("admin")) && a.status === ADV_S.PENDING) || ((is("finance") || is("admin")) && (a.status === ADV_S.APPROVED || a.status === ADV_S.PARTIALLY_DISBURSED))) && (
           <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>
         )}
       </div>

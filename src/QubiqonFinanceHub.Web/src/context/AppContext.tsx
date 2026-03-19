@@ -246,7 +246,7 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
             e.id === exp.id
               ? {
                   ...e,
-                  status: EXP_S.APPROVED,
+                  status: hasBill ? EXP_S.AWAITING_PAYMENT : EXP_S.APPROVED,
                   comments: [...e.comments, c],
                 }
               : e,
@@ -417,7 +417,9 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
   const payableExp = useMemo(
     () =>
       exps.filter(
-        (e) => e.status === EXP_S.APPROVED && (e.documents.length > 0 || e.file != null),
+        (e) =>
+          (e.status === EXP_S.AWAITING_PAYMENT || e.status === EXP_S.PARTIALLY_PAID) &&
+          (e.documents.length > 0 || e.file != null),
       ),
     [exps],
   );
@@ -425,7 +427,10 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
   const payableBill = useMemo(
     () =>
       bills.filter(
-        (b) => b.status === BILL_S.APPROVED || b.status === BILL_S.OVERDUE,
+        (b) =>
+          b.status === BILL_S.APPROVED ||
+          b.status === BILL_S.OVERDUE ||
+          b.status === BILL_S.PARTIALLY_PAID,
       ),
     [bills],
   );

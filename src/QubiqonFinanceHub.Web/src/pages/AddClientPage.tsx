@@ -6,24 +6,12 @@ import { createClient } from "../shared/api/clients";
 import { getTaxConfigs } from "../shared/api/taxConfig";
 import { isEmailValid } from "../shared/utils";
 import { useAppContext } from "../context/AppContext";
+import { COUNTRY_OPTS, CURRENCY_OPTS, getCurrencyByCountry } from "../shared/countries";
 import type { TaxConfig } from "../types";
 
 const GRID_BREAKPOINT = 600;
 const CLIENT_TAX_TYPE = "ClientTax";
 const isClientTaxType = (type?: string) => (type || "").replace(/\s+/g, "").toLowerCase() === "clienttax";
-
-const CURRENCY_OPTS = [
-  { v: "INR", l: "INR" },
-  { v: "USD", l: "USD" },
-  { v: "EUR", l: "EUR" },
-  { v: "GBP", l: "GBP" },
-  { v: "AED", l: "AED" },
-  { v: "SGD", l: "SGD" },
-  { v: "CAD", l: "CAD" },
-  { v: "AUD", l: "AUD" },
-  { v: "JPY", l: "JPY" },
-  { v: "CHF", l: "CHF" },
-];
 
 export default function AddClientPage() {
   const navigate = useNavigate();
@@ -184,7 +172,18 @@ export default function AddClientPage() {
             style={cellStyle}
           />
           <Inp label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} ph="Contact number" style={cellStyle} />
-          <Inp label="Country" value={country} onChange={(e) => setCountry(e.target.value)} ph="Country" style={cellStyle} />
+          <Inp
+            label="Country"
+            type="select"
+            value={country}
+            onChange={(e) => {
+              const v = e.target.value;
+              setCountry(v);
+              setCurrency(getCurrencyByCountry(v));
+            }}
+            opts={[{ v: "", l: "Select country" }, ...COUNTRY_OPTS]}
+            style={cellStyle}
+          />
           <Inp
             label="Currency"
             type="select"

@@ -19,6 +19,7 @@ export interface ApiAdvanceItem {
   employeeName: string;
   department: string;
   amount: number;
+  paidAmount?: number;
   purpose: string;
   status: string;
   paymentReference: string | null;
@@ -40,6 +41,7 @@ const STATUS_MAP: Record<string, string> = {
   Approved: ADV_S.APPROVED,
   Rejected: ADV_S.REJECTED,
   Disbursed: ADV_S.DISBURSED,
+  PartiallyDisbursed: ADV_S.PARTIALLY_DISBURSED,
 };
 
 function mapActionTypeToT(actionType: string): "ok" | "no" | "pay" | "sent" {
@@ -69,6 +71,7 @@ function mapApiAdvanceToApp(item: ApiAdvanceItem): Advance {
     empName: item.employeeName,
     dept: item.department || "",
     amt: item.amount,
+    paidAmount: item.paidAmount ?? 0,
     purpose: item.purpose,
     status,
     at: item.createdAt ? item.createdAt.split("T")[0] : "",
@@ -138,6 +141,7 @@ export interface DisburseAdvancePayload {
   paymentReference: string;
   method: string;
   notes: string;
+  paidAmount: number;
 }
 
 export async function disburseAdvance(id: string, payload: DisburseAdvancePayload): Promise<unknown> {

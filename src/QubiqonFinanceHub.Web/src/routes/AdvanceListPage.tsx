@@ -13,6 +13,7 @@ const STATUS_TABS = [
   { label: ADV_S.PENDING, value: "Pending" },
   { label: ADV_S.APPROVED, value: "Approved" },
   { label: ADV_S.DISBURSED, value: "Disbursed" },
+  { label: ADV_S.PARTIALLY_DISBURSED, value: "PartiallyDisbursed" },
   { label: ADV_S.REJECTED, value: "Rejected" },
 ] as const;
 
@@ -166,6 +167,7 @@ export default function AdvanceListPage() {
                 !is("employee") && "Employee",
                 "Purpose",
                 "Amount",
+                "Paid",
                 "Status",
                 (is("approver") || is("finance") || is("admin")) && "Action",
               ].filter(Boolean) as string[]}
@@ -176,6 +178,7 @@ export default function AdvanceListPage() {
                   ...(!is("employee") ? [{ v: <span style={{ fontSize: "11px" }}>{a.empName}</span> }] : []),
                   { v: <div style={{ maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.purpose}</div> },
                   { v: <span style={{ fontWeight: 700 }}>{fmtCur(a.amt)}</span> },
+                  { v: <span style={{ fontSize: "11px", color: (a.paidAmount ?? 0) > 0 ? C.advance : C.muted }}>{fmtCur(a.paidAmount ?? 0)}</span> },
                   { v: <Badge s={a.status} /> },
                   ...(is("approver") || is("finance") || is("admin")
                     ? [
@@ -188,7 +191,7 @@ export default function AdvanceListPage() {
                                 <Btn sm v="danger" onClick={() => setMdl({ t: "reject", d: a, it: "advance" })}>✕</Btn>
                               </>
                             )}
-                              {(is("finance") || is("admin")) && a.status === ADV_S.APPROVED && (
+                              {(is("finance") || is("admin")) && (a.status === ADV_S.APPROVED || a.status === ADV_S.PARTIALLY_DISBURSED) && (
                                 <>
                                   <Btn sm v="advance" onClick={() => setMdl({ t: "adv-disburse", d: a })}>Disburse</Btn>
                                   <Btn sm v="danger" onClick={() => setMdl({ t: "reject", d: a, it: "advance" })}>✕</Btn>

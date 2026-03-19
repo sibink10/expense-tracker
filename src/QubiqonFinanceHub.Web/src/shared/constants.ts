@@ -2,10 +2,12 @@ export const EXP_S = {
   PENDING: "Pending Approval",
   PENDING_BILL_APPROVAL: "Pending Bill Approval",
   APPROVED: "Approved",
+  AWAITING_PAYMENT: "Awaiting Payment",
   REJECTED: "Rejected",
   CANCELLED: "Cancelled",
   AWAITING_BILL: "Awaiting Bill",
   COMPLETED: "Completed",
+  PARTIALLY_PAID: "Partially Paid",
 } as const;
 
 export const BILL_S = {
@@ -13,6 +15,7 @@ export const BILL_S = {
   APPROVED: "Approved",
   REJECTED: "Rejected",
   PAID: "Paid",
+  PARTIALLY_PAID: "Partially Paid",
   OVERDUE: "Overdue",
 } as const;
 
@@ -21,6 +24,7 @@ export const ADV_S = {
   APPROVED: "Approved",
   REJECTED: "Rejected",
   DISBURSED: "Disbursed",
+  PARTIALLY_DISBURSED: "Partially Disbursed",
 } as const;
 
 export const INV_S = {
@@ -48,4 +52,17 @@ export const CURRENCIES = [
   { v: "GBP", l: "£ GBP", s: "£" },
   { v: "CAD", l: "$ CAD", s: "CA$" },
   { v: "AUD", l: "$ AUD", s: "A$" },
+];
+
+/** Expense account options for vendor bill line items */
+export const BILL_ACCOUNTS = [
+  { v: "it_internet", l: "IT and Internet Expenses" },
+  { v: "office_supplies", l: "Office Supplies" },
+  { v: "travel", l: "Travel and Conveyance" },
+  { v: "professional_services", l: "Professional Services" },
+  { v: "marketing", l: "Marketing and Advertising" },
+  { v: "utilities", l: "Utilities" },
+  { v: "rent", l: "Rent" },
+  { v: "maintenance", l: "Maintenance and Repairs" },
+  { v: "other", l: "Other Expenses" },
 ];

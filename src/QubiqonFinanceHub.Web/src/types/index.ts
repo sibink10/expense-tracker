@@ -19,6 +19,10 @@ export interface NavItem {
   b?: number;
   /** When true, NavLink only matches exactly (avoids parent + child both active) */
   end?: boolean;
+  /** Optional path for create/add action - renders + at flex-end of nav item */
+  addPath?: string;
+  /** Roles that can see the add button (defaults to r if not set) */
+  addRoles?: UserRole[];
 }
 
 export interface NavSection {
@@ -67,7 +71,20 @@ export interface Expense {
   documents: UploadedDocument[];
   billNumber?: string;
   billDate?: string;
+  paidAmount?: number;
   comments: ActivityComment[];
+}
+
+export interface BillLineItem {
+  lineNumber: number;
+  description: string;
+  account?: string;
+  quantity: number;
+  rate: number;
+  gstConfigId?: string;
+  gstName?: string;
+  gstRate?: number;
+  amount: number;
 }
 
 export interface Bill {
@@ -96,6 +113,10 @@ export interface Bill {
   comments: ActivityComment[];
   cc?: string[];
   paidRef?: string;
+  paidAmount?: number;
+  lineItems?: BillLineItem[];
+  discountPercent?: number;
+  rounding?: number;
 }
 
 export interface Advance {
@@ -106,6 +127,7 @@ export interface Advance {
   empName: string;
   dept: string;
   amt: number;
+  paidAmount?: number;
   purpose: string;
   status: string;
   at: string;
@@ -119,6 +141,7 @@ export interface InvoiceItem {
   rate: number;
   gst: string;
   gstAmt: number;
+  gstConfigId?: string | null;
 }
 
 export interface Invoice {
@@ -132,6 +155,7 @@ export interface Invoice {
   items: InvoiceItem[];
   subTotal: number;
   taxId: string | null;
+  taxConfigId?: string | null;
   taxAmt: number;
   total: number;
   invDate: string;
@@ -254,6 +278,6 @@ export interface EmailData {
 
 export interface ModalData {
   t?: string;
-  d?: Expense | Bill | Advance | Invoice | Vendor | Client;
+  d?: Expense | Bill | Advance | Invoice | Vendor | Client | TaxConfig;
   it?: "expense" | "bill" | "advance";
 }

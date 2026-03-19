@@ -34,7 +34,7 @@ public class AdvanceService : IAdvanceService
         if (dto.Amount > balanceCap)
             throw new InvalidOperationException($"Requested amount exceeds available balance (₹{balanceCap:N2}).");
 
-        var code = await _codeGen.GenerateCodeAsync(orgId, "advance");
+        var code = await _codeGen.GenerateBillNumberAsync(orgId, "advance");
 
         var advance = new AdvancePayment
         {
@@ -60,13 +60,12 @@ public class AdvanceService : IAdvanceService
         _db.AdvancePayments.Add(advance);
         await _db.SaveChangesAsync();
 
-        var reviewRoles = new[] { UserRole.Admin, UserRole.Finance, UserRole.Approver };
         var reviewers = await _db.Employees
             .Where(e => e.OrganizationId == orgId &&
                         e.IsActive &&
                         !e.IsDelete &&
                         !string.IsNullOrWhiteSpace(e.Email) &&
-                        reviewRoles.Contains(e.Role))
+                        e.Role == UserRole.Approver)
             .Select(e => e.Email)
             .Distinct()
             .ToListAsync();
@@ -215,20 +214,33 @@ public class AdvanceService : IAdvanceService
 
         await _db.SaveChangesAsync();
 
-        await _email.SendNotificationAsync(
-            Constants.EmailTemplateKeys.AdvanceApproved,
-            new Dictionary<string, string>
-            {
-                ["employee_name"] = advance.Employee.FullName,
-                ["advance_id"] = advance.AdvanceCode,
-                ["purpose"] = advance.Purpose,
-                ["amount"] = $"₹{advance.Amount:N2}",
-                ["request_date"] = advance.CreatedAt.ToString("dd MMM yyyy"),
-                ["approver_name"] = emp.FullName,
-                ["approver_comments"] = dto.Comments ?? "",
-                ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
-            },
-            advance.Employee.Email);
+        var financeEmails = await _db.Employees
+            .Where(e => e.OrganizationId == orgId &&
+                        e.IsActive &&
+                        !e.IsDelete &&
+                        !string.IsNullOrWhiteSpace(e.Email) &&
+                        e.Role == UserRole.Finance)
+            .Select(e => e.Email)
+            .Distinct()
+            .ToListAsync();
+
+        if (financeEmails.Count > 0)
+        {
+            await _email.SendNotificationAsync(
+                Constants.EmailTemplateKeys.AdvanceApproved,
+                new Dictionary<string, string>
+                {
+                    ["employee_name"] = advance.Employee.FullName,
+                    ["advance_id"] = advance.AdvanceCode,
+                    ["purpose"] = advance.Purpose,
+                    ["amount"] = $"₹{advance.Amount:N2}",
+                    ["request_date"] = advance.CreatedAt.ToString("dd MMM yyyy"),
+                    ["approver_name"] = emp.FullName,
+                    ["approver_comments"] = dto.Comments ?? "",
+                    ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
+                },
+                string.Join(",", financeEmails));
+        }
 
         return (await GetByIdAsync(id))!;
     }
@@ -314,24 +326,28 @@ public class AdvanceService : IAdvanceService
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Advance not found");
 
-        if (advance.Status != AdvanceStatus.Approved)
+        if (advance.Status != AdvanceStatus.Approved && advance.Status != AdvanceStatus.PartiallyDisbursed)
             throw new InvalidOperationException("Advance must be approved before disbursement.");
 
-        advance.Status = AdvanceStatus.Disbursed;
+        var balanceDue = advance.Amount - advance.PaidAmount;
+        var paidAmount = dto.PaidAmount > 0 ? dto.PaidAmount : advance.Amount;
+        if (paidAmount > balanceDue)
+            throw new InvalidOperationException($"Paid amount (₹{paidAmount:N2}) cannot exceed the remaining balance (₹{balanceDue:N2}).");
+        advance.PaidAmount += paidAmount;
         advance.PaymentReference = dto.PaymentReference;
         advance.DisbursedAt = DateTime.UtcNow;
+        advance.Status = advance.PaidAmount >= advance.Amount ? AdvanceStatus.Disbursed : AdvanceStatus.PartiallyDisbursed;
 
         _db.ActivityComments.Add(new ActivityComment
         {
             Id = Guid.NewGuid(),
             AdvancePaymentId = id,
             CommentByEmployeeId = emp.Id,
-            Text = $"Disbursed. Ref: {dto.PaymentReference}",
+            Text = $"Disbursed. Amount: ₹{paidAmount:N2}. Ref: {dto.PaymentReference}",
             ActionType = CommentActionType.PaymentProcessed
         });
 
         await _db.SaveChangesAsync();
-
         await _email.SendNotificationAsync(
             Constants.EmailTemplateKeys.AdvanceDisbursed,
             new Dictionary<string, string>
@@ -340,6 +356,8 @@ public class AdvanceService : IAdvanceService
                 ["advance_id"] = advance.AdvanceCode,
                 ["purpose"] = advance.Purpose,
                 ["amount"] = $"₹{advance.Amount:N2}",
+                ["paid_amount"] = $"₹{advance.PaidAmount:N2}",
+                ["balance_due"] = balanceDue > 0 ? $"₹{balanceDue:N2}" : "₹0.00",
                 ["request_date"] = advance.CreatedAt.ToString("dd MMM yyyy"),
                 ["payment_reference"] = dto.PaymentReference,
                 ["processed_by"] = emp.FullName,
@@ -368,7 +386,7 @@ public class AdvanceService : IAdvanceService
     private static AdvanceDto MapToDto(AdvancePayment a) => new(
         a.Id, a.AdvanceCode, a.EmployeeId, a.Employee.FullName,
         a.Employee.Department ?? "",
-        a.Amount, a.Purpose, a.Status.ToString(),
+        a.Amount, a.PaidAmount, a.Purpose, a.Status.ToString(),
         a.PaymentReference, a.CreatedAt,
         a.Comments.OrderBy(c => c.CreatedAt).Select(c => new CommentDto(
             c.Id, c.CommentByEmployee.FullName, c.Text, c.ActionType.ToString(), c.CreatedAt

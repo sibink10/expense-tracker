@@ -2,6 +2,18 @@ import { apiClient } from "./client";
 import type { Bill } from "../../types";
 import type { UploadedDocument } from "../../types";
 
+export interface ApiBillLineItem {
+  lineNumber: number;
+  description: string;
+  account?: string | null;
+  quantity: number;
+  rate: number;
+  gstConfigId?: string | null;
+  gstName?: string | null;
+  gstRate?: number | null;
+  amount: number;
+}
+
 export interface ApiBill {
   id: string;
   billCode?: string;
@@ -11,9 +23,12 @@ export interface ApiBill {
   vendorGstin?: string;
   vendorEmail?: string;
   amount: number;
+  discountPercent?: number;
+  rounding?: number;
   taxConfigId?: string;
   tdsAmount?: number;
   payableAmount?: number;
+  totalPayable?: number;
   description: string;
   billDate: string;
   dueDate: string;
@@ -21,11 +36,13 @@ export interface ApiBill {
   status: string;
   attachmentUrl?: string | null;
   documents?: ApiBillDocument[];
+  lineItems?: ApiBillLineItem[];
   submittedBy?: string;
   submittedAt?: string;
   comments?: { by: string; text: string; actionType: string; createdAt: string }[];
   ccEmails?: string[];
   paymentReference?: string | null;
+  paidAmount?: number;
 }
 
 export interface ApiBillDocument {
@@ -42,6 +59,7 @@ function mapStatus(s: string): string {
     Approved: "Approved",
     Rejected: "Rejected",
     Paid: "Paid",
+    PartiallyPaid: "Partially Paid",
     Overdue: "Overdue",
   };
   return m[s] ?? s;
@@ -65,7 +83,7 @@ function mapDocument(doc: ApiBillDocument): UploadedDocument {
 }
 
 function mapApiBillToApp(item: ApiBill): Bill {
-  const pay = item.payableAmount ?? item.amount - (item.tdsAmount ?? 0);
+  const pay = item.totalPayable ?? item.payableAmount ?? item.amount - (item.tdsAmount ?? 0);
   const documents = (item.documents ?? []).map(mapDocument);
   const primaryDocument = documents[documents.length - 1];
   const file = primaryDocument
@@ -73,6 +91,17 @@ function mapApiBillToApp(item: ApiBill): Bill {
     : item.attachmentUrl
       ? { n: item.attachmentUrl.split("/").pop() || "file", s: "—" }
       : null;
+  const lineItems = (item.lineItems ?? []).map((li) => ({
+    lineNumber: li.lineNumber,
+    description: li.description,
+    account: li.account ?? undefined,
+    quantity: li.quantity,
+    rate: li.rate,
+    gstConfigId: li.gstConfigId ?? undefined,
+    gstName: li.gstName ?? undefined,
+    gstRate: li.gstRate ?? undefined,
+    amount: li.amount,
+  }));
   return {
     id: item.billCode ?? item.id,
     apiId: item.id,
@@ -103,6 +132,10 @@ function mapApiBillToApp(item: ApiBill): Bill {
     })),
     cc: item.ccEmails,
     paidRef: item.paymentReference ?? undefined,
+    paidAmount: item.paidAmount ?? 0,
+    lineItems,
+    discountPercent: item.discountPercent ?? undefined,
+    rounding: item.rounding ?? undefined,
   };
 }
 
@@ -164,6 +197,14 @@ export async function getBills(params: GetBillsParams = {}): Promise<{
   };
 }
 
+export interface CreateBillLineItemPayload {
+  description: string;
+  account?: string;
+  quantity: number;
+  rate: number;
+  gstConfigId?: string;
+}
+
 export interface CreateBillPayload {
   vendorId: string;
   vendorBillNumber: string;
@@ -174,6 +215,9 @@ export interface CreateBillPayload {
   dueDate: string;
   paymentTerms: string;
   ccEmails: string;
+  discountPercent?: number;
+  rounding?: number;
+  items: CreateBillLineItemPayload[];
 }
 
 export async function createBill(payload: CreateBillPayload, files: File[]): Promise<unknown> {
@@ -187,9 +231,37 @@ export async function createBill(payload: CreateBillPayload, files: File[]): Pro
   form.append("dueDate", payload.dueDate);
   form.append("paymentTerms", payload.paymentTerms);
   form.append("ccEmails", payload.ccEmails);
+  form.append("discountPercent", String(payload.discountPercent ?? 0));
+  form.append("rounding", String(payload.rounding ?? 0));
+  if (payload.items && payload.items.length > 0) {
+    form.append("items", JSON.stringify(payload.items));
+  }
   files.forEach((file) => form.append("attachments", file));
 
   const { data } = await apiClient.post("/bills", form);
+  return data;
+}
+
+export interface UpdateBillPayload {
+  vendorBillNumber: string;
+  billDate: string;
+  dueDate: string;
+  paymentTerms: string;
+  taxConfigId: string | null;
+  ccEmails: string;
+  amount: number;
+  description: string;
+  discountPercent: number;
+  rounding: number;
+  items: CreateBillLineItemPayload[];
+}
+
+export async function updateBill(id: string, payload: UpdateBillPayload): Promise<unknown> {
+  const body = {
+    ...payload,
+    items: JSON.stringify(payload.items),
+  };
+  const { data } = await apiClient.put(`/bills/${id}`, body);
   return data;
 }
 
@@ -203,8 +275,8 @@ export async function rejectBill(id: string, comments: string): Promise<unknown>
   return data;
 }
 
-export async function payBill(id: string, paymentReference: string): Promise<unknown> {
-  const { data } = await apiClient.post(`/bills/${id}/pay`, { paymentReference });
+export async function payBill(id: string, payload: { paymentReference: string; paidAmount: number }): Promise<unknown> {
+  const { data } = await apiClient.post(`/bills/${id}/pay`, payload);
   return data;
 }
 
@@ -222,6 +294,17 @@ export async function getBillAttachment(id: string): Promise<string> {
 export async function getBillDocument(id: string, documentId: string): Promise<string> {
   const { data } = await apiClient.get<GetBillAttachmentResponse>(`/bills/${id}/documents/${documentId}`);
   return data?.url ?? "";
+}
+
+/** Upload additional documents for a vendor bill (POST /api/bills/{id}/upload-bill). */
+export async function uploadVendorBill(id: string, formData: FormData): Promise<unknown> {
+  const { data } = await apiClient.post(`/bills/${id}/upload-bill`, formData);
+  return data;
+}
+
+/** Remove a document from a vendor bill (DELETE /api/bills/{id}/documents/{documentId}). */
+export async function removeBillDocument(id: string, documentId: string): Promise<void> {
+  await apiClient.delete(`/bills/${id}/documents/${documentId}`);
 }
 
 /** Get bill attachment as blob for download (GET /api/bills/{id}/attachment with blob response). Same as expense: backend returns file to avoid CORS. */

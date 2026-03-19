@@ -121,6 +121,7 @@ public class ExpenseRequest
     [MaxLength(2048)] public string? BillImageUrl { get; set; }
 
     [MaxLength(100)] public string? PaymentReference { get; set; }
+    [Column(TypeName = "decimal(18,2)")] public decimal PaidAmount { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
     public ICollection<ActivityComment> Comments { get; set; } = new List<ActivityComment>();
@@ -141,6 +142,7 @@ public class AdvancePayment
     [Required, MaxLength(500)] public string Purpose { get; set; } = "";
     public AdvanceStatus Status { get; set; } = AdvanceStatus.Pending;
     [MaxLength(100)] public string? PaymentReference { get; set; }
+    [Column(TypeName = "decimal(18,2)")] public decimal PaidAmount { get; set; }
     public DateTime? DisbursedAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public ICollection<ActivityComment> Comments { get; set; } = new List<ActivityComment>();
@@ -191,13 +193,35 @@ public class VendorBill
     public BillStatus Status { get; set; } = BillStatus.Submitted;
     [MaxLength(2048)] public string? AttachmentUrl { get; set; }
     [MaxLength(1000)] public string? CCEmails { get; set; }
+    [Column(TypeName = "decimal(18,2)")] public decimal DiscountPercent { get; set; }
+    [Column(TypeName = "decimal(18,2)")] public decimal Rounding { get; set; }
     public Guid SubmittedByEmployeeId { get; set; }
     [MaxLength(100)] public string? PaymentReference { get; set; }
+    [Column(TypeName = "decimal(18,2)")] public decimal PaidAmount { get; set; }
     public DateTime? PaidAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
     public ICollection<ActivityComment> Comments { get; set; } = new List<ActivityComment>();
     public ICollection<RequestDocument> Documents { get; set; } = new List<RequestDocument>();
+    public ICollection<VendorBillLineItem> LineItems { get; set; } = new List<VendorBillLineItem>();
+}
+
+// ═══════════════════════════════════════════════════
+//  VENDOR BILL LINE ITEM
+// ═══════════════════════════════════════════════════
+public class VendorBillLineItem
+{
+    [Key] public Guid Id { get; set; }
+    public Guid VendorBillId { get; set; }
+    [ForeignKey(nameof(VendorBillId))] public VendorBill VendorBill { get; set; } = null!;
+    public int LineNumber { get; set; }
+    [Required, MaxLength(500)] public string Description { get; set; } = "";
+    [MaxLength(100)] public string? Account { get; set; }
+    [Column(TypeName = "decimal(18,2)")] public decimal Quantity { get; set; }
+    [Column(TypeName = "decimal(18,2)")] public decimal Rate { get; set; }
+    public Guid? GSTConfigId { get; set; }
+    [ForeignKey(nameof(GSTConfigId))] public TaxConfiguration? GSTConfig { get; set; }
+    [Column(TypeName = "decimal(18,2)")] public decimal Amount { get; set; }
 }
 
 // ═══════════════════════════════════════════════════

@@ -37,6 +37,7 @@ export interface ApiExpenseItem {
   documents?: ApiExpenseDocument[];
   billNumber?: string | null;
   billDate?: string | null;
+  paidAmount?: number;
 }
 
 export interface ApiExpensesResponse {
@@ -52,10 +53,12 @@ const STATUS_MAP: Record<string, string> = {
   PendingApproval: EXP_S.PENDING,
   PendingBillApproval: EXP_S.PENDING_BILL_APPROVAL,
   Approved: EXP_S.APPROVED,
+  AwaitingPayment: EXP_S.AWAITING_PAYMENT,
   Rejected: EXP_S.REJECTED,
   Cancelled: EXP_S.CANCELLED,
   AwaitingBill: EXP_S.AWAITING_BILL,
   Completed: EXP_S.COMPLETED,
+  PartiallyPaid: EXP_S.PARTIALLY_PAID,
 };
 
 function mapActionTypeToT(actionType: string): "ok" | "no" | "pay" | "sent" {
@@ -119,6 +122,7 @@ function mapApiExpenseToApp(item: ApiExpenseItem): Expense {
     documents,
     billNumber: item.billNumber ?? undefined,
     billDate,
+    paidAmount: item.paidAmount ?? 0,
     comments: (item.comments || []).map(mapApiComment),
   };
 }
@@ -192,8 +196,8 @@ export async function rejectExpense(id: string, comments: string): Promise<unkno
 }
 
 /** Mark expense as paid (POST /api/expenses/{id}/pay). */
-export async function payExpense(id: string, paymentReference: string): Promise<unknown> {
-  const { data } = await apiClient.post(`/expenses/${id}/pay`, { paymentReference });
+export async function payExpense(id: string, payload: { paymentReference: string; paidAmount: number }): Promise<unknown> {
+  const { data } = await apiClient.post(`/expenses/${id}/pay`, payload);
   return data;
 }
 
@@ -232,6 +236,11 @@ export async function getExpenseDocument(id: string, documentId: string): Promis
   return data?.url ?? "";
 }
 
+/** Remove a document from an expense (DELETE /api/expenses/{id}/documents/{documentId}). */
+export async function removeExpenseDocument(id: string, documentId: string): Promise<void> {
+  await apiClient.delete(`/expenses/${id}/documents/${documentId}`);
+}
+
 /** Get bill as blob for download (GET /api/expenses/{id}/bill/download). Use this to avoid CORS when downloading. */
 export async function getExpenseBillBlob(id: string): Promise<string> {
   const { data } = await apiClient.get(`/expenses/${id}/bill`);
@@ -243,7 +252,7 @@ export async function getExpenseCounts(): Promise<ExpenseCounts> {
   try {
     const [pendingRes, approvedRes] = await Promise.all([
       getExpenses({ page: 1, pageSize: 1, status: "PendingApproval" }),
-      getExpenses({ page: 1, pageSize: 1, status: "Approved" }),
+      getExpenses({ page: 1, pageSize: 1, status: "AwaitingPayment" }),
     ]);
     return {
       pendExp: pendingRes.totalCount ?? 0,

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { C } from "../shared/theme";
 import { fmtCur } from "../shared/utils";
 import { Inp, Btn, Mdl, Alert } from "../components/ui";
@@ -10,21 +10,41 @@ import type { Expense, Bill, Advance } from "../types";
 export default function PayModal() {
   const { mdl, setMdl, pay } = useAppContext();
   const [r, setR] = useState("");
+  const [paidAmt, setPaidAmt] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!mdl?.d || !mdl.it) return null;
   const d = mdl.d as Expense | Bill | Advance;
 
+  const total = "pay" in d ? d.pay : d.amt;
+  const alreadyPaid = (d as Expense & Bill).paidAmount ?? 0;
+  const remaining = Math.max(0, total - alreadyPaid);
+  const defaultPaid = remaining > 0 ? remaining : total;
+
+  const parsedPaid = parseFloat(paidAmt) || 0;
+  const paidError = useMemo(() => {
+    if (paidAmt.trim() === "" && parsedPaid === 0) return "Paid amount is required";
+    if (!Number.isFinite(parsedPaid) || parsedPaid < 0) return "Enter a valid paid amount";
+    if (parsedPaid > remaining) return `Paid amount cannot exceed ${fmtCur(remaining)}`;
+    return null;
+  }, [paidAmt, parsedPaid, remaining]);
+
+  useEffect(() => {
+    setPaidAmt(String(defaultPaid));
+  }, [defaultPaid, mdl?.d]);
+
   const handlePay = async () => {
     if (!r) return;
+    if (paidError) return;
+    const paid = parseFloat(paidAmt) || defaultPaid;
     if (mdl.it === "bill") {
       const b = d as Bill;
       const id = b.apiId ?? b.id;
       setLoading(true);
       setError(null);
       try {
-        await payBill(id, r);
+        await payBill(id, { paymentReference: r, paidAmount: paid });
         setMdl(null);
         window.dispatchEvent(new CustomEvent("bills-refresh"));
       } catch (err: unknown) {
@@ -38,7 +58,7 @@ export default function PayModal() {
       setLoading(true);
       setError(null);
       try {
-        await payExpense(id, r);
+        await payExpense(id, { paymentReference: r, paidAmount: paid });
         setMdl(null);
         window.dispatchEvent(new CustomEvent("expenses-refresh"));
       } catch (err: unknown) {
@@ -65,13 +85,28 @@ export default function PayModal() {
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <span style={{ color: C.muted }}>{d.id}</span>
           <span style={{ fontWeight: 700 }}>
-            {fmtCur("pay" in d ? d.pay : d.amt)}
+            {fmtCur(total)}
+            {alreadyPaid > 0 && (
+              <span style={{ fontSize: "11px", color: C.muted, marginLeft: "6px" }}>
+                (Paid: {fmtCur(alreadyPaid)} · Remaining: {fmtCur(remaining)})
+              </span>
+            )}
           </span>
         </div>
         <div style={{ fontWeight: 600, marginTop: "4px" }}>
           {"vName" in d ? d.vName : d.empName}
         </div>
       </div>
+      <Inp
+        label="Paid amount"
+        type="number"
+        value={paidAmt}
+        onChange={(e) => setPaidAmt(e.target.value)}
+        req
+        ph={String(defaultPaid)}
+        hint={remaining > 0 ? `Max: ${fmtCur(remaining)}` : undefined}
+      />
+      {paidError && <Alert sx={{ marginBottom: "8px" }}>{paidError}</Alert>}
       <Inp
         label="Payment ref (NEFT/IMPS/UPI)"
         value={r}
@@ -84,7 +119,7 @@ export default function PayModal() {
         <Btn
           v={mdl.it === "bill" ? "vendor" : mdl.it === "advance" ? "advance" : "info"}
           onClick={handlePay}
-          disabled={!r || loading}
+          disabled={!r || !!paidError || loading}
         >
           {loading ? "Processing..." : "Confirm payment"}
         </Btn>

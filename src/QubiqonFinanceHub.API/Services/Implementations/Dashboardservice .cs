@@ -30,7 +30,7 @@ public class DashboardService : IDashboardService
         var now = DateTime.UtcNow;
 
         var pendingExpenses = await expenses.CountAsync(e => e.Status == ExpenseStatus.PendingApproval);
-        var approvedExpenses = await expenses.CountAsync(e => e.Status == ExpenseStatus.Approved);
+        var approvedExpenses = await expenses.CountAsync(e => e.Status == ExpenseStatus.Approved || e.Status == ExpenseStatus.AwaitingPayment);
         var completedExpenses = await expenses.CountAsync(e => e.Status == ExpenseStatus.Completed);
 
         var pendingBills = await bills.CountAsync(b => b.Status == BillStatus.Submitted);

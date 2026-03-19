@@ -2,11 +2,11 @@ namespace QubiqonFinanceHub.API.Models.Enums;
 
 public enum UserRole { Employee = 0, Approver = 1, Finance = 2, Admin = 3 }
 
-public enum ExpenseStatus { PendingApproval = 0, Approved = 1, Rejected = 2, Cancelled = 3, AwaitingBill = 4, Completed = 5, PendingBillApproval = 6 }
+public enum ExpenseStatus { PendingApproval = 0, Approved = 1, Rejected = 2, Cancelled = 3, AwaitingBill = 4, Completed = 5, PendingBillApproval = 6, AwaitingPayment = 7, PartiallyPaid = 8 }
 
-public enum BillStatus { Draft = 0, Submitted = 1, Approved = 2, Rejected = 3, Paid = 4, Overdue = 5 }
+public enum BillStatus { Draft = 0, Submitted = 1, Approved = 2, Rejected = 3, Paid = 4, Overdue = 5, PartiallyPaid = 6 }
 
-public enum AdvanceStatus { Pending = 0, Approved = 1, Rejected = 2, Disbursed = 3, Settled = 4 }
+public enum AdvanceStatus { Pending = 0, Approved = 1, Rejected = 2, Disbursed = 3, Settled = 4, PartiallyDisbursed = 5 }
 
 public enum InvoiceStatus { Draft = 0, Sent = 1, Viewed = 2, Paid = 3, PartiallyPaid = 4, Overdue = 5 }
 

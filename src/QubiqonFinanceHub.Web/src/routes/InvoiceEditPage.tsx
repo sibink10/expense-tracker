@@ -1,16 +1,15 @@
-import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { C } from "../shared/theme";
 import { PAY_TERMS, CURRENCIES } from "../shared/constants";
 import { addDays, fmtCur } from "../shared/utils";
 import { Inp, Btn, Alert } from "../components/ui";
-import { AsyncSelectInput } from "../components/AsyncSelectInput";
-import { createInvoice } from "../shared/api/invoice";
-import { getClients } from "../shared/api/clients";
+import { getInvoice, updateInvoice } from "../shared/api/invoice";
 import { getTaxConfigs } from "../shared/api/taxConfig";
 import { useAppContext } from "../context/AppContext";
-import type { Client, TaxConfig } from "../types";
+import type { TaxConfig } from "../types";
 import type { CreateInvoiceLineItem } from "../shared/api/invoice";
+import { INV_S } from "../shared/constants";
 
 const GRID_BREAKPOINT = 600;
 
@@ -22,13 +21,12 @@ const defaultLineItem: CreateInvoiceLineItem = {
   gstConfigId: "",
 };
 
-export default function InvoiceAddPage() {
+export default function InvoiceEditPage() {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
   const { t } = useAppContext();
-  const [clients, setClients] = useState<Client[]>([]);
   const [gstConfigs, setGstConfigs] = useState<TaxConfig[]>([]);
   const [tdsConfigs, setTdsConfigs] = useState<TaxConfig[]>([]);
-  const [clientId, setClientId] = useState("");
   const [currency, setCurrency] = useState("INR");
   const [lineItems, setLineItems] = useState<CreateInvoiceLineItem[]>([{ ...defaultLineItem }]);
   const [taxConfigId, setTaxConfigId] = useState("");
@@ -36,10 +34,9 @@ export default function InvoiceAddPage() {
   const [paymentTerms, setPaymentTerms] = useState("net30");
   const [purchaseOrder, setPurchaseOrder] = useState("");
   const [notes, setNotes] = useState("");
-  const [etc, setEtc] = useState("");
-  const [sendImmediately, setSendImmediately] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [clientsLoading, setClientsLoading] = useState(true);
+  const [clientName, setClientName] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [taxLoading, setTaxLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [narrow, setNarrow] = useState(typeof window !== "undefined" && window.innerWidth < GRID_BREAKPOINT);
@@ -52,35 +49,44 @@ export default function InvoiceAddPage() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  const loadClientOptions = useCallback(async (query: string) => {
-    try {
-      const all = await getClients();
-      const q = query.trim().toLowerCase();
-      const filtered = q
-        ? all.filter(
-            (c) =>
-              c.name.toLowerCase().includes(q) ||
-              (c.email && c.email.toLowerCase().includes(q)) ||
-              (c.contact && c.contact.toLowerCase().includes(q))
-          )
-        : all;
-      return filtered.slice(0, 50).map((c) => ({
-        value: c.id,
-        label: `${c.name} (${c.currency || "INR"})`,
-      }));
-    } catch {
-      return [];
-    } finally {
-      setClientsLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    getClients()
-      .then(setClients)
-      .catch(() => setClients([]))
-      .finally(() => setClientsLoading(false));
-  }, []);
+    if (!id) {
+      navigate("/invoices", { replace: true });
+      return;
+    }
+    setLoading(true);
+    getInvoice(id)
+      .then((inv) => {
+        if (!inv) {
+          navigate("/invoices", { replace: true });
+          return;
+        }
+        if (inv.status !== INV_S.DRAFT) {
+          setError("Only draft invoices can be edited");
+          return;
+        }
+        setClientName(inv.cName);
+        setCurrency(inv.currency);
+        setTaxConfigId(inv.taxConfigId ?? "");
+        setInvoiceDate(inv.invDate || new Date().toISOString().split("T")[0]);
+        setPaymentTerms(inv.terms || "net30");
+        setPurchaseOrder(inv.po ?? "");
+        setNotes(inv.notes ?? "");
+        setLineItems(
+          inv.items.length > 0
+            ? inv.items.map((it) => ({
+                description: it.desc,
+                hsnCode: it.hsn || "998314",
+                quantity: it.qty,
+                rate: it.rate,
+                gstConfigId: it.gstConfigId ?? "",
+              }))
+            : [{ ...defaultLineItem }]
+        );
+      })
+      .catch(() => navigate("/invoices", { replace: true }))
+      .finally(() => setLoading(false));
+  }, [id, navigate]);
 
   useEffect(() => {
     getTaxConfigs()
@@ -110,8 +116,6 @@ export default function InvoiceAddPage() {
   };
 
   const subTotal = lineItems.reduce((sum, it) => sum + it.quantity * it.rate, 0);
-  const selectedClient = clients.find((c) => c.id === clientId);
-  const clientCurrency = selectedClient?.currency || currency;
   const selectedTds = tdsConfigs.find((t) => t.id === taxConfigId);
   const tdsRate = selectedTds?.rate ?? 0;
   const tdsAmount = Math.round((subTotal * tdsRate) / 100);
@@ -121,18 +125,10 @@ export default function InvoiceAddPage() {
     (it) => it.description.trim() && it.quantity > 0 && it.rate >= 0
   );
   const hasValidLineItems = validLineItems.length > 0;
-  const canSubmit =
-    !!clientId.trim() &&
-    !!currency.trim() &&
-    !!invoiceDate &&
-    hasValidLineItems;
+  const canSubmit = !!currency.trim() && !!invoiceDate && hasValidLineItems;
 
   const handleSubmit = async () => {
     setError(null);
-    if (!clientId.trim()) {
-      setError("Please select a client");
-      return;
-    }
     if (!currency.trim()) {
       setError("Currency is required");
       return;
@@ -145,13 +141,13 @@ export default function InvoiceAddPage() {
       setError("Invoice date is required");
       return;
     }
+    if (!id) return;
 
-    setLoading(true);
+    setSaving(true);
     setError(null);
     try {
-      await createInvoice({
-        clientId,
-        currency: clientCurrency,
+      await updateInvoice(id, {
+        currency,
         lineItems: validLineItems.map((it) => ({
           description: it.description.trim(),
           hsnCode: it.hsnCode.trim() || "998314",
@@ -165,16 +161,14 @@ export default function InvoiceAddPage() {
         paymentTerms,
         purchaseOrder: purchaseOrder.trim() || "",
         notes: notes.trim(),
-        sendImmediately,
-        etc: etc.trim() || undefined,
       });
       window.dispatchEvent(new CustomEvent("invoices-refresh"));
-      t("Invoice created");
+      t("Invoice updated");
       navigate("/invoices");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to create invoice");
+      setError(err instanceof Error ? err.message : "Failed to update invoice");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -186,10 +180,27 @@ export default function InvoiceAddPage() {
   const fullWidth = { gridColumn: "1 / -1" as const };
   const cellStyle = { marginBottom: 0 };
 
+  if (loading) {
+    return (
+      <div style={{ padding: "40px", textAlign: "center", color: C.muted }}>Loading invoice…</div>
+    );
+  }
+
+  if (error && !canSubmit) {
+    return (
+      <div>
+        <Alert sx={{ marginBottom: "16px" }}>{error}</Alert>
+        <Btn v="secondary" onClick={() => navigate("/invoices")}>
+          Back to invoices
+        </Btn>
+      </div>
+    );
+  }
+
   return (
     <div style={{ width: "100%", maxWidth: "100%" }}>
       <h1 style={{ fontSize: "20px", fontWeight: 700, margin: "0 0 20px" }}>
-        <span style={{ color: C.invoice }}>📄</span> Create invoice
+        <span style={{ color: C.invoice }}>✏️</span> Edit invoice
       </h1>
 
       <div
@@ -203,20 +214,13 @@ export default function InvoiceAddPage() {
         }}
       >
         <div style={gridStyle}>
-          <div style={cellStyle}>
-            <AsyncSelectInput
-              label="Client"
-              value={clientId}
-              onChange={(val) => {
-                setClientId(val);
-                const c = clients.find((x) => x.id === val);
-                if (c?.currency) setCurrency(c.currency);
-              }}
-              loadOptions={loadClientOptions}
-              disabled={clientsLoading || loading}
-              placeholder="Search clients..."
-            />
-          </div>
+          <Inp
+            label="Client"
+            value={clientName}
+            disabled
+            ph="Client (read-only)"
+            style={cellStyle}
+          />
           <Inp
             label="Currency"
             type="select"
@@ -415,7 +419,6 @@ export default function InvoiceAddPage() {
             type="date"
             value={invoiceDate}
             onChange={(e) => setInvoiceDate(e.target.value)}
-            max={new Date().toISOString().split("T")[0]}
             req
             style={cellStyle}
           />
@@ -440,13 +443,6 @@ export default function InvoiceAddPage() {
             style={cellStyle}
           />
           <Inp
-            label="Etc"
-            value={etc}
-            onChange={(e) => setEtc(e.target.value)}
-            ph="Other / etc"
-            style={cellStyle}
-          />
-          <Inp
             label="Notes"
             type="textarea"
             value={notes}
@@ -467,12 +463,12 @@ export default function InvoiceAddPage() {
             >
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
                 <span style={{ color: C.muted }}>Sub total</span>
-                <span style={{ fontWeight: 600 }}>{fmtCur(subTotal, clientCurrency)}</span>
+                <span style={{ fontWeight: 600 }}>{fmtCur(subTotal, currency)}</span>
               </div>
               {tdsRate > 0 && (
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", color: C.danger }}>
                   <span>TDS ({selectedTds?.section ?? ""} @ {tdsRate}%)</span>
-                  <span style={{ fontWeight: 600 }}>-{fmtCur(tdsAmount, clientCurrency)}</span>
+                  <span style={{ fontWeight: 600 }}>-{fmtCur(tdsAmount, currency)}</span>
                 </div>
               )}
               <div
@@ -484,7 +480,7 @@ export default function InvoiceAddPage() {
                 }}
               >
                 <span style={{ fontWeight: 700, color: C.invoice }}>Total</span>
-                <span style={{ fontSize: "14px", fontWeight: 700, color: C.invoice }}>{fmtCur(totalAfterTds, clientCurrency)}</span>
+                <span style={{ fontSize: "14px", fontWeight: 700, color: C.invoice }}>{fmtCur(totalAfterTds, currency)}</span>
               </div>
             </div>
           )}
@@ -492,11 +488,11 @@ export default function InvoiceAddPage() {
           {error && <Alert sx={{ ...fullWidth }}>{error}</Alert>}
 
           <div style={{ ...fullWidth, display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-            <Btn v="secondary" onClick={() => navigate("/invoices")} disabled={loading}>
+            <Btn v="secondary" onClick={() => navigate("/invoices")} disabled={saving}>
               Cancel
             </Btn>
-            <Btn v="invoice" onClick={handleSubmit} disabled={!canSubmit || loading}>
-              {loading ? "Creating..." : "Create invoice"}
+            <Btn v="invoice" onClick={handleSubmit} disabled={!canSubmit || saving}>
+              {saving ? "Saving..." : "Save changes"}
             </Btn>
           </div>
         </div>

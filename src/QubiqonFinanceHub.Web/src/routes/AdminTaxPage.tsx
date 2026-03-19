@@ -9,7 +9,7 @@ const CLIENT_TAX_TYPE = "ClientTax";
 const formatTaxType = (value?: string) => value === CLIENT_TAX_TYPE ? "Client Tax" : (value ?? "—");
 
 export default function AdminTaxPage() {
-  const { t } = useAppContext();
+  const { t, setMdl } = useAppContext();
   const [items, setItems] = useState<TaxConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -248,18 +248,18 @@ export default function AdminTaxPage() {
                 </tr>
               </thead>
               <tbody>
-                {items.map((t) => (
+                {items.map((item) => (
                   <tr
-                    key={t.id}
+                    key={item.id}
                     style={{
                       borderBottom: `1px solid ${C.border}`,
                     }}
                   >
-                    <td style={{ padding: "10px 12px" }}>{formatTaxType(t.type)}</td>
-                    <td style={{ padding: "10px 12px", fontWeight: 600 }}>{t.name}</td>
-                    <td style={{ padding: "10px 12px", textAlign: "right" }}>{t.rate}%</td>
-                    <td style={{ padding: "10px 12px" }}>{t.section || "—"}</td>
-                    <td style={{ padding: "10px 12px" }}>{t.subType ?? "—"}</td>
+                    <td style={{ padding: "10px 12px" }}>{formatTaxType(item.type)}</td>
+                    <td style={{ padding: "10px 12px", fontWeight: 600 }}>{item.name}</td>
+                    <td style={{ padding: "10px 12px", textAlign: "right" }}>{item.rate}%</td>
+                    <td style={{ padding: "10px 12px" }}>{item.section || "—"}</td>
+                    <td style={{ padding: "10px 12px" }}>{item.subType ?? "—"}</td>
                     <td style={{ padding: "10px 12px", textAlign: "center" }}>
                       <span
                         style={{
@@ -267,18 +267,22 @@ export default function AdminTaxPage() {
                           borderRadius: "6px",
                           fontSize: "10px",
                           fontWeight: 600,
-                          background: t.isActive ? `${C.success}20` : `${C.muted}20`,
-                          color: t.isActive ? C.success : C.muted,
+                          background: item.isActive ? `${C.success}20` : `${C.muted}20`,
+                          color: item.isActive ? C.success : C.muted,
                         }}
                       >
-                        {t.isActive ? "Active" : "Inactive"}
+                        {item.isActive ? "Active" : "Inactive"}
                       </span>
                     </td>
                     <td style={{ padding: "10px 12px" }}>
-                      <Toggle
-                        checked={t.isActive}
-                        onChange={() => handleToggle(t.id)}
-                      />
+                      <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+                        <Btn sm v="secondary" onClick={() => setMdl({ t: "tax-config-detail", d: item })}>View</Btn>
+                        <Btn sm v="primary" onClick={() => setMdl({ t: "tax-config-edit", d: item })}>Edit</Btn>
+                        <Toggle
+                          checked={item.isActive}
+                          onChange={() => handleToggle(item.id)}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}

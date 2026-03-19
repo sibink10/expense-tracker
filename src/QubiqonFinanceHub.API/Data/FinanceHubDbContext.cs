@@ -15,6 +15,7 @@ public class FinanceHubDbContext : DbContext
     public DbSet<AdvancePayment> AdvancePayments => Set<AdvancePayment>();
     public DbSet<Vendor> Vendors => Set<Vendor>();
     public DbSet<VendorBill> VendorBills => Set<VendorBill>();
+    public DbSet<VendorBillLineItem> VendorBillLineItems => Set<VendorBillLineItem>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<InvoiceLineItem> InvoiceLineItems => Set<InvoiceLineItem>();
@@ -88,6 +89,16 @@ public class FinanceHubDbContext : DbContext
             e.HasIndex(x => new { x.OrganizationId, x.Status });
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
             e.HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<VendorBillLineItem>(e => {
+            e.ToTable("VendorBillLineItems");
+            e.HasIndex(x => new { x.VendorBillId, x.LineNumber });
+            e.HasOne(x => x.VendorBill)
+                .WithMany(x => x.LineItems)
+                .HasForeignKey(x => x.VendorBillId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.GSTConfig).WithMany().HasForeignKey(x => x.GSTConfigId).OnDelete(DeleteBehavior.Restrict);
         });
 
         // ─── Client ─────────────────────────────────

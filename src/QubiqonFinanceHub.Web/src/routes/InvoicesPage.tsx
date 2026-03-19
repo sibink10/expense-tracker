@@ -7,11 +7,27 @@ import { fmtCur } from "../shared/utils";
 import { Btn, Badge, Tbl, Filter, Stat, Empty } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
 import { getInvoiceCounts, getInvoices } from "../shared/api/invoice";
+import { downloadInvoicePdf } from "../shared/invoicePdf";
+
+const DownloadSpinner = () => (
+  <span
+    style={{
+      display: "inline-block",
+      width: 10,
+      height: 10,
+      border: "2px solid rgba(255,255,255,0.4)",
+      borderTopColor: "#fff",
+      borderRadius: "50%",
+      animation: "invSpin 0.7s linear infinite",
+    }}
+  />
+);
 
 export default function InvoicesPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { search, setSearch, sf, setSf, fil, is, setMdl } = useAppContext();
+  const { search, setSearch, sf, setSf, fil, is, setMdl, activeOrg } = useAppContext();
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -88,6 +104,18 @@ export default function InvoicesPage() {
 
   const f = fil(invoices);
 
+  const handleListDownload = async (inv: Invoice, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDownloadingId(inv.id);
+    try {
+      await downloadInvoicePdf(inv, activeOrg);
+    } catch {
+      // Silent fail
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   const startIndex = totalCount === 0 ? 0 : (page - 1) * pageSize;
   const endIndex = totalCount === 0 ? 0 : Math.min(startIndex + pageSize, totalCount);
   const paged = f;
@@ -149,6 +177,7 @@ export default function InvoicesPage() {
           <Empty icon="📄" title="No invoices" sub="" />
         ) : (
           <>
+            <style>{`@keyframes invSpin { to { transform: rotate(360deg); } }`}</style>
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
               <Tbl
                 cols={["Invoice #", "Client", "Amount", "Paid amount", "Currency", "Due", "Status", "Action"]}
@@ -164,7 +193,31 @@ export default function InvoicesPage() {
                     { v: <Badge s={inv.status} /> },
                     {
                       v: (
-                        <div onClick={(ev) => ev.stopPropagation()} style={{ display: "flex", gap: "3px" }}>
+                        <div onClick={(ev) => ev.stopPropagation()} style={{ display: "flex", gap: "3px", flexWrap: "wrap", alignItems: "center" }}>
+                          <Btn
+                            sm
+                            v="invoice"
+                            onClick={ (e: any) => handleListDownload(inv, e)}
+                            disabled={downloadingId === inv.id}
+                          >
+                            {downloadingId === inv.id ? (
+                              <>
+                                <DownloadSpinner />
+                                …
+                              </>
+                            ) : (
+                              "Download"
+                            )}
+                          </Btn>
+                          {inv.status === INV_S.DRAFT && inv.apiId && (
+                            <Btn
+                              sm
+                              v="secondary"
+                              onClick={() => navigate(`/invoices/edit/${inv.apiId}`)}
+                            >
+                              Edit
+                            </Btn>
+                          )}
                           {inv.status === INV_S.SENT && (
                             <Btn
                               sm

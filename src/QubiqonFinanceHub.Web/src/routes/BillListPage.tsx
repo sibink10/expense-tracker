@@ -19,7 +19,7 @@ export default function BillListPage() {
   const [pageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const validStatusValues = new Set(["all", BILL_S.SUBMITTED, BILL_S.APPROVED, BILL_S.PAID, BILL_S.OVERDUE, BILL_S.REJECTED]);
+  const validStatusValues = new Set(["all", BILL_S.SUBMITTED, BILL_S.APPROVED, BILL_S.PAID, BILL_S.PARTIALLY_PAID, BILL_S.OVERDUE, BILL_S.REJECTED]);
   const statusParam = searchParams.get("status") ?? "all";
   const normalizedStatus = validStatusValues.has(statusParam) ? statusParam : "all";
 
@@ -36,13 +36,17 @@ export default function BillListPage() {
     }
   }, [normalizedStatus, setSf, sf]);
 
+  const statusForApi = sf && sf !== "all"
+    ? (sf === BILL_S.PARTIALLY_PAID ? "PartiallyPaid" : sf)
+    : undefined;
+
   useEffect(() => {
     setLoading(true);
     getBills({
       page,
       pageSize,
       search: search || undefined,
-      status: sf && sf !== "all" ? sf : undefined,
+      status: statusForApi,
     })
       .then((res) => {
         setBills(res.items);
@@ -55,7 +59,7 @@ export default function BillListPage() {
         setTotalPages(0);
       })
       .finally(() => setLoading(false));
-  }, [page, pageSize, search, sf, refreshKey]);
+  }, [page, pageSize, search, statusForApi, refreshKey]);
 
   const f = fil(bills);
   const startIndex = totalCount === 0 ? 0 : (page - 1) * pageSize;
@@ -109,6 +113,7 @@ export default function BillListPage() {
             BILL_S.SUBMITTED,
             BILL_S.APPROVED,
             BILL_S.PAID,
+            BILL_S.PARTIALLY_PAID,
             BILL_S.OVERDUE,
             BILL_S.REJECTED,
           ]}
@@ -128,6 +133,7 @@ export default function BillListPage() {
                   "Amount",
                   "TDS",
                   "Payable",
+                  "Paid",
                   "Due",
                   "Status",
                   (is("approver") || is("finance") || is("admin")) && "Action",
@@ -154,6 +160,7 @@ export default function BillListPage() {
                     { v: <span style={{ fontWeight: 600 }}>{fmtCur(b.amt)}</span> },
                     { v: <span style={{ fontSize: "11px", color: C.danger }}>-{fmtCur(b.tdsAmt)}</span> },
                     { v: <span style={{ fontWeight: 700 }}>{fmtCur(b.pay)}</span> },
+                    { v: <span style={{ fontSize: "11px", color: (b.paidAmount ?? 0) > 0 ? C.vendor : C.muted }}>{fmtCur(b.paidAmount ?? 0)}</span> },
                     { v: <span style={{ fontSize: "11px", color: C.muted }}>{b.due}</span> },
                     { v: <Badge s={b.status} /> },
                     ...(is("approver") || is("finance") || is("admin")
@@ -167,7 +174,7 @@ export default function BillListPage() {
                                     <Btn sm v="danger" onClick={() => setMdl({ t: "reject", d: b, it: "bill" })}>✕</Btn>
                                   </>
                                 )}
-                                {(is("finance") || is("admin")) && (b.status === BILL_S.APPROVED || b.status === BILL_S.OVERDUE) && (
+                                {(is("finance") || is("admin")) && (b.status === BILL_S.APPROVED || b.status === BILL_S.OVERDUE || b.status === BILL_S.PARTIALLY_PAID) && (
                                   <Btn sm v="vendor" onClick={() => setMdl({ t: "pay", d: b, it: "bill" })}>Pay</Btn>
                                 )}
                               </div>

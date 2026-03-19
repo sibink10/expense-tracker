@@ -69,13 +69,12 @@ public class ExpenseService : IExpenseService
         _db.ExpenseRequests.Add(expense);
         await _db.SaveChangesAsync();
 
-        var reviewRoles = new[] { UserRole.Admin, UserRole.Finance, UserRole.Approver };
         var reviewers = await _db.Employees
             .Where(e => e.OrganizationId == orgId &&
                         e.IsActive &&
                         !e.IsDelete &&
                         !string.IsNullOrWhiteSpace(e.Email) &&
-                        reviewRoles.Contains(e.Role))
+                        e.Role == UserRole.Approver)
             .Select(e => e.Email)
             .Distinct()
             .ToListAsync();
@@ -121,12 +120,13 @@ public class ExpenseService : IExpenseService
         if (expense.Status == ExpenseStatus.Rejected || expense.Status == ExpenseStatus.Completed || expense.Status == ExpenseStatus.Cancelled)
             throw new InvalidOperationException($"Bill cannot be uploaded when expense is in '{expense.Status}' status.");
 
-        if (expense.Status == ExpenseStatus.Approved && hasExistingDocuments)
+        if ((expense.Status == ExpenseStatus.Approved || expense.Status == ExpenseStatus.AwaitingPayment) && hasExistingDocuments)
             throw new InvalidOperationException("Bill documents have already been uploaded for this approved expense.");
 
         if (expense.Status != ExpenseStatus.PendingApproval &&
             expense.Status != ExpenseStatus.PendingBillApproval &&
             expense.Status != ExpenseStatus.Approved &&
+            expense.Status != ExpenseStatus.AwaitingPayment &&
             expense.Status != ExpenseStatus.AwaitingBill)
             throw new InvalidOperationException("Bill can only be uploaded for pending or approved expenses.");
 
@@ -135,16 +135,13 @@ public class ExpenseService : IExpenseService
             throw new InvalidOperationException("At least one bill document is required.");
 
         var documents = await UploadExpenseDocumentsAsync(orgId, expense.Id, empId, uploadedBills);
-        foreach (var document in documents)
-            expense.Documents.Add(document);
+        _db.RequestDocuments.AddRange(documents);
 
-        expense.BillImageUrl = expense.Documents
-            .OrderBy(x => x.CreatedAt)
-            .LastOrDefault()?.FileUrl ?? expense.BillImageUrl;
-
+        var newBillUrl = documents.OrderBy(x => x.CreatedAt).LastOrDefault()?.FileUrl ?? expense.BillImageUrl;
+        expense.BillImageUrl = newBillUrl;
         expense.Status = expense.Status == ExpenseStatus.PendingApproval || expense.Status == ExpenseStatus.PendingBillApproval
             ? ExpenseStatus.PendingBillApproval
-            : ExpenseStatus.Approved;
+            : ExpenseStatus.AwaitingPayment;
         expense.UpdatedAt = DateTime.UtcNow;
 
         _db.ActivityComments.Add(new ActivityComment
@@ -154,7 +151,7 @@ public class ExpenseService : IExpenseService
             CommentByEmployeeId = empId,
             Text = expense.Status == ExpenseStatus.PendingBillApproval
                 ? "Bill uploaded. Awaiting bill approval."
-                : "Bill uploaded.",
+                : "Bill uploaded. Awaiting payment.",
             ActionType = CommentActionType.BillUploaded
         });
 
@@ -176,7 +173,9 @@ public class ExpenseService : IExpenseService
         if (expense.SubmittedByEmployeeId != empId && currentEmployee.Role != UserRole.Admin)
             throw new UnauthorizedAccessException("Only the submitter or an admin can edit this expense.");
 
-        if (expense.Status == ExpenseStatus.Approved || expense.Status == ExpenseStatus.Completed)
+        if (expense.Status == ExpenseStatus.Approved ||
+            expense.Status == ExpenseStatus.AwaitingPayment ||
+            expense.Status == ExpenseStatus.Completed)
             throw new InvalidOperationException("Only pending expenses can be edited.");
 
         var wasRejected = expense.Status == ExpenseStatus.Rejected;
@@ -185,9 +184,8 @@ public class ExpenseService : IExpenseService
         if (uploadedBills.Count > 0)
         {
             var documents = await UploadExpenseDocumentsAsync(orgId, expense.Id, empId, uploadedBills);
-            foreach (var document in documents)
-                expense.Documents.Add(document);
-            expense.BillImageUrl = expense.Documents
+            _db.RequestDocuments.AddRange(documents);
+            expense.BillImageUrl = documents
                 .OrderBy(x => x.CreatedAt)
                 .LastOrDefault()?.FileUrl ?? expense.BillImageUrl;
         }
@@ -266,7 +264,7 @@ public class ExpenseService : IExpenseService
             throw new InvalidOperationException($"Cannot approve expense in '{expense.Status}' status.");
 
         var hasDocuments = HasExpenseDocument(expense);
-        expense.Status = ExpenseStatus.Approved;
+        expense.Status = hasDocuments ? ExpenseStatus.AwaitingPayment : ExpenseStatus.Approved;
         expense.UpdatedAt = DateTime.UtcNow;
 
         _db.ActivityComments.Add(new ActivityComment
@@ -274,7 +272,7 @@ public class ExpenseService : IExpenseService
             Id = Guid.NewGuid(),
             ExpenseRequestId = id,
             CommentByEmployeeId = emp.Id,
-            Text = dto.Comments ?? (hasDocuments ? "Approved." : "Approved. Bill upload is required before payment."),
+            Text = dto.Comments ?? (hasDocuments ? "Approved. Awaiting payment." : "Approved. Bill upload is required before payment."),
             ActionType = CommentActionType.Approved
         });
 
@@ -284,22 +282,34 @@ public class ExpenseService : IExpenseService
                     ? "expense_approved"
                     : "expense_awaiting_bill";
 
-        await _email.SendNotificationAsync(
-            templateKey,
-            new Dictionary<string, string>
-            {
-                ["employee_name"] = expense.Employee.FullName,
-                ["expense_id"] = expense.ExpenseCode,
-                ["purpose"] = expense.Purpose,
-                ["amount"] = $"₹{expense.Amount:N2}",
-                ["bill_date"] = expense.BillDate.ToString("dd MMM yyyy"),
-                ["status"] = expense.Status.ToString(),
-                ["approver_name"] = emp.FullName,
-                ["approver_comments"] = dto.Comments ?? "",
-                ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
-            },
-            expense.Employee.Email);
+        var financeEmails = await _db.Employees
+            .Where(e => e.OrganizationId == orgId &&
+                        e.IsActive &&
+                        !e.IsDelete &&
+                        !string.IsNullOrWhiteSpace(e.Email) &&
+                        e.Role == UserRole.Finance)
+            .Select(e => e.Email)
+            .Distinct()
+            .ToListAsync();
 
+        if (financeEmails.Count > 0)
+        {
+            await _email.SendNotificationAsync(
+                templateKey,
+                new Dictionary<string, string>
+                {
+                    ["employee_name"] = expense.Employee.FullName,
+                    ["expense_id"] = expense.ExpenseCode,
+                    ["purpose"] = expense.Purpose,
+                    ["amount"] = $"₹{expense.Amount:N2}",
+                    ["bill_date"] = expense.BillDate.ToString("dd MMM yyyy"),
+                    ["status"] = expense.Status.ToString(),
+                    ["approver_name"] = emp.FullName,
+                    ["approver_comments"] = dto.Comments ?? "",
+                    ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
+                },
+                string.Join(",", financeEmails));
+        }
 
         return (await GetByIdAsync(id))!;
     }
@@ -382,22 +392,27 @@ public class ExpenseService : IExpenseService
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
 
-        if (expense.Status != ExpenseStatus.Approved)
+        if (expense.Status != ExpenseStatus.Approved && expense.Status != ExpenseStatus.AwaitingPayment && expense.Status != ExpenseStatus.PartiallyPaid)
             throw new InvalidOperationException("Expense not ready for payment.");
 
         if (!HasExpenseDocument(expense))
             throw new InvalidOperationException("Bill upload is required before payment.");
 
-        expense.Status = ExpenseStatus.Completed;
+        var balanceDue = expense.Amount - expense.PaidAmount;
+        var paidAmount = dto.PaidAmount > 0 ? dto.PaidAmount : expense.Amount;
+        if (paidAmount > balanceDue)
+            throw new InvalidOperationException($"Paid amount (₹{paidAmount:N2}) cannot exceed the remaining balance (₹{balanceDue:N2}).");
+        expense.PaidAmount += paidAmount;
         expense.PaymentReference = dto.PaymentReference;
         expense.UpdatedAt = DateTime.UtcNow;
+        expense.Status = expense.PaidAmount >= expense.Amount ? ExpenseStatus.Completed : ExpenseStatus.PartiallyPaid;
 
         _db.ActivityComments.Add(new ActivityComment
         {
             Id = Guid.NewGuid(),
             ExpenseRequestId = id,
             CommentByEmployeeId = emp.Id,
-            Text = $"Payment released. Ref: {dto.PaymentReference}",
+            Text = $"Payment released. Amount: ₹{paidAmount:N2}. Ref: {dto.PaymentReference}",
             ActionType = CommentActionType.PaymentProcessed
         });
 
@@ -410,6 +425,8 @@ public class ExpenseService : IExpenseService
                 ["expense_id"] = expense.ExpenseCode,
                 ["purpose"] = expense.Purpose,
                 ["amount"] = $"₹{expense.Amount:N2}",
+                ["paid_amount"] = $"₹{expense.PaidAmount:N2}",
+                ["balance_due"] = balanceDue > 0 ? $"₹{balanceDue:N2}" : "₹0.00",
                 ["bill_date"] = expense.BillDate.ToString("dd MMM yyyy"),
                 ["payment_reference"] = dto.PaymentReference,
                 ["processed_by"] = emp.FullName,
@@ -443,7 +460,7 @@ public class ExpenseService : IExpenseService
             FileUrl = billImageUrl,
             CreatedAt = DateTime.UtcNow
         });
-        if (expense.Status == ExpenseStatus.AwaitingBill) expense.Status = ExpenseStatus.Approved;
+        if (expense.Status == ExpenseStatus.AwaitingBill || expense.Status == ExpenseStatus.Approved) expense.Status = ExpenseStatus.AwaitingPayment;
         expense.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
@@ -478,6 +495,38 @@ public class ExpenseService : IExpenseService
         return _storage.GenerateSasUrl(document.FileUrl);
     }
 
+    public async Task RemoveDocumentAsync(Guid expenseId, Guid documentId)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var currentEmp = await _tenant.GetCurrentEmployeeAsync();
+
+        var expense = await _db.ExpenseRequests
+            .Include(x => x.Documents)
+            .FirstOrDefaultAsync(x => x.Id == expenseId && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Expense not found");
+
+        if (expense.SubmittedByEmployeeId != currentEmp.Id && currentEmp.Role != UserRole.Admin)
+            throw new UnauthorizedAccessException("Only the submitter or an admin can remove documents.");
+
+        if (expense.Status == ExpenseStatus.Rejected || expense.Status == ExpenseStatus.Completed || expense.Status == ExpenseStatus.Cancelled)
+            throw new InvalidOperationException($"Documents cannot be removed when expense is in '{expense.Status}' status.");
+
+        var document = expense.Documents.FirstOrDefault(x => x.Id == documentId)
+            ?? throw new KeyNotFoundException("Document not found");
+
+        if (expense.Documents.Count <= 1)
+            throw new InvalidOperationException("Cannot remove the last document. At least one bill attachment is required.");
+
+        try { await _storage.DeleteAsync(document.FileUrl); } catch { /* best-effort blob delete */ }
+
+        _db.RequestDocuments.Remove(document);
+        var remaining = expense.Documents.Where(x => x.Id != documentId).OrderBy(x => x.CreatedAt).ToList();
+        expense.BillImageUrl = remaining.LastOrDefault()?.FileUrl ?? null;
+        expense.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+    }
+
     private static ExpenseDto MapToDto(ExpenseRequest e) => new(
         e.Id,
         e.ExpenseCode,
@@ -485,6 +534,7 @@ public class ExpenseService : IExpenseService
         e.Employee.FullName,
         e.Employee.Department ?? "",
         e.Amount,
+        e.PaidAmount,
         e.Purpose, 
         e.BillDate, 
         e.Status.ToString(),

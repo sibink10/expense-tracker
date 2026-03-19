@@ -206,19 +206,23 @@ const _b: Record<string, [string, string]> = {};
 [
   [EXP_S.PENDING, C.warningBg, C.warning],
   [EXP_S.APPROVED, C.successBg, C.success],
+  [EXP_S.AWAITING_PAYMENT, C.infoBg, C.info],
   [EXP_S.REJECTED, C.dangerBg, C.danger],
   [EXP_S.CANCELLED, "#F1EFE8", "#5F5E5A"],
   [EXP_S.AWAITING_BILL, "#FFF7ED", "#C2410C"],
   [EXP_S.COMPLETED, "#ECFDF5", "#065F46"],
+  [EXP_S.PARTIALLY_PAID, "#ECFDF5", "#065F46"],
   [BILL_S.SUBMITTED, C.warningBg, C.warning],
   [BILL_S.APPROVED, C.successBg, C.success],
   [BILL_S.REJECTED, C.dangerBg, C.danger],
   [BILL_S.PAID, C.infoBg, C.info],
+  [BILL_S.PARTIALLY_PAID, C.infoBg, C.info],
   [BILL_S.OVERDUE, "#FEE2E2", "#991B1B"],
   [ADV_S.PENDING, C.warningBg, C.warning],
   [ADV_S.APPROVED, C.successBg, C.success],
   [ADV_S.REJECTED, C.dangerBg, C.danger],
   [ADV_S.DISBURSED, C.advanceBg, C.advance],
+  [ADV_S.PARTIALLY_DISBURSED, C.advanceBg, C.advance],
   [INV_S.DRAFT, "#F1EFE8", "#5F5E5A"],
   [INV_S.SENT, C.infoBg, C.info],
   [INV_S.VIEWED, "#EDE9FE", "#6C3FA0"],
@@ -249,7 +253,7 @@ export const Badge: React.FC<{ s: string }> = ({ s }) => {
 
 export const Btn: React.FC<{
   children: ReactNode;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   v?: "primary" | "secondary" | "success" | "danger" | "ghost" | "vendor" | "advance" | "info" | "invoice";
   disabled?: boolean;
   sm?: boolean;
@@ -325,9 +329,11 @@ export const Mdl: React.FC<{
   close: () => void;
   title: string;
   w?: boolean;
+  /** Custom max width (e.g. "960px") for larger modals */
+  maxWidth?: string;
   zIndex?: number;
   children: ReactNode;
-}> = ({ open, close, title, w, zIndex = MODAL_Z_INDEX, children }) => {
+}> = ({ open, close, title, w, maxWidth, zIndex = MODAL_Z_INDEX, children }) => {
   if (!open) return null;
   return (
     <div
@@ -376,7 +382,7 @@ export const Mdl: React.FC<{
           background: "#fff",
           borderRadius: "14px",
           width: "100%",
-          maxWidth: w ? "760px" : "500px",
+          maxWidth: maxWidth ?? (w ? "760px" : "500px"),
           maxHeight: "88vh",
           overflow: "hidden",
           display: "flex",

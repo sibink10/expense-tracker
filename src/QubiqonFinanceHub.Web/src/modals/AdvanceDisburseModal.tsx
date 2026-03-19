@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { C } from "../shared/theme";
 import { fmtCur } from "../shared/utils";
 import { Inp, Btn, Mdl, Alert } from "../components/ui";
@@ -17,6 +17,7 @@ const PAYMENT_METHODS = [
 export default function AdvanceDisburseModal() {
   const { mdl, setMdl } = useAppContext();
   const [paymentReference, setPaymentReference] = useState("");
+  const [paidAmt, setPaidAmt] = useState("");
   const [method, setMethod] = useState("NEFT");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
@@ -26,14 +27,36 @@ export default function AdvanceDisburseModal() {
   const a = mdl.d as Advance;
   const id = a.apiId ?? a.id;
 
+  const alreadyPaid = a.paidAmount ?? 0;
+  const remaining = Math.max(0, a.amt - alreadyPaid);
+  const defaultPaid = remaining > 0 ? remaining : a.amt;
+
+  const parsedPaid = parseFloat(paidAmt) || 0;
+  const paidError = useMemo(() => {
+    if (paidAmt.trim() === "" && parsedPaid === 0) return "Paid amount is required";
+    if (!Number.isFinite(parsedPaid) || parsedPaid < 0) return "Enter a valid paid amount";
+    if (parsedPaid > remaining) return `Paid amount cannot exceed ${fmtCur(remaining)}`;
+    return null;
+  }, [paidAmt, parsedPaid, remaining]);
+
+  useEffect(() => {
+    setPaidAmt(String(defaultPaid));
+  }, [defaultPaid, mdl?.d]);
+
   const handleDisburse = async () => {
+    if (paidError) {
+      setError(paidError);
+      return;
+    }
     setLoading(true);
     setError(null);
+    const paid = parseFloat(paidAmt) || defaultPaid;
     try {
       await disburseAdvance(id, {
         paymentReference,
         method,
         notes,
+        paidAmount: paid,
       });
       setMdl(null);
       window.dispatchEvent(new CustomEvent("advances-refresh"));
@@ -57,11 +80,28 @@ export default function AdvanceDisburseModal() {
       >
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <span style={{ color: C.muted }}>{a.id}</span>
-          <span style={{ fontWeight: 700, color: C.advance }}>{fmtCur(a.amt)}</span>
+          <span style={{ fontWeight: 700, color: C.advance }}>
+            {fmtCur(a.amt)}
+            {alreadyPaid > 0 && (
+              <span style={{ fontSize: "11px", color: C.muted, marginLeft: "6px" }}>
+                (Paid: {fmtCur(alreadyPaid)} · Remaining: {fmtCur(remaining)})
+              </span>
+            )}
+          </span>
         </div>
         <div style={{ fontWeight: 600, marginTop: "4px" }}>{a.empName}</div>
         <div style={{ fontSize: "11px", color: C.muted, marginTop: "2px" }}>{a.purpose}</div>
       </div>
+      <Inp
+        label="Paid amount"
+        type="number"
+        value={paidAmt}
+        onChange={(e) => setPaidAmt(e.target.value)}
+        req
+        ph={String(defaultPaid)}
+        hint={remaining > 0 ? `Max: ${fmtCur(remaining)}` : undefined}
+      />
+      {paidError && <Alert sx={{ marginBottom: "8px" }}>{paidError}</Alert>}
       <Inp
         label="Payment reference"
         value={paymentReference}
@@ -85,7 +125,7 @@ export default function AdvanceDisburseModal() {
       />
       {error && <Alert sx={{ marginBottom: "8px" }}>{error}</Alert>}
       <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
-        <Btn v="advance" onClick={handleDisburse} disabled={!paymentReference || loading}>
+        <Btn v="advance" onClick={handleDisburse} disabled={!paymentReference || !!paidError || loading}>
           {loading ? "Disbursing..." : "Confirm disburse"}
         </Btn>
         <Btn v="secondary" onClick={() => setMdl(null)} disabled={loading}>

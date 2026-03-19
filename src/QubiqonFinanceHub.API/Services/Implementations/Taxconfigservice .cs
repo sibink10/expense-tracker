@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Entities;
@@ -14,6 +14,15 @@ public class TaxConfigService : ITaxConfigService
 
     public TaxConfigService(FinanceHubDbContext db, ITenantService tenant)
     { _db = db; _tenant = tenant; }
+
+    public async Task<TaxConfigDto?> GetByIdAsync(Guid id)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var tax = await _db.TaxConfigurations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == id && t.OrganizationId == orgId);
+        return tax == null ? null : MapToDto(tax);
+    }
 
     public async Task<TaxConfigDto> CreateAsync(CreateTaxConfigRequest dto)
     {
@@ -33,6 +42,22 @@ public class TaxConfigService : ITaxConfigService
         };
 
         _db.TaxConfigurations.Add(tax);
+        await _db.SaveChangesAsync();
+        return MapToDto(tax);
+    }
+
+    public async Task<TaxConfigDto> UpdateAsync(Guid id, UpdateTaxConfigRequest dto)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var tax = await _db.TaxConfigurations
+            .FirstOrDefaultAsync(t => t.Id == id && t.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Tax config not found");
+
+        tax.Type = Enum.Parse<TaxType>(dto.Type, true);
+        tax.Name = dto.Name;
+        tax.Rate = dto.Rate;
+        tax.Section = string.IsNullOrWhiteSpace(dto.Section) ? null : dto.Section.Trim();
+        tax.SubType = string.IsNullOrWhiteSpace(dto.SubType) ? null : dto.SubType.Trim();
         await _db.SaveChangesAsync();
         return MapToDto(tax);
     }

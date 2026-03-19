@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
 import { Av } from "../components/ui";
 import { buildNav } from "../shared/nav";
@@ -24,6 +24,7 @@ export default function Layout() {
     setActiveOrg,
   } = useAppContext();
 
+  const navigate = useNavigate();
   const [orgOpen, setOrgOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(
@@ -299,6 +300,7 @@ export default function Layout() {
               />
             )}
             <nav
+              className="app-sidebar"
               style={{
                 position: isMobile ? "fixed" : "relative",
                 top: isMobile ? 50 : 0,
@@ -313,6 +315,14 @@ export default function Layout() {
                 zIndex: isMobile ? 100 : 0,
               }}
             >
+              <style>{`
+                .app-sidebar .nav-link:not(.active) { background: transparent !important; }
+                .app-sidebar .nav-link:not(.active):hover { background: rgba(15,23,42,0.06) !important; }
+                .app-sidebar .nav-link.active { background: rgba(37,99,235,0.08) !important; }
+                .app-sidebar .nav-link .nav-add-btn { opacity: 0 !important; background: transparent; color: inherit; transition: opacity 0.15s; pointer-events: none; }
+                .app-sidebar .nav-link:hover .nav-add-btn { opacity: 1 !important; pointer-events: auto; }
+                .app-sidebar .nav-link .nav-add-btn:hover { background: rgba(15,23,42,0.08); }
+              `}</style>
               {visibleNav.map((sec, si) => (
                 <div key={si}>
                   <div
@@ -329,50 +339,79 @@ export default function Layout() {
                   >
                     {sec.s}
                   </div>
-                  {sec.items.map((item) => (
-                      <NavLink
-                        key={item.path}
-                        to={item.path}
-                        end={item.end}
-                        onClick={() => isMobile && setSidebarOpen(false)}
-                        style={({ isActive }) => ({
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          padding: "7px 12px",
-                          borderRadius: "7px",
-                          border: "none",
-                          background: isActive ? `${(sec.c || C.accent)}12` : "transparent",
-                          color: isActive ? (sec.c || C.accent) : C.muted,
-                          cursor: "pointer",
-                          fontSize: "12px",
-                          fontWeight: isActive ? 600 : 500,
-                          width: "100%",
-                          textAlign: "left",
-                          fontFamily: "'DM Sans'",
-                          transition: "all 0.15s",
-                          textDecoration: "none",
-                        })}
-                      >
-                        <span style={{ fontSize: "13px", width: "18px", textAlign: "center" }}>{item.i}</span>
-                        {item.l}
-                        {item.b != null && item.b > 0 && (
-                          <span
-                            style={{
-                              marginLeft: "auto",
-                              background: sec.c || C.accent,
-                              color: "#fff",
-                              fontSize: "9px",
-                              fontWeight: 700,
-                              padding: "1px 6px",
-                              borderRadius: "6px",
-                            }}
-                          >
-                            {item.b}
-                          </span>
-                        )}
-                      </NavLink>
-                    ))}
+                  {sec.items.map((item) => {
+                      const canAdd = item.addPath && (item.addRoles ?? item.r).includes(user.role as "employee" | "approver" | "finance" | "admin");
+                      return (
+                      <div key={item.path} style={{ position: "relative", marginBottom: "2px" }}>
+                        <NavLink
+                          to={item.path}
+                          end={item.end}
+                          className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
+                          onClick={() => isMobile && setSidebarOpen(false)}
+                          style={({ isActive }) => ({
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            padding: "7px 12px",
+                            borderRadius: "7px",
+                            border: "none",
+                            color: isActive ? (sec.c || C.accent) : C.muted,
+                            cursor: "pointer",
+                            fontSize: "12px",
+                            fontWeight: isActive ? 600 : 500,
+                            width: "100%",
+                            textAlign: "left",
+                            fontFamily: "'DM Sans'",
+                            transition: "all 0.15s",
+                            textDecoration: "none",
+                          })}
+                        >
+                          <span style={{ fontSize: "13px", width: "18px", textAlign: "center" }}>{item.i}</span>
+                          {item.l}
+                          {item.b != null && item.b > 0 && (
+                            <span
+                              style={{
+                                marginLeft: "auto",
+                                background: sec.c || C.accent,
+                                color: "#fff",
+                                fontSize: "9px",
+                                fontWeight: 700,
+                                padding: "1px 6px",
+                                borderRadius: "6px",
+                              }}
+                            >
+                              {item.b}
+                            </span>
+                          )}
+                          {canAdd && (
+                            <button
+                              type="button"
+                              className="nav-add-btn"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                navigate(item.addPath!);
+                                if (isMobile) setSidebarOpen(false);
+                              }}
+                              style={{
+                                marginLeft: "auto",
+                                padding: "2px 6px",
+                                border: "none",
+                                color: "inherit",
+                                cursor: "pointer",
+                                borderRadius: "4px",
+                                fontSize: "14px",
+                                lineHeight: 1,
+                              }}
+                              title={`Add ${item.l.toLowerCase()}`}
+                              aria-label={`Add ${item.l.toLowerCase()}`}
+                            >
+                              ＋
+                            </button>
+                          )}
+                        </NavLink>
+                      </div>
+                    );})}
                 </div>
               ))}
             </nav>

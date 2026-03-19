@@ -22,8 +22,7 @@ export function buildNav(
       s: "Employee expenses",
       c: "#E8593C",
       items: [
-        { path: "/expenses", l: "Expense requests", i: "☰", r: allRoles, b: isApprover ? pendExp : 0, end: true },
-        { path: "/expenses/add", l: "Add expense", i: "＋", r: ["employee", "finance", "admin"] as UserRole[] },
+        { path: "/expenses", l: "Expense requests", i: "☰", r: allRoles, b: isApprover ? pendExp : 0, end: true, addPath: "/expenses/add", addRoles: ["employee", "finance", "admin"] as UserRole[] },
       ],
     },
     ...(advEnabled
@@ -32,8 +31,7 @@ export function buildNav(
             s: "Advance payments",
             c: "#0E7490",
             items: [
-              { path: "/advances", l: "Requests", i: "⤴", r: ["employee", "approver", "finance", "admin"] as UserRole[], b: isApprover ? pendAdv : 0, end: true },
-              { path: "/advances/add", l: "Request advance", i: "＋", r: ["employee", "finance", "admin"] as UserRole[] },
+              { path: "/advances", l: "Requests", i: "⤴", r: ["employee", "approver", "finance", "admin"] as UserRole[], b: isApprover ? pendAdv : 0, end: true, addPath: "/advances/add", addRoles: ["employee", "finance", "admin"] as UserRole[] },
             ],
           },
         ]
@@ -42,20 +40,16 @@ export function buildNav(
       s: "Vendor payments",
       c: "#6C3FA0",
       items: [
-        { path: "/bills", l: "Vendor bills", i: "📋", r: ["finance", "approver", "admin"] as UserRole[], end: true },
-        { path: "/bills/add", l: "Submit bill", i: "＋", r: ["finance", "admin"] as UserRole[] },
-        { path: "/vendors", l: "Vendors", i: "🏢", r: ["finance", "admin"] as UserRole[], end: true },
-        { path: "/vendors/add", l: "Add vendor", i: "＋", r: ["admin"] as UserRole[] },
+        { path: "/bills", l: "Vendor bills", i: "📋", r: ["finance", "approver", "admin"] as UserRole[], end: true, addPath: "/bills/add", addRoles: ["finance", "admin"] as UserRole[] },
+        { path: "/vendors", l: "Vendors", i: "🏢", r: ["finance", "admin"] as UserRole[], end: true, addPath: "/vendors/add", addRoles: ["admin"] as UserRole[] },
       ],
     },
     {
       s: "Invoicing",
       c: "#B45309",
       items: [
-        { path: "/invoices", l: "Invoices", i: "📄", r: ["finance", "admin"] as UserRole[], end: true },
-        { path: "/invoices/add", l: "Create invoice", i: "＋", r: ["finance", "admin"] as UserRole[] },
-        { path: "/clients", l: "Clients", i: "👥", r: ["finance", "admin"] as UserRole[], end: true },
-        { path: "/clients/add", l: "Add client", i: "＋", r: ["admin"] as UserRole[] },
+        { path: "/invoices", l: "Invoices", i: "📄", r: ["finance", "admin"] as UserRole[], end: true, addPath: "/invoices/add", addRoles: ["finance", "admin"] as UserRole[] },
+        { path: "/clients", l: "Clients", i: "👥", r: ["finance", "admin"] as UserRole[], end: true, addPath: "/clients/add", addRoles: ["admin"] as UserRole[] },
       ],
     },
     {

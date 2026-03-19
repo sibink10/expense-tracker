@@ -63,7 +63,7 @@ export default function InvPayModal() {
     try {
       await markInvoicePaid(id, {
         paymentReference: paymentReference.trim(),
-        paidAmound: parsedPaidAmount,
+        paidAmount: parsedPaidAmount,
         method,
         notes: notes.trim(),
       });

@@ -46,3 +46,16 @@ export async function toggleTaxConfig(id: string): Promise<unknown> {
   const { data } = await apiClient.post(`/tax-config/${id}/toggle`);
   return data;
 }
+
+export interface UpdateTaxConfigPayload {
+  type: string;
+  name: string;
+  rate: number;
+  section: string;
+  subType: string;
+}
+
+export async function updateTaxConfig(id: string, payload: UpdateTaxConfigPayload): Promise<unknown> {
+  const { data } = await apiClient.put(`/tax-config/${id}`, payload);
+  return data;
+}
