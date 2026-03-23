@@ -35,10 +35,62 @@ function mapApiClientToApp(item: ApiClient): Client {
   };
 }
 
+export interface GetClientsParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  sortBy?: string;
+  desc?: boolean;
+}
+
+export interface PagedClientsResponse {
+  items: Client[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  hasNext: boolean;
+}
+
+/** Paginated list with server sort (GET /api/clients). */
+export async function getClientsPaged(params: GetClientsParams = {}): Promise<PagedClientsResponse> {
+  const apiParams: Record<string, unknown> = {
+    Page: params.page,
+    PageSize: params.pageSize,
+    Search: params.search,
+    SortBy: params.sortBy,
+    Desc: params.desc,
+  };
+  const { data } = await apiClient.get<
+    ApiClient[] | { items: ApiClient[]; totalCount: number; page: number; pageSize: number; totalPages: number; hasNext: boolean }
+  >("/clients", { params: apiParams });
+  if (Array.isArray(data)) {
+    const items = data.map(mapApiClientToApp);
+    return {
+      items,
+      totalCount: items.length,
+      page: params.page ?? 1,
+      pageSize: params.pageSize || items.length || 10,
+      totalPages: 1,
+      hasNext: false,
+    };
+  }
+  const dto = data as { items: ApiClient[]; totalCount: number; page: number; pageSize: number; totalPages: number; hasNext: boolean };
+  const items = (dto.items ?? []).map(mapApiClientToApp);
+  return {
+    items,
+    totalCount: dto.totalCount ?? items.length,
+    page: dto.page ?? params.page ?? 1,
+    pageSize: dto.pageSize ?? params.pageSize ?? 10,
+    totalPages: dto.totalPages ?? 1,
+    hasNext: dto.hasNext ?? false,
+  };
+}
+
+/** @deprecated Prefer getClientsPaged for large directories; kept for simple dropdowns. */
 export async function getClients(): Promise<Client[]> {
-  const { data } = await apiClient.get<ApiClient[] | { items: ApiClient[] }>("/clients");
-  const items = Array.isArray(data) ? data : (data as { items: ApiClient[] })?.items ?? [];
-  return items.map(mapApiClientToApp);
+  const r = await getClientsPaged({ page: 1, pageSize: 500 });
+  return r.items;
 }
 
 export interface ClientPayload {

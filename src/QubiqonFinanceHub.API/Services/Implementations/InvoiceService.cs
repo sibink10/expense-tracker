@@ -1,9 +1,12 @@
+using System.Net;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Constants;
 using QubiqonFinanceHub.API.Models.Entities;
 using QubiqonFinanceHub.API.Models.Enums;
+using QubiqonFinanceHub.API.Services.Helpers;
 using QubiqonFinanceHub.API.Services.Interfaces;
 using Humanizer;
 
@@ -112,29 +115,37 @@ public class InvoiceService : IInvoiceService
         _db.Invoices.Add(invoice);
         await _db.SaveChangesAsync();
 
-        var reviewerEmails = await _db.Employees
+        var approverEmails = await _db.Employees
             .Where(e => e.OrganizationId == orgId &&
                         e.IsActive &&
                         !e.IsDelete &&
                         !string.IsNullOrWhiteSpace(e.Email) &&
-                        (e.Role == UserRole.Admin || e.Role == UserRole.Finance || e.Role == UserRole.Approver))
+                        (e.Role == UserRole.Finance || e.Role == UserRole.Approver))
             .Select(e => e.Email)
             .Distinct()
             .ToListAsync();
 
-        if (reviewerEmails.Count > 0)
+        var invoiceForEmail = await _db.Invoices
+            .AsNoTracking()
+            .Include(x => x.Client)
+            .Include(x => x.LineItems)
+            .ThenInclude(l => l.GSTConfig)
+            .Include(x => x.TaxConfig)
+            .FirstAsync(x => x.Id == invoice.Id);
+
+        if (approverEmails.Count > 0)
         {
             await _email.SendNotificationAsync(
                 Constants.EmailTemplateKeys.InvoiceCreated,
-                BuildInvoiceEmailVariables(invoice, client, emp.FullName, dto.SendImmediately ? "Sent" : "Draft", 0m, string.Empty),
-                string.Join(",", reviewerEmails));
+                await BuildInvoiceEmailVariablesAsync(invoiceForEmail, invoiceForEmail.Client, emp.FullName, dto.SendImmediately ? "Sent" : "Draft", 0m, string.Empty, dto.SendImmediately ? "inv-pay" : "detail"),
+                string.Join(",", approverEmails));
         }
 
         if (dto.SendImmediately)
         {
             await _email.SendNotificationAsync(
                 Constants.EmailTemplateKeys.InvoiceSent,
-                BuildInvoiceEmailVariables(invoice, client, emp.FullName, "Sent", 0m, string.Empty),
+                await BuildInvoiceEmailVariablesAsync(invoiceForEmail, invoiceForEmail.Client, emp.FullName, "Sent", 0m, string.Empty, "inv-pay"),
                 client.Email);
         }
 
@@ -295,7 +306,7 @@ public class InvoiceService : IInvoiceService
         }
 
         var total = await q.CountAsync();
-        q = f.Desc ? q.OrderByDescending(x => x.CreatedAt) : q.OrderBy(x => x.CreatedAt);
+        q = q.ApplyInvoiceSorting(f);
         var items = await q.Skip((f.Page - 1) * f.PageSize).Take(f.PageSize).ToListAsync();
 
         return new PaginatedResult<InvoiceDto>(items.Select(MapToDto).ToList(), total, f.Page, f.PageSize);
@@ -334,9 +345,20 @@ public class InvoiceService : IInvoiceService
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var inv = await _db.Invoices
             .Include(x => x.Client)
-            .Include(x => x.LineItems.OrderBy(l => l.LineNumber))
+            .Include(x => x.LineItems)
+            .ThenInclude(l => l.GSTConfig)
+            .Include(x => x.TaxConfig)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Invoice not found");
+
+        if (emp.Role != UserRole.Finance && emp.Role != UserRole.Admin)
+            throw new InvalidOperationException("Only Finance or Admin can send invoices to the client.");
+
+        if (inv.Status is InvoiceStatus.Sent or InvoiceStatus.Viewed)
+            throw new InvalidOperationException("Invoice was already sent to the client.");
+
+        if (inv.Status != InvoiceStatus.Paid && inv.Status != InvoiceStatus.PartiallyPaid)
+            throw new InvalidOperationException("Record payment on the invoice before sending it to the client.");
 
         inv.Status = InvoiceStatus.Sent;
         inv.SentAt = DateTime.UtcNow;
@@ -352,7 +374,7 @@ public class InvoiceService : IInvoiceService
 
         await _email.SendNotificationAsync(
             Constants.EmailTemplateKeys.InvoiceSent,
-            BuildInvoiceEmailVariables(inv, inv.Client, emp.FullName, "Sent", inv.paidAmound, string.Empty),
+            await BuildInvoiceEmailVariablesAsync(inv, inv.Client, emp.FullName, "Sent", inv.paidAmound, string.Empty, "inv-pay"),
             inv.Client.Email);
 
         return (await GetByIdAsync(id))!;
@@ -364,9 +386,15 @@ public class InvoiceService : IInvoiceService
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var inv = await _db.Invoices
             .Include(x => x.Client)
-            .Include(x => x.LineItems.OrderBy(l => l.LineNumber))
+            .Include(x => x.LineItems)
+            .ThenInclude(l => l.GSTConfig)
+            .Include(x => x.TaxConfig)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Invoice not found");
+
+        if (inv.Status == InvoiceStatus.Paid || inv.paidAmound >= inv.Total)
+            throw new InvalidOperationException("Invoice is already fully paid.");
+
         var currentPaid = inv.paidAmound;
         var newTotalPaid = currentPaid + dto.PaidAmount;
         if (newTotalPaid > inv.Total)
@@ -391,7 +419,7 @@ public class InvoiceService : IInvoiceService
 
         await _email.SendNotificationAsync(
             Constants.EmailTemplateKeys.InvoicePaid,
-            BuildInvoiceEmailVariables(inv, inv.Client, emp.FullName, GetInvoiceStatusLabel(inv.Status), inv.paidAmound, dto.Notes ?? string.Empty),
+            await BuildInvoiceEmailVariablesAsync(inv, inv.Client, emp.FullName, GetInvoiceStatusLabel(inv.Status), inv.paidAmound, dto.Notes ?? string.Empty, "detail"),
             inv.Client.Email);
 
         return (await GetByIdAsync(id))!;
@@ -426,18 +454,21 @@ public class InvoiceService : IInvoiceService
             _ => status.ToString()
         };
 
-    private Dictionary<string, string> BuildInvoiceEmailVariables(
+    private async Task<Dictionary<string, string>> BuildInvoiceEmailVariablesAsync(
         Invoice invoice,
         Client client,
         string actorName,
         string statusLabel,
         decimal paymentMade,
-        string detailsText)
+        string detailsText,
+        string? linkType = null)
     {
         var balanceDue = Math.Max(invoice.Total - paymentMade, 0);
 
-        return new Dictionary<string, string>
+        var dict = new Dictionary<string, string>
         {
+            ["entity_type"] = "invoice",
+            ["entity_api_id"] = invoice.Id.ToString(),
             ["invoice_number"] = invoice.InvoiceCode,
             ["invoice_date"] = invoice.InvoiceDate.ToString("dd/MM/yyyy"),
             ["due_date"] = invoice.DueDate.ToString("dd/MM/yyyy"),
@@ -459,11 +490,50 @@ public class InvoiceService : IInvoiceService
             ["notes"] = invoice.Notes ?? "",
             ["total_in_words"] = invoice.TotalInWords ?? "",
             ["line_items_html"] = BuildInvoiceLineItemsHtml(invoice),
+            ["gst_line_breakdown_html"] = await BuildInvoiceGstLineBreakdownHtmlAsync(invoice),
             ["actor_name"] = actorName,
             ["details_text"] = detailsText,
             ["invoice_status"] = statusLabel,
             ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
         };
+        if (!string.IsNullOrWhiteSpace(linkType))
+            dict["link_type"] = linkType.Trim();
+        return dict;
+    }
+
+    private async Task<string> BuildInvoiceGstLineBreakdownHtmlAsync(Invoice invoice)
+    {
+        var items = invoice.LineItems?.OrderBy(l => l.LineNumber).ToList() ?? new List<InvoiceLineItem>();
+        if (items.Count == 0) return string.Empty;
+        var sb = new StringBuilder();
+        for (var i = 0; i < items.Count; i++)
+        {
+            var item = items[i];
+            if (item.GSTAmount <= 0) continue;
+            string? name = item.GSTConfig?.Name;
+            decimal? rate = item.GSTConfig?.Rate;
+            if (item.GSTConfigId.HasValue && (name == null || rate == null))
+            {
+                var tc = await _db.TaxConfigurations.AsNoTracking().FirstOrDefaultAsync(t => t.Id == item.GSTConfigId.Value);
+                if (tc != null)
+                {
+                    name = tc.Name;
+                    rate = tc.Rate;
+                }
+            }
+            var labelBase = $"{name ?? "GST"} ({(rate ?? 0):N2}%)";
+            var desc = item.Description?.Trim();
+            var labelSuffix = !string.IsNullOrEmpty(desc)
+                ? $" · {(desc.Length > 40 ? desc[..40] + "…" : desc)}"
+                : $" · #{i + 1}";
+            var fullLabel = WebUtility.HtmlEncode(labelBase + labelSuffix);
+            sb.Append($"""
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:#111827;margin-bottom:6px;padding-left:2px;padding-right:2px;">
+                    <span>{fullLabel}</span><strong>{FormatCurrency(item.GSTAmount, invoice.Currency)}</strong>
+                </div>
+                """);
+        }
+        return sb.ToString();
     }
 
     private static string BuildInvoiceLineItemsHtml(Invoice invoice)

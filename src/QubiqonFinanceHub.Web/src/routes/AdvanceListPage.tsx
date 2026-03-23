@@ -3,8 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import type { Advance } from "../types";
 import { C } from "../shared/theme";
 import { ADV_S } from "../shared/constants";
-import { fmtCur } from "../shared/utils";
-import { Btn, Badge, Tbl, Empty } from "../components/ui";
+import { fmtCur, nextListSort } from "../shared/utils";
+import { Btn, Badge, Tbl, Empty, ListRefreshButton, type TblCol } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
 import { getAdvancesMyMapped } from "../shared/api/advance";
 
@@ -33,6 +33,8 @@ export default function AdvanceListPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [sortBy, setSortBy] = useState("CreatedAt");
+  const [sortDesc, setSortDesc] = useState(true);
 
   useEffect(() => {
     const handler = () => setRefreshKey((k) => k + 1);
@@ -48,6 +50,8 @@ export default function AdvanceListPage() {
       search: search || undefined,
       status: status || undefined,
       myOnly,
+      sortBy,
+      desc: sortDesc,
     })
       .then((r) => {
         setData(r.items);
@@ -60,7 +64,14 @@ export default function AdvanceListPage() {
         setTotalPages(0);
       })
       .finally(() => setLoading(false));
-  }, [page, pageSize, search, status, myOnly, refreshKey]);
+  }, [page, pageSize, search, status, myOnly, refreshKey, sortBy, sortDesc]);
+
+  const handleSort = (key: string) => {
+    const n = nextListSort(key, sortBy, sortDesc);
+    setSortBy(n.sortBy);
+    setSortDesc(n.desc);
+    setPage(1);
+  };
 
   return (
     <div>
@@ -75,7 +86,7 @@ export default function AdvanceListPage() {
         <h1 style={{ fontSize: "20px", fontWeight: 700, margin: 0, color: C.advance }}>
           Advance requests
         </h1>
-        {(is("employee") || is("finance") || is("admin")) && (
+        {(is("employee") || is("approver") || is("finance") || is("admin")) && (
           <Btn v="advance" onClick={() => navigate("/advances/add")}>
             ＋ Request
           </Btn>
@@ -100,60 +111,78 @@ export default function AdvanceListPage() {
               gap: "16px",
               marginBottom: "16px",
               flexWrap: "wrap",
+              justifyContent: "space-between",
             }}
           >
-            <input
-              type="search"
-              placeholder="Search..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              style={{
-                padding: "8px 12px",
-                border: `1px solid ${C.border}`,
-                borderRadius: "8px",
-                width: "200px",
-              }}
-            />
             <div
               style={{
                 display: "flex",
-                gap: "4px",
-                padding: "2px",
-                background: "#f1f3f5",
-                borderRadius: "8px",
-                width: "fit-content",
+                alignItems: "center",
+                gap: "16px",
+                flexWrap: "wrap",
+                flex: "1 1 auto",
+                minWidth: 0,
               }}
             >
-              {STATUS_TABS.map((tab) => (
-                <button
-                  key={tab.value || "all"}
-                  type="button"
-                  onClick={() => {
-                    const nextParams = new URLSearchParams(searchParams);
-                    if (tab.value) nextParams.set("status", tab.value);
-                    else nextParams.delete("status");
-                    setSearchParams(nextParams, { replace: true });
-                    setPage(1);
-                  }}
-                  style={{
-                    padding: "6px 12px",
-                    border: "none",
-                    borderRadius: "6px",
-                    background: status === tab.value ? "#e9ecef" : "transparent",
-                    color: status === tab.value ? "#212529" : "#6c757d",
-                    fontWeight: status === tab.value ? 600 : 400,
-                    fontSize: "12px",
-                    lineHeight: 1.2,
-                    cursor: "pointer",
-                    boxShadow: status === tab.value ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
-                  }}
-                >
-                  {tab.label}
-                </button>
-              ))}
+              <input
+                type="search"
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                style={{
+                  padding: "8px 12px",
+                  border: `1px solid ${C.border}`,
+                  borderRadius: "8px",
+                  width: "200px",
+                }}
+              />
+              <div
+                style={{
+                  display: "flex",
+                  gap: "4px",
+                  padding: "2px",
+                  background: "#f1f3f5",
+                  borderRadius: "8px",
+                  width: "fit-content",
+                }}
+              >
+                {STATUS_TABS.map((tab) => (
+                  <button
+                    key={tab.value || "all"}
+                    type="button"
+                    onClick={() => {
+                      const nextParams = new URLSearchParams(searchParams);
+                      if (tab.value) nextParams.set("status", tab.value);
+                      else nextParams.delete("status");
+                      setSearchParams(nextParams, { replace: true });
+                      setPage(1);
+                    }}
+                    style={{
+                      padding: "6px 12px",
+                      border: "none",
+                      borderRadius: "6px",
+                      background: status === tab.value ? "#e9ecef" : "transparent",
+                      color: status === tab.value ? "#212529" : "#6c757d",
+                      fontWeight: status === tab.value ? 600 : 400,
+                      fontSize: "12px",
+                      lineHeight: 1.2,
+                      cursor: "pointer",
+                      boxShadow: status === tab.value ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ flexShrink: 0, marginLeft: "auto" }}>
+              <ListRefreshButton
+                loading={loading}
+                onRefresh={() => setRefreshKey((k) => k + 1)}
+              />
             </div>
           </div>
           {loading ? (
@@ -162,15 +191,20 @@ export default function AdvanceListPage() {
             <Empty icon="💸" title="No advance requests" sub="" />
           ) : (
             <Tbl
-              cols={[
-                "ID",
-                !is("employee") && "Employee",
-                "Purpose",
-                "Amount",
-                "Paid",
-                "Status",
-                (is("approver") || is("finance") || is("admin")) && "Action",
-              ].filter(Boolean) as string[]}
+              cols={
+                [
+                  { label: "ID", sortKey: "AdvanceCode" },
+                  ...(!is("employee") ? [{ label: "Employee", sortKey: "Employee" }] : []),
+                  { label: "Purpose", sortKey: "Purpose" },
+                  { label: "Amount", sortKey: "Amount" },
+                  { label: "Balance Due", sortKey: "BalanceDue" },
+                  { label: "Status" },
+                  ...(is("approver") || is("finance") || is("admin") ? (["Action"] as TblCol[]) : []),
+                ] as TblCol[]
+              }
+              sortBy={sortBy}
+              sortDesc={sortDesc}
+              onSortChange={handleSort}
               rows={data.map((a) => ({
                 ...a,
                 _cells: [
@@ -178,7 +212,7 @@ export default function AdvanceListPage() {
                   ...(!is("employee") ? [{ v: <span style={{ fontSize: "11px" }}>{a.empName}</span> }] : []),
                   { v: <div style={{ maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.purpose}</div> },
                   { v: <span style={{ fontWeight: 700 }}>{fmtCur(a.amt)}</span> },
-                  { v: <span style={{ fontSize: "11px", color: (a.paidAmount ?? 0) > 0 ? C.advance : C.muted }}>{fmtCur(a.paidAmount ?? 0)}</span> },
+                  { v: <span style={{ fontSize: "11px", color: (a.amt - (a.paidAmount ?? 0)) > 0 ? C.advance : C.muted }}>{fmtCur(a.amt - (a.paidAmount ?? 0))}</span> },
                   { v: <Badge s={a.status} /> },
                   ...(is("approver") || is("finance") || is("admin")
                     ? [

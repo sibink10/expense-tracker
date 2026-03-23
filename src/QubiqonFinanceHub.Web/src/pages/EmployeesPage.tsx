@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { C } from "../shared/theme";
-import { Btn, Empty, Inp, Mdl, Tbl, Toggle } from "../components/ui";
+import { Btn, Empty, Inp, Mdl, Tbl, Toggle, ListRefreshButton, type TblCol } from "../components/ui";
 import { TrashIcon } from "../components/icons";
 import { useAppContext } from "../context/AppContext";
 import { getEmployees, saveEmployee, toggleEmployee, deleteEmployee, type Employee } from "../shared/api/employees";
+import { nextListSort } from "../shared/utils";
 
 export default function EmployeesPage() {
   const { t, user } = useAppContext();
@@ -14,6 +15,8 @@ export default function EmployeesPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
+  const [sortBy, setSortBy] = useState("FullName");
+  const [sortDesc, setSortDesc] = useState(false);
   const [totalPages, setTotalPages] = useState(1);
   const [mdlOpen, setMdlOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
@@ -35,15 +38,27 @@ export default function EmployeesPage() {
     isEmailValid(form.email) &&
     form.role.trim().length > 0;
 
-  const load = (pageArg = page, searchArg = search) => {
+  const load = (
+    pageArg = page,
+    searchArg = search,
+    sb: string = sortBy,
+    sd: boolean = sortDesc
+  ) => {
     setLoading(true);
-    void getEmployees({ page: pageArg, pageSize, search: searchArg || undefined })
+    void getEmployees({ page: pageArg, pageSize, search: searchArg || undefined, sortBy: sb, desc: sd })
       .then((res) => {
         setEmployees(res.items);
         setPage(res.page);
         setTotalPages(res.totalPages);
       })
       .finally(() => setLoading(false));
+  };
+
+  const handleSort = (key: string) => {
+    const n = nextListSort(key, sortBy, sortDesc);
+    setSortBy(n.sortBy);
+    setSortDesc(n.desc);
+    load(1, search, n.sortBy, n.desc);
   };
 
   useEffect(() => {
@@ -55,7 +70,7 @@ export default function EmployeesPage() {
   useEffect(() => {
     const handle = setTimeout(() => {
       setPage(1);
-      load(1, search);
+      load(1, search, sortBy, sortDesc);
     }, 400);
     return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -105,7 +120,14 @@ export default function EmployeesPage() {
     load();
   };
 
-  const cols = ["Name", "Email", "Department", "Role", "Status", "Action"];
+  const cols: TblCol[] = [
+    { label: "Name", sortKey: "FullName" },
+    { label: "Email" },
+    { label: "Department" },
+    { label: "Role" },
+    { label: "Status" },
+    "Action",
+  ];
   const rows = rowsSource.map((e) => ({
     _cells: [
       { v: e.name || "NA" },
@@ -177,8 +199,8 @@ export default function EmployeesPage() {
           padding: "14px 16px 16px",
         }}
       >
-        <div style={{ marginBottom: "10px", display: "flex", justifyContent: "space-between", gap: "8px" }}>
-          <div style={{ position: "relative", flex: 1, maxWidth: "260px" }}>
+        <div style={{ marginBottom: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <div style={{ position: "relative", flex: 1, maxWidth: "260px", minWidth: "160px" }}>
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -207,6 +229,9 @@ export default function EmployeesPage() {
               ⌕
             </span>
           </div>
+          <div style={{ flexShrink: 0, marginLeft: "auto" }}>
+            <ListRefreshButton loading={loading} onRefresh={() => load(page, search, sortBy, sortDesc)} />
+          </div>
         </div>
 
         {loading ? (
@@ -215,7 +240,13 @@ export default function EmployeesPage() {
           <Empty icon="👥" title="No employees yet" sub="Add your first employee to get started." />
         ) : (
           <>
-            <Tbl cols={cols} rows={rows} />
+            <Tbl
+              cols={cols}
+              rows={rows}
+              sortBy={sortBy}
+              sortDesc={sortDesc}
+              onSortChange={handleSort}
+            />
             <div
               style={{
                 display: "flex",
@@ -236,7 +267,7 @@ export default function EmployeesPage() {
                   if (page <= 1) return;
                   const next = page - 1;
                   setPage(next);
-                  load(next);
+                  load(next, search, sortBy, sortDesc);
                 }}
               >
                 Prev
@@ -249,7 +280,7 @@ export default function EmployeesPage() {
                   if (page >= totalPages) return;
                   const next = page + 1;
                   setPage(next);
-                  load(next);
+                  load(next, search, sortBy, sortDesc);
                 }}
               >
                 Next

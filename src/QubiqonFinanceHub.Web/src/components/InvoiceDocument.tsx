@@ -2,18 +2,20 @@ import type { Invoice } from "../types";
 import type { OrganizationPayload } from "../shared/api/organization";
 import { C } from "../shared/theme";
 import { INV_S } from "../shared/constants";
-import { fmtCur } from "../shared/utils";
+import { fmtCur, fmtQty, daysOverdueFromDueYmd } from "../shared/utils";
 
 interface Props {
   invoice: Invoice;
   organization?: OrganizationPayload | null;
+  /** Omit corner status ribbon (e.g. PDF download). */
+  hideStatusRibbon?: boolean;
 }
 
 function buildAddress(parts: Array<string | undefined>): string[] {
   return parts.map((part) => (part || "").trim()).filter(Boolean);
 }
 
-export default function InvoiceDocument({ invoice: inv, organization: org }: Props) {
+export default function InvoiceDocument({ invoice: inv, organization: org, hideStatusRibbon = false }: Props) {
   const orgAddressLines = buildAddress([
     org?.address,
     [org?.city, org?.state].filter(Boolean).join(", "),
@@ -41,6 +43,9 @@ export default function InvoiceDocument({ invoice: inv, organization: org }: Pro
               ? C.invoice
               : C.muted;
 
+  const overdueDays =
+    inv.status === INV_S.OVERDUE ? daysOverdueFromDueYmd(inv.due) : null;
+
   return (
     <div
       style={{
@@ -52,26 +57,37 @@ export default function InvoiceDocument({ invoice: inv, organization: org }: Pro
         width: "100%",
       }}
     >
-      <div
-        style={{
-          position: "absolute",
-          top: "18px",
-          right: "-38px",
-          width: "140px",
-          transform: "rotate(45deg)",
-          background: ribbonColor,
-          color: "#fff",
-          textAlign: "center",
-          fontSize: "11px",
-          fontWeight: 700,
-          letterSpacing: "0.04em",
-          padding: "6px 0",
-          boxShadow: "0 6px 18px rgba(15,23,42,0.12)",
-          zIndex: 1,
-        }}
-      >
-        {inv.status.toUpperCase()}
-      </div>
+      {!hideStatusRibbon && (
+        <div
+          style={{
+            position: "absolute",
+            top: "18px",
+            right: "-38px",
+            width: "140px",
+            transform: "rotate(45deg)",
+            background: ribbonColor,
+            color: "#fff",
+            textAlign: "center",
+            fontSize: "11px",
+            fontWeight: 700,
+            letterSpacing: "0.04em",
+            padding: "6px 0",
+            boxShadow: "0 6px 18px rgba(15,23,42,0.12)",
+            zIndex: 1,
+          }}
+        >
+          {inv.status === INV_S.OVERDUE && overdueDays != null && overdueDays >= 1 ? (
+            <>
+              OVERDUE
+              <span style={{ display: "block", fontSize: "9px", fontWeight: 700, marginTop: "2px", letterSpacing: "0.02em" }}>
+                {overdueDays} {overdueDays === 1 ? "day" : "days"}
+              </span>
+            </>
+          ) : (
+            inv.status.toUpperCase()
+          )}
+        </div>
+      )}
       <div
         style={{
           display: "flex",
@@ -249,7 +265,7 @@ export default function InvoiceDocument({ invoice: inv, organization: org }: Pro
                   </td>
                   <td style={{ padding: "10px 12px", borderBottom: `1px solid ${C.border}` }}>{it.hsn || "—"}</td>
                   <td style={{ padding: "10px 12px", borderBottom: `1px solid ${C.border}`, textAlign: "right" }}>
-                    {it.qty}
+                    {fmtQty(it.qty)}
                   </td>
                   <td style={{ padding: "10px 12px", borderBottom: `1px solid ${C.border}`, textAlign: "right" }}>
                     {fmtCur(it.rate, inv.currency)}

@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { C } from "../shared/theme";
 import { Inp, Btn, Mdl, Alert } from "../components/ui";
+import PhoneInputField from "../components/PhoneInputField";
+import { countryNameToPhoneCountry } from "../shared/countryPhoneDefault";
+import { normalizeStoredPhone, isOptionalPhoneValid } from "../shared/phoneUtils";
 import { useAppContext } from "../context/AppContext";
 import { updateClient } from "../shared/api/clients";
 import { getTaxConfigs } from "../shared/api/taxConfig";
@@ -16,7 +19,7 @@ export default function ClientEditModal() {
   const [name, setName] = useState("");
   const [contactPerson, setContactPerson] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState<string | undefined>(undefined);
   const [country, setCountry] = useState("");
   const [currency, setCurrency] = useState("INR");
   const [taxType, setTaxType] = useState("");
@@ -30,6 +33,7 @@ export default function ClientEditModal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
 
   const c = mdl?.d && mdl.t === "client-edit" ? (mdl.d as Client) : null;
 
@@ -38,7 +42,10 @@ export default function ClientEditModal() {
       setName(c.name);
       setContactPerson(c.contact || "");
       setEmail(c.email || "");
-      setPhone(c.phone || "");
+      setPhone(
+        normalizeStoredPhone(c.phone || undefined, countryNameToPhoneCountry(normalizeCountry(c.country) || undefined)) ??
+          undefined
+      );
       setCountry(normalizeCountry(c.country) || "");
       setCurrency(c.currency || "INR");
       setTaxType(c.taxType || "");
@@ -48,6 +55,7 @@ export default function ClientEditModal() {
       const bill = c.billingAddress ?? c.addr ?? "";
       setBillingAddress(bill);
       setSameAddress(!!(c.shippingAddress && c.billingAddress && c.shippingAddress === c.billingAddress) || (!c.shippingAddress && !c.billingAddress && !!c.addr));
+      setPhoneError(null);
     }
   }, [c]);
 
@@ -89,6 +97,10 @@ export default function ClientEditModal() {
       setEmailError("Enter a valid email address");
       return;
     }
+    if (!isOptionalPhoneValid(phone)) {
+      setPhoneError("Enter a valid phone number for the selected country");
+      return;
+    }
     if (!name.trim() || !email.trim() || !contactPerson.trim()) return;
 
     setLoading(true);
@@ -98,7 +110,7 @@ export default function ClientEditModal() {
         name: name.trim(),
         contactPerson: contactPerson.trim(),
         email: email.trim(),
-        phone: phone.trim(),
+        phone: phone?.trim() ?? "",
         country: country.trim(),
         currency: currency.trim() || "INR",
         taxType: taxType.trim() || null,
@@ -134,7 +146,17 @@ export default function ClientEditModal() {
         />
         {emailError && <div style={{ fontSize: "11px", color: C.danger, marginTop: "4px" }}>{emailError}</div>}
       </div>
-      <Inp label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} ph="Contact number" />
+      <PhoneInputField
+        label="Phone"
+        value={phone}
+        onChange={(v) => {
+          setPhone(v);
+          setPhoneError(null);
+        }}
+        defaultCountry={countryNameToPhoneCountry(country)}
+        error={phoneError}
+        placeholder="Contact number"
+      />
       <Inp
         label="Country"
         type="select"
@@ -191,7 +213,18 @@ export default function ClientEditModal() {
       />
       {error && <Alert sx={{ marginBottom: "8px" }}>{error}</Alert>}
       <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
-        <Btn v="invoice" onClick={handleSubmit} disabled={!name.trim() || !email.trim() || !contactPerson.trim() || !isEmailValid(email) || loading}>
+        <Btn
+          v="invoice"
+          onClick={handleSubmit}
+          disabled={
+            !name.trim() ||
+            !email.trim() ||
+            !contactPerson.trim() ||
+            !isEmailValid(email) ||
+            !isOptionalPhoneValid(phone) ||
+            loading
+          }
+        >
           {loading ? "Saving..." : "Save"}
         </Btn>
         <Btn v="secondary" onClick={() => setMdl(null)} disabled={loading}>

@@ -54,7 +54,10 @@ public class FinanceHubDbContext : DbContext
         // ─── Employee ───────────────────────────────
         b.Entity<Employee>(e => {
             e.ToTable("Employees");
-            e.HasIndex(x => new { x.OrganizationId, x.EntraObjectId }).IsUnique();
+            // Multiple employees may omit Entra (manual adds); uniqueness only when set (matches DB filter).
+            e.HasIndex(x => new { x.OrganizationId, x.EntraObjectId })
+                .IsUnique()
+                .HasFilter("[EntraObjectId] IS NOT NULL");
             e.HasIndex(x => new { x.OrganizationId, x.Email }).IsUnique();
             e.Property(x => x.Role).HasConversion<string>().HasMaxLength(20);
         });

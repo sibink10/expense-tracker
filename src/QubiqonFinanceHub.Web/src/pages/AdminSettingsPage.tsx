@@ -16,6 +16,7 @@ export default function AdminSettingsPage() {
   const [ccError, setCcError] = useState<string | null>(null);
   const [cols, setCols] = useState(3);
   const [saving, setSaving] = useState(false);
+  const [resettingBalance, setResettingBalance] = useState(false);
   const [openTip, setOpenTip] = useState<string | null>(null);
   const tipRef = useRef<HTMLDivElement | null>(null);
 
@@ -93,6 +94,26 @@ export default function AdminSettingsPage() {
       t("Failed to save settings");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleResetBalanceCap = async () => {
+    const cap = c.advCap ?? 0;
+    setResettingBalance(true);
+    try {
+      await bulkUpsertOrganizationSettings([
+        {
+          id: orgSettings.balanceCap?.id ?? null,
+          key: "balanceCap",
+          value: String(cap),
+        },
+      ]);
+      await refreshOrgSettings();
+      t("Balance cap reset to cap amount");
+    } catch {
+      t("Failed to reset balance cap");
+    } finally {
+      setResettingBalance(false);
     }
   };
 
@@ -244,13 +265,46 @@ export default function AdminSettingsPage() {
             value={String(c.advCap)}
             onChange={(e) => setC({ ...c, advCap: parseInt(e.target.value) || 0 })}
           />
-          <Inp
-            label="Balance cap (₹)"
-            type="number"
-            value={String(c.balanceCap)}
-            disabled
-            hint="Shown for reference only"
-          />
+          <div style={{ marginBottom: "14px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "10px",
+                marginBottom: "4px",
+              }}
+            >
+              <span
+                style={{
+                  display: "block",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  color: C.primary,
+                  margin: 0,
+                }}
+              >
+                Balance cap (₹)
+              </span>
+              <Btn
+                sm
+                v="secondary"
+                onClick={handleResetBalanceCap}
+                disabled={resettingBalance || saving}
+                sx={{ flexShrink: 0 }}
+              >
+                {resettingBalance ? "…" : "Reset"}
+              </Btn>
+            </div>
+            <Inp
+              type="number"
+              value={String(c.balanceCap)}
+              onChange={() => undefined}
+              disabled
+              hint="Remaining advance pool. Reset sets this to the cap amount above."
+              style={{ marginBottom: 0 }}
+            />
+          </div>
         </div>
 
         {/* Email CC */}

@@ -86,6 +86,8 @@ export interface GetAdvancesMyParams {
   status?: string;
   /** When true, fetches only current user's advances (/advances/my). When false, fetches all (/advances). */
   myOnly?: boolean;
+  sortBy?: string;
+  desc?: boolean;
 }
 
 export async function getAdvancesMy(params: GetAdvancesMyParams = {}): Promise<ApiAdvancesResponse> {
@@ -94,6 +96,8 @@ export async function getAdvancesMy(params: GetAdvancesMyParams = {}): Promise<A
     PageSize: params.pageSize,
     Search: params.search,
     Status: params.status,
+    SortBy: params.sortBy,
+    Desc: params.desc,
   };
   const path = params.myOnly !== false ? "/advances/my" : "/advances";
   const { data } = await apiClient.get<ApiAdvancesResponse>(path, {
@@ -115,6 +119,16 @@ export async function getAdvancesMyMapped(params: GetAdvancesMyParams = {}): Pro
     ...res,
     items: res.items.map(mapApiAdvanceToApp),
   };
+}
+
+/** GET /api/advances/{id} */
+export async function getAdvanceById(id: string): Promise<Advance | null> {
+  try {
+    const { data } = await apiClient.get<ApiAdvanceItem>(`/advances/${id}`);
+    return data ? mapApiAdvanceToApp(data) : null;
+  } catch {
+    return null;
+  }
 }
 
 export interface CreateAdvancePayload {
@@ -146,5 +160,21 @@ export interface DisburseAdvancePayload {
 
 export async function disburseAdvance(id: string, payload: DisburseAdvancePayload): Promise<unknown> {
   const { data } = await apiClient.post(`/advances/${id}/disburse`, payload);
+  return data;
+}
+
+/** GET /api/advances/{id}/disburse/validate — checks remaining advance + balance cap (for follow-up disbursements). */
+export interface AdvanceDisburseValidation {
+  balanceCap: number;
+  remainingOnAdvance: number;
+  paidAmount: number;
+  canDisburse: boolean;
+  message: string | null;
+}
+
+export async function validateAdvanceDisburse(id: string, paidAmount: number): Promise<AdvanceDisburseValidation> {
+  const { data } = await apiClient.get<AdvanceDisburseValidation>(`/advances/${id}/disburse/validate`, {
+    params: { paidAmount },
+  });
   return data;
 }

@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Btn, Mdl, CLog, INVOICE_MODAL_Z_INDEX } from "../ui";
+import { C } from "../../shared/theme";
 import { useAppContext } from "../../context/AppContext";
 import type { Invoice } from "../../types";
 import { downloadInvoicePdf } from "../../shared/invoicePdf";
+import { markInvoiceSent } from "../../shared/api/invoice";
 import InvoiceDocument from "../InvoiceDocument";
+import { EditIcon } from "../icons";
 import { INV_S } from "../../shared/constants";
 
 interface Props {
@@ -26,9 +29,36 @@ const LoaderSpinner = () => (
 );
 
 export default function InvoiceDetailModal({ invoice: inv }: Props) {
-  const { setMdl, activeOrg } = useAppContext();
+  const { setMdl, activeOrg, is, t } = useAppContext();
   const navigate = useNavigate();
   const [downloading, setDownloading] = useState(false);
+  const [sendConfirmOpen, setSendConfirmOpen] = useState(false);
+  const [sendLoading, setSendLoading] = useState(false);
+
+  const balanceDue = Math.max(inv.total - (inv.paidAmound ?? 0), 0);
+  const showMarkPaid = balanceDue > 0.005;
+
+  const canSendInvoice =
+    (is("finance") || is("admin")) &&
+    (inv.status === INV_S.PAID || inv.status === INV_S.PARTIALLY_PAID) &&
+    !!inv.apiId;
+  const canEdit = inv.status === INV_S.DRAFT && !!inv.apiId;
+
+  const handleConfirmSend = async () => {
+    if (!inv.apiId) return;
+    setSendLoading(true);
+    try {
+      const updated = await markInvoiceSent(inv.apiId);
+      t("Invoice sent to client");
+      setSendConfirmOpen(false);
+      setMdl({ t: "inv-detail", d: updated });
+      window.dispatchEvent(new CustomEvent("invoices-refresh"));
+    } catch (err: unknown) {
+      t(err instanceof Error ? err.message : "Could not send invoice", "error");
+    } finally {
+      setSendLoading(false);
+    }
+  };
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -49,29 +79,79 @@ export default function InvoiceDetailModal({ invoice: inv }: Props) {
       </div>
 
       <CLog comments={inv.comments} />
-      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "flex-end" }}>
-        {inv.status === INV_S.DRAFT && inv.apiId && (
-          <Btn v="secondary" onClick={() => { setMdl(null); navigate(`/invoices/edit/${inv.apiId}`); }}>
-            Edit
-          </Btn>
-        )}
-        <Btn v="invoice" onClick={handleDownload} disabled={downloading}>
-          {downloading ? (
-            <>
-              <LoaderSpinner />
-              Downloading…
-            </>
-          ) : (
-            "Download"
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+        <div>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => {
+                setMdl(null);
+                navigate(`/invoices/edit/${inv.apiId}`);
+              }}
+              title="Edit"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "36px",
+                height: "36px",
+                padding: 0,
+                border: "none",
+                borderRadius: "8px",
+                background: "rgba(37, 99, 235, 0.1)",
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              <EditIcon size={20} color="#2563eb" />
+            </button>
           )}
-        </Btn>
-        {inv.status !== "Paid" && (
-          <Btn v="success" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "inv-pay", d: inv }), 50); }}>Mark paid</Btn>
-        )}
-        {inv.status === "Paid" && (
-          <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>
-        )}
+        </div>
+        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "flex-end" }}>
+          {canSendInvoice && (
+            <Btn v="info" onClick={() => setSendConfirmOpen(true)} disabled={sendLoading}>
+              Send to client
+            </Btn>
+          )}
+          <Btn v="invoice" onClick={handleDownload} disabled={downloading}>
+            {downloading ? (
+              <>
+                <LoaderSpinner />
+                Downloading…
+              </>
+            ) : (
+              "Download"
+            )}
+          </Btn>
+          {showMarkPaid && (
+            <Btn v="success" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "inv-pay", d: inv }), 50); }}>Mark paid</Btn>
+          )}
+          {!showMarkPaid && inv.status === INV_S.PAID && (
+            <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>
+          )}
+        </div>
       </div>
+
+      <Mdl
+        open={sendConfirmOpen}
+        close={() => {
+          if (!sendLoading) setSendConfirmOpen(false);
+        }}
+        title="Send invoice to client?"
+        zIndex={INVOICE_MODAL_Z_INDEX + 50}
+      >
+        <p style={{ fontSize: "13px", color: C.primary, margin: "0 0 16px", lineHeight: 1.5 }}>
+          Email this paid invoice to the client and mark it as <strong>Sent</strong>. Payment should already be recorded.
+        </p>
+        <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", flexWrap: "wrap" }}>
+          <Btn v="secondary" onClick={() => setSendConfirmOpen(false)} disabled={sendLoading}>
+            Cancel
+          </Btn>
+          <Btn v="invoice" onClick={handleConfirmSend} disabled={sendLoading}>
+            {sendLoading ? "Sending…" : "Confirm send"}
+          </Btn>
+        </div>
+      </Mdl>
     </Mdl>
   );
 }

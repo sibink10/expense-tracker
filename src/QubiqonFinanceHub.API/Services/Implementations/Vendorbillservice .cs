@@ -1,3 +1,5 @@
+using System.Net;
+using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Client.Extensions.Msal;
@@ -6,6 +8,7 @@ using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Constants;
 using QubiqonFinanceHub.API.Models.Entities;
 using QubiqonFinanceHub.API.Models.Enums;
+using QubiqonFinanceHub.API.Services.Helpers;
 using QubiqonFinanceHub.API.Services.Interfaces;
 
 namespace QubiqonFinanceHub.API.Services.Implementations;
@@ -53,7 +56,7 @@ public class VendorBillService : IVendorBillService
             TaxConfigId = dto.TaxConfigId,
             TDSAmount = tdsAmount,
             TotalPayable = dto.Amount - tdsAmount,
-            Description = dto.Description,
+            Description = dto.Description?.Trim() ?? "",
             BillDate = dto.BillDate,
             DueDate = dto.DueDate,
             PaymentTerms = dto.PaymentTerms,
@@ -124,24 +127,29 @@ public class VendorBillService : IVendorBillService
         if (reviewers.Count > 0)
         {
             var lineItemsHtml = BuildLineItemsHtml(bill);
+            var variables = new Dictionary<string, string>
+            {
+                ["link_type"] = "approve",
+                ["entity_type"] = "bill",
+                ["entity_api_id"] = bill.Id.ToString(),
+                ["bill_id"] = bill.BillCode,
+                ["vendor_name"] = vendor.Name,
+                ["vendor_bill_number"] = bill.vendorBillNumber,
+                ["amount"] = $"₹{bill.Amount:N2}",
+                ["total_payable"] = $"₹{bill.TotalPayable:N2}",
+                ["bill_date"] = bill.BillDate.ToString("dd MMM yyyy"),
+                ["due_date"] = bill.DueDate.ToString("dd MMM yyyy"),
+                ["description"] = bill.Description,
+                ["submitted_by"] = emp.FullName,
+                ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
+                ["discount_percent"] = bill.DiscountPercent > 0 ? $"{bill.DiscountPercent:N1}%" : "—",
+                ["rounding"] = bill.Rounding != 0 ? $"₹{bill.Rounding:N2}" : "—",
+                ["line_items_html"] = lineItemsHtml,
+            };
+            await AppendBillEmailTaxVariablesAsync(bill.Id, variables);
             await _email.SendNotificationAsync(
                 Constants.EmailTemplateKeys.VendorBillSubmitted,
-                new Dictionary<string, string>
-                {
-                    ["bill_id"] = bill.BillCode,
-                    ["vendor_name"] = vendor.Name,
-                    ["vendor_bill_number"] = bill.vendorBillNumber,
-                    ["amount"] = $"₹{bill.Amount:N2}",
-                    ["total_payable"] = $"₹{bill.TotalPayable:N2}",
-                    ["bill_date"] = bill.BillDate.ToString("dd MMM yyyy"),
-                    ["due_date"] = bill.DueDate.ToString("dd MMM yyyy"),
-                    ["description"] = bill.Description,
-                    ["submitted_by"] = emp.FullName,
-                    ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
-                    ["discount_percent"] = bill.DiscountPercent > 0 ? $"{bill.DiscountPercent:N1}%" : "—",
-                    ["rounding"] = bill.Rounding != 0 ? $"₹{bill.Rounding:N2}" : "—",
-                    ["line_items_html"] = lineItemsHtml,
-                },
+                variables,
                 string.Join(",", reviewers),
                 bill.CCEmails);
         }
@@ -159,8 +167,8 @@ public class VendorBillService : IVendorBillService
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Bill not found");
 
-        if (bill.Status != BillStatus.Submitted)
-            throw new InvalidOperationException("Only bills in Submitted status can be edited.");
+        if (bill.Status == BillStatus.Paid)
+            throw new InvalidOperationException("Paid bills cannot be edited.");
 
         var lineItems = ParseLineItems(dto.Items);
         var validLineItems = lineItems
@@ -178,7 +186,7 @@ public class VendorBillService : IVendorBillService
         bill.TaxConfigId = dto.TaxConfigId;
         bill.CCEmails = string.IsNullOrWhiteSpace(dto.CCEmails) ? null : dto.CCEmails.Trim();
         bill.Amount = dto.Amount;
-        bill.Description = dto.Description;
+        bill.Description = dto.Description?.Trim() ?? "";
         bill.DiscountPercent = dto.DiscountPercent;
         bill.Rounding = dto.Rounding;
 
@@ -193,6 +201,9 @@ public class VendorBillService : IVendorBillService
 
         bill.TDSAmount = tdsAmount;
         bill.TotalPayable = dto.Amount - tdsAmount;
+
+        if (bill.PaidAmount > bill.TotalPayable)
+            throw new InvalidOperationException("Updated bill total cannot be less than amount already paid.");
 
         // 🔥 IMPORTANT FIX STARTS HERE
 
@@ -302,6 +313,7 @@ public class VendorBillService : IVendorBillService
     public async Task<PaginatedResult<BillDto>> ListAsync(FilterParams f)
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
+        var today = DateTime.UtcNow.Date;
         var q = _db.VendorBills
             .Include(x => x.Vendor)
             .Include(x => x.TaxConfig)
@@ -312,7 +324,18 @@ public class VendorBillService : IVendorBillService
             .AsNoTracking();
 
         if (f.Status != null && Enum.TryParse<BillStatus>(f.Status, true, out var status))
-            q = q.Where(x => x.Status == status);
+        {
+            if (status == BillStatus.Overdue)
+            {
+                q = q.Where(x => x.DueDate < today && x.PaidAmount < x.TotalPayable && x.Status != BillStatus.Paid);
+            }
+            else
+            {
+                q = q.Where(x =>
+                    x.Status == status &&
+                    !(x.DueDate < today && x.PaidAmount < x.TotalPayable && x.Status != BillStatus.Paid));
+            }
+        }
         if (!string.IsNullOrWhiteSpace(f.Search))
         {
             var s = f.Search.ToLower();
@@ -320,7 +343,7 @@ public class VendorBillService : IVendorBillService
         }
 
         var total = await q.CountAsync();
-        q = f.Desc ? q.OrderByDescending(x => x.CreatedAt) : q.OrderBy(x => x.CreatedAt);
+        q = q.ApplyVendorBillSorting(f);
         var items = await q.Skip((f.Page - 1) * f.PageSize).Take(f.PageSize).ToListAsync();
         var dtos = new List<BillDto>();
         foreach (var item in items) dtos.Add(await MapToDtoAsync(item));
@@ -337,8 +360,10 @@ public class VendorBillService : IVendorBillService
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Bill not found");
 
-        if (bill.Status != BillStatus.Submitted)
-            throw new InvalidOperationException($"Cannot approve bill in '{bill.Status}' status.");
+        if (bill.Status == BillStatus.Approved ||
+            bill.Status == BillStatus.Paid ||
+            bill.Status == BillStatus.PartiallyPaid)
+            throw new InvalidOperationException("Bill is already approved.");
 
         bill.Status = BillStatus.Approved;
         bill.UpdatedAt = DateTime.UtcNow;
@@ -366,22 +391,27 @@ public class VendorBillService : IVendorBillService
 
         if (financeEmails.Count > 0)
         {
+            var variables = new Dictionary<string, string>
+            {
+                ["link_type"] = "pay",
+                ["entity_type"] = "bill",
+                ["entity_api_id"] = bill.Id.ToString(),
+                ["bill_id"] = bill.BillCode,
+                ["vendor_name"] = bill.Vendor.Name,
+                ["vendor_bill_number"] = bill.vendorBillNumber,
+                ["amount"] = $"₹{bill.Amount:N2}",
+                ["total_payable"] = $"₹{bill.TotalPayable:N2}",
+                ["bill_date"] = bill.BillDate.ToString("dd MMM yyyy"),
+                ["due_date"] = bill.DueDate.ToString("dd MMM yyyy"),
+                ["description"] = bill.Description,
+                ["actor_name"] = emp.FullName,
+                ["details_text"] = dto.Comments ?? "",
+                ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
+            };
+            await AppendBillEmailTaxVariablesAsync(bill.Id, variables);
             await _email.SendNotificationAsync(
                 Constants.EmailTemplateKeys.VendorBillApproved,
-                new Dictionary<string, string>
-                {
-                    ["bill_id"] = bill.BillCode,
-                    ["vendor_name"] = bill.Vendor.Name,
-                    ["vendor_bill_number"] = bill.vendorBillNumber,
-                    ["amount"] = $"₹{bill.Amount:N2}",
-                    ["total_payable"] = $"₹{bill.TotalPayable:N2}",
-                    ["bill_date"] = bill.BillDate.ToString("dd MMM yyyy"),
-                    ["due_date"] = bill.DueDate.ToString("dd MMM yyyy"),
-                    ["description"] = bill.Description,
-                    ["actor_name"] = emp.FullName,
-                    ["details_text"] = dto.Comments ?? "",
-                    ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
-                },
+                variables,
                 string.Join(",", financeEmails),
                 bill.CCEmails);
         }
@@ -397,6 +427,9 @@ public class VendorBillService : IVendorBillService
             .Include(x => x.Vendor)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Bill not found");
+
+        if (bill.Status == BillStatus.Rejected)
+            throw new InvalidOperationException("Bill is already rejected.");
 
         bill.Status = BillStatus.Rejected;
         bill.UpdatedAt = DateTime.UtcNow;
@@ -415,22 +448,27 @@ public class VendorBillService : IVendorBillService
         var submittedBy = await _db.Employees.FindAsync(bill.SubmittedByEmployeeId);
         if (submittedBy != null && !string.IsNullOrWhiteSpace(submittedBy.Email))
         {
+            var rejectVars = new Dictionary<string, string>
+            {
+                ["link_type"] = "detail",
+                ["entity_type"] = "bill",
+                ["entity_api_id"] = bill.Id.ToString(),
+                ["bill_id"] = bill.BillCode,
+                ["vendor_name"] = bill.Vendor.Name,
+                ["vendor_bill_number"] = bill.vendorBillNumber,
+                ["amount"] = $"₹{bill.Amount:N2}",
+                ["total_payable"] = $"₹{bill.TotalPayable:N2}",
+                ["bill_date"] = bill.BillDate.ToString("dd MMM yyyy"),
+                ["due_date"] = bill.DueDate.ToString("dd MMM yyyy"),
+                ["description"] = bill.Description,
+                ["actor_name"] = emp.FullName,
+                ["details_text"] = dto.Comments,
+                ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
+            };
+            await AppendBillEmailTaxVariablesAsync(bill.Id, rejectVars);
             await _email.SendNotificationAsync(
                 Constants.EmailTemplateKeys.VendorBillRejected,
-                new Dictionary<string, string>
-                {
-                    ["bill_id"] = bill.BillCode,
-                    ["vendor_name"] = bill.Vendor.Name,
-                    ["vendor_bill_number"] = bill.vendorBillNumber,
-                    ["amount"] = $"₹{bill.Amount:N2}",
-                    ["total_payable"] = $"₹{bill.TotalPayable:N2}",
-                    ["bill_date"] = bill.BillDate.ToString("dd MMM yyyy"),
-                    ["due_date"] = bill.DueDate.ToString("dd MMM yyyy"),
-                    ["description"] = bill.Description,
-                    ["actor_name"] = emp.FullName,
-                    ["details_text"] = dto.Comments,
-                    ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
-                },
+                rejectVars,
                 submittedBy.Email,
                 bill.CCEmails);
         }
@@ -450,15 +488,16 @@ public class VendorBillService : IVendorBillService
         if (bill.Status != BillStatus.Approved && bill.Status != BillStatus.PartiallyPaid)
             throw new InvalidOperationException("Bill must be approved before payment.");
 
-        var balanceDue = bill.TotalPayable - bill.PaidAmount;
+        var remainingBefore = bill.TotalPayable - bill.PaidAmount;
         var paidAmount = dto.PaidAmount > 0 ? dto.PaidAmount : bill.TotalPayable;
-        if (paidAmount > balanceDue)
-            throw new InvalidOperationException($"Paid amount (₹{paidAmount:N2}) cannot exceed the remaining balance (₹{balanceDue:N2}).");
+        if (paidAmount > remainingBefore)
+            throw new InvalidOperationException($"Paid amount (₹{paidAmount:N2}) cannot exceed the remaining balance (₹{remainingBefore:N2}).");
         bill.PaidAmount += paidAmount;
         bill.PaymentReference = dto.PaymentReference;
         bill.PaidAt = DateTime.UtcNow;
         bill.UpdatedAt = DateTime.UtcNow;
         bill.Status = bill.PaidAmount >= bill.TotalPayable ? BillStatus.Paid : BillStatus.PartiallyPaid;
+        var balanceDueAfter = Math.Max(0, bill.TotalPayable - bill.PaidAmount);
 
         _db.ActivityComments.Add(new ActivityComment
         {
@@ -481,25 +520,30 @@ public class VendorBillService : IVendorBillService
             var ccEmails = ccSettings?.Trim();
 
             var displayBillNumber = !string.IsNullOrWhiteSpace(bill.vendorBillNumber) ? bill.vendorBillNumber : bill.BillCode;
+            var paidVars = new Dictionary<string, string>
+            {
+                ["link_type"] = "detail",
+                ["entity_type"] = "bill",
+                ["entity_api_id"] = bill.Id.ToString(),
+                ["bill_id"] = displayBillNumber,
+                ["vendor_name"] = bill.Vendor.Name,
+                ["vendor_bill_number"] = bill.vendorBillNumber ?? "",
+                ["amount"] = $"₹{bill.Amount:N2}",
+                ["total_payable"] = $"₹{bill.TotalPayable:N2}",
+                ["paid_amount"] = $"₹{bill.PaidAmount:N2}",
+                ["balance_due"] = $"₹{balanceDueAfter:N2}",
+                ["bill_date"] = bill.BillDate.ToString("dd MMM yyyy"),
+                ["due_date"] = bill.DueDate.ToString("dd MMM yyyy"),
+                ["description"] = bill.Description,
+                ["actor_name"] = emp.FullName,
+                ["details_text"] = dto.Notes ?? "",
+                ["payment_reference"] = dto.PaymentReference,
+                ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
+            };
+            await AppendBillEmailTaxVariablesAsync(bill.Id, paidVars);
             await _email.SendNotificationAsync(
                 Constants.EmailTemplateKeys.VendorBillPaid,
-                new Dictionary<string, string>
-                {
-                    ["bill_id"] = displayBillNumber,
-                    ["vendor_name"] = bill.Vendor.Name,
-                    ["vendor_bill_number"] = bill.vendorBillNumber ?? "",
-                    ["amount"] = $"₹{bill.Amount:N2}",
-                    ["total_payable"] = $"₹{bill.TotalPayable:N2}",
-                    ["paid_amount"] = $"₹{bill.PaidAmount:N2}",
-                    ["balance_due"] = balanceDue > 0 ? $"₹{balanceDue:N2}" : "₹0.00",
-                    ["bill_date"] = bill.BillDate.ToString("dd MMM yyyy"),
-                    ["due_date"] = bill.DueDate.ToString("dd MMM yyyy"),
-                    ["description"] = bill.Description,
-                    ["actor_name"] = emp.FullName,
-                    ["details_text"] = dto.Notes ?? "",
-                    ["payment_reference"] = dto.PaymentReference,
-                    ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
-                },
+                paidVars,
                 vendorEmail,
                 string.IsNullOrWhiteSpace(ccEmails) ? null : ccEmails);
         }
@@ -508,6 +552,90 @@ public class VendorBillService : IVendorBillService
     }
 
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+
+    /// <summary>Adds sub total, per-line GST rows, total GST, and TDS row HTML for vendor bill notification emails.</summary>
+    private async Task AppendBillEmailTaxVariablesAsync(Guid billId, Dictionary<string, string> variables)
+    {
+        var bill = await _db.VendorBills
+            .AsNoTracking()
+            .Include(x => x.LineItems)
+            .ThenInclude(l => l.GSTConfig)
+            .Include(x => x.TaxConfig)
+            .FirstOrDefaultAsync(x => x.Id == billId);
+
+        if (bill == null)
+        {
+            variables["sub_total"] = "—";
+            variables["total_line_gst"] = "—";
+            variables["gst_breakdown_rows_html"] = string.Empty;
+            variables["tds_row_html"] = string.Empty;
+            return;
+        }
+
+        var items = bill.LineItems?.OrderBy(l => l.LineNumber).ToList() ?? new List<VendorBillLineItem>();
+        if (items.Count == 0)
+        {
+            variables["sub_total"] = "—";
+            variables["total_line_gst"] = "—";
+            variables["gst_breakdown_rows_html"] = string.Empty;
+            variables["tds_row_html"] = BuildBillTdsRowHtml(bill);
+            return;
+        }
+
+        decimal subEx = 0;
+        decimal totalGst = 0;
+        var gstRows = new StringBuilder();
+        for (var i = 0; i < items.Count; i++)
+        {
+            var l = items[i];
+            var baseAmt = l.Quantity * l.Rate;
+            subEx += baseAmt;
+            var gstPart = l.Amount - baseAmt;
+            if (gstPart <= 0.009m) continue;
+            totalGst += gstPart;
+            var tc = l.GSTConfig;
+            string label = tc != null
+                ? $"{WebUtility.HtmlEncode(tc.Name)} ({tc.Rate:N2}%)"
+                : "Tax";
+            var desc = l.Description?.Trim();
+            if (!string.IsNullOrEmpty(desc))
+            {
+                var shortDesc = desc.Length > 45 ? desc[..45] + "…" : desc;
+                label += $" · {WebUtility.HtmlEncode(shortDesc)}";
+            }
+            else
+                label += $" · #{i + 1}";
+            gstRows.Append($"""
+                <tr>
+                    <td style="padding:10px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:500;color:#475569;">{label}</td>
+                    <td style="padding:10px 16px;border-top:1px solid #e2e8f0;font-size:14px;text-align:right;color:#0f172a;">₹{gstPart:N2}</td>
+                </tr>
+                """);
+        }
+
+        variables["sub_total"] = $"₹{subEx:N2}";
+        variables["total_line_gst"] = totalGst > 0 ? $"₹{totalGst:N2}" : "—";
+        variables["gst_breakdown_rows_html"] = gstRows.ToString();
+        variables["tds_row_html"] = BuildBillTdsRowHtml(bill);
+    }
+
+    private static string BuildBillTdsRowHtml(VendorBill bill)
+    {
+        if (bill.TDSAmount <= 0) return string.Empty;
+        var t = bill.TaxConfig;
+        var rawLabel = t == null
+            ? "TDS"
+            : string.IsNullOrWhiteSpace(t.Section)
+                ? $"{t.Name} ({t.Rate:N2}%)"
+                : $"{t.Name} ({t.Rate:N2}%) — {t.Section}";
+        var tdsLabel = WebUtility.HtmlEncode(rawLabel);
+        return $"""
+            <tr>
+                <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">{tdsLabel}</td>
+                <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#dc2626;text-align:right;">-₹{bill.TDSAmount:N2}</td>
+            </tr>
+            """;
+    }
 
     private static string BuildLineItemsHtml(VendorBill bill)
     {
@@ -539,6 +667,14 @@ public class VendorBillService : IVendorBillService
                 </table>
             </div>
             """;
+    }
+
+    /// <summary>Same rule as invoice display: past due, still unpaid, and not fully paid.</summary>
+    private static string GetDisplayBillStatus(VendorBill b)
+    {
+        var today = DateTime.UtcNow.Date;
+        var isOverdue = b.DueDate < today && b.PaidAmount < b.TotalPayable && b.Status != BillStatus.Paid;
+        return isOverdue ? BillStatus.Overdue.ToString() : b.Status.ToString();
     }
 
     private static List<CreateBillLineItemRequest> ParseLineItems(string? itemsJson)
@@ -573,7 +709,7 @@ public class VendorBillService : IVendorBillService
             b.Id, b.BillCode, b.VendorId, b.Vendor.Name, b.vendorBillNumber, b.Vendor.GSTIN, b.Vendor.Email,
             b.Amount, b.DiscountPercent, b.Rounding, b.TaxConfig?.Name, b.TDSAmount, b.TotalPayable, b.PaidAmount,
             b.Description, b.BillDate, b.DueDate, b.PaymentTerms,
-            b.Status.ToString(), b.AttachmentUrl, b.PaymentReference, b.PaidAt,
+            GetDisplayBillStatus(b), b.AttachmentUrl, b.PaymentReference, b.PaidAt,
             submittedBy?.FullName ?? "Unknown", b.CreatedAt,
             lineItems,
             b.Comments.OrderBy(c => c.CreatedAt).Select(c => new CommentDto(

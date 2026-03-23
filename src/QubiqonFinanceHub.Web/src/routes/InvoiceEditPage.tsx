@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { C } from "../shared/theme";
 import { PAY_TERMS, CURRENCIES } from "../shared/constants";
-import { addDays, fmtCur } from "../shared/utils";
+import { addDays, fmtCur, round2, aggregateLineGstRows } from "../shared/utils";
 import { Inp, Btn, Alert } from "../components/ui";
+import DecimalLineInput from "../components/DecimalLineInput";
 import { getInvoice, updateInvoice } from "../shared/api/invoice";
 import { getTaxConfigs } from "../shared/api/taxConfig";
 import { useAppContext } from "../context/AppContext";
@@ -116,10 +117,12 @@ export default function InvoiceEditPage() {
   };
 
   const subTotal = lineItems.reduce((sum, it) => sum + it.quantity * it.rate, 0);
+  const lineGstRows = aggregateLineGstRows(lineItems, gstConfigs);
+  const totalGstAmount = round2(lineGstRows.reduce((s, r) => s + r.amount, 0));
   const selectedTds = tdsConfigs.find((t) => t.id === taxConfigId);
   const tdsRate = selectedTds?.rate ?? 0;
   const tdsAmount = Math.round((subTotal * tdsRate) / 100);
-  const totalAfterTds = subTotal - tdsAmount;
+  const invoiceGrandTotal = round2(subTotal + totalGstAmount - tdsAmount);
 
   const validLineItems = lineItems.filter(
     (it) => it.description.trim() && it.quantity > 0 && it.rate >= 0
@@ -329,40 +332,21 @@ export default function InvoiceEditPage() {
                         />
                       </td>
                       <td style={{ padding: "10px 12px", verticalAlign: "middle", textAlign: "center" }}>
-                        <input
-                          type="number"
-                          min="1"
-                          value={item.quantity || ""}
-                          onChange={(e) => updateLineItem(idx, "quantity", parseInt(e.target.value) || 0)}
-                          style={{
-                            width: "100%",
-                            padding: "8px 10px",
-                            border: `1px solid ${C.border}`,
-                            borderRadius: "6px",
-                            fontSize: "12px",
-                            lineHeight: "1.25",
-                            textAlign: "center",
-                            boxSizing: "border-box",
-                          }}
+                        <DecimalLineInput
+                          value={item.quantity}
+                          min={0.01}
+                          emptyFallback={1}
+                          textAlign="center"
+                          onChange={(v) => updateLineItem(idx, "quantity", v)}
                         />
                       </td>
                       <td style={{ padding: "10px 12px", verticalAlign: "middle", textAlign: "right" }}>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={item.rate ?? ""}
-                          onChange={(e) => updateLineItem(idx, "rate", parseFloat(e.target.value) || 0)}
-                          style={{
-                            width: "100%",
-                            padding: "8px 10px",
-                            border: `1px solid ${C.border}`,
-                            borderRadius: "6px",
-                            fontSize: "12px",
-                            lineHeight: "1.25",
-                            textAlign: "right",
-                            boxSizing: "border-box",
-                          }}
+                        <DecimalLineInput
+                          value={item.rate}
+                          min={0}
+                          emptyFallback={0}
+                          textAlign="right"
+                          onChange={(v) => updateLineItem(idx, "rate", v)}
                         />
                       </td>
                       <td style={{ padding: "10px 12px", verticalAlign: "middle" }}>
@@ -465,6 +449,15 @@ export default function InvoiceEditPage() {
                 <span style={{ color: C.muted }}>Sub total</span>
                 <span style={{ fontWeight: 600 }}>{fmtCur(subTotal, currency)}</span>
               </div>
+              {lineGstRows.map((row) => (
+                <div
+                  key={row.id}
+                  style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}
+                >
+                  <span style={{ color: C.muted }}>{row.label}</span>
+                  <span style={{ fontWeight: 600 }}>{fmtCur(row.amount, currency)}</span>
+                </div>
+              ))}
               {tdsRate > 0 && (
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", color: C.danger }}>
                   <span>TDS ({selectedTds?.section ?? ""} @ {tdsRate}%)</span>
@@ -480,7 +473,7 @@ export default function InvoiceEditPage() {
                 }}
               >
                 <span style={{ fontWeight: 700, color: C.invoice }}>Total</span>
-                <span style={{ fontSize: "14px", fontWeight: 700, color: C.invoice }}>{fmtCur(totalAfterTds, currency)}</span>
+                <span style={{ fontSize: "14px", fontWeight: 700, color: C.invoice }}>{fmtCur(invoiceGrandTotal, currency)}</span>
               </div>
             </div>
           )}

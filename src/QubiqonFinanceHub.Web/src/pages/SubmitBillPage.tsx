@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
 import { PAY_TERMS, BILL_ACCOUNTS } from "../shared/constants";
-import { addDays, fmtCur } from "../shared/utils";
+import { addDays, fmtCur, round2, aggregateLineGstRows, formatTdsOptionLabel, formatTdsSummarySnippet } from "../shared/utils";
 import { Inp, Btn, MultiFileUp, Alert } from "../components/ui";
+import DecimalLineInput from "../components/DecimalLineInput";
 import { AsyncSelectInput } from "../components/AsyncSelectInput";
 import { useAppContext } from "../context/AppContext";
 import { createBill } from "../shared/api/bill";
@@ -125,12 +126,8 @@ export default function SubmitBillPage() {
 
   const subTotal = items.reduce((sum, it) => sum + it.quantity * it.rate, 0);
   const totalQty = items.reduce((sum, it) => sum + it.quantity, 0);
-  const itemTaxAmount = items.reduce((sum, it) => {
-    const lineAmt = it.quantity * it.rate;
-    const gst = gstOptions.find((g) => g.id === it.gstConfigId);
-    const rate = gst?.rate ?? 0;
-    return sum + (lineAmt * rate) / 100;
-  }, 0);
+  const lineGstRows = aggregateLineGstRows(items, gstOptions);
+  const itemTaxAmount = round2(lineGstRows.reduce((s, r) => s + r.amount, 0));
   const discountVal = (parseFloat(discountPct) || 0) / 100;
   const discountAmount = subTotal * discountVal;
   const roundingVal = parseFloat(rounding) || 0;
@@ -163,7 +160,7 @@ export default function SubmitBillPage() {
       setError("Add at least one item with description, quantity and rate");
       return;
     }
-    if (!vId || !vendorBillNumber.trim() || !desc || !bd || files.length === 0) {
+    if (!vId || !vendorBillNumber.trim() || !bd || files.length === 0) {
       setError("Please fill all required fields");
       return;
     }
@@ -187,7 +184,7 @@ export default function SubmitBillPage() {
           vendorBillNumber: vendorBillNumber.trim(),
           amount: totalBeforeTds,
           taxConfigId: tds === "none" ? "" : tds,
-          description: desc,
+          description: desc.trim(),
           billDate,
           dueDate,
           paymentTerms: trm,
@@ -213,7 +210,6 @@ export default function SubmitBillPage() {
     hasValidItems &&
     !!vId &&
     !!vendorBillNumber.trim() &&
-    !!desc &&
     !!bd &&
     files.length > 0 &&
     !loading;
@@ -353,39 +349,23 @@ export default function SubmitBillPage() {
                       />
                     </td>
                     <td style={{ padding: "10px 12px", verticalAlign: "top", textAlign: "center" }}>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={row.quantity || ""}
-                        onChange={(e) => updateItemRow(row.id, "quantity", parseFloat(e.target.value) || 0)}
-                        style={{
-                          width: "100%",
-                          padding: "8px 10px",
-                          border: `1px solid ${C.border}`,
-                          borderRadius: "6px",
-                          fontSize: "12px",
-                          textAlign: "center",
-                          boxSizing: "border-box",
-                        }}
+                      <DecimalLineInput
+                        value={row.quantity}
+                        min={0.01}
+                        emptyFallback={1}
+                        textAlign="center"
+                        onChange={(v) => updateItemRow(row.id, "quantity", v)}
+                        style={{ lineHeight: 1 }}
                       />
                     </td>
                     <td style={{ padding: "10px 12px", verticalAlign: "top", textAlign: "right" }}>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={row.rate ?? ""}
-                        onChange={(e) => updateItemRow(row.id, "rate", parseFloat(e.target.value) || 0)}
-                        style={{
-                          width: "100%",
-                          padding: "8px 10px",
-                          border: `1px solid ${C.border}`,
-                          borderRadius: "6px",
-                          fontSize: "12px",
-                          textAlign: "right",
-                          boxSizing: "border-box",
-                        }}
+                      <DecimalLineInput
+                        value={row.rate}
+                        min={0}
+                        emptyFallback={0}
+                        textAlign="right"
+                        onChange={(v) => updateItemRow(row.id, "rate", v)}
+                        style={{ lineHeight: 1 }}
                       />
                     </td>
                     <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
@@ -465,7 +445,7 @@ export default function SubmitBillPage() {
                 { v: "none", l: tdsLoading ? "Loading..." : "No TDS" },
                 ...tdsOptions.map((x) => ({
                   v: x.id,
-                  l: `${x.name} (${x.rate}%) — ${x.section}`,
+                  l: formatTdsOptionLabel(x.name, x.rate, x.section),
                 })),
               ]}
               style={cellCompact}
@@ -496,12 +476,12 @@ export default function SubmitBillPage() {
                 <span style={{ color: C.success }}>-{fmtCur(discountAmount)}</span>
               </div>
             )}
-            {itemTaxAmount > 0 && (
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-                <span style={{ color: C.muted }}>Tax</span>
-                <span style={{ fontWeight: 600 }}>{fmtCur(itemTaxAmount)}</span>
+            {lineGstRows.map((row) => (
+              <div key={row.id} style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+                <span style={{ color: C.muted }}>{row.label}</span>
+                <span style={{ fontWeight: 600 }}>{fmtCur(row.amount)}</span>
               </div>
-            )}
+            ))}
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
               <span style={{ color: C.muted }}>Rounding</span>
               <span style={{ fontWeight: 600 }}>{roundingVal >= 0 ? "+" : ""}{fmtCur(roundingVal)}</span>
@@ -521,7 +501,7 @@ export default function SubmitBillPage() {
             {tdsRate > 0 && (
               <>
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", marginBottom: "4px", color: C.danger }}>
-                  <span>TDS ({tx?.section} @ {tdsRate}%)</span>
+                  <span>TDS ({formatTdsSummarySnippet(tx?.section, tdsRate)})</span>
                   <span style={{ fontWeight: 600 }}>-{fmtCur(tdsA)}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, color: C.vendor }}>
@@ -537,12 +517,11 @@ export default function SubmitBillPage() {
       <Section title="Notes & Attachments">
         <div style={gridStyle}>
           <Inp
-            label="Description / Notes"
+            label="Description / Notes (optional)"
             type="textarea"
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
-            req
-            ph="Goods/services..."
+            ph="Goods/services (optional)…"
             style={{ ...cellCompact, ...fullWidth }}
           />
           <div style={fullWidth}>

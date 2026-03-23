@@ -16,7 +16,6 @@ export interface NavItem {
   l: string;
   i: string;
   r: UserRole[];
-  b?: number;
   /** When true, NavLink only matches exactly (avoids parent + child both active) */
   end?: boolean;
   /** Optional path for create/add action - renders + at flex-end of nav item */
@@ -255,6 +254,8 @@ export interface AppConfig {
   advEnabled: boolean;
   advCap: number;
   balanceCap: number;
+  /** Base URL for “view in app” links in emails (no trailing slash). Stored as org setting frontendUrl. */
+  frontendUrl: string;
   ccEmails: string[];
   expSeq: number;
   billSeq: number;

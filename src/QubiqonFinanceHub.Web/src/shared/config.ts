@@ -9,6 +9,7 @@ export const INIT_CONFIG = {
   advEnabled: true,
   advCap: 0,
   balanceCap: 0,
+  frontendUrl: "",
   ccEmails: ["accounts@qubiqon.io", "finance@qubiqon.io"],
   expSeq: 7,
   billSeq: 206,

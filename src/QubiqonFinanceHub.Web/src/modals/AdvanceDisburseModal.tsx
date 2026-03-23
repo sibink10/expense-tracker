@@ -3,7 +3,7 @@ import { C } from "../shared/theme";
 import { fmtCur } from "../shared/utils";
 import { Inp, Btn, Mdl, Alert } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
-import { disburseAdvance } from "../shared/api/advance";
+import { disburseAdvance, validateAdvanceDisburse, type AdvanceDisburseValidation } from "../shared/api/advance";
 import type { Advance } from "../types";
 
 const PAYMENT_METHODS = [
@@ -15,13 +15,15 @@ const PAYMENT_METHODS = [
 ];
 
 export default function AdvanceDisburseModal() {
-  const { mdl, setMdl } = useAppContext();
+  const { mdl, setMdl, refreshOrgSettings } = useAppContext();
   const [paymentReference, setPaymentReference] = useState("");
   const [paidAmt, setPaidAmt] = useState("");
   const [method, setMethod] = useState("NEFT");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [validation, setValidation] = useState<AdvanceDisburseValidation | null>(null);
+  const [validating, setValidating] = useState(false);
 
   if (!mdl?.d || mdl.t !== "adv-disburse") return null;
   const a = mdl.d as Advance;
@@ -43,9 +45,29 @@ export default function AdvanceDisburseModal() {
     setPaidAmt(String(defaultPaid));
   }, [defaultPaid, mdl?.d]);
 
+  useEffect(() => {
+    const paid = parseFloat(paidAmt);
+    if (!Number.isFinite(paid) || paid <= 0 || !id) {
+      setValidation(null);
+      return;
+    }
+    const handle = setTimeout(() => {
+      setValidating(true);
+      void validateAdvanceDisburse(id, paid)
+        .then(setValidation)
+        .catch(() => setValidation(null))
+        .finally(() => setValidating(false));
+    }, 350);
+    return () => clearTimeout(handle);
+  }, [paidAmt, id]);
+
   const handleDisburse = async () => {
     if (paidError) {
       setError(paidError);
+      return;
+    }
+    if (validation && !validation.canDisburse) {
+      setError(validation.message || "Cannot disburse this amount");
       return;
     }
     setLoading(true);
@@ -60,6 +82,7 @@ export default function AdvanceDisburseModal() {
       });
       setMdl(null);
       window.dispatchEvent(new CustomEvent("advances-refresh"));
+      void refreshOrgSettings().catch(() => undefined);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to disburse");
     } finally {
@@ -101,6 +124,34 @@ export default function AdvanceDisburseModal() {
         ph={String(defaultPaid)}
         hint={remaining > 0 ? `Max: ${fmtCur(remaining)}` : undefined}
       />
+      {validating && (
+        <div style={{ fontSize: "11px", color: C.muted, marginBottom: "8px" }}>Checking balance cap…</div>
+      )}
+      {validation && !validating && (
+        <div
+          style={{
+            fontSize: "11px",
+            color: C.muted,
+            marginBottom: "8px",
+            padding: "8px 10px",
+            background: C.surface,
+            borderRadius: "8px",
+            border: `1px solid ${C.border}`,
+          }}
+        >
+          <div>
+            Organization balance cap: <strong style={{ color: C.primary }}>{fmtCur(validation.balanceCap)}</strong>
+          </div>
+          {alreadyPaid > 0 && (
+            <div style={{ marginTop: "4px" }}>
+              Further disbursements must not exceed this balance cap (after partial payments, cap is updated when you disburse).
+            </div>
+          )}
+          {validation.message && !validation.canDisburse && (
+            <div style={{ marginTop: "6px", color: C.danger, fontWeight: 600 }}>{validation.message}</div>
+          )}
+        </div>
+      )}
       {paidError && <Alert sx={{ marginBottom: "8px" }}>{paidError}</Alert>}
       <Inp
         label="Payment reference"
@@ -125,7 +176,17 @@ export default function AdvanceDisburseModal() {
       />
       {error && <Alert sx={{ marginBottom: "8px" }}>{error}</Alert>}
       <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
-        <Btn v="advance" onClick={handleDisburse} disabled={!paymentReference || !!paidError || loading}>
+        <Btn
+          v="advance"
+          onClick={handleDisburse}
+          disabled={
+            !paymentReference ||
+            !!paidError ||
+            loading ||
+            validating ||
+            (validation != null && !validation.canDisburse)
+          }
+        >
           {loading ? "Disbursing..." : "Confirm disburse"}
         </Btn>
         <Btn v="secondary" onClick={() => setMdl(null)} disabled={loading}>

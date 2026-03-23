@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
-import { Av, Btn, Empty, Inp, Mdl } from "../components/ui";
+import { Av, Btn, Empty, Inp, Mdl, ListRefreshButton, SortTh } from "../components/ui";
+import { nextListSort } from "../shared/utils";
 import { useAppContext } from "../context/AppContext";
 import { getVendors } from "../shared/api/vendor";
 import { getCategories, createCategory, toggleCategory, type Category } from "../shared/api";
@@ -18,6 +19,15 @@ export default function VendorsPage() {
   const [pageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [sortBy, setSortBy] = useState("CreatedAt");
+  const [sortDesc, setSortDesc] = useState(true);
+
+  const handleSort = (key: string) => {
+    const n = nextListSort(key, sortBy, sortDesc);
+    setSortBy(n.sortBy);
+    setSortDesc(n.desc);
+    setPage(1);
+  };
 
   useEffect(() => {
     const handler = () => setRefreshKey((k) => k + 1);
@@ -29,7 +39,7 @@ export default function VendorsPage() {
 
   useEffect(() => {
     setLoading(true);
-    getVendors(page, pageSize, search)
+    getVendors(page, pageSize, search, sortBy, sortDesc)
       .then((res) => {
         setVendors(res.items);
         setTotalCount(res.totalCount);
@@ -41,7 +51,7 @@ export default function VendorsPage() {
         setTotalPages(0);
       })
       .finally(() => setLoading(false));
-  }, [page, pageSize, search, refreshKey]);
+  }, [page, pageSize, search, refreshKey, sortBy, sortDesc]);
 
  
 
@@ -87,45 +97,54 @@ export default function VendorsPage() {
             alignItems: "center",
             gap: "12px",
             flexWrap: "wrap",
+            justifyContent: "space-between",
           }}
         >
-          <div style={{ position: "relative", flex: "1", minWidth: "180px", maxWidth: "280px" }}>
-            <input
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Search vendors..."
-              style={{
-                width: "100%",
-                padding: "8px 12px 8px 32px",
-                border: `1.5px solid ${C.border}`,
-                borderRadius: "8px",
-                fontSize: "13px",
-                fontFamily: "'DM Sans'",
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-            <span
-              style={{
-                position: "absolute",
-                left: "10px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                fontSize: "12px",
-                color: C.muted,
-              }}
-            >
-              ⌕
-            </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", flex: "1 1 auto", minWidth: 0 }}>
+            <div style={{ position: "relative", flex: "1", minWidth: "180px", maxWidth: "280px" }}>
+              <input
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Search vendors..."
+                style={{
+                  width: "100%",
+                  padding: "8px 12px 8px 32px",
+                  border: `1.5px solid ${C.border}`,
+                  borderRadius: "8px",
+                  fontSize: "13px",
+                  fontFamily: "'DM Sans'",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+              <span
+                style={{
+                  position: "absolute",
+                  left: "10px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  fontSize: "12px",
+                  color: C.muted,
+                }}
+              >
+                ⌕
+              </span>
+            </div>
+            {search.trim() && totalCount > 0 && (
+              <span style={{ fontSize: "12px", color: C.muted }}>
+                Showing page {page} of {totalPages} — {totalCount} total
+              </span>
+            )}
           </div>
-          {search.trim() && totalCount > 0 && (
-            <span style={{ fontSize: "12px", color: C.muted }}>
-              Showing page {page} of {totalPages} — {totalCount} total
-            </span>
-          )}
+          <div style={{ flexShrink: 0, marginLeft: "auto" }}>
+            <ListRefreshButton
+              loading={loading}
+              onRefresh={() => setRefreshKey((k) => k + 1)}
+            />
+          </div>
         </div>
 
         {loading && vendors.length === 0 ? (
@@ -137,76 +156,13 @@ export default function VendorsPage() {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
               <thead>
                 <tr style={{ background: C.surface }}>
-                  <th
-                    style={{
-                      padding: "12px 14px",
-                      textAlign: "left",
-                      fontSize: "11px",
-                      fontWeight: 600,
-                      color: C.muted,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      borderBottom: `2px solid ${C.border}`,
-                    }}
-                  >
+                  <SortTh sortKey="Name" sortBy={sortBy} sortDesc={sortDesc} onSortChange={handleSort}>
                     Vendor
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 14px",
-                      textAlign: "left",
-                      fontSize: "11px",
-                      fontWeight: 600,
-                      color: C.muted,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      borderBottom: `2px solid ${C.border}`,
-                    }}
-                  >
-                    GSTIN
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 14px",
-                      textAlign: "left",
-                      fontSize: "11px",
-                      fontWeight: 600,
-                      color: C.muted,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      borderBottom: `2px solid ${C.border}`,
-                    }}
-                  >
-                    Email
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 14px",
-                      textAlign: "left",
-                      fontSize: "11px",
-                      fontWeight: 600,
-                      color: C.muted,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      borderBottom: `2px solid ${C.border}`,
-                    }}
-                  >
-                    Contact
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 14px",
-                      textAlign: "left",
-                      fontSize: "11px",
-                      fontWeight: 600,
-                      color: C.muted,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      borderBottom: `2px solid ${C.border}`,
-                    }}
-                  >
-                    Category
-                  </th>
+                  </SortTh>
+                  <SortTh sortKey="GSTIN">GSTIN</SortTh>
+                  <SortTh sortKey="Email">Email</SortTh>
+                  <SortTh sortKey="ContactPerson">Contact</SortTh>
+                  <SortTh sortKey="Category">Category</SortTh>
                 </tr>
               </thead>
               <tbody>

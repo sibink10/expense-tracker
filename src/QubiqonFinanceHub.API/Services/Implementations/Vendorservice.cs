@@ -1,7 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Entities;
+using QubiqonFinanceHub.API.Services.Helpers;
 using QubiqonFinanceHub.API.Services.Interfaces;
 
 namespace QubiqonFinanceHub.API.Services.Implementations;
@@ -85,7 +86,7 @@ public class VendorService : IVendorService
         }
 
         var total = await q.CountAsync();
-        q = f.Desc ? q.OrderByDescending(x => x.Name) : q.OrderBy(x => x.Name);
+        q = q.ApplyVendorSorting(f);
         var items = await q.Skip((f.Page - 1) * f.PageSize).Take(f.PageSize).ToListAsync();
 
         return new PaginatedResult<VendorDto>(items.Select(MapToDto).ToList(), total, f.Page, f.PageSize);

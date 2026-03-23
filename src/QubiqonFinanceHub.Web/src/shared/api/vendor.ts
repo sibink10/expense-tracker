@@ -40,9 +40,17 @@ export interface PagedVendorsResponse {
   hasNext: boolean;
 }
 
-export async function getVendors(page = 1, pageSize = 10, search?: string): Promise<PagedVendorsResponse> {
-  const params: Record<string, string | number> = { page, pageSize };
+export async function getVendors(
+  page = 1,
+  pageSize = 10,
+  search?: string,
+  sortBy?: string,
+  desc?: boolean
+): Promise<PagedVendorsResponse> {
+  const params: Record<string, string | number | boolean> = { page, pageSize };
   if (search?.trim()) params.search = search.trim();
+  if (sortBy) params.SortBy = sortBy;
+  if (desc !== undefined) params.Desc = desc;
 
   const { data } = await apiClient.get<
     ApiVendor[] | { items: ApiVendor[]; totalCount: number; page: number; pageSize: number; totalPages: number; hasNext: boolean }

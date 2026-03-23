@@ -1,8 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Entities;
 using QubiqonFinanceHub.API.Models.Enums;
+using QubiqonFinanceHub.API.Services.Helpers;
 using QubiqonFinanceHub.API.Services.Interfaces;
 
 namespace QubiqonFinanceHub.API.Services.Implementations;
@@ -29,7 +30,7 @@ public class EmployeeService : IEmployeeService
         }
 
         var total = await q.CountAsync();
-        q = f.Desc ? q.OrderByDescending(e => e.FullName) : q.OrderBy(e => e.FullName);
+        q = q.ApplyEmployeeSorting(f);
         var items = await q.Skip((f.Page - 1) * f.PageSize).Take(f.PageSize).ToListAsync();
 
         return new PaginatedResult<EmployeeDto>(items.Select(MapToDto).ToList(), total, f.Page, f.PageSize);
@@ -46,11 +47,12 @@ public class EmployeeService : IEmployeeService
     public async Task<EmployeeDto> CreateAsync(CreateEmployeeRequest dto)
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
+        var entraId = string.IsNullOrWhiteSpace(dto.EntraObjectId) ? null : dto.EntraObjectId.Trim();
         var emp = new Employee
         {
             Id = Guid.NewGuid(),
             OrganizationId = orgId,
-            EntraObjectId = dto.EntraObjectId ?? "",
+            EntraObjectId = entraId,
             FullName = dto.FullName,
             Email = dto.Email,
             Department = dto.Department,

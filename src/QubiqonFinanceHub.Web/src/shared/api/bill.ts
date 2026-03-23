@@ -153,6 +153,8 @@ export interface GetBillsParams {
   pageSize?: number;
   search?: string;
   status?: string;
+  sortBy?: string;
+  desc?: boolean;
 }
 
 export async function getBillsRaw(params: GetBillsParams = {}): Promise<ApiBillsResponse> {
@@ -161,6 +163,8 @@ export async function getBillsRaw(params: GetBillsParams = {}): Promise<ApiBills
     PageSize: params.pageSize,
     Search: params.search,
     Status: params.status,
+    SortBy: params.sortBy,
+    Desc: params.desc,
   };
 
   const { data } = await apiClient.get<ApiBill[] | ApiBillsResponse>("/bills", {
@@ -195,6 +199,16 @@ export async function getBills(params: GetBillsParams = {}): Promise<{
     ...res,
     items: res.items.map(mapApiBillToApp),
   };
+}
+
+/** GET /api/bills/{id} */
+export async function getBillById(id: string): Promise<Bill | null> {
+  try {
+    const { data } = await apiClient.get<ApiBill>(`/bills/${id}`);
+    return data ? mapApiBillToApp(data) : null;
+  } catch {
+    return null;
+  }
 }
 
 export interface CreateBillLineItemPayload {

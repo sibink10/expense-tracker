@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Btn, Mdl, Alert } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
-import { approveAdvance } from "../shared/api/advance";
+import { approveAdvance, rejectAdvance } from "../shared/api/advance";
 import type { Advance } from "../types";
+
+function isInsufficientBalanceError(message: string): boolean {
+  const m = message.toLowerCase();
+  return m.includes("insufficient") && m.includes("balance");
+}
 
 export default function AdvanceApproveModal() {
   const { mdl, setMdl } = useAppContext();
@@ -12,6 +17,24 @@ export default function AdvanceApproveModal() {
   if (!mdl?.d || mdl.t !== "adv-approve") return null;
   const a = mdl.d as Advance;
   const id = a.apiId ?? a.id;
+
+  useEffect(() => {
+    setError(null);
+  }, [id]);
+
+  const handleRejectDueToBalance = async () => {
+    if (!error) return;
+    setLoading(true);
+    try {
+      await rejectAdvance(id, error);
+      setMdl(null);
+      window.dispatchEvent(new CustomEvent("advances-refresh"));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to reject");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -27,19 +50,39 @@ export default function AdvanceApproveModal() {
     }
   };
 
+  const showRejectInstead = error != null && isInsufficientBalanceError(error);
+
   return (
     <Mdl open close={() => setMdl(null)} title={`Approve ${a.id}`}>
       <div style={{ marginBottom: "12px", fontSize: "12px" }}>
         Are you sure you want to approve this advance request?
       </div>
       {error && <Alert sx={{ marginBottom: "8px" }}>{error}</Alert>}
-      <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
-        <Btn v="success" onClick={handleSubmit} disabled={loading}>
-          {loading ? "Approving..." : "Approve"}
-        </Btn>
-        <Btn v="secondary" onClick={() => setMdl(null)} disabled={loading}>
-          Cancel
-        </Btn>
+      {showRejectInstead && (
+        <div style={{ marginBottom: "12px", fontSize: "12px", color: "var(--muted, #64748b)" }}>
+          Approval isn’t possible with the current balance. You can reject this request instead.
+        </div>
+      )}
+      <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", flexWrap: "wrap" }}>
+        {showRejectInstead ? (
+          <>
+            <Btn v="danger" onClick={handleRejectDueToBalance} disabled={loading}>
+              {loading ? "Rejecting…" : "Reject"}
+            </Btn>
+            <Btn v="secondary" onClick={() => setMdl(null)} disabled={loading}>
+              Close
+            </Btn>
+          </>
+        ) : (
+          <>
+            <Btn v="success" onClick={handleSubmit} disabled={loading}>
+              {loading ? "Approving..." : "Approve"}
+            </Btn>
+            <Btn v="secondary" onClick={() => setMdl(null)} disabled={loading}>
+              Cancel
+            </Btn>
+          </>
+        )}
       </div>
     </Mdl>
   );

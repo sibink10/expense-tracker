@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { C } from "../shared/theme";
 import { Inp, Btn, FileUp, Toggle } from "../components/ui";
+import PhoneInputField, { isValidPhoneNumber } from "../components/PhoneInputField";
 import { getOrganization, saveOrganization } from "../shared/api";
+import { countryNameToPhoneCountry } from "../shared/countryPhoneDefault";
+import { normalizeStoredPhone } from "../shared/phoneUtils";
 import { COUNTRY_OPTS, normalizeCountry } from "../shared/countries";
 
 const GRID_BREAKPOINT = 720;
@@ -19,7 +22,8 @@ export default function AdminOrgPage() {
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [state, setState] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState<string | undefined>(undefined);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [fax, setFax] = useState("");
   const [website, setWebsite] = useState("");
   const [useSeparatePaymentAddress, setUseSeparatePaymentAddress] = useState(false);
@@ -52,7 +56,7 @@ export default function AdminOrgPage() {
         setCity(org.city ?? "");
         setPostalCode(org.postalCode ?? "");
         setState(org.state ?? "");
-        setPhone(org.phone ?? "");
+        setPhone(normalizeStoredPhone(org.phone ?? undefined) ?? undefined);
         setFax(org.fax ?? "");
         setWebsite(org.website ?? "");
         setUseSeparatePaymentAddress(org.useSeparatePaymentAddress ?? false);
@@ -70,6 +74,12 @@ export default function AdminOrgPage() {
   }, [id]);
 
   const handleSave = async () => {
+    const p = phone?.trim();
+    if (p && !isValidPhoneNumber(p)) {
+      setPhoneError("Enter a valid phone number for the selected country");
+      return;
+    }
+    setPhoneError(null);
     await saveOrganization({
       id,
       orgName: orgName.trim(),
@@ -80,7 +90,7 @@ export default function AdminOrgPage() {
       city: city || undefined,
       postalCode: postalCode || undefined,
       state: state || undefined,
-      phone: phone || undefined,
+      phone: phone?.trim() || undefined,
       fax: fax || undefined,
       website: website || undefined,
       useSeparatePaymentAddress: useSeparatePaymentAddress,
@@ -206,11 +216,16 @@ export default function AdminOrgPage() {
           </div>
 
           <div>
-            <Inp
+            <PhoneInputField
               label="Phone"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              ph="Official contact number"
+              onChange={(v) => {
+                setPhone(v);
+                setPhoneError(null);
+              }}
+              defaultCountry={countryNameToPhoneCountry(country)}
+              placeholder="Official contact number"
+              error={phoneError}
             />
             <Inp label="Fax number" value={fax} onChange={(e) => setFax(e.target.value)} />
             <Inp

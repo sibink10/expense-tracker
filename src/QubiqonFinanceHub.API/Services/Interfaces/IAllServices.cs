@@ -43,6 +43,7 @@ public interface IAdvanceService
     Task<AdvanceDto> ApproveAsync(Guid id, ApproveRequest dto);
     Task<AdvanceDto> RejectAsync(Guid id, RejectRequest dto);
     Task<AdvanceDto> DisburseAsync(Guid id, ProcessPaymentRequest dto);
+    Task<AdvanceDisburseValidationDto> ValidateDisburseAsync(Guid id, decimal paidAmount);
     Task<List<AdvanceDto>> GetEmployeeHistoryAsync(Guid employeeId);
 }
 

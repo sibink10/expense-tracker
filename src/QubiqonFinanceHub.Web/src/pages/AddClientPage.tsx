@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
 import { Inp, Btn, Alert } from "../components/ui";
+import PhoneInputField, { isValidPhoneNumber } from "../components/PhoneInputField";
+import { countryNameToPhoneCountry } from "../shared/countryPhoneDefault";
+import { isOptionalPhoneValid } from "../shared/phoneUtils";
 import { createClient } from "../shared/api/clients";
 import { getTaxConfigs } from "../shared/api/taxConfig";
 import { isEmailValid } from "../shared/utils";
@@ -21,7 +24,8 @@ export default function AddClientPage() {
   const [name, setName] = useState("");
   const [contactPerson, setContactPerson] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState<string | undefined>(undefined);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [country, setCountry] = useState("");
   const [currency, setCurrency] = useState("INR");
   const [taxType, setTaxType] = useState("");
@@ -79,8 +83,13 @@ export default function AddClientPage() {
 
   const submit = async () => {
     setEmailError(null);
+    setPhoneError(null);
     if (!isEmailValid(email)) {
       setEmailError("Enter a valid email address");
+      return;
+    }
+    if (phone?.trim() && !isValidPhoneNumber(phone.trim())) {
+      setPhoneError("Enter a valid phone number for the selected country");
       return;
     }
     if (!name.trim() || !email.trim() || !contactPerson.trim() || !taxType.trim() || !shippingAddress.trim() || !(sameAddress ? shippingAddress.trim() : billingAddress.trim())) return;
@@ -92,7 +101,7 @@ export default function AddClientPage() {
         name: name.trim(),
         contactPerson: contactPerson.trim(),
         email: email.trim(),
-        phone: phone.trim(),
+        phone: phone?.trim() ?? "",
         country: country.trim(),
         currency: currency.trim() || "INR",
         taxType: taxType.trim() || null,
@@ -124,7 +133,8 @@ export default function AddClientPage() {
     taxType.trim() &&
     shippingAddress.trim() &&
     (sameAddress ? shippingAddress.trim() : billingAddress.trim()) &&
-    isEmailValid(email);
+    isEmailValid(email) &&
+    isOptionalPhoneValid(phone);
 
   return (
     <div style={{ width: "100%", maxWidth: "100%" }}>
@@ -171,7 +181,18 @@ export default function AddClientPage() {
             ph="Contact name"
             style={cellStyle}
           />
-          <Inp label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} ph="Contact number" style={cellStyle} />
+          <PhoneInputField
+            label="Phone"
+            value={phone}
+            onChange={(v) => {
+              setPhone(v);
+              setPhoneError(null);
+            }}
+            defaultCountry={countryNameToPhoneCountry(country)}
+            placeholder="Contact number"
+            error={phoneError}
+            style={cellStyle}
+          />
           <Inp
             label="Country"
             type="select"

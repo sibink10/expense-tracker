@@ -57,7 +57,7 @@ export async function downloadInvoicePdf(inv: Invoice, org?: OrganizationPayload
 
   try {
     flushSync(() => {
-      root.render(createElement(InvoiceDocument, { invoice: inv, organization: org }));
+      root.render(createElement(InvoiceDocument, { invoice: inv, organization: org, hideStatusRibbon: true }));
     });
 
     await waitForPaint();

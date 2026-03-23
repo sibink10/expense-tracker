@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { C } from "../shared/theme";
-import { Inp, Btn, Empty, Toggle, Alert } from "../components/ui";
+import { Inp, Btn, Empty, Toggle, Alert, ListRefreshButton } from "../components/ui";
 import { getCategories, createCategory, toggleCategory, type Category } from "../shared/api";
 import { useAppContext } from "../context/AppContext";
 
@@ -78,6 +78,12 @@ export default function AdminCategoriesPage() {
           border: `1px solid ${C.border}`,
         }}
       >
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "12px" }}>
+          <ListRefreshButton
+            loading={loading}
+            onRefresh={() => setRefreshKey((k) => k + 1)}
+          />
+        </div>
         {loading ? (
           <div style={{ padding: "40px", textAlign: "center", color: C.muted }}>Loading...</div>
         ) : categories.length === 0 ? (

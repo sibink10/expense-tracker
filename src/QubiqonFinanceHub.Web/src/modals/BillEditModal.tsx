@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { C } from "../shared/theme";
 import { BILL_ACCOUNTS, PAY_TERMS } from "../shared/constants";
-import { addDays, fmtCur, downloadFromSasUrl, buildDownloadFilename } from "../shared/utils";
+import { addDays, fmtCur, round2, aggregateLineGstRows, formatTdsOptionLabel, formatTdsSummarySnippet, downloadFromSasUrl, buildDownloadFilename } from "../shared/utils";
 import { Inp, Btn, Alert, Mdl, MultiFileUp } from "../components/ui";
+import DecimalLineInput from "../components/DecimalLineInput";
 import { useAppContext } from "../context/AppContext";
 import { updateBill, uploadVendorBill, removeBillDocument, getBillDocument } from "../shared/api/bill";
 import { getTaxConfigs } from "../shared/api/taxConfig";
@@ -104,11 +105,8 @@ export default function BillEditModal() {
 
   const subTotal = items.reduce((sum, it) => sum + it.quantity * it.rate, 0);
   const totalQty = items.reduce((sum, it) => sum + it.quantity, 0);
-  const itemTaxAmount = items.reduce((sum, it) => {
-    const lineAmt = it.quantity * it.rate;
-    const gst = gstOptions.find((g) => g.id === it.gstConfigId);
-    return sum + (lineAmt * (gst?.rate ?? 0)) / 100;
-  }, 0);
+  const lineGstRows = aggregateLineGstRows(items, gstOptions);
+  const itemTaxAmount = round2(lineGstRows.reduce((s, r) => s + r.amount, 0));
   const discountVal = (parseFloat(discountPct) || 0) / 100;
   const discountAmount = subTotal * discountVal;
   const roundingVal = parseFloat(rounding) || 0;
@@ -161,7 +159,7 @@ export default function BillEditModal() {
       setError("Add at least one item with description, quantity and rate");
       return;
     }
-    if (!vendorBillNumber.trim() || !desc.trim() || !bd) {
+    if (!vendorBillNumber.trim() || !bd) {
       setError("Please fill all required fields");
       return;
     }
@@ -187,7 +185,7 @@ export default function BillEditModal() {
         taxConfigId: tds === "none" ? null : tds,
         ccEmails: "",
         amount: totalBeforeTds,
-        description: desc,
+        description: desc.trim(),
         discountPercent: parseFloat(discountPct) || 0,
         rounding: roundingVal,
         items: validItems,
@@ -260,10 +258,10 @@ export default function BillEditModal() {
                       <Inp label="" type="select" value={row.account} onChange={(e) => updateItemRow(row.id, "account", e.target.value)} opts={accountOpts} style={cellCompact} />
                     </td>
                     <td style={{ padding: "10px 12px", textAlign: "center" }}>
-                      <input type="number" min="0" step="0.01" value={row.quantity || ""} onChange={(e) => updateItemRow(row.id, "quantity", parseFloat(e.target.value) || 0)} style={{ width: "100%", padding: "8px 10px", border: `1px solid ${C.border}`, borderRadius: "6px", fontSize: "12px", textAlign: "center", boxSizing: "border-box" }} />
+                      <DecimalLineInput value={row.quantity} min={0.01} emptyFallback={1} textAlign="center" onChange={(v) => updateItemRow(row.id, "quantity", v)} style={{ lineHeight: 1 }} />
                     </td>
                     <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                      <input type="number" min="0" step="0.01" value={row.rate ?? ""} onChange={(e) => updateItemRow(row.id, "rate", parseFloat(e.target.value) || 0)} style={{ width: "100%", padding: "8px 10px", border: `1px solid ${C.border}`, borderRadius: "6px", fontSize: "12px", textAlign: "right", boxSizing: "border-box" }} />
+                      <DecimalLineInput value={row.rate} min={0} emptyFallback={0} textAlign="right" onChange={(v) => updateItemRow(row.id, "rate", v)} style={{ lineHeight: 1 }} />
                     </td>
                     <td style={{ padding: "10px 12px" }}>
                       <Inp label="" type="select" value={row.gstConfigId} onChange={(e) => updateItemRow(row.id, "gstConfigId", e.target.value)} opts={gstOpts} style={cellCompact} />
@@ -291,7 +289,7 @@ export default function BillEditModal() {
               value={tds}
               onChange={(e) => setTds(e.target.value)}
               disabled={tdsLoading}
-              opts={[{ v: "none", l: tdsLoading ? "Loading..." : "No TDS" }, ...tdsOptions.map((x) => ({ v: x.id, l: `${x.name} (${x.rate}%) — ${x.section}` }))]}
+              opts={[{ v: "none", l: tdsLoading ? "Loading..." : "No TDS" }, ...tdsOptions.map((x) => ({ v: x.id, l: formatTdsOptionLabel(x.name, x.rate, x.section) }))]}
               style={cellCompact}
             />
           </div>
@@ -299,7 +297,12 @@ export default function BillEditModal() {
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}><span style={{ color: C.muted }}>Sub Total</span><span style={{ fontWeight: 600 }}>{fmtCur(subTotal)}</span></div>
             {totalQty > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", fontSize: "11px", color: C.muted }}><span>Total Quantity</span><span>{totalQty}</span></div>}
             {discountPct && parseFloat(discountPct) > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}><span style={{ color: C.muted }}>Discount ({discountPct}%)</span><span style={{ color: C.success }}>-{fmtCur(discountAmount)}</span></div>}
-            {itemTaxAmount > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}><span style={{ color: C.muted }}>Tax</span><span style={{ fontWeight: 600 }}>{fmtCur(itemTaxAmount)}</span></div>}
+            {lineGstRows.map((row) => (
+              <div key={row.id} style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+                <span style={{ color: C.muted }}>{row.label}</span>
+                <span style={{ fontWeight: 600 }}>{fmtCur(row.amount)}</span>
+              </div>
+            ))}
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}><span style={{ color: C.muted }}>Rounding</span><span style={{ fontWeight: 600 }}>{roundingVal >= 0 ? "+" : ""}{fmtCur(roundingVal)}</span></div>
             <div style={{ borderTop: `1px solid ${C.vendor}30`, paddingTop: "8px", marginTop: "4px", display: "flex", justifyContent: "space-between" }}>
               <span style={{ fontWeight: 700, color: C.vendor }}>Total</span>
@@ -308,7 +311,7 @@ export default function BillEditModal() {
             {tdsRate > 0 && (
               <>
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", marginBottom: "4px", color: C.danger }}>
-                  <span>TDS ({tx?.section} @ {tdsRate}%)</span>
+                  <span>TDS ({formatTdsSummarySnippet(tx?.section, tdsRate)})</span>
                   <span style={{ fontWeight: 600 }}>-{fmtCur(tdsA)}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, color: C.vendor }}>
@@ -323,7 +326,7 @@ export default function BillEditModal() {
 
       <Section title="Notes & Attachments">
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          <Inp label="Description / Notes" type="textarea" value={desc} onChange={(e) => setDesc(e.target.value)} req ph="Goods/services..." style={cellCompact} />
+          <Inp label="Description / Notes (optional)" type="textarea" value={desc} onChange={(e) => setDesc(e.target.value)} ph="Goods/services…" style={cellCompact} />
           {documents.length > 0 && (
             <div>
               <div style={{ fontSize: "10px", color: C.muted, marginBottom: "6px", fontWeight: 600 }}>Current attachments</div>
@@ -360,7 +363,7 @@ export default function BillEditModal() {
       {error && <Alert sx={{ marginBottom: "16px" }}>{error}</Alert>}
       <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
         <Btn v="secondary" onClick={() => setMdl(null)} disabled={loading}>Cancel</Btn>
-        <Btn v="vendor" onClick={handleSave} disabled={!hasValidItems || !desc.trim() || !vendorBillNumber.trim() || !bd || loading}>
+        <Btn v="vendor" onClick={handleSave} disabled={!hasValidItems || !vendorBillNumber.trim() || !bd || loading}>
           {loading ? "Saving…" : "Save changes"}
         </Btn>
       </div>

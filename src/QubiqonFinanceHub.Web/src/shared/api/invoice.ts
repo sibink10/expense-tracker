@@ -22,7 +22,6 @@ export interface CreateInvoicePayload {
   notes: string;
   sendImmediately: boolean;
   invoiceNumber?: string;
-  etc?: string;
 }
 
 export interface ApiInvoiceLineItem {
@@ -137,6 +136,8 @@ export interface GetInvoicesParams {
   pageSize?: number;
   search?: string;
   status?: string;
+  sortBy?: string;
+  desc?: boolean;
 }
 
 export interface InvoiceCounts {
@@ -153,6 +154,8 @@ export async function getInvoicesRaw(params: GetInvoicesParams = {}): Promise<Ap
     PageSize: params.pageSize,
     Search: params.search,
     Status: params.status,
+    SortBy: params.sortBy,
+    Desc: params.desc,
   };
 
   const { data } = await apiClient.get<ApiInvoice[] | ApiInvoicesResponse>("/invoices", {
@@ -249,4 +252,10 @@ export interface MarkInvoicePaidPayload {
 export async function markInvoicePaid(id: string, payload: MarkInvoicePaidPayload): Promise<unknown> {
   const { data } = await apiClient.post(`/invoices/${id}/paid`, payload);
   return data;
+}
+
+/** Mark draft invoice as Sent (notifies client by email). Finance/Admin only. */
+export async function markInvoiceSent(id: string): Promise<Invoice> {
+  const { data } = await apiClient.post<ApiInvoice>(`/invoices/${id}/send`);
+  return mapApiInvoiceToApp(data);
 }

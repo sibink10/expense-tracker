@@ -21,7 +21,9 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
   const canEdit = e.status !== EXP_S.APPROVED && e.status !== EXP_S.AWAITING_PAYMENT && e.status !== EXP_S.COMPLETED;
   const canRemoveDoc = !["Rejected", "Completed", "Cancelled"].includes(e.status) && e.documents.length > 0;
   const disableRemoveDoc = e.documents.length <= 1;
-  const canApproveReject = e.status === EXP_S.PENDING && (isApprover || isAdmin);
+  const canApproveReject =
+    (e.status === EXP_S.PENDING || e.status === EXP_S.PENDING_BILL_APPROVAL) &&
+    (isApprover || isAdmin);
   const canShowPay = (isFinance || isAdmin) && (e.status === EXP_S.AWAITING_PAYMENT || e.status === EXP_S.PARTIALLY_PAID || e.status === EXP_S.APPROVED || e.status === EXP_S.AWAITING_BILL);
   const canPay = canShowPay && hasBill;
   const showBillUploadPanel = e.status === EXP_S.APPROVED && !hasBill;

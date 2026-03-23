@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { C } from "../shared/theme";
 import { Inp, Btn, Mdl, Alert } from "../components/ui";
+import PhoneInputField, { isValidPhoneNumber } from "../components/PhoneInputField";
+import { normalizeStoredPhone } from "../shared/phoneUtils";
 import { useAppContext } from "../context/AppContext";
 import { updateVendor } from "../shared/api/vendor";
 import { getCategories, type Category } from "../shared/api";
@@ -12,7 +14,7 @@ export default function VendorEditModal() {
   const [name, setName] = useState("");
   const [gstin, setGstin] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState<string | undefined>(undefined);
   const [category, setCategory] = useState("");
   const [address, setAddress] = useState("");
   const [contactPerson, setContactPerson] = useState("");
@@ -23,6 +25,7 @@ export default function VendorEditModal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
 
   const v = mdl?.d && mdl.t === "vendor-edit" ? (mdl.d as Vendor) : null;
@@ -32,7 +35,7 @@ export default function VendorEditModal() {
       setName(v.name);
       setGstin(v.gstin || "");
       setEmail(v.email || "");
-      setPhone(v.ph || "");
+      setPhone(normalizeStoredPhone(v.ph || undefined) ?? undefined);
       setCategory(v.cat || "");
       setAddress(v.addr || "");
       setContactPerson(v.contactPerson || "");
@@ -40,6 +43,7 @@ export default function VendorEditModal() {
       setAccountNumber(v.accountNumber || "");
       setAccountNumberRe(v.accountNumber || "");
       setIfscCode(v.ifscCode || "");
+      setPhoneError(null);
     }
   }, [v]);
 
@@ -58,6 +62,10 @@ export default function VendorEditModal() {
       return;
     }
     if (!name.trim() || !email.trim() || !address.trim()) return;
+    if (phone?.trim() && !isValidPhoneNumber(phone.trim())) {
+      setPhoneError("Enter a valid phone number for the selected country");
+      return;
+    }
     if (!accountNumber.trim() || !accountNumberRe.trim()) {
       setError("Account number is required");
       return;
@@ -78,7 +86,7 @@ export default function VendorEditModal() {
         name: name.trim(),
         gstin: gstin.trim(),
         email: email.trim(),
-        phone: phone.trim(),
+        phone: phone?.trim() ?? "",
         category: category.trim(),
         address: address.trim(),
         contactPerson: contactPerson.trim() || undefined,
@@ -113,7 +121,21 @@ export default function VendorEditModal() {
       </div>
       <Inp label="Contact person" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} ph="Optional" />
       <Inp label="GSTIN" value={gstin} onChange={(e) => setGstin(e.target.value)} ph="GST number" />
-      <Inp label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} ph="Optional" />
+      <PhoneInputField
+        label="Phone"
+        value={phone}
+        onChange={(v) => {
+          setPhone(v);
+          setPhoneError(null);
+        }}
+        onBlur={() =>
+          phone?.trim() &&
+          !isValidPhoneNumber(phone.trim()) &&
+          setPhoneError("Enter a valid phone number for the selected country")
+        }
+        error={phoneError}
+        placeholder="Optional"
+      />
       <Inp
         label="Category"
         type="select"
@@ -155,6 +177,7 @@ export default function VendorEditModal() {
             !accountNumber.trim() ||
             !accountNumberRe.trim() ||
             !isEmailValid(email) ||
+            (!!phone?.trim() && !isValidPhoneNumber(phone.trim())) ||
             loading
           }
         >

@@ -134,6 +134,10 @@ export interface GetExpensesParams {
   status?: string;
   /** When true, fetches only current user's expenses (/expenses/my). When false, fetches all (/expenses) for admin. */
   myOnly?: boolean;
+  /** API `FilterParams.SortBy` (e.g. CreatedAt, Amount, ExpenseCode). */
+  sortBy?: string;
+  /** API `FilterParams.Desc` */
+  desc?: boolean;
 }
 
 export async function getExpenses(params: GetExpensesParams = {}): Promise<ApiExpensesResponse> {
@@ -142,6 +146,8 @@ export async function getExpenses(params: GetExpensesParams = {}): Promise<ApiEx
     PageSize: params.pageSize,
     Search: params.search,
     Status: params.status,
+    SortBy: params.sortBy,
+    Desc: params.desc,
   };
   const path = params.myOnly !== false ? "/expenses/my" : "/expenses";
   const { data } = await apiClient.get<ApiExpensesResponse>(path, {
@@ -163,6 +169,16 @@ export async function getExpensesMapped(params: GetExpensesParams = {}): Promise
     ...res,
     items: res.items.map(mapApiExpenseToApp),
   };
+}
+
+/** GET /api/expenses/{id} — same shape as list items for mapping. */
+export async function getExpenseById(id: string): Promise<Expense | null> {
+  try {
+    const { data } = await apiClient.get<ApiExpenseItem>(`/expenses/${id}`);
+    return data ? mapApiExpenseToApp(data) : null;
+  } catch {
+    return null;
+  }
 }
 
 export interface ExpenseCounts {

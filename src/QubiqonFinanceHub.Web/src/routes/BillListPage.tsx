@@ -3,8 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import type { Bill } from "../types";
 import { C } from "../shared/theme";
 import { BILL_S } from "../shared/constants";
-import { fmtCur } from "../shared/utils";
-import { Av, Btn, Badge, Tbl, Filter, Empty } from "../components/ui";
+import { fmtCur, daysOverdueFromDueYmd, nextListSort } from "../shared/utils";
+import { Av, Btn, Badge, Tbl, Filter, Empty, ListRefreshButton, type TblCol } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
 import { getBills } from "../shared/api/bill";
 
@@ -15,6 +15,8 @@ export default function BillListPage() {
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [sortBy, setSortBy] = useState("CreatedAt");
+  const [sortDesc, setSortDesc] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
@@ -47,6 +49,8 @@ export default function BillListPage() {
       pageSize,
       search: search || undefined,
       status: statusForApi,
+      sortBy,
+      desc: sortDesc,
     })
       .then((res) => {
         setBills(res.items);
@@ -59,7 +63,14 @@ export default function BillListPage() {
         setTotalPages(0);
       })
       .finally(() => setLoading(false));
-  }, [page, pageSize, search, statusForApi, refreshKey]);
+  }, [page, pageSize, search, statusForApi, refreshKey, sortBy, sortDesc]);
+
+  const handleSort = (key: string) => {
+    const n = nextListSort(key, sortBy, sortDesc);
+    setSortBy(n.sortBy);
+    setSortDesc(n.desc);
+    setPage(1);
+  };
 
   const f = fil(bills);
   const startIndex = totalCount === 0 ? 0 : (page - 1) * pageSize;
@@ -117,6 +128,12 @@ export default function BillListPage() {
             BILL_S.OVERDUE,
             BILL_S.REJECTED,
           ]}
+          trailing={
+            <ListRefreshButton
+              loading={loading}
+              onRefresh={() => setRefreshKey((k) => k + 1)}
+            />
+          }
         />
         {loading ? (
           <div style={{ padding: "40px", textAlign: "center", color: C.muted }}>Loading...</div>
@@ -126,18 +143,23 @@ export default function BillListPage() {
           <>
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
               <Tbl
-                cols={[
-                  "Bill #",
-                  "Vendor",
-                  "Vendor bill #",
-                  "Amount",
-                  "TDS",
-                  "Payable",
-                  "Paid",
-                  "Due",
-                  "Status",
-                  (is("approver") || is("finance") || is("admin")) && "Action",
-                ].filter(Boolean) as string[]}
+                cols={
+                  [
+                    { label: "Bill #", sortKey: "BillCode" },
+                    { label: "Vendor", sortKey: "VendorName" },
+                    { label: "Vendor bill #", sortKey: "VendorBillNumber" },
+                    { label: "Amount", sortKey: "Amount" },
+                    { label: "TDS" },
+                    { label: "Payable", sortKey: "TotalPayable" },
+                    { label: "Balance Due", sortKey: "BalanceDue" },
+                    { label: "Due", sortKey: "DueDate" },
+                    { label: "Status" },
+                    ...(is("approver") || is("finance") || is("admin") ? (["Action"] as TblCol[]) : []),
+                  ] as TblCol[]
+                }
+                sortBy={sortBy}
+                sortDesc={sortDesc}
+                onSortChange={handleSort}
                 rows={paged.map((b) => ({
                   ...b,
                   _cells: [
@@ -160,9 +182,18 @@ export default function BillListPage() {
                     { v: <span style={{ fontWeight: 600 }}>{fmtCur(b.amt)}</span> },
                     { v: <span style={{ fontSize: "11px", color: C.danger }}>-{fmtCur(b.tdsAmt)}</span> },
                     { v: <span style={{ fontWeight: 700 }}>{fmtCur(b.pay)}</span> },
-                    { v: <span style={{ fontSize: "11px", color: (b.paidAmount ?? 0) > 0 ? C.vendor : C.muted }}>{fmtCur(b.paidAmount ?? 0)}</span> },
+                    { v: <span style={{ fontSize: "11px", color: (b.pay - (b.paidAmount ?? 0)) > 0 ? C.vendor : C.muted }}>{fmtCur(b.pay - (b.paidAmount ?? 0))}</span> },
                     { v: <span style={{ fontSize: "11px", color: C.muted }}>{b.due}</span> },
-                    { v: <Badge s={b.status} /> },
+                    {
+                      v: (
+                        <Badge
+                          s={b.status}
+                          overdueDays={
+                            b.status === BILL_S.OVERDUE ? daysOverdueFromDueYmd(b.due) : undefined
+                          }
+                        />
+                      ),
+                    },
                     ...(is("approver") || is("finance") || is("admin")
                       ? [
                           {

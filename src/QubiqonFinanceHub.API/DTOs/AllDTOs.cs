@@ -202,7 +202,7 @@ public class CreateBillRequest
     public decimal Amount { get; set; }
     public string vendorBillNumber { get; set; }
     public Guid? TaxConfigId { get; set; }
-    public string Description { get; set; } = "";
+    public string? Description { get; set; }
     public DateTime BillDate { get; set; }
     public DateTime DueDate { get; set; }
     public string PaymentTerms { get; set; } = "";
@@ -224,7 +224,7 @@ public class UpdateBillRequest
     public Guid? TaxConfigId { get; set; }
     public string? CCEmails { get; set; }
     public decimal Amount { get; set; }
-    public string Description { get; set; } = "";
+    public string? Description { get; set; }
     public decimal DiscountPercent { get; set; }
     public decimal Rounding { get; set; }
     /// <summary>JSON array of CreateBillLineItemRequest. Sent as form field "items".</summary>
@@ -344,6 +344,12 @@ public record TaxConfigDto(Guid Id, string Type, string Name, decimal Rate, stri
 // ═══════════════════════════════════════════════════
 public record ApproveRequest(string? Comments);
 public record RejectRequest(string Comments);
+public record AdvanceDisburseValidationDto(
+    decimal BalanceCap,
+    decimal RemainingOnAdvance,
+    decimal PaidAmount,
+    bool CanDisburse,
+    string? Message);
 public record ProcessPaymentRequest(string PaymentReference, PaymentMethod? Method, string? Notes, decimal PaidAmount);
 
 // ═══════════════════════════════════════════════════

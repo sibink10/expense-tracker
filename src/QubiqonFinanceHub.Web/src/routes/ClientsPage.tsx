@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
-import { Av, Btn, Empty } from "../components/ui";
+import { Av, Btn, Empty, ListRefreshButton, SortTh } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
-import { getClients } from "../shared/api/clients";
+import { getClientsPaged } from "../shared/api/clients";
 import type { Client } from "../types";
+import { nextListSort } from "../shared/utils";
 
 export default function ClientsPage() {
   const navigate = useNavigate();
@@ -12,9 +13,14 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [sortBy, setSortBy] = useState("CreatedAt");
+  const [sortDesc, setSortDesc] = useState(true);
 
   useEffect(() => {
     const handler = () => setRefreshKey((k) => k + 1);
@@ -23,39 +29,44 @@ export default function ClientsPage() {
   }, []);
 
   useEffect(() => {
-    getClients()
-      .then(setClients)
-      .catch(() => setClients([]))
+    const t = setTimeout(() => {
+      setDebouncedSearch(searchInput.trim());
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  useEffect(() => {
+    setLoading(true);
+    getClientsPaged({
+      page,
+      pageSize,
+      search: debouncedSearch || undefined,
+      sortBy,
+      desc: sortDesc,
+    })
+      .then((r) => {
+        setClients(r.items);
+        setTotalCount(r.totalCount);
+        setTotalPages(r.totalPages);
+      })
+      .catch(() => {
+        setClients([]);
+        setTotalCount(0);
+        setTotalPages(0);
+      })
       .finally(() => setLoading(false));
-  }, [refreshKey]);
+  }, [page, pageSize, debouncedSearch, sortBy, sortDesc, refreshKey]);
 
-  const q = search.trim().toLowerCase();
-  const filtered = q
-    ? clients.filter(
-        (c) =>
-          c.name.toLowerCase().includes(q) ||
-          (c.email && c.email.toLowerCase().includes(q)) ||
-          (c.contact && c.contact.toLowerCase().includes(q)) ||
-          (c.country && c.country.toLowerCase().includes(q)) ||
-          (c.customerType && c.customerType.toLowerCase().includes(q))
-      )
-    : clients;
-
-  const totalCount = filtered.length;
-  const totalPages = totalCount > 0 ? Math.ceil(totalCount / pageSize) : 0;
-  const startIndex = (page - 1) * pageSize;
-  const endIndex = Math.min(startIndex + pageSize, totalCount);
-  const paged = filtered.slice(startIndex, endIndex);
-
-  useEffect(() => {
+  const handleSort = (key: string) => {
+    const n = nextListSort(key, sortBy, sortDesc);
+    setSortBy(n.sortBy);
+    setSortDesc(n.desc);
     setPage(1);
-  }, [search, refreshKey]);
+  };
 
-  useEffect(() => {
-    if (page > totalPages && totalPages > 0) {
-      setPage(totalPages);
-    }
-  }, [page, totalPages]);
+  const startIndex = totalCount === 0 ? 0 : (page - 1) * pageSize;
+  const endIndex = totalCount === 0 ? 0 : Math.min(startIndex + pageSize, totalCount);
 
   return (
     <div>
@@ -90,17 +101,22 @@ export default function ClientsPage() {
           flexDirection: "column",
         }}
       >
-        {loading ? (
-          <div style={{ padding: "40px", textAlign: "center", color: C.muted }}>Loading...</div>
-        ) : clients.length === 0 ? (
-          <Empty icon="👥" title="No clients" sub="Add clients to create invoices" />
-        ) : (
-          <>
-            <div style={{ marginBottom: "14px", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+        <div
+          style={{
+            marginBottom: "14px",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            flexWrap: "wrap",
+            justifyContent: "space-between",
+          }}
+        >
+          {!loading ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", flex: "1 1 auto", minWidth: 0 }}>
               <div style={{ position: "relative", flex: "1", minWidth: "180px", maxWidth: "280px" }}>
                 <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="Search clients..."
                   style={{
                     width: "100%",
@@ -115,12 +131,28 @@ export default function ClientsPage() {
                 />
                 <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", fontSize: "12px", color: C.muted }}>⌕</span>
               </div>
-              {search.trim() && (
+              {searchInput.trim() && (
                 <span style={{ fontSize: "12px", color: C.muted }}>
-                  {totalCount} of {clients.length}
+                  {totalCount} match{totalCount === 1 ? "" : "es"}
                 </span>
               )}
             </div>
+          ) : (
+            <div style={{ flex: 1 }} />
+          )}
+          <div style={{ flexShrink: 0, marginLeft: "auto" }}>
+            <ListRefreshButton
+              loading={loading}
+              onRefresh={() => setRefreshKey((k) => k + 1)}
+            />
+          </div>
+        </div>
+        {loading ? (
+          <div style={{ padding: "40px", textAlign: "center", color: C.muted }}>Loading...</div>
+        ) : totalCount === 0 && !debouncedSearch ? (
+          <Empty icon="👥" title="No clients" sub="Add clients to create invoices" />
+        ) : (
+          <>
             {totalCount === 0 ? (
               <div style={{ padding: "32px", textAlign: "center", color: C.muted, fontSize: "13px" }}>No clients match your search</div>
             ) : (
@@ -129,28 +161,22 @@ export default function ClientsPage() {
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
                     <thead>
                       <tr style={{ background: C.surface }}>
-                        <th style={{ padding: "12px 14px", textAlign: "left", fontSize: "11px", fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `2px solid ${C.border}` }}>
+                        <SortTh sortKey="Name" sortBy={sortBy} sortDesc={sortDesc} onSortChange={handleSort}>
                           Client
-                        </th>
-                        <th style={{ padding: "12px 14px", textAlign: "left", fontSize: "11px", fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `2px solid ${C.border}` }}>
+                        </SortTh>
+                        <SortTh sortKey="ContactPerson" sortBy={sortBy} sortDesc={sortDesc} onSortChange={handleSort}>
                           Contact person
-                        </th>
-                        <th style={{ padding: "12px 14px", textAlign: "left", fontSize: "11px", fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `2px solid ${C.border}` }}>
+                        </SortTh>
+                        <SortTh sortKey="Email" sortBy={sortBy} sortDesc={sortDesc} onSortChange={handleSort}>
                           Email
-                        </th>
-                        <th style={{ padding: "12px 14px", textAlign: "left", fontSize: "11px", fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `2px solid ${C.border}` }}>
-                          Country
-                        </th>
-                        <th style={{ padding: "12px 14px", textAlign: "left", fontSize: "11px", fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `2px solid ${C.border}` }}>
-                          Currency
-                        </th>
-                        <th style={{ padding: "12px 14px", textAlign: "left", fontSize: "11px", fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `2px solid ${C.border}` }}>
-                          Type
-                        </th>
+                        </SortTh>
+                        <SortTh sortKey="Country">Country</SortTh>
+                        <SortTh sortKey="Currency">Currency</SortTh>
+                        <SortTh sortKey="CustomerType">Type</SortTh>
                       </tr>
                     </thead>
                     <tbody>
-                      {paged.map((c) => (
+                      {clients.map((c) => (
                         <tr
                           key={c.id}
                           onClick={() => setMdl({ t: "client-detail", d: c })}

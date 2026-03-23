@@ -4,6 +4,7 @@ import { C } from "../shared/theme";
 import { Av } from "../components/ui";
 import { buildNav } from "../shared/nav";
 import Modals from "../components/Modals";
+import DeepLinkHandler from "../components/DeepLinkHandler";
 import { useAppContext } from "../context/AppContext";
 import { selectOrganization } from "../shared/api";
 
@@ -15,9 +16,6 @@ export default function Layout() {
     instance,
     cfg,
     toast,
-    pendExp,
-    pendAdv,
-    payableExp,
     rf,
     orgs,
     activeOrg,
@@ -57,11 +55,7 @@ export default function Layout() {
     rf();
   }, [location.pathname, rf]);
 
-  const nav = buildNav(cfg, user.role, {
-    pendExp,
-    pendAdv,
-    payableExp: payableExp.length,
-  });
+  const nav = buildNav(cfg);
   const visibleNav = nav
     .map((sec) => ({
       ...sec,
@@ -368,21 +362,6 @@ export default function Layout() {
                         >
                           <span style={{ fontSize: "13px", width: "18px", textAlign: "center" }}>{item.i}</span>
                           {item.l}
-                          {item.b != null && item.b > 0 && (
-                            <span
-                              style={{
-                                marginLeft: "auto",
-                                background: sec.c || C.accent,
-                                color: "#fff",
-                                fontSize: "9px",
-                                fontWeight: 700,
-                                padding: "1px 6px",
-                                borderRadius: "6px",
-                              }}
-                            >
-                              {item.b}
-                            </span>
-                          )}
                           {canAdd && (
                             <button
                               type="button"
@@ -419,6 +398,7 @@ export default function Layout() {
         )}
         <main style={{ flex: 1, padding: "20px 24px", overflow: "auto" }}><Outlet /></main>
       </div>
+      <DeepLinkHandler />
       <Modals />
       {toast && (
         <div

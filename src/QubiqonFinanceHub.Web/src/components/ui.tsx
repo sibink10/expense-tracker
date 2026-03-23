@@ -232,8 +232,13 @@ const _b: Record<string, [string, string]> = {};
 ].forEach(([k, bg, fg]) => { _b[k as string] = [bg as string, fg as string]; });
 const BADGE_MAP = _b;
 
-export const Badge: React.FC<{ s: string }> = ({ s }) => {
+export const Badge: React.FC<{ s: string; overdueDays?: number | null }> = ({ s, overdueDays }) => {
   const [bg, fg] = BADGE_MAP[s] || ["#eee", "#666"];
+  const showOverdueDays =
+    (s === INV_S.OVERDUE || s === BILL_S.OVERDUE) && overdueDays != null && overdueDays >= 1;
+  const label = showOverdueDays
+    ? `${s} · ${overdueDays} ${overdueDays === 1 ? "day" : "days"}`
+    : s;
   return (
     <span
       style={{
@@ -246,7 +251,7 @@ export const Badge: React.FC<{ s: string }> = ({ s }) => {
         whiteSpace: "nowrap",
       }}
     >
-      {s}
+      {label}
     </span>
   );
 };
@@ -295,6 +300,18 @@ export const Btn: React.FC<{
     </button>
   );
 };
+
+/** Secondary action for list pages — place on the right; calls the page’s GET again via `onRefresh`. */
+export const ListRefreshButton: React.FC<{
+  onRefresh: () => void;
+  loading?: boolean;
+}> = ({ onRefresh, loading }) => (
+  <span title="Refresh list">
+    <Btn sm v="secondary" onClick={onRefresh} disabled={loading}>
+      {loading ? "…" : "↻ Refresh"}
+    </Btn>
+  </span>
+);
 
 export const Av: React.FC<{ n?: string; sz?: number; v?: boolean }> = ({ n, sz = 32, v }) => {
   const i = n?.split(" ").map((x) => x[0]).join("").slice(0, 2) || "?";
@@ -703,19 +720,32 @@ interface TableRow {
   _cells: { v: ReactNode; sx?: CSSProperties }[];
 }
 
+/** Column header: plain string, or `{ label, sortKey }` for API sort (`SortBy`). */
+export type TblCol = string | false | { label: string; sortKey?: string };
+
 export const Tbl: React.FC<{
-  cols: (string | boolean)[];
+  cols: TblCol[];
   rows: TableRow[];
   onRow?: (row: TableRow) => void;
-}> = ({ cols, rows, onRow }) => (
+  /** Active sort field (PascalCase, e.g. `CreatedAt`, `Total`). */
+  sortBy?: string;
+  sortDesc?: boolean;
+  onSortChange?: (sortKey: string) => void;
+}> = ({ cols, rows, onRow, sortBy, sortDesc, onSortChange }) => (
   <div style={{ overflowX: "auto" }}>
     <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: "12px" }}>
       <thead>
         <tr>
-          {cols.filter(Boolean).map((h) => (
-            <th
-              key={String(h)}
-              style={{
+          {cols
+            .filter((c): c is Exclude<TblCol, false> => c !== false)
+            .map((c, idx) => {
+              const label = typeof c === "string" ? c : c.label;
+              const sk = typeof c === "string" ? undefined : c.sortKey;
+              const active =
+                sk &&
+                sortBy &&
+                sk.replace(/\s/g, "").toLowerCase() === sortBy.replace(/\s/g, "").toLowerCase();
+              const thStyle: CSSProperties = {
                 padding: "8px 12px",
                 textAlign: "left",
                 fontSize: "10px",
@@ -725,11 +755,48 @@ export const Tbl: React.FC<{
                 letterSpacing: "0.06em",
                 borderBottom: `2px solid ${C.border}`,
                 whiteSpace: "nowrap",
-              }}
-            >
-              {h}
-            </th>
-          ))}
+              };
+              if (sk && onSortChange) {
+                return (
+                  <th key={`${label}-${idx}`} style={thStyle}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSortChange(sk);
+                      }}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        margin: 0,
+                        cursor: "pointer",
+                        font: "inherit",
+                        color: active ? C.primary : C.muted,
+                        fontWeight: 700,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        textTransform: "inherit",
+                        letterSpacing: "inherit",
+                      }}
+                    >
+                      {label}
+                      {active ? (
+                        <span style={{ fontSize: "9px", opacity: 0.85 }}>{sortDesc ? "↓" : "↑"}</span>
+                      ) : (
+                        <span style={{ fontSize: "9px", opacity: 0.35 }}>↕</span>
+                      )}
+                    </button>
+                  </th>
+                );
+              }
+              return (
+                <th key={`${label}-${idx}`} style={thStyle}>
+                  {label}
+                </th>
+              );
+            })}
         </tr>
       </thead>
       <tbody>
@@ -753,14 +820,101 @@ export const Tbl: React.FC<{
   </div>
 );
 
+/** Sortable table header for custom `<table>` layouts (vendors, clients). */
+export const SortTh: React.FC<{
+  children: ReactNode;
+  sortKey: string;
+  sortBy?: string;
+  sortDesc?: boolean;
+  onSortChange?: (sortKey: string) => void;
+}> = ({ children, sortKey, sortBy, sortDesc, onSortChange }) => {
+  const active =
+    sortBy &&
+    sortKey.replace(/\s/g, "").toLowerCase() === sortBy.replace(/\s/g, "").toLowerCase();
+  if (!onSortChange) {
+    return (
+      <th
+        style={{
+          padding: "12px 14px",
+          textAlign: "left",
+          fontSize: "11px",
+          fontWeight: 600,
+          color: C.muted,
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+          borderBottom: `2px solid ${C.border}`,
+        }}
+      >
+        {children}
+      </th>
+    );
+  }
+  return (
+    <th
+      style={{
+        padding: "12px 14px",
+        textAlign: "left",
+        fontSize: "11px",
+        fontWeight: 600,
+        color: C.muted,
+        textTransform: "uppercase",
+        letterSpacing: "0.05em",
+        borderBottom: `2px solid ${C.border}`,
+      }}
+    >
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onSortChange(sortKey);
+        }}
+        style={{
+          background: "none",
+          border: "none",
+          padding: 0,
+          margin: 0,
+          cursor: "pointer",
+          font: "inherit",
+          color: active ? C.primary : C.muted,
+          fontWeight: 700,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "4px",
+          textTransform: "inherit",
+          letterSpacing: "inherit",
+        }}
+      >
+        {children}
+        {active ? (
+          <span style={{ fontSize: "9px", opacity: 0.85 }}>{sortDesc ? "↓" : "↑"}</span>
+        ) : (
+          <span style={{ fontSize: "9px", opacity: 0.35 }}>↕</span>
+        )}
+      </button>
+    </th>
+  );
+};
+
 export const Filter: React.FC<{
   search: string;
   onSearch: (v: string) => void;
   status: string;
   onStatus: (s: string) => void;
   opts: string[];
-}> = ({ search, onSearch, status, onStatus, opts }) => (
-  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center", marginBottom: "14px" }}>
+  /** Renders on the right end of the filter row (e.g. refresh), inside the card with tabs */
+  trailing?: ReactNode;
+}> = ({ search, onSearch, status, onStatus, opts, trailing }) => (
+  <div
+    style={{
+      display: "flex",
+      gap: "6px",
+      flexWrap: "wrap",
+      alignItems: "center",
+      marginBottom: "14px",
+      justifyContent: "space-between",
+    }}
+  >
+    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center", flex: "1 1 auto", minWidth: 0 }}>
     <div style={{ position: "relative", flex: "1", minWidth: "160px", maxWidth: "260px" }}>
       <input
         value={search}
@@ -812,6 +966,8 @@ export const Filter: React.FC<{
         </button>
       ))}
     </div>
+    </div>
+    {trailing ? <div style={{ flexShrink: 0, alignSelf: "center" }}>{trailing}</div> : null}
   </div>
 );
 

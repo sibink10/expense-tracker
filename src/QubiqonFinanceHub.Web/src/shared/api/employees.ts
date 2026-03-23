@@ -50,6 +50,8 @@ export interface GetEmployeesParams {
   page?: number;
   pageSize?: number;
   search?: string;
+  sortBy?: string;
+  desc?: boolean;
 }
 
 export async function getEmployeesRaw(params: GetEmployeesParams = {}): Promise<ApiEmployeesResponse> {
@@ -57,6 +59,8 @@ export async function getEmployeesRaw(params: GetEmployeesParams = {}): Promise<
     Page: params.page,
     PageSize: params.pageSize,
     Search: params.search,
+    SortBy: params.sortBy,
+    Desc: params.desc,
   };
 
   const { data } = await apiClient.get<ApiEmployee[] | ApiEmployeesResponse>("/employees", {

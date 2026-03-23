@@ -49,7 +49,7 @@ public class EmailService : IEmailService
         try
         {
             NormalizeActionDateToIst(variables);
-            InjectViewLink(variables);
+            await InjectViewLinkAsync(variables);
             var template = await ResolveTemplateAsync(templateKey, variables);
 
             // 3. Get user's incoming bearer token
@@ -108,6 +108,8 @@ public class EmailService : IEmailService
             Constants.EmailTemplateKeys.ExpenseSubmitted,
             Constants.EmailTemplateKeys.ExpenseApproved,
             "expense_awaiting_bill",
+            Constants.EmailTemplateKeys.ExpenseSubmitterUploadBills,
+            Constants.EmailTemplateKeys.ExpenseBillUploadedFinance,
             Constants.EmailTemplateKeys.ExpenseRejected,
             "payment_confirmation",
             Constants.EmailTemplateKeys.AdvanceSubmitted,
@@ -185,6 +187,40 @@ public class EmailService : IEmailService
                 GetVariable(variables, "approver_name"),
                 GetVariableOrEmpty(variables, "approver_comments"),
                 "Approver Comments",
+                variables,
+                includePaymentReference: false),
+
+            var key when key == Constants.EmailTemplateKeys.ExpenseSubmitterUploadBills => BuildExpenseEmailContent(
+                org,
+                logoMarkup,
+                inlineLogo,
+                "Submit Bills",
+                "#f59e0b",
+                BuildStatusSubject("Submit bills", "Expense", GetVariable(variables, "expense_id")),
+                "Please submit bills for payment",
+                $"Your expense request <strong>{Encode(GetVariable(variables, "expense_id"))}</strong> has been approved by <strong>{Encode(GetVariable(variables, "approver_name"))}</strong>. No bills were attached at approval.",
+                "Please upload your supporting bill documents in the expense portal so finance can process payment.",
+                "Approved By",
+                GetVariable(variables, "approver_name"),
+                GetVariableOrEmpty(variables, "approver_comments"),
+                "Approver Comments",
+                variables,
+                includePaymentReference: false),
+
+            var key when key == Constants.EmailTemplateKeys.ExpenseBillUploadedFinance => BuildExpenseEmailContent(
+                org,
+                logoMarkup,
+                inlineLogo,
+                "Bill received",
+                "#22c55e",
+                BuildStatusSubject("Bill received", "Expense", GetVariable(variables, "expense_id")),
+                "Expense bill received — approved for payment",
+                $"Supporting bill documents have been uploaded for expense <strong>{Encode(GetVariable(variables, "expense_id"))}</strong>. The expense request is approved and bills are attached — ready for payment.",
+                "Please review the expense in Finance Hub and process payment when ready.",
+                "Uploaded By",
+                GetVariable(variables, "uploaded_by_name"),
+                GetVariableOrEmpty(variables, "upload_notes"),
+                "Notes",
                 variables,
                 includePaymentReference: false),
 
@@ -347,9 +383,9 @@ public class EmailService : IEmailService
                 inlineLogo,
                 "Paid",
                 "#2563eb",
-                BuildStatusSubject("Paid", "Vendor Bill", GetVariable(variables, "bill_id")),
+                $"Notification of payment - {GetVariable(variables, "bill_id")}",
                 "Vendor Bill Paid",
-                $"Payment has been processed for vendor bill <strong>{Encode(GetVariable(variables, "bill_id"))}</strong>.",
+                $"Hi {Encode(GetVariable(variables, "vendor_name"))},<br/><br/>Payment has been processed for vendor bill <strong>{Encode(GetVariable(variables, "bill_id"))}</strong>.",
                 "Please find the payment reference and processing details below.",
                 "Processed By",
                 GetVariable(variables, "actor_name"),
@@ -559,9 +595,56 @@ public class EmailService : IEmailService
             .ToString("dd MMM yyyy hh:mm tt 'IST'");
     }
 
-    private void InjectViewLink(Dictionary<string, string> variables)
+    /// <summary>
+    /// Resolves the public app URL for email links: organization setting <c>frontendUrl</c> first, then <c>FrontendUrl</c> in configuration.
+    /// </summary>
+    private async Task<string> GetEmailAppBaseUrlAsync()
     {
-        var baseUrl = _config["FrontendUrl"]?.TrimEnd('/') ?? "https://finance.qubiqon.io";
+        try
+        {
+            var orgId = await _tenant.GetCurrentOrganizationId();
+            var fromSettings = await _db.OrganizationSettings
+                .AsNoTracking()
+                .Where(s => s.OrganizationId == orgId && s.Key == Constants.OrganizationSettingKeys.FrontendUrl)
+                .Select(s => s.Value)
+                .FirstOrDefaultAsync();
+            if (!string.IsNullOrWhiteSpace(fromSettings))
+                return fromSettings.Trim().TrimEnd('/');
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Could not read {Key} from organization settings; using config fallback.", Constants.OrganizationSettingKeys.FrontendUrl);
+        }
+
+        return _config["FrontendUrl"]?.Trim().TrimEnd('/') ?? "https://finance.qubiqon.io";
+    }
+
+    private async Task InjectViewLinkAsync(Dictionary<string, string> variables)
+    {
+        var baseUrl = await GetEmailAppBaseUrlAsync();
+
+        // Prefer explicit entity id + type for deep links (?id=<guid>)
+        if (variables.TryGetValue("entity_api_id", out var eid) && !string.IsNullOrWhiteSpace(eid)
+            && variables.TryGetValue("entity_type", out var etype) && !string.IsNullOrWhiteSpace(etype))
+        {
+            var path = etype.Trim().ToLowerInvariant() switch
+            {
+                "expense" => "/expenses",
+                "advance" => "/advances",
+                "bill" => "/bills",
+                "invoice" => "/invoices",
+                _ => null
+            };
+            if (path != null)
+            {
+                var q = $"?id={Uri.EscapeDataString(eid.Trim())}";
+                if (variables.TryGetValue("link_type", out var linkType) && !string.IsNullOrWhiteSpace(linkType))
+                    q += $"&type={Uri.EscapeDataString(linkType.Trim())}";
+                variables["view_link"] = $"{baseUrl}{path}{q}";
+                return;
+            }
+        }
+
         if (variables.ContainsKey("expense_id"))
             variables["view_link"] = $"{baseUrl}/expenses";
         else if (variables.ContainsKey("advance_id"))
@@ -895,7 +978,9 @@ public class EmailService : IEmailService
         var discountPercentRow = BuildOptionalTableRow("Discount %", GetVariableOrEmpty(variables, "discount_percent"));
         var roundingRow = BuildOptionalTableRow("Rounding", GetVariableOrEmpty(variables, "rounding"));
         var lineItemsHtml = GetVariableOrEmpty(variables, "line_items_html");
-        var viewLinkSection = BuildViewLinkSection(variables);
+        var gstBreakdownRowsHtml = GetVariableOrEmpty(variables, "gst_breakdown_rows_html");
+        var tdsRowHtml = GetVariableOrEmpty(variables, "tds_row_html");
+        var viewLinkSection = string.Empty;
         var organizationDetails = BuildOrganizationDetails(org);
 
         var htmlBody = $$"""
@@ -945,11 +1030,21 @@ public class EmailService : IEmailService
                                     <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "description"))}}</td>
                                 </tr>
                                 <tr>
-                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Amount</td>
-                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "amount"))}}</td>
+                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Sub total (items)</td>
+                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariableOrEmpty(variables, "sub_total"))}}</td>
+                                </tr>
+                                {{gstBreakdownRowsHtml}}
+                                <tr>
+                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Total GST</td>
+                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariableOrEmpty(variables, "total_line_gst"))}}</td>
                                 </tr>
                                 {{discountPercentRow}}
                                 {{roundingRow}}
+                                <tr>
+                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Total (before TDS)</td>
+                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "amount"))}}</td>
+                                </tr>
+                                {{tdsRowHtml}}
                                 <tr>
                                     <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Total Payable</td>
                                     <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "total_payable"))}}</td>
@@ -1050,6 +1145,7 @@ public class EmailService : IEmailService
             : string.Empty;
 
         var viewLinkSection = BuildViewLinkSection(variables);
+        var gstLineBreakdownHtml = GetVariableOrEmpty(variables, "gst_line_breakdown_html");
 
         var htmlBody = $$"""
             <!DOCTYPE html>
@@ -1166,7 +1262,8 @@ public class EmailService : IEmailService
                             </td>
                             <td style="padding:16px 18px;vertical-align:top;">
                                 <div style="display:flex;justify-content:space-between;font-size:12px;color:#111827;margin-bottom:8px;"><span>Sub Total</span><strong>{{Encode(GetVariable(variables, "sub_total"))}}</strong></div>
-                                <div style="display:flex;justify-content:space-between;font-size:12px;color:#111827;margin-bottom:8px;"><span>GST</span><strong>{{Encode(GetVariable(variables, "total_gst"))}}</strong></div>
+                                {{gstLineBreakdownHtml}}
+                                <div style="display:flex;justify-content:space-between;font-size:12px;color:#111827;margin-bottom:8px;"><span>GST (total)</span><strong>{{Encode(GetVariable(variables, "total_gst"))}}</strong></div>
                                 <div style="display:flex;justify-content:space-between;font-size:15px;color:#111827;font-weight:700;margin-bottom:8px;"><span>Total</span><strong>{{Encode(GetVariable(variables, "amount"))}}</strong></div>
                                 <div style="display:flex;justify-content:space-between;font-size:12px;color:#dc2626;margin-bottom:8px;"><span>Payment Made</span><strong>({{Encode(GetVariable(variables, "payment_made"))}})</strong></div>
                                 <div style="display:flex;justify-content:space-between;font-size:15px;color:#111827;font-weight:700;margin-bottom:8px;"><span>Balance Due</span><strong>{{Encode(GetVariable(variables, "balance_due"))}}</strong></div>
@@ -1179,7 +1276,7 @@ public class EmailService : IEmailService
                             </td>
                         </tr>
                     </table>
-                    {viewLinkSection}
+                    {{viewLinkSection}}
                 </div>
             </body>
             </html>

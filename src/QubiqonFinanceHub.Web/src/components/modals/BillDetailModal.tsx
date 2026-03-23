@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { C } from "../../shared/theme";
 import { BILL_S } from "../../shared/constants";
-import { fmtCur, downloadFromSasUrl, buildDownloadFilename } from "../../shared/utils";
+import { fmtCur, fmtQty, formatTdsDetailParen, downloadFromSasUrl, buildDownloadFilename, daysOverdueFromDueYmd } from "../../shared/utils";
 import { Av, Btn, Badge, Mdl, CLog, MODAL_Z_INDEX } from "../ui";
 import { EditIcon } from "../icons";
 import { useAppContext } from "../../context/AppContext";
@@ -113,7 +113,8 @@ export default function BillDetailModal({ bill: b }: Props) {
     }
   };
 
-  const canEdit = b.status === BILL_S.SUBMITTED && (is("admin") || is("finance") || user?.name === b.byName);
+  const canEdit =
+    b.status !== BILL_S.PAID && (is("admin") || is("finance") || user?.name === b.byName);
 
   // Derive summary values from line items (matching create form)
   const hasLineItems = b.lineItems && b.lineItems.length > 0;
@@ -151,7 +152,10 @@ export default function BillDetailModal({ bill: b }: Props) {
           </div>
         )}
         <div style={{ marginLeft: "auto" }}>
-          <Badge s={b.status} />
+          <Badge
+            s={b.status}
+            overdueDays={b.status === BILL_S.OVERDUE ? daysOverdueFromDueYmd(b.due) : undefined}
+          />
         </div>
       </div>
       {(b.bDate || b.due || b.terms) && (
@@ -173,6 +177,41 @@ export default function BillDetailModal({ bill: b }: Props) {
           )}
         </div>
       )}
+      {b.lineItems && b.lineItems.length > 0 && (
+        <div style={{ marginBottom: "12px", overflowX: "auto" }}>
+          <div style={{ fontSize: "10px", color: C.muted, marginBottom: "4px", fontWeight: 600 }}>Items</div>
+          <table style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse", fontSize: "11px", border: `1px solid ${C.border}`, borderRadius: "6px", overflow: "hidden" }}>
+            <thead>
+              <tr style={{ background: C.surface }}>
+                <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, fontSize: "10px", color: C.muted }}>#</th>
+                <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, fontSize: "10px", color: C.muted }}>Description</th>
+                <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, fontSize: "10px", color: C.muted }}>Account</th>
+                <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, fontSize: "10px", color: C.muted }}>Qty</th>
+                <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, fontSize: "10px", color: C.muted }}>Rate</th>
+                <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, fontSize: "10px", color: C.muted }}>Tax</th>
+                <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, fontSize: "10px", color: C.muted }}>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {b.lineItems.map((li) => (
+                <tr key={li.lineNumber} style={{ borderTop: `1px solid ${C.border}` }}>
+                  <td style={{ padding: "8px 10px" }}>{li.lineNumber}</td>
+                  <td style={{ padding: "8px 10px" }}>{li.description}</td>
+                  <td style={{ padding: "8px 10px", color: C.muted }}>{li.account || "—"}</td>
+                  <td style={{ padding: "8px 10px", textAlign: "center" }}>{fmtQty(li.quantity)}</td>
+                  <td style={{ padding: "8px 10px", textAlign: "right" }}>{fmtCur(li.rate)}</td>
+                  <td style={{ padding: "8px 10px", color: C.muted }}>{li.gstName ? `${li.gstName}${li.gstRate != null ? ` [${li.gstRate}%]` : ""}` : "—"}</td>
+                  <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600 }}>{fmtCur(li.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div style={{ marginBottom: "12px" }}>
+        <div style={{ fontSize: "10px", color: C.muted, marginBottom: "4px" }}>Description / Notes</div>
+        <div style={{ padding: "8px 12px", background: C.surface, borderRadius: "6px", fontSize: "11px" }}>{b.desc?.trim() ? b.desc : "—"}</div>
+      </div>
       <div style={{ marginBottom: "12px" }}>
         <div style={{ fontSize: "10px", color: C.muted, marginBottom: "4px", fontWeight: 600 }}>Summary</div>
         <div
@@ -227,7 +266,7 @@ export default function BillDetailModal({ bill: b }: Props) {
             {(b.tdsAmt > 0 || b.tds) && (
               <>
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", marginBottom: "4px", color: b.tdsAmt > 0 ? C.danger : C.muted }}>
-                  <span>TDS {tx ? `(${tx.section}${tx.name ? ` — ${tx.name}` : ""})` : ""}</span>
+                  <span>TDS {tx ? formatTdsDetailParen(tx.section, tx.name) : ""}</span>
                   <span style={{ fontWeight: 600 }}>{b.tdsAmt > 0 ? `-${fmtCur(b.tdsAmt)}` : "—"}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, color: C.vendor }}>
@@ -248,7 +287,7 @@ export default function BillDetailModal({ bill: b }: Props) {
             )}
             {(b.tdsAmt > 0 || b.tds) && (
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px", color: b.tdsAmt > 0 ? C.danger : C.muted }}>
-                <span>TDS {tx ? `(${tx.section}${tx.name ? ` — ${tx.name}` : ""})` : ""}</span>
+                <span>TDS {tx ? formatTdsDetailParen(tx.section, tx.name) : ""}</span>
                 <span style={{ fontWeight: 600 }}>{b.tdsAmt > 0 ? `-${fmtCur(b.tdsAmt)}` : "—"}</span>
               </div>
             )}
@@ -256,41 +295,6 @@ export default function BillDetailModal({ bill: b }: Props) {
           </>
         )}
         </div>
-      </div>
-      {b.lineItems && b.lineItems.length > 0 && (
-        <div style={{ marginBottom: "12px", overflowX: "auto" }}>
-          <div style={{ fontSize: "10px", color: C.muted, marginBottom: "4px", fontWeight: 600 }}>Items</div>
-          <table style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse", fontSize: "11px", border: `1px solid ${C.border}`, borderRadius: "6px", overflow: "hidden" }}>
-            <thead>
-              <tr style={{ background: C.surface }}>
-                <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, fontSize: "10px", color: C.muted }}>#</th>
-                <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, fontSize: "10px", color: C.muted }}>Description</th>
-                <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, fontSize: "10px", color: C.muted }}>Account</th>
-                <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, fontSize: "10px", color: C.muted }}>Qty</th>
-                <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, fontSize: "10px", color: C.muted }}>Rate</th>
-                <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, fontSize: "10px", color: C.muted }}>Tax</th>
-                <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, fontSize: "10px", color: C.muted }}>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {b.lineItems.map((li) => (
-                <tr key={li.lineNumber} style={{ borderTop: `1px solid ${C.border}` }}>
-                  <td style={{ padding: "8px 10px" }}>{li.lineNumber}</td>
-                  <td style={{ padding: "8px 10px" }}>{li.description}</td>
-                  <td style={{ padding: "8px 10px", color: C.muted }}>{li.account || "—"}</td>
-                  <td style={{ padding: "8px 10px", textAlign: "center" }}>{li.quantity}</td>
-                  <td style={{ padding: "8px 10px", textAlign: "right" }}>{fmtCur(li.rate)}</td>
-                  <td style={{ padding: "8px 10px", color: C.muted }}>{li.gstName ? `${li.gstName}${li.gstRate != null ? ` [${li.gstRate}%]` : ""}` : "—"}</td>
-                  <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600 }}>{fmtCur(li.amount)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      <div style={{ marginBottom: "12px" }}>
-        <div style={{ fontSize: "10px", color: C.muted, marginBottom: "4px" }}>Description / Notes</div>
-        <div style={{ padding: "8px 12px", background: C.surface, borderRadius: "6px", fontSize: "11px" }}>{b.desc}</div>
       </div>
       {hasAttachment && (
         <div style={{ marginBottom: "12px" }}>

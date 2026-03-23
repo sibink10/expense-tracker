@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
 import { Inp, Btn, Alert } from "../components/ui";
+import PhoneInputField, { isValidPhoneNumber } from "../components/PhoneInputField";
 import { createVendor } from "../shared/api/vendor";
 import { getCategories, type Category } from "../shared/api";
 import type { Vendor } from "../types";
@@ -17,7 +18,7 @@ export default function AddVendorPage() {
   const [name, setName] = useState("");
   const [gstin, setGstin] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState<string | undefined>(undefined);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [category, setCategory] = useState("");
   const [address, setAddress] = useState("");
@@ -30,11 +31,6 @@ export default function AddVendorPage() {
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
-
-  const isPhoneValid = (value: string) => {
-    const digitsOnly = value.replace(/\D/g, "");
-    return digitsOnly.length === 10;
-  };
 
   useEffect(() => {
     const onResize = () => setNarrow(window.innerWidth < GRID_BREAKPOINT);
@@ -56,12 +52,12 @@ export default function AddVendorPage() {
       return;
     }
     if (!name.trim() || !email.trim() || !address.trim()) return;
-    if (!phone.trim()) {
+    if (!phone?.trim()) {
       setPhoneError("Phone number is required");
       return;
     }
-    if (!isPhoneValid(phone)) {
-      setPhoneError("Enter a valid 10-digit phone number");
+    if (!isValidPhoneNumber(phone.trim())) {
+      setPhoneError("Enter a valid phone number for the selected country");
       return;
     }
     if (!accountNumber.trim() || !accountNumberRe.trim()) {
@@ -84,7 +80,7 @@ export default function AddVendorPage() {
         name: name.trim(),
         gstin: gstin.trim(),
         email: email.trim(),
-        phone: phone.trim(),
+        phone: phone!.trim(),
         category: category.trim(),
         address: address.trim(),
         contactPerson: contactPerson.trim() || undefined,
@@ -141,19 +137,23 @@ export default function AddVendorPage() {
           <Inp label="Contact person" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} ph="Optional" style={cellStyle} />
           <Inp label="GSTIN" value={gstin} onChange={(e) => setGstin(e.target.value)} ph="GST number" style={cellStyle} />
           <div style={cellStyle}>
-            <Inp
+            <PhoneInputField
               label="Phone"
               value={phone}
-              onChange={(e) => {
-                setPhone(e.target.value);
+              onChange={(v) => {
+                setPhone(v);
                 setPhoneError(null);
               }}
-              onBlur={() => phone.trim() && !isPhoneValid(phone) && setPhoneError("Enter a valid 10-digit phone number")}
-              req
-              ph="Contact number"
+              onBlur={() =>
+                phone?.trim() &&
+                !isValidPhoneNumber(phone.trim()) &&
+                setPhoneError("Enter a valid phone number for the selected country")
+              }
+              required
+              error={phoneError}
+              placeholder="Contact number"
               style={{ marginBottom: 0 }}
             />
-            {phoneError && <div style={{ fontSize: "11px", color: C.danger, marginTop: "4px" }}>{phoneError}</div>}
           </div>
           <Inp
             label="Category"
@@ -195,7 +195,7 @@ export default function AddVendorPage() {
             disabled={
               !name.trim() ||
               !email.trim() ||
-              !phone.trim() ||
+              !phone?.trim() ||
               !address.trim() ||
               !bankName.trim() ||
               !ifscCode.trim() ||
@@ -203,7 +203,7 @@ export default function AddVendorPage() {
               !accountNumberRe.trim() ||
               !isEmailValid(email) ||
               !!phoneError ||
-              (phone.trim() && !isPhoneValid(phone)) ||
+              (!!phone?.trim() && !isValidPhoneNumber(phone.trim())) ||
               loading
             }
           >

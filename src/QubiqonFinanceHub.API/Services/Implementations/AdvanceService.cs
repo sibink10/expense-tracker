@@ -4,6 +4,7 @@ using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Constants;
 using QubiqonFinanceHub.API.Models.Entities;
 using QubiqonFinanceHub.API.Models.Enums;
+using QubiqonFinanceHub.API.Services.Helpers;
 using QubiqonFinanceHub.API.Services.Interfaces;
 
 namespace QubiqonFinanceHub.API.Services.Implementations;
@@ -76,6 +77,9 @@ public class AdvanceService : IAdvanceService
                 Constants.EmailTemplateKeys.AdvanceSubmitted,
                 new Dictionary<string, string>
                 {
+                    ["link_type"] = "approve",
+                    ["entity_type"] = "advance",
+                    ["entity_api_id"] = advance.Id.ToString(),
                     ["employee_name"] = emp.FullName,
                     ["advance_id"] = advance.AdvanceCode,
                     ["purpose"] = advance.Purpose,
@@ -124,7 +128,7 @@ public class AdvanceService : IAdvanceService
         }
 
         var total = await q.CountAsync();
-        q = f.Desc ? q.OrderByDescending(x => x.CreatedAt) : q.OrderBy(x => x.CreatedAt);
+        q = q.ApplyAdvanceSorting(f);
         var items = await q.Skip((f.Page - 1) * f.PageSize).Take(f.PageSize).ToListAsync();
 
         return new PaginatedResult<AdvanceDto>(items.Select(MapToDto).ToList(), total, f.Page, f.PageSize);
@@ -140,8 +144,11 @@ public class AdvanceService : IAdvanceService
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Advance not found");
 
-        if (advance.Status != AdvanceStatus.Pending)
-            throw new InvalidOperationException($"Cannot approve advance in '{advance.Status}' status.");
+        if (advance.Status == AdvanceStatus.Approved ||
+            advance.Status == AdvanceStatus.PartiallyDisbursed ||
+            advance.Status == AdvanceStatus.Disbursed ||
+            advance.Status == AdvanceStatus.Settled)
+            throw new InvalidOperationException("Advance is already approved.");
 
         // 🔹 Get settings
         var settings = await _db.OrganizationSettings
@@ -230,6 +237,9 @@ public class AdvanceService : IAdvanceService
                 Constants.EmailTemplateKeys.AdvanceApproved,
                 new Dictionary<string, string>
                 {
+                    ["link_type"] = "disburse",
+                    ["entity_type"] = "advance",
+                    ["entity_api_id"] = advance.Id.ToString(),
                     ["employee_name"] = advance.Employee.FullName,
                     ["advance_id"] = advance.AdvanceCode,
                     ["purpose"] = advance.Purpose,
@@ -260,30 +270,13 @@ public class AdvanceService : IAdvanceService
         if (advance.Status == AdvanceStatus.Disbursed || advance.Status == AdvanceStatus.Settled)
             throw new InvalidOperationException($"Cannot reject advance in '{advance.Status}' status.");
 
+        // Restore pool: Approved → full advance was reserved on approve. PartiallyDisbursed → restore unpaid remainder only.
         if (advance.Status == AdvanceStatus.Approved)
+            await AddDeltaToBalanceCapAsync(orgId, advance.Amount);
+        else if (advance.Status == AdvanceStatus.PartiallyDisbursed)
         {
-            var balanceSetting = await _db.OrganizationSettings
-                .FirstOrDefaultAsync(s => s.OrganizationId == orgId && s.Key == "balanceCap");
-
-            decimal currentBalance = balanceSetting != null ? decimal.Parse(balanceSetting.Value) : 0;
-            currentBalance += advance.Amount;
-
-            if (balanceSetting != null)
-            {
-                balanceSetting.Value = currentBalance.ToString();
-                balanceSetting.UpdatedAt = DateTime.UtcNow;
-            }
-            else
-            {
-                _db.OrganizationSettings.Add(new OrganizationSetting
-                {
-                    Id = Guid.NewGuid(),
-                    OrganizationId = orgId,
-                    Key = "balanceCap",
-                    Value = currentBalance.ToString(),
-                    UpdatedAt = DateTime.UtcNow
-                });
-            }
+            var remainingBalance = advance.Amount - advance.PaidAmount;
+            await AddDeltaToBalanceCapAsync(orgId, remainingBalance);
         }
 
         advance.Status = AdvanceStatus.Rejected;
@@ -303,6 +296,9 @@ public class AdvanceService : IAdvanceService
             Constants.EmailTemplateKeys.AdvanceRejected,
             new Dictionary<string, string>
             {
+                ["link_type"] = "detail",
+                ["entity_type"] = "advance",
+                ["entity_api_id"] = advance.Id.ToString(),
                 ["employee_name"] = advance.Employee.FullName,
                 ["advance_id"] = advance.AdvanceCode,
                 ["purpose"] = advance.Purpose,
@@ -317,6 +313,35 @@ public class AdvanceService : IAdvanceService
         return (await GetByIdAsync(id))!;
     }
 
+    public async Task<AdvanceDisburseValidationDto> ValidateDisburseAsync(Guid id, decimal paidAmount)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var advance = await _db.AdvancePayments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Advance not found");
+
+        if (advance.Status != AdvanceStatus.Approved && advance.Status != AdvanceStatus.PartiallyDisbursed)
+            throw new InvalidOperationException("Advance must be approved before disbursement.");
+
+        var remainingOnAdvance = advance.Amount - advance.PaidAmount;
+        var balanceSetting = await _db.OrganizationSettings
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.OrganizationId == orgId && s.Key == "balanceCap");
+        var balanceCap = balanceSetting != null ? decimal.Parse(balanceSetting.Value) : 0;
+
+        if (paidAmount > remainingOnAdvance)
+            return new AdvanceDisburseValidationDto(balanceCap, remainingOnAdvance, paidAmount, false,
+                $"Amount cannot exceed remaining advance (₹{remainingOnAdvance:N2}).");
+
+        var needsPoolCheck = advance.Status == AdvanceStatus.PartiallyDisbursed;
+        if (needsPoolCheck && paidAmount > balanceCap)
+            return new AdvanceDisburseValidationDto(balanceCap, remainingOnAdvance, paidAmount, false,
+                $"Insufficient balance cap (₹{balanceCap:N2} available).");
+
+        return new AdvanceDisburseValidationDto(balanceCap, remainingOnAdvance, paidAmount, true, null);
+    }
+
     public async Task<AdvanceDto> DisburseAsync(Guid id, ProcessPaymentRequest dto)
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
@@ -329,14 +354,52 @@ public class AdvanceService : IAdvanceService
         if (advance.Status != AdvanceStatus.Approved && advance.Status != AdvanceStatus.PartiallyDisbursed)
             throw new InvalidOperationException("Advance must be approved before disbursement.");
 
-        var balanceDue = advance.Amount - advance.PaidAmount;
+        var balanceSetting = await _db.OrganizationSettings
+            .FirstOrDefaultAsync(s => s.OrganizationId == orgId && s.Key == "balanceCap");
+
+        var currentBalanceCap = balanceSetting != null ? decimal.Parse(balanceSetting.Value) : 0;
+
+        var remainingBefore = advance.Amount - advance.PaidAmount;
         var paidAmount = dto.PaidAmount > 0 ? dto.PaidAmount : advance.Amount;
-        if (paidAmount > balanceDue)
-            throw new InvalidOperationException($"Paid amount (₹{paidAmount:N2}) cannot exceed the remaining balance (₹{balanceDue:N2}).");
+        if (paidAmount > remainingBefore)
+            throw new InvalidOperationException($"Paid amount (₹{paidAmount:N2}) cannot exceed the remaining balance (₹{remainingBefore:N2}).");
+
+        if (advance.Status == AdvanceStatus.PartiallyDisbursed && paidAmount > currentBalanceCap)
+            throw new InvalidOperationException($"Insufficient balance cap (₹{currentBalanceCap:N2} available).");
+
+        var paidBefore = advance.PaidAmount;
         advance.PaidAmount += paidAmount;
         advance.PaymentReference = dto.PaymentReference;
         advance.DisbursedAt = DateTime.UtcNow;
         advance.Status = advance.PaidAmount >= advance.Amount ? AdvanceStatus.Disbursed : AdvanceStatus.PartiallyDisbursed;
+        var balanceDueAfter = Math.Max(0, advance.Amount - advance.PaidAmount);
+
+        // Pool: remaining on this advance returns to cap: current + advance.Amount - cumulative paid.
+        var newBalanceCap = currentBalanceCap + advance.Amount - advance.PaidAmount;
+
+        // Follow-up disbursements: subtract this payout from the pool (cash going out after partial).
+        if (paidBefore > 0)
+            newBalanceCap -= paidAmount;
+
+        if (newBalanceCap < 0)
+            newBalanceCap = 0;
+
+        if (balanceSetting != null)
+        {
+            balanceSetting.Value = newBalanceCap.ToString();
+            balanceSetting.UpdatedAt = DateTime.UtcNow;
+        }
+        else
+        {
+            _db.OrganizationSettings.Add(new OrganizationSetting
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = orgId,
+                Key = "balanceCap",
+                Value = newBalanceCap.ToString(),
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
 
         _db.ActivityComments.Add(new ActivityComment
         {
@@ -352,12 +415,15 @@ public class AdvanceService : IAdvanceService
             Constants.EmailTemplateKeys.AdvanceDisbursed,
             new Dictionary<string, string>
             {
+                ["link_type"] = "detail",
+                ["entity_type"] = "advance",
+                ["entity_api_id"] = advance.Id.ToString(),
                 ["employee_name"] = advance.Employee.FullName,
                 ["advance_id"] = advance.AdvanceCode,
                 ["purpose"] = advance.Purpose,
                 ["amount"] = $"₹{advance.Amount:N2}",
                 ["paid_amount"] = $"₹{advance.PaidAmount:N2}",
-                ["balance_due"] = balanceDue > 0 ? $"₹{balanceDue:N2}" : "₹0.00",
+                ["balance_due"] = $"₹{balanceDueAfter:N2}",
                 ["request_date"] = advance.CreatedAt.ToString("dd MMM yyyy"),
                 ["payment_reference"] = dto.PaymentReference,
                 ["processed_by"] = emp.FullName,
@@ -381,6 +447,34 @@ public class AdvanceService : IAdvanceService
             .ToListAsync();
 
         return items.Select(MapToDto).ToList();
+    }
+
+    /// <summary>Increases organization balance cap by delta (e.g. reject after Approved restores the reserve taken on approve).</summary>
+    private async Task AddDeltaToBalanceCapAsync(Guid orgId, decimal delta)
+    {
+        if (delta <= 0) return;
+        var balanceSetting = await _db.OrganizationSettings
+            .FirstOrDefaultAsync(s => s.OrganizationId == orgId && s.Key == "balanceCap");
+
+        var current = balanceSetting != null ? decimal.Parse(balanceSetting.Value) : 0m;
+        current += delta;
+
+        if (balanceSetting != null)
+        {
+            balanceSetting.Value = current.ToString();
+            balanceSetting.UpdatedAt = DateTime.UtcNow;
+        }
+        else
+        {
+            _db.OrganizationSettings.Add(new OrganizationSetting
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = orgId,
+                Key = "balanceCap",
+                Value = current.ToString(),
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
     }
 
     private static AdvanceDto MapToDto(AdvancePayment a) => new(

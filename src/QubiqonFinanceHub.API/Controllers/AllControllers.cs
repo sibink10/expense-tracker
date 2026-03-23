@@ -43,14 +43,15 @@ public class AuthController(ITenantService tenant, FinanceHubDbContext db) : Con
                 Email = email ?? "",
                 Role = UserRole.Employee,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                IsDelete = false
             };
             db.Employees.Add(emp);
             await db.SaveChangesAsync();
         }
 
-        if (emp.IsActive == false)
-            throw new Exception("You have been deactivated from the application");  
+        if (emp.IsActive == false || emp.IsDelete == true)
+            throw new Exception("You have been deactivated from the application or deleted from the application");  
 
         var parts = emp.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var initials = parts.Length >= 2
@@ -154,6 +155,7 @@ public class AdvancesController(IAdvanceService svc) : ControllerBase
     [HttpGet("employee/{empId:guid}/history")] public async Task<IActionResult> History(Guid empId) => Ok(await svc.GetEmployeeHistoryAsync(empId));
     [HttpPost("{id:guid}/approve")] public async Task<IActionResult> Approve(Guid id, [FromBody] ApproveRequest dto) => Ok(await svc.ApproveAsync(id, dto));
     [HttpPost("{id:guid}/reject")] public async Task<IActionResult> Reject(Guid id, [FromBody] RejectRequest dto) => Ok(await svc.RejectAsync(id, dto));
+    [HttpGet("{id:guid}/disburse/validate")] public async Task<IActionResult> ValidateDisburse(Guid id, [FromQuery] decimal paidAmount) => Ok(await svc.ValidateDisburseAsync(id, paidAmount));
     [HttpPost("{id:guid}/disburse")] public async Task<IActionResult> Disburse(Guid id, [FromBody] ProcessPaymentRequest dto) => Ok(await svc.DisburseAsync(id, dto));
 }
 

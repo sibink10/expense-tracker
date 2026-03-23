@@ -7,6 +7,8 @@ import { payBill } from "../shared/api/bill";
 import { payExpense } from "../shared/api/expense";
 import type { Expense, Bill, Advance } from "../types";
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
 export default function PayModal() {
   const { mdl, setMdl, pay } = useAppContext();
   const [r, setR] = useState("");
@@ -19,14 +21,14 @@ export default function PayModal() {
 
   const total = "pay" in d ? d.pay : d.amt;
   const alreadyPaid = (d as Expense & Bill).paidAmount ?? 0;
-  const remaining = Math.max(0, total - alreadyPaid);
-  const defaultPaid = remaining > 0 ? remaining : total;
+  const remaining = round2(Math.max(0, total - alreadyPaid));
+  const defaultPaid = round2(remaining > 0 ? remaining : total);
 
   const parsedPaid = parseFloat(paidAmt) || 0;
   const paidError = useMemo(() => {
     if (paidAmt.trim() === "" && parsedPaid === 0) return "Paid amount is required";
     if (!Number.isFinite(parsedPaid) || parsedPaid < 0) return "Enter a valid paid amount";
-    if (parsedPaid > remaining) return `Paid amount cannot exceed ${fmtCur(remaining)}`;
+    if (round2(parsedPaid) > remaining) return `Paid amount cannot exceed ${fmtCur(remaining)}`;
     return null;
   }, [paidAmt, parsedPaid, remaining]);
 
@@ -37,7 +39,7 @@ export default function PayModal() {
   const handlePay = async () => {
     if (!r) return;
     if (paidError) return;
-    const paid = parseFloat(paidAmt) || defaultPaid;
+    const paid = round2(parseFloat(paidAmt) || defaultPaid);
     if (mdl.it === "bill") {
       const b = d as Bill;
       const id = b.apiId ?? b.id;
@@ -103,8 +105,8 @@ export default function PayModal() {
         value={paidAmt}
         onChange={(e) => setPaidAmt(e.target.value)}
         req
-        ph={String(defaultPaid)}
-        hint={remaining > 0 ? `Max: ${fmtCur(remaining)}` : undefined}
+        ph={remaining > 0 ? `Remaining: ${fmtCur(remaining)}` : String(defaultPaid)}
+        hint={remaining > 0 ? `Remaining: ${fmtCur(remaining)}` : undefined}
       />
       {paidError && <Alert sx={{ marginBottom: "8px" }}>{paidError}</Alert>}
       <Inp

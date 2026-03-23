@@ -4,6 +4,7 @@ using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Constants;
 using QubiqonFinanceHub.API.Models.Entities;
 using QubiqonFinanceHub.API.Models.Enums;
+using QubiqonFinanceHub.API.Services.Helpers;
 using QubiqonFinanceHub.API.Services.Interfaces;
 
 namespace QubiqonFinanceHub.API.Services.Implementations;
@@ -84,6 +85,9 @@ public class ExpenseService : IExpenseService
             await _email.SendNotificationAsync(Constants.EmailTemplateKeys.ExpenseSubmitted,
                 new Dictionary<string, string>
                 {
+                    ["link_type"] = "approve",
+                    ["entity_type"] = "expense",
+                    ["entity_api_id"] = expense.Id.ToString(),
                     ["employee_name"] = targetEmp.FullName,
                     ["expense_id"] = code,
                     ["purpose"] = dto.Purpose,
@@ -109,6 +113,7 @@ public class ExpenseService : IExpenseService
 
         var expense = await _db.ExpenseRequests
             .Include(x => x.Documents)
+            .Include(x => x.Employee)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
 
@@ -156,6 +161,46 @@ public class ExpenseService : IExpenseService
         });
 
         await _db.SaveChangesAsync();
+
+        // Bills attached and expense is awaiting payment — notify finance (e.g. after prior approval without bills).
+        if (expense.Status == ExpenseStatus.AwaitingPayment)
+        {
+            var financeEmails = await _db.Employees
+                .Where(e => e.OrganizationId == orgId &&
+                            e.IsActive &&
+                            !e.IsDelete &&
+                            !string.IsNullOrWhiteSpace(e.Email) &&
+                            e.Role == UserRole.Finance)
+                .Select(e => e.Email)
+                .Distinct()
+                .ToListAsync();
+
+            if (financeEmails.Count > 0)
+            {
+                var emailVars = new Dictionary<string, string>
+                {
+                    ["link_type"] = "pay",
+                    ["entity_type"] = "expense",
+                    ["entity_api_id"] = expense.Id.ToString(),
+                    ["employee_name"] = expense.Employee.FullName,
+                    ["expense_id"] = expense.ExpenseCode,
+                    ["purpose"] = expense.Purpose,
+                    ["amount"] = $"₹{expense.Amount:N2}",
+                    ["bill_date"] = expense.BillDate.ToString("dd MMM yyyy"),
+                    ["status"] = expense.Status.ToString(),
+                    ["approver_name"] = currentEmployee.FullName,
+                    ["uploaded_by_name"] = currentEmployee.FullName,
+                    ["approver_comments"] = "",
+                    ["upload_notes"] = "",
+                    ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
+                };
+                await _email.SendNotificationAsync(
+                    Constants.EmailTemplateKeys.ExpenseBillUploadedFinance,
+                    emailVars,
+                    string.Join(",", financeEmails));
+            }
+        }
+
         return (await GetByIdAsync(id))!;
     }
 
@@ -244,7 +289,7 @@ public class ExpenseService : IExpenseService
         }
 
         var total = await q.CountAsync();
-        q = f.Desc ? q.OrderByDescending(x => x.CreatedAt) : q.OrderBy(x => x.CreatedAt);
+        q = q.ApplyExpenseSorting(f);
         var items = await q.Skip((f.Page - 1) * f.PageSize).Take(f.PageSize).ToListAsync();
 
         return new PaginatedResult<ExpenseDto>(items.Select(MapToDto).ToList(), total, f.Page, f.PageSize);
@@ -260,8 +305,12 @@ public class ExpenseService : IExpenseService
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
 
-        if (expense.Status != ExpenseStatus.PendingApproval && expense.Status != ExpenseStatus.PendingBillApproval)
-            throw new InvalidOperationException($"Cannot approve expense in '{expense.Status}' status.");
+        if (expense.Status == ExpenseStatus.Approved ||
+            expense.Status == ExpenseStatus.AwaitingPayment ||
+            expense.Status == ExpenseStatus.AwaitingBill ||
+            expense.Status == ExpenseStatus.Completed ||
+            expense.Status == ExpenseStatus.PartiallyPaid)
+            throw new InvalidOperationException("Expense is already approved.");
 
         var hasDocuments = HasExpenseDocument(expense);
         expense.Status = hasDocuments ? ExpenseStatus.AwaitingPayment : ExpenseStatus.Approved;
@@ -282,6 +331,22 @@ public class ExpenseService : IExpenseService
                     ? "expense_approved"
                     : "expense_awaiting_bill";
 
+        var emailVars = new Dictionary<string, string>
+        {
+            ["link_type"] = hasDocuments ? "pay" : "detail",
+            ["entity_type"] = "expense",
+            ["entity_api_id"] = expense.Id.ToString(),
+            ["employee_name"] = expense.Employee.FullName,
+            ["expense_id"] = expense.ExpenseCode,
+            ["purpose"] = expense.Purpose,
+            ["amount"] = $"₹{expense.Amount:N2}",
+            ["bill_date"] = expense.BillDate.ToString("dd MMM yyyy"),
+            ["status"] = expense.Status.ToString(),
+            ["approver_name"] = emp.FullName,
+            ["approver_comments"] = dto.Comments ?? "",
+            ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
+        };
+
         var financeEmails = await _db.Employees
             .Where(e => e.OrganizationId == orgId &&
                         e.IsActive &&
@@ -296,19 +361,31 @@ public class ExpenseService : IExpenseService
         {
             await _email.SendNotificationAsync(
                 templateKey,
-                new Dictionary<string, string>
-                {
-                    ["employee_name"] = expense.Employee.FullName,
-                    ["expense_id"] = expense.ExpenseCode,
-                    ["purpose"] = expense.Purpose,
-                    ["amount"] = $"₹{expense.Amount:N2}",
-                    ["bill_date"] = expense.BillDate.ToString("dd MMM yyyy"),
-                    ["status"] = expense.Status.ToString(),
-                    ["approver_name"] = emp.FullName,
-                    ["approver_comments"] = dto.Comments ?? "",
-                    ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
-                },
+                emailVars,
                 string.Join(",", financeEmails));
+        }
+
+        // No bills at approval: notify submitter to upload bills for payment (finance email unchanged above).
+        if (!hasDocuments)
+        {
+            var submitterId = expense.SubmittedByEmployeeId ?? expense.EmployeeId;
+            var submitter = await _db.Employees.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == submitterId && x.OrganizationId == orgId);
+            if (submitter != null && !string.IsNullOrWhiteSpace(submitter.Email))
+            {
+                await _email.SendNotificationAsync(
+                    Constants.EmailTemplateKeys.ExpenseSubmitterUploadBills,
+                    emailVars,
+                    submitter.Email.Trim());
+            }
+            else if (submitter == null)
+            {
+                _log.LogWarning("Expense {Code}: submitter employee not found for upload-bill email.", expense.ExpenseCode);
+            }
+            else
+            {
+                _log.LogWarning("Expense {Code}: submitter has no email; upload-bill notification skipped.", expense.ExpenseCode);
+            }
         }
 
         return (await GetByIdAsync(id))!;
@@ -321,6 +398,9 @@ public class ExpenseService : IExpenseService
         var expense = await _db.ExpenseRequests.Include(x => x.Employee)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
+
+        if (expense.Status == ExpenseStatus.Rejected)
+            throw new InvalidOperationException("Expense is already rejected.");
 
         expense.Status = ExpenseStatus.Rejected;
         expense.UpdatedAt = DateTime.UtcNow;
@@ -339,6 +419,9 @@ public class ExpenseService : IExpenseService
         await _email.SendNotificationAsync(Constants.EmailTemplateKeys.ExpenseRejected,
             new Dictionary<string, string>
             {
+                ["link_type"] = "detail",
+                ["entity_type"] = "expense",
+                ["entity_api_id"] = expense.Id.ToString(),
                 ["employee_name"] = expense.Employee.FullName,
                 ["expense_id"] = expense.ExpenseCode,
                 ["purpose"] = expense.Purpose,
@@ -398,14 +481,15 @@ public class ExpenseService : IExpenseService
         if (!HasExpenseDocument(expense))
             throw new InvalidOperationException("Bill upload is required before payment.");
 
-        var balanceDue = expense.Amount - expense.PaidAmount;
+        var remainingBefore = expense.Amount - expense.PaidAmount;
         var paidAmount = dto.PaidAmount > 0 ? dto.PaidAmount : expense.Amount;
-        if (paidAmount > balanceDue)
-            throw new InvalidOperationException($"Paid amount (₹{paidAmount:N2}) cannot exceed the remaining balance (₹{balanceDue:N2}).");
+        if (paidAmount > remainingBefore)
+            throw new InvalidOperationException($"Paid amount (₹{paidAmount:N2}) cannot exceed the remaining balance (₹{remainingBefore:N2}).");
         expense.PaidAmount += paidAmount;
         expense.PaymentReference = dto.PaymentReference;
         expense.UpdatedAt = DateTime.UtcNow;
         expense.Status = expense.PaidAmount >= expense.Amount ? ExpenseStatus.Completed : ExpenseStatus.PartiallyPaid;
+        var balanceDueAfter = Math.Max(0, expense.Amount - expense.PaidAmount);
 
         _db.ActivityComments.Add(new ActivityComment
         {
@@ -421,12 +505,15 @@ public class ExpenseService : IExpenseService
         await _email.SendNotificationAsync(Constants.EmailTemplateKeys.PaymentConfirmation,
             new Dictionary<string, string>
             {
+                ["link_type"] = "detail",
+                ["entity_type"] = "expense",
+                ["entity_api_id"] = expense.Id.ToString(),
                 ["employee_name"] = expense.Employee.FullName,
                 ["expense_id"] = expense.ExpenseCode,
                 ["purpose"] = expense.Purpose,
                 ["amount"] = $"₹{expense.Amount:N2}",
                 ["paid_amount"] = $"₹{expense.PaidAmount:N2}",
-                ["balance_due"] = balanceDue > 0 ? $"₹{balanceDue:N2}" : "₹0.00",
+                ["balance_due"] = $"₹{balanceDueAfter:N2}",
                 ["bill_date"] = expense.BillDate.ToString("dd MMM yyyy"),
                 ["payment_reference"] = dto.PaymentReference,
                 ["processed_by"] = emp.FullName,

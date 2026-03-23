@@ -186,7 +186,7 @@ public class VendorBill
     [ForeignKey(nameof(TaxConfigId))] public TaxConfiguration? TaxConfig { get; set; }
     [Column(TypeName = "decimal(18,2)")] public decimal TDSAmount { get; set; }
     [Column(TypeName = "decimal(18,2)")] public decimal TotalPayable { get; set; }
-    [Required, MaxLength(1000)] public string Description { get; set; } = "";
+    [MaxLength(1000)] public string Description { get; set; } = "";
     public DateTime BillDate { get; set; }
     public DateTime DueDate { get; set; }
     [MaxLength(20)] public string PaymentTerms { get; set; } = "net30";

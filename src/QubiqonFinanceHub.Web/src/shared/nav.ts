@@ -1,14 +1,8 @@
 import type { NavSection, UserRole } from "../types";
 
-/** Build nav sections. Pass pendExp, pendAdv, payableCount for badges. */
-export function buildNav(
-  cfg: { advEnabled: boolean },
-  userRole: string,
-  opts: { pendExp?: number; pendAdv?: number; payableExp?: number }
-): NavSection[] {
+/** Build nav sections for the sidebar (no count badges). */
+export function buildNav(cfg: { advEnabled: boolean }): NavSection[] {
   const { advEnabled } = cfg;
-  const { pendExp = 0, pendAdv = 0, payableExp = 0 } = opts;
-  const isApprover = userRole === "approver";
 
   const allRoles: UserRole[] = ["employee", "approver", "finance", "admin"];
   return [
@@ -22,7 +16,7 @@ export function buildNav(
       s: "Employee expenses",
       c: "#E8593C",
       items: [
-        { path: "/expenses", l: "Expense requests", i: "☰", r: allRoles, b: isApprover ? pendExp : 0, end: true, addPath: "/expenses/add", addRoles: ["employee", "finance", "admin"] as UserRole[] },
+        { path: "/expenses", l: "Expense requests", i: "☰", r: allRoles, end: true, addPath: "/expenses/add", addRoles: ["employee", "approver", "finance", "admin"] as UserRole[] },
       ],
     },
     ...(advEnabled
@@ -31,7 +25,7 @@ export function buildNav(
             s: "Advance payments",
             c: "#0E7490",
             items: [
-              { path: "/advances", l: "Requests", i: "⤴", r: ["employee", "approver", "finance", "admin"] as UserRole[], b: isApprover ? pendAdv : 0, end: true, addPath: "/advances/add", addRoles: ["employee", "finance", "admin"] as UserRole[] },
+              { path: "/advances", l: "Requests", i: "⤴", r: ["employee", "approver", "finance", "admin"] as UserRole[], end: true, addPath: "/advances/add", addRoles: ["employee", "approver", "finance", "admin"] as UserRole[] },
             ],
           },
         ]
