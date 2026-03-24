@@ -33,6 +33,7 @@ public class VendorService : IVendorService
             AccountNumber = dto.AccountNumber,
             IfscCode = dto.IfscCode,
             IsActive = true,
+            IsDelete = false,
             CreatedAt = DateTime.UtcNow
         };
         _db.Vendors.Add(vendor);
@@ -46,6 +47,8 @@ public class VendorService : IVendorService
         var vendor = await _db.Vendors
             .FirstOrDefaultAsync(v => v.Id == id && v.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Vendor not found");
+        if (vendor.IsDelete)
+            throw new KeyNotFoundException("Vendor not found");
 
         if (dto.Name != null) vendor.Name = dto.Name;
         if (dto.Email != null) vendor.Email = dto.Email;
@@ -67,7 +70,7 @@ public class VendorService : IVendorService
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
         var vendor = await _db.Vendors.AsNoTracking()
-            .FirstOrDefaultAsync(v => v.Id == id && v.OrganizationId == orgId);
+            .FirstOrDefaultAsync(v => v.Id == id && v.OrganizationId == orgId && !v.IsDelete);
         return vendor == null ? null : MapToDto(vendor);
     }
 
@@ -75,7 +78,7 @@ public class VendorService : IVendorService
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
         var q = _db.Vendors
-            .Where(v => v.OrganizationId == orgId)
+            .Where(v => v.OrganizationId == orgId && !v.IsDelete)
             .AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(f.Search))
@@ -84,12 +87,32 @@ public class VendorService : IVendorService
             q = q.Where(x => x.Name.ToLower().Contains(s) ||
                              x.Email.ToLower().Contains(s));
         }
+        if (!string.IsNullOrWhiteSpace(f.PaymentPriority) &&
+            PaymentPriorityFilters.TryParseListFilter(f.PaymentPriority, out var pp))
+        {
+            q = q.Where(v => _db.VendorBills.Any(b =>
+                b.VendorId == v.Id &&
+                b.OrganizationId == orgId &&
+                b.PaymentPriority == pp));
+        }
 
         var total = await q.CountAsync();
         q = q.ApplyVendorSorting(f);
         var items = await q.Skip((f.Page - 1) * f.PageSize).Take(f.PageSize).ToListAsync();
 
         return new PaginatedResult<VendorDto>(items.Select(MapToDto).ToList(), total, f.Page, f.PageSize);
+    }
+
+    public async Task DeleteAsync(Guid id)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var vendor = await _db.Vendors
+            .FirstOrDefaultAsync(v => v.Id == id && v.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Vendor not found");
+        if (vendor.IsDelete) return;
+        vendor.IsDelete = true;
+        vendor.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
     }
 
     private static VendorDto MapToDto(Vendor v) => new(

@@ -116,3 +116,7 @@ export async function updateClient(id: string, payload: ClientPayload): Promise<
   const { data } = await apiClient.put(`/clients/${id}`, payload);
   return data;
 }
+
+export async function deleteClient(id: string): Promise<void> {
+  await apiClient.delete(`/clients/${id}`);
+}

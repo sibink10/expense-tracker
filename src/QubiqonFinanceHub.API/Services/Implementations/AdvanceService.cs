@@ -144,11 +144,8 @@ public class AdvanceService : IAdvanceService
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Advance not found");
 
-        if (advance.Status == AdvanceStatus.Approved ||
-            advance.Status == AdvanceStatus.PartiallyDisbursed ||
-            advance.Status == AdvanceStatus.Disbursed ||
-            advance.Status == AdvanceStatus.Settled)
-            throw new InvalidOperationException("Advance is already approved.");
+        if (advance.Status != AdvanceStatus.Pending)
+            throw new InvalidOperationException("Only pending advances can be approved.");
 
         // 🔹 Get settings
         var settings = await _db.OrganizationSettings
@@ -267,6 +264,9 @@ public class AdvanceService : IAdvanceService
         if (advance.Status == AdvanceStatus.Rejected)
             throw new InvalidOperationException("Advance is already rejected.");
 
+        if (advance.Status == AdvanceStatus.Cancelled)
+            throw new InvalidOperationException("Cannot reject a cancelled advance.");
+
         if (advance.Status == AdvanceStatus.Disbursed || advance.Status == AdvanceStatus.Settled)
             throw new InvalidOperationException($"Cannot reject advance in '{advance.Status}' status.");
 
@@ -313,6 +313,37 @@ public class AdvanceService : IAdvanceService
         return (await GetByIdAsync(id))!;
     }
 
+    public async Task<AdvanceDto> CancelAsync(Guid id)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var currentEmployee = await _tenant.GetCurrentEmployeeAsync();
+        var advance = await _db.AdvancePayments
+            .Include(x => x.Employee)
+            .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Advance not found");
+
+        if (advance.EmployeeId != currentEmployee.Id && currentEmployee.Role != UserRole.Admin)
+            throw new UnauthorizedAccessException("Only the submitter or an admin can cancel.");
+
+        if (advance.Status != AdvanceStatus.Pending)
+            throw new InvalidOperationException("Only pending advances can be cancelled.");
+
+        advance.Status = AdvanceStatus.Cancelled;
+
+        _db.ActivityComments.Add(new ActivityComment
+        {
+            Id = Guid.NewGuid(),
+            AdvancePaymentId = id,
+            CommentByEmployeeId = currentEmployee.Id,
+            Text = "Cancelled by submitter.",
+            ActionType = CommentActionType.Cancelled
+        });
+
+        await _db.SaveChangesAsync();
+
+        return (await GetByIdAsync(id))!;
+    }
+
     public async Task<AdvanceDisburseValidationDto> ValidateDisburseAsync(Guid id, decimal paidAmount)
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
@@ -334,11 +365,6 @@ public class AdvanceService : IAdvanceService
             return new AdvanceDisburseValidationDto(balanceCap, remainingOnAdvance, paidAmount, false,
                 $"Amount cannot exceed remaining advance (₹{remainingOnAdvance:N2}).");
 
-        var needsPoolCheck = advance.Status == AdvanceStatus.PartiallyDisbursed;
-        if (needsPoolCheck && paidAmount > balanceCap)
-            return new AdvanceDisburseValidationDto(balanceCap, remainingOnAdvance, paidAmount, false,
-                $"Insufficient balance cap (₹{balanceCap:N2} available).");
-
         return new AdvanceDisburseValidationDto(balanceCap, remainingOnAdvance, paidAmount, true, null);
     }
 
@@ -354,52 +380,19 @@ public class AdvanceService : IAdvanceService
         if (advance.Status != AdvanceStatus.Approved && advance.Status != AdvanceStatus.PartiallyDisbursed)
             throw new InvalidOperationException("Advance must be approved before disbursement.");
 
-        var balanceSetting = await _db.OrganizationSettings
-            .FirstOrDefaultAsync(s => s.OrganizationId == orgId && s.Key == "balanceCap");
-
-        var currentBalanceCap = balanceSetting != null ? decimal.Parse(balanceSetting.Value) : 0;
+        if (string.IsNullOrWhiteSpace(dto.PaymentReference))
+            throw new InvalidOperationException("Payment reference is required.");
 
         var remainingBefore = advance.Amount - advance.PaidAmount;
         var paidAmount = dto.PaidAmount > 0 ? dto.PaidAmount : advance.Amount;
         if (paidAmount > remainingBefore)
             throw new InvalidOperationException($"Paid amount (₹{paidAmount:N2}) cannot exceed the remaining balance (₹{remainingBefore:N2}).");
 
-        if (advance.Status == AdvanceStatus.PartiallyDisbursed && paidAmount > currentBalanceCap)
-            throw new InvalidOperationException($"Insufficient balance cap (₹{currentBalanceCap:N2} available).");
-
-        var paidBefore = advance.PaidAmount;
         advance.PaidAmount += paidAmount;
-        advance.PaymentReference = dto.PaymentReference;
+        advance.PaymentReference = dto.PaymentReference.Trim();
         advance.DisbursedAt = DateTime.UtcNow;
         advance.Status = advance.PaidAmount >= advance.Amount ? AdvanceStatus.Disbursed : AdvanceStatus.PartiallyDisbursed;
         var balanceDueAfter = Math.Max(0, advance.Amount - advance.PaidAmount);
-
-        // Pool: remaining on this advance returns to cap: current + advance.Amount - cumulative paid.
-        var newBalanceCap = currentBalanceCap + advance.Amount - advance.PaidAmount;
-
-        // Follow-up disbursements: subtract this payout from the pool (cash going out after partial).
-        if (paidBefore > 0)
-            newBalanceCap -= paidAmount;
-
-        if (newBalanceCap < 0)
-            newBalanceCap = 0;
-
-        if (balanceSetting != null)
-        {
-            balanceSetting.Value = newBalanceCap.ToString();
-            balanceSetting.UpdatedAt = DateTime.UtcNow;
-        }
-        else
-        {
-            _db.OrganizationSettings.Add(new OrganizationSetting
-            {
-                Id = Guid.NewGuid(),
-                OrganizationId = orgId,
-                Key = "balanceCap",
-                Value = newBalanceCap.ToString(),
-                UpdatedAt = DateTime.UtcNow
-            });
-        }
 
         _db.ActivityComments.Add(new ActivityComment
         {
@@ -422,10 +415,10 @@ public class AdvanceService : IAdvanceService
                 ["advance_id"] = advance.AdvanceCode,
                 ["purpose"] = advance.Purpose,
                 ["amount"] = $"₹{advance.Amount:N2}",
-                ["paid_amount"] = $"₹{advance.PaidAmount:N2}",
+                ["paid_amount"] = $"₹{paidAmount:N2}",
                 ["balance_due"] = $"₹{balanceDueAfter:N2}",
                 ["request_date"] = advance.CreatedAt.ToString("dd MMM yyyy"),
-                ["payment_reference"] = dto.PaymentReference,
+                ["payment_reference"] = dto.PaymentReference ?? "",
                 ["processed_by"] = emp.FullName,
                 ["payment_notes"] = dto.Notes ?? "",
                 ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
@@ -449,7 +442,10 @@ public class AdvanceService : IAdvanceService
         return items.Select(MapToDto).ToList();
     }
 
-    /// <summary>Increases organization balance cap by delta (e.g. reject after Approved restores the reserve taken on approve).</summary>
+    /// <summary>
+    /// When rejecting after approve, restore what was reserved: full amount if nothing disbursed yet,
+    /// otherwise only the remaining undisbursed balance.
+    /// </summary>
     private async Task AddDeltaToBalanceCapAsync(Guid orgId, decimal delta)
     {
         if (delta <= 0) return;

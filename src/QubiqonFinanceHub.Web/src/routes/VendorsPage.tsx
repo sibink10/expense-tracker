@@ -1,17 +1,23 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
+import { TrashIcon } from "../components/icons";
 import { Av, Btn, Empty, Inp, Mdl, ListRefreshButton, SortTh } from "../components/ui";
+import { BILL_PAYMENT_PRIORITY } from "../shared/constants";
 import { nextListSort } from "../shared/utils";
 import { useAppContext } from "../context/AppContext";
-import { getVendors } from "../shared/api/vendor";
+import { getApiErrorMessage } from "../shared/api/client";
+import { deleteVendor, getVendors } from "../shared/api/vendor";
 import { getCategories, createCategory, toggleCategory, type Category } from "../shared/api";
 import type { Vendor } from "../types";
 
 export default function VendorsPage() {
   const navigate = useNavigate();
-  const { is, setMdl } = useAppContext();
+  const { is, setMdl, t } = useAppContext();
   const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<Vendor | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [search, setSearch] = useState("");
@@ -21,6 +27,8 @@ export default function VendorsPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [sortBy, setSortBy] = useState("CreatedAt");
   const [sortDesc, setSortDesc] = useState(true);
+  /** Vendors that have at least one bill with this payment priority */
+  const [payPriority, setPayPriority] = useState<"all" | typeof BILL_PAYMENT_PRIORITY.IMMEDIATE | typeof BILL_PAYMENT_PRIORITY.LATER>("all");
 
   const handleSort = (key: string) => {
     const n = nextListSort(key, sortBy, sortDesc);
@@ -35,11 +43,20 @@ export default function VendorsPage() {
     return () => window.removeEventListener("vendors-refresh", handler);
   }, []);
 
+  useEffect(() => {
+    if (!deleteTarget) {
+      setDeleteLoading(false);
+      setDeleteError(null);
+    } else {
+      setDeleteError(null);
+    }
+  }, [deleteTarget]);
+
 
 
   useEffect(() => {
     setLoading(true);
-    getVendors(page, pageSize, search, sortBy, sortDesc)
+    getVendors(page, pageSize, search, sortBy, sortDesc, payPriority)
       .then((res) => {
         setVendors(res.items);
         setTotalCount(res.totalCount);
@@ -51,7 +68,7 @@ export default function VendorsPage() {
         setTotalPages(0);
       })
       .finally(() => setLoading(false));
-  }, [page, pageSize, search, refreshKey, sortBy, sortDesc]);
+  }, [page, pageSize, search, refreshKey, sortBy, sortDesc, payPriority]);
 
  
 
@@ -133,6 +150,49 @@ export default function VendorsPage() {
                 ⌕
               </span>
             </div>
+            <div
+              style={{
+                display: "flex",
+                gap: "2px",
+                background: C.surface,
+                borderRadius: "8px",
+                padding: "2px",
+                minHeight: "34px",
+                alignItems: "center",
+              }}
+            >
+              {(
+                [
+                  ["all", "All"],
+                  [BILL_PAYMENT_PRIORITY.IMMEDIATE, "Pay now"],
+                  [BILL_PAYMENT_PRIORITY.LATER, "Pay later"],
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => {
+                    setPayPriority(key);
+                    setPage(1);
+                  }}
+                  style={{
+                    minHeight: "30px",
+                    padding: "6px 10px",
+                    borderRadius: "6px",
+                    border: "none",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    fontFamily: "'DM Sans'",
+                    background: payPriority === key ? "#fff" : "transparent",
+                    color: payPriority === key ? C.primary : C.muted,
+                    boxShadow: payPriority === key ? "0 1px 3px rgba(0,0,0,0.06)" : "none",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             {search.trim() && totalCount > 0 && (
               <span style={{ fontSize: "12px", color: C.muted }}>
                 Showing page {page} of {totalPages} — {totalCount} total
@@ -163,6 +223,11 @@ export default function VendorsPage() {
                   <SortTh sortKey="Email">Email</SortTh>
                   <SortTh sortKey="ContactPerson">Contact</SortTh>
                   <SortTh sortKey="Category">Category</SortTh>
+                  {is("admin") && (
+                    <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: C.muted, borderBottom: `1px solid ${C.border}` }}>
+                      Actions
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -195,6 +260,21 @@ export default function VendorsPage() {
                       {v.contactPerson || "—"}
                     </td>
                     <td style={{ padding: "12px 14px", fontSize: "12px", borderBottom: `1px solid ${C.border}` }}>{v.cat || "—"}</td>
+                    {is("admin") && (
+                      <td
+                        style={{ padding: "8px 12px", textAlign: "right", borderBottom: `1px solid ${C.border}`, verticalAlign: "middle" }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <span style={{ display: "inline-flex", gap: "6px", alignItems: "center", justifyContent: "flex-end" }}>
+                          <Btn sm v="secondary" onClick={() => setMdl({ t: "vendor-edit", d: v })}>
+                            ✎
+                          </Btn>
+                          <Btn sm v="danger" onClick={() => setDeleteTarget(v)}>
+                            <TrashIcon size={16} color="#fff" />
+                          </Btn>
+                        </span>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -237,7 +317,64 @@ export default function VendorsPage() {
           </div>
         </div>
       )}
-      
+
+      <Mdl
+        open={!!deleteTarget}
+        close={() => {
+          if (!deleteLoading) setDeleteTarget(null);
+        }}
+        title="Remove vendor"
+      >
+        {deleteTarget && (
+          <>
+            <p style={{ margin: "0 0 20px", fontSize: "14px", color: C.muted }}>
+              Remove <strong>{deleteTarget.name}</strong> from the directory? They will no longer appear in lists; existing bills linked to this vendor are unchanged.
+            </p>
+            {deleteError && (
+              <p
+                role="alert"
+                style={{
+                  margin: "0 0 16px",
+                  fontSize: "13px",
+                  color: "#b91c1c",
+                  lineHeight: 1.5,
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {deleteError}
+              </p>
+            )}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+              <Btn v="secondary" sm disabled={deleteLoading} onClick={() => setDeleteTarget(null)}>
+                Cancel
+              </Btn>
+              <Btn
+                v="danger"
+                sm
+                disabled={deleteLoading}
+                onClick={async () => {
+                  setDeleteLoading(true);
+                  setDeleteError(null);
+                  try {
+                    await deleteVendor(deleteTarget.id);
+                    t("Vendor removed");
+                    setDeleteTarget(null);
+                    setRefreshKey((k) => k + 1);
+                  } catch (err) {
+                    const msg = getApiErrorMessage(err, "Failed to remove vendor");
+                    setDeleteError(msg);
+                    t(msg);
+                  } finally {
+                    setDeleteLoading(false);
+                  }
+                }}
+              >
+                {deleteLoading ? "Removing…" : "Remove"}
+              </Btn>
+            </div>
+          </>
+        )}
+      </Mdl>
     </div>
   );
 }

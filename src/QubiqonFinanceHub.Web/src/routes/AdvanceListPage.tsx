@@ -7,6 +7,7 @@ import { fmtCur, nextListSort } from "../shared/utils";
 import { Btn, Badge, Tbl, Empty, ListRefreshButton, type TblCol } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
 import { getAdvancesMyMapped } from "../shared/api/advance";
+import { canCancelAdvanceByStatus } from "../shared/expensePermissions";
 
 const STATUS_TABS = [
   { label: "All", value: "" },
@@ -15,18 +16,21 @@ const STATUS_TABS = [
   { label: ADV_S.DISBURSED, value: "Disbursed" },
   { label: ADV_S.PARTIALLY_DISBURSED, value: "PartiallyDisbursed" },
   { label: ADV_S.REJECTED, value: "Rejected" },
+  { label: ADV_S.CANCELLED, value: "Cancelled" },
 ] as const;
 
 export default function AdvanceListPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { is, setMdl } = useAppContext();
+  const { is, setMdl, user } = useAppContext();
   const myOnly = is("employee");
+  const showActionCol =
+    is("approver") || is("finance") || is("admin") || is("employee");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(12);
   const [search, setSearch] = useState("");
-  const validStatusValues = new Set(STATUS_TABS.map((tab) => tab.value));
-  const statusParam:any = searchParams.get("status") ?? "";
+  const validStatusValues = new Set<string>(STATUS_TABS.map((tab) => tab.value));
+  const statusParam = searchParams.get("status") ?? "";
   const status = validStatusValues.has(statusParam) ? statusParam : "";
   const [data, setData] = useState<Advance[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -86,11 +90,9 @@ export default function AdvanceListPage() {
         <h1 style={{ fontSize: "20px", fontWeight: 700, margin: 0, color: C.advance }}>
           Advance requests
         </h1>
-        {(is("employee") || is("approver") || is("finance") || is("admin")) && (
-          <Btn v="advance" onClick={() => navigate("/advances/add")}>
-            ＋ Request
-          </Btn>
-        )}
+        <Btn v="advance" onClick={() => navigate("/advances/add")}>
+          ＋ Request
+        </Btn>
       </div>
       <div
         style={{
@@ -199,45 +201,76 @@ export default function AdvanceListPage() {
                   { label: "Amount", sortKey: "Amount" },
                   { label: "Balance Due", sortKey: "BalanceDue" },
                   { label: "Status" },
-                  ...(is("approver") || is("finance") || is("admin") ? (["Action"] as TblCol[]) : []),
+                  ...(showActionCol ? (["Action"] as TblCol[]) : []),
                 ] as TblCol[]
               }
               sortBy={sortBy}
               sortDesc={sortDesc}
               onSortChange={handleSort}
-              rows={data.map((a) => ({
-                ...a,
-                _cells: [
-                  { v: <span style={{ fontWeight: 600, color: C.advance, fontSize: "11px" }}>{a.id}</span> },
-                  ...(!is("employee") ? [{ v: <span style={{ fontSize: "11px" }}>{a.empName}</span> }] : []),
-                  { v: <div style={{ maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.purpose}</div> },
-                  { v: <span style={{ fontWeight: 700 }}>{fmtCur(a.amt)}</span> },
-                  { v: <span style={{ fontSize: "11px", color: (a.amt - (a.paidAmount ?? 0)) > 0 ? C.advance : C.muted }}>{fmtCur(a.amt - (a.paidAmount ?? 0))}</span> },
-                  { v: <Badge s={a.status} /> },
-                  ...(is("approver") || is("finance") || is("admin")
-                    ? [
-                        {
-                          v: (
-                            <div onClick={(ev) => ev.stopPropagation()} style={{ display: "flex", gap: "3px" }}>
-                            {(is("approver") || is("admin")) && a.status === ADV_S.PENDING && (
-                              <>
-                                <Btn sm v="success" onClick={() => setMdl({ t: "adv-approve", d: a })}>✓</Btn>
-                                <Btn sm v="danger" onClick={() => setMdl({ t: "reject", d: a, it: "advance" })}>✕</Btn>
-                              </>
-                            )}
-                              {(is("finance") || is("admin")) && (a.status === ADV_S.APPROVED || a.status === ADV_S.PARTIALLY_DISBURSED) && (
-                                <>
-                                  <Btn sm v="advance" onClick={() => setMdl({ t: "adv-disburse", d: a })}>Disburse</Btn>
-                                  <Btn sm v="danger" onClick={() => setMdl({ t: "reject", d: a, it: "advance" })}>✕</Btn>
-                                </>
-                              )}
-                            </div>
-                          ),
-                        },
-                      ]
-                    : []),
-                ],
-              }))}
+              rows={data.map((a) => {
+                const canCancelAdvanceRow =
+                  canCancelAdvanceByStatus(a.status) &&
+                  (is("admin") || (!!user?.employeeId && user.employeeId === a.employeeId));
+                return {
+                  ...a,
+                  _cells: [
+                    { v: <span style={{ fontWeight: 600, color: C.advance, fontSize: "11px" }}>{a.id}</span> },
+                    ...(!is("employee") ? [{ v: <span style={{ fontSize: "11px" }}>{a.empName}</span> }] : []),
+                    { v: <div style={{ maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.purpose}</div> },
+                    { v: <span style={{ fontWeight: 700 }}>{fmtCur(a.amt)}</span> },
+                    { v: <span style={{ fontSize: "11px", color: (a.amt - (a.paidAmount ?? 0)) > 0 ? C.advance : C.muted }}>{fmtCur(a.amt - (a.paidAmount ?? 0))}</span> },
+                    { v: <Badge s={a.status} /> },
+                    ...(showActionCol
+                      ? [
+                          {
+                            v: (
+                              <div
+                                role="presentation"
+                                onClick={(ev) => ev.stopPropagation()}
+                                style={{
+                                  display: "flex",
+                                  flexWrap: "wrap",
+                                  alignItems: "center",
+                                  justifyContent: "flex-start",
+                                  gap: "6px",
+                                  width: "100%",
+                                }}
+                              >
+                                {(is("approver") || is("admin")) &&
+                                  a.status !== ADV_S.CANCELLED &&
+                                  a.status === ADV_S.PENDING && (
+                                    <>
+                                      <Btn sm v="success" onClick={() => setMdl({ t: "adv-approve", d: a })}>✓</Btn>
+                                      <Btn sm v="danger" onClick={() => setMdl({ t: "reject", d: a, it: "advance" })}>✕</Btn>
+                                    </>
+                                  )}
+                                {(is("finance") || is("admin")) &&
+                                  a.status !== ADV_S.CANCELLED &&
+                                  (a.status === ADV_S.APPROVED || a.status === ADV_S.PARTIALLY_DISBURSED) && (
+                                    <>
+                                      <Btn sm v="advance" onClick={() => setMdl({ t: "adv-disburse", d: a })}>Disburse</Btn>
+                                      <Btn sm v="danger" onClick={() => setMdl({ t: "reject", d: a, it: "advance" })}>✕</Btn>
+                                    </>
+                                  )}
+                                {canCancelAdvanceRow && (
+                                  <Btn
+                                    sm
+                                    v="secondary"
+                                    title="Cancel request"
+                                    onClick={() => setMdl({ t: "adv-cancel-confirm", d: a })}
+                                  >
+                                    Cancel
+                                  </Btn>
+                                )}
+                              </div>
+                            ),
+                            sx: { textAlign: "left" as const, verticalAlign: "middle" },
+                          },
+                        ]
+                      : []),
+                  ],
+                };
+              })}
               onRow={(row) => setMdl({ t: "adv-detail", d: row as unknown as Advance })}
             />
           )}

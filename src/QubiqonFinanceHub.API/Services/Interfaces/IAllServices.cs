@@ -45,6 +45,7 @@ public interface IAdvanceService
     Task<AdvanceDto> DisburseAsync(Guid id, ProcessPaymentRequest dto);
     Task<AdvanceDisburseValidationDto> ValidateDisburseAsync(Guid id, decimal paidAmount);
     Task<List<AdvanceDto>> GetEmployeeHistoryAsync(Guid employeeId);
+    Task<AdvanceDto> CancelAsync(Guid id);
 }
 
 public interface IVendorService
@@ -53,6 +54,7 @@ public interface IVendorService
     Task<VendorDto> UpdateAsync(Guid id, UpdateVendorRequest dto);
     Task<VendorDto?> GetByIdAsync(Guid id);
     Task<PaginatedResult<VendorDto>> ListAsync(FilterParams f);
+    Task DeleteAsync(Guid id);
 }
 
 public interface IVendorBillService
@@ -76,6 +78,7 @@ public interface IClientService
     Task<ClientDto> UpdateAsync(Guid id, UpdateClientRequest dto);
     Task<ClientDto?> GetByIdAsync(Guid id);
     Task<PaginatedResult<ClientDto>> ListAsync(FilterParams f);
+    Task DeleteAsync(Guid id);
 }
 
 public interface IInvoiceService

@@ -1,11 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { C } from "../../shared/theme";
 import { EXP_S } from "../../shared/constants";
 import { fmtCur, downloadFromSasUrl, buildDownloadFilename } from "../../shared/utils";
+import {
+  canEditExpenseFields,
+  canShowApprovedBillUploadPanel,
+  isExpenseCancelled,
+  canCancelExpenseByStatus,
+} from "../../shared/expensePermissions";
 import { Btn, Badge, Mdl, CLog, Inp, MultiFileUp, Alert, MODAL_Z_INDEX } from "../ui";
 import { EditIcon } from "../icons";
 import { useAppContext } from "../../context/AppContext";
-import { updateExpenseForm, uploadExpenseBill, getExpenseBill, getExpenseDocument, removeExpenseDocument } from "../../shared/api/expense";
+import { getApiErrorMessage } from "../../shared/api/client";
+import { updateExpenseForm, uploadExpenseBill, getExpenseBill, getExpenseDocument, removeExpenseDocument, cancelExpense } from "../../shared/api/expense";
 import type { Expense } from "../../types";
 
 interface Props {
@@ -13,20 +20,41 @@ interface Props {
 }
 
 export default function ExpenseDetailModal({ expense: e }: Props) {
-  const { setMdl, is, t } = useAppContext();
+  const { setMdl, is, t, user } = useAppContext();
+
+  const patchExpenseInModal = (next: Expense) => {
+    setMdl((prev) =>
+      prev?.t === "exp-detail" && prev.d && "reqBy" in prev.d
+        ? { ...prev, d: next }
+        : prev
+    );
+  };
   const isApprover = is("approver");
   const isAdmin = is("admin");
   const isFinance = is("finance");
   const hasBill = e.documents.length > 0 || !!(e.file || e.attachmentUrl);
-  const canEdit = e.status !== EXP_S.APPROVED && e.status !== EXP_S.AWAITING_PAYMENT && e.status !== EXP_S.COMPLETED;
-  const canRemoveDoc = !["Rejected", "Completed", "Cancelled"].includes(e.status) && e.documents.length > 0;
+  const cancelled = isExpenseCancelled(e.status);
+  /** Amount/purpose/bill date edit — not when approved or later. Bill upload when Approved+no bill is separate below. */
+  const canEditExpenseFieldsUi = canEditExpenseFields(e.status) && !cancelled;
+  const canRemoveDoc =
+    !cancelled && !["Rejected", "Completed", "Cancelled"].includes(e.status) && e.documents.length > 0;
   const disableRemoveDoc = e.documents.length <= 1;
   const canApproveReject =
+    !cancelled &&
     (e.status === EXP_S.PENDING || e.status === EXP_S.PENDING_BILL_APPROVAL) &&
     (isApprover || isAdmin);
-  const canShowPay = (isFinance || isAdmin) && (e.status === EXP_S.AWAITING_PAYMENT || e.status === EXP_S.PARTIALLY_PAID || e.status === EXP_S.APPROVED || e.status === EXP_S.AWAITING_BILL);
+  const canCancelExpense =
+    canCancelExpenseByStatus(e.status) &&
+    (isAdmin || (!!user?.employeeId && e.employeeId === user.employeeId));
+  const canShowPay =
+    !cancelled &&
+    (isFinance || isAdmin) &&
+    (e.status === EXP_S.AWAITING_PAYMENT ||
+      e.status === EXP_S.PARTIALLY_PAID ||
+      e.status === EXP_S.APPROVED ||
+      e.status === EXP_S.AWAITING_BILL);
   const canPay = canShowPay && hasBill;
-  const showBillUploadPanel = e.status === EXP_S.APPROVED && !hasBill;
+  const showBillUploadPanel = !cancelled && canShowApprovedBillUploadPanel(e.status, hasBill);
 
   const [editing, setEditing] = useState(false);
   const [amt, setAmt] = useState(String(e.amt));
@@ -39,7 +67,18 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
   const [billViewUrl, setBillViewUrl] = useState<string | null>(null);
   const [billViewTitle, setBillViewTitle] = useState("Bill");
   const [billViewLoading, setBillViewLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
   const billViewerUrl = billViewUrl ? `${billViewUrl}#toolbar=0&navpanes=0&zoom=page-width` : null;
+
+  const expenseKey = e.apiId ?? e.id;
+  useEffect(() => {
+    setEditing(false);
+    setError(null);
+    setAmt(String(e.amt));
+    setPur(e.purpose);
+    setBillDate(e.billDate ?? "");
+    setBillFilesRaw([]);
+  }, [expenseKey, e.status]);
 
   const openBillView = async (documentId?: string, fileName?: string) => {
     const id = e.apiId ?? e.id;
@@ -106,7 +145,10 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
       await removeExpenseDocument(id, documentId);
       t("Document removed");
       window.dispatchEvent(new CustomEvent("expenses-refresh"));
-      setMdl(null);
+      patchExpenseInModal({
+        ...e,
+        documents: e.documents.filter((d) => d.id !== documentId),
+      });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to remove document");
     } finally {
@@ -183,7 +225,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
       </div>
 
       {/* Bill # & Bill date: view or edit inline */}
-      {(e.billNumber != null || e.billDate || canEdit) && (
+      {(e.billNumber != null || e.billDate || canEditExpenseFieldsUi) && (
         <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "12px", fontSize: "12px", alignItems: "flex-start" }}>
           {!editing ? (
             <>
@@ -202,7 +244,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
         </div>
       )}
 
-      {canEdit && editing && (
+      {canEditExpenseFieldsUi && editing && (
         <div style={{ marginBottom: "12px" }}>
           <div style={{ display: "flex", gap: "12px", alignItems: "flex-start", flexWrap: "wrap" }}>
             <Inp
@@ -229,7 +271,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
 
       {/* Purpose: view or edit */}
       <div style={{ marginBottom: "12px" }}>
-        {canEdit && editing ? (
+        {canEditExpenseFieldsUi && editing ? (
           <Inp label="Purpose" type="textarea" value={pur} onChange={(ev) => setPur(ev.target.value)} req style={{ marginBottom: 0 }} />
         ) : (
           <>
@@ -240,7 +282,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
       </div>
 
       {/* Edit: optional file upload */}
-      {canEdit && editing && (
+      {canEditExpenseFieldsUi && editing && (
         <div style={{ marginBottom: "12px" }}>
           <MultiFileUp files={billFilesRaw} onChange={setBillFilesRaw} accept=".pdf" hint="PDF only (optional)" title="Add documents" />
         </div>
@@ -371,7 +413,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
         <div>
-          {canEdit && !editing && (
+          {canEditExpenseFieldsUi && !editing && (
             <button
               type="button"
               onClick={() => setEditing(true)}
@@ -395,13 +437,35 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
           )}
         </div>
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-          {canEdit && editing && (
+          {canEditExpenseFieldsUi && editing && (
             <>
               <Btn onClick={handleUpdate} disabled={!canUpdate || loading}>
                 {loading ? "Saving..." : "Save"}
               </Btn>
               <Btn v="secondary" onClick={() => { setEditing(false); setError(null); setAmt(String(e.amt)); setPur(e.purpose); setBillDate(e.billDate ?? ""); setBillFilesRaw([]); }}>Cancel</Btn>
             </>
+          )}
+          {canCancelExpense && !editing && (
+            <Btn
+              v="secondary"
+              onClick={async () => {
+                const id = e.apiId ?? e.id;
+                setCancelLoading(true);
+                try {
+                  await cancelExpense(id);
+                  t("Expense request cancelled");
+                  setMdl(null);
+                  window.dispatchEvent(new CustomEvent("expenses-refresh"));
+                } catch (err) {
+                  t(getApiErrorMessage(err, "Could not cancel expense"));
+                } finally {
+                  setCancelLoading(false);
+                }
+              }}
+              disabled={cancelLoading}
+            >
+              {cancelLoading ? "Cancelling…" : "Cancel request"}
+            </Btn>
           )}
           {canApproveReject && !editing && (
             <>
@@ -415,9 +479,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
               <Btn v="info" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "pay", d: e, it: "expense" }), 50); }} disabled={!hasBill}>Pay</Btn>
             </>
           )}
-          {!(canEdit || canApproveReject || canShowPay) && (
-            <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>
-          )}
+          <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>
         </div>
       </div>
     </Mdl>

@@ -1,16 +1,21 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
-import { Av, Btn, Empty, ListRefreshButton, SortTh } from "../components/ui";
+import { TrashIcon } from "../components/icons";
+import { Av, Btn, Empty, ListRefreshButton, Mdl, SortTh } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
-import { getClientsPaged } from "../shared/api/clients";
+import { getApiErrorMessage } from "../shared/api/client";
+import { deleteClient, getClientsPaged } from "../shared/api/clients";
 import type { Client } from "../types";
 import { nextListSort } from "../shared/utils";
 
 export default function ClientsPage() {
   const navigate = useNavigate();
-  const { is, setMdl } = useAppContext();
+  const { is, setMdl, t } = useAppContext();
   const [clients, setClients] = useState<Client[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [searchInput, setSearchInput] = useState("");
@@ -27,6 +32,15 @@ export default function ClientsPage() {
     window.addEventListener("clients-refresh", handler);
     return () => window.removeEventListener("clients-refresh", handler);
   }, []);
+
+  useEffect(() => {
+    if (!deleteTarget) {
+      setDeleteLoading(false);
+      setDeleteError(null);
+    } else {
+      setDeleteError(null);
+    }
+  }, [deleteTarget]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -173,6 +187,19 @@ export default function ClientsPage() {
                         <SortTh sortKey="Country">Country</SortTh>
                         <SortTh sortKey="Currency">Currency</SortTh>
                         <SortTh sortKey="CustomerType">Type</SortTh>
+                        {is("admin") && (
+                          <th
+                            style={{
+                              padding: "8px 12px",
+                              textAlign: "right",
+                              fontWeight: 600,
+                              color: C.muted,
+                              borderBottom: `1px solid ${C.border}`,
+                            }}
+                          >
+                            Actions
+                          </th>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -202,6 +229,21 @@ export default function ClientsPage() {
                           <td style={{ padding: "12px 14px", fontSize: "12px", color: C.muted, borderBottom: `1px solid ${C.border}` }}>{c.country || "—"}</td>
                           <td style={{ padding: "12px 14px", fontSize: "12px", borderBottom: `1px solid ${C.border}` }}>{c.currency || "—"}</td>
                           <td style={{ padding: "12px 14px", fontSize: "12px", borderBottom: `1px solid ${C.border}` }}>{c.customerType || "—"}</td>
+                          {is("admin") && (
+                            <td
+                              style={{ padding: "8px 12px", textAlign: "right", borderBottom: `1px solid ${C.border}`, verticalAlign: "middle" }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <span style={{ display: "inline-flex", gap: "6px", alignItems: "center", justifyContent: "flex-end" }}>
+                                <Btn sm v="secondary" onClick={() => setMdl({ t: "client-edit", d: c })}>
+                                  ✎
+                                </Btn>
+                                <Btn sm v="danger" onClick={() => setDeleteTarget(c)}>
+                                  <TrashIcon size={16} color="#fff" />
+                                </Btn>
+                              </span>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
@@ -249,6 +291,64 @@ export default function ClientsPage() {
           </>
         )}
       </div>
+
+      <Mdl
+        open={!!deleteTarget}
+        close={() => {
+          if (!deleteLoading) setDeleteTarget(null);
+        }}
+        title="Remove client"
+      >
+        {deleteTarget && (
+          <>
+            <p style={{ margin: "0 0 20px", fontSize: "14px", color: C.muted }}>
+              Remove <strong>{deleteTarget.name}</strong> from the directory? They will no longer appear in lists; existing invoices linked to this client are unchanged.
+            </p>
+            {deleteError && (
+              <p
+                role="alert"
+                style={{
+                  margin: "0 0 16px",
+                  fontSize: "13px",
+                  color: "#b91c1c",
+                  lineHeight: 1.5,
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {deleteError}
+              </p>
+            )}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+              <Btn v="secondary" sm disabled={deleteLoading} onClick={() => setDeleteTarget(null)}>
+                Cancel
+              </Btn>
+              <Btn
+                v="danger"
+                sm
+                disabled={deleteLoading}
+                onClick={async () => {
+                  setDeleteLoading(true);
+                  setDeleteError(null);
+                  try {
+                    await deleteClient(deleteTarget.id);
+                    t("Client removed");
+                    setDeleteTarget(null);
+                    setRefreshKey((k) => k + 1);
+                  } catch (err) {
+                    const msg = getApiErrorMessage(err, "Failed to remove client");
+                    setDeleteError(msg);
+                    t(msg);
+                  } finally {
+                    setDeleteLoading(false);
+                  }
+                }}
+              >
+                {deleteLoading ? "Removing…" : "Remove"}
+              </Btn>
+            </div>
+          </>
+        )}
+      </Mdl>
     </div>
   );
 }

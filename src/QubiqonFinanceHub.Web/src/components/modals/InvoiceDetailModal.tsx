@@ -36,12 +36,10 @@ export default function InvoiceDetailModal({ invoice: inv }: Props) {
   const [sendLoading, setSendLoading] = useState(false);
 
   const balanceDue = Math.max(inv.total - (inv.paidAmound ?? 0), 0);
-  const showMarkPaid = balanceDue > 0.005;
+  const canFinance = is("finance") || is("admin");
+  const showMarkPaid = canFinance && balanceDue > 0.005 && inv.status === INV_S.SENT;
 
-  const canSendInvoice =
-    (is("finance") || is("admin")) &&
-    (inv.status === INV_S.PAID || inv.status === INV_S.PARTIALLY_PAID) &&
-    !!inv.apiId;
+  const canSendInvoice = canFinance && inv.status === INV_S.DRAFT && !!inv.apiId;
   const canEdit = inv.status === INV_S.DRAFT && !!inv.apiId;
 
   const handleConfirmSend = async () => {
@@ -141,7 +139,7 @@ export default function InvoiceDetailModal({ invoice: inv }: Props) {
         zIndex={INVOICE_MODAL_Z_INDEX + 50}
       >
         <p style={{ fontSize: "13px", color: C.primary, margin: "0 0 16px", lineHeight: 1.5 }}>
-          Email this paid invoice to the client and mark it as <strong>Sent</strong>. Payment should already be recorded.
+          Email this invoice to the client and mark it as <strong>Sent</strong>. Record payment after it has been sent.
         </p>
         <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", flexWrap: "wrap" }}>
           <Btn v="secondary" onClick={() => setSendConfirmOpen(false)} disabled={sendLoading}>

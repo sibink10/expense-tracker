@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { C } from "../shared/theme";
-import { BILL_ACCOUNTS, PAY_TERMS } from "../shared/constants";
+import { BILL_ACCOUNTS, PAY_TERMS, BILL_PAYMENT_PRIORITY, BILL_PAYMENT_PRIORITY_OPTIONS } from "../shared/constants";
 import { addDays, fmtCur, round2, aggregateLineGstRows, formatTdsOptionLabel, formatTdsSummarySnippet, downloadFromSasUrl, buildDownloadFilename } from "../shared/utils";
 import { Inp, Btn, Alert, Mdl, MultiFileUp } from "../components/ui";
 import DecimalLineInput from "../components/DecimalLineInput";
@@ -40,6 +40,11 @@ function toItemRow(li: BillLineItem): BillItemRow {
   };
 }
 
+function priorityValueFromApiLabel(label?: string): string {
+  if (!label) return BILL_PAYMENT_PRIORITY.IMMEDIATE;
+  return label.toLowerCase().includes("later") ? BILL_PAYMENT_PRIORITY.LATER : BILL_PAYMENT_PRIORITY.IMMEDIATE;
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ padding: "16px 18px", border: `1px solid ${C.border}`, borderRadius: "10px", marginBottom: "16px", background: "#fff" }}>
@@ -56,6 +61,7 @@ export default function BillEditModal() {
   const [vendorBillNumber, setVendorBillNumber] = useState("");
   const [bd, setBd] = useState("");
   const [trm, setTrm] = useState("net30");
+  const [paymentPriority, setPaymentPriority] = useState<string>(BILL_PAYMENT_PRIORITY.IMMEDIATE);
   const [tds, setTds] = useState("none");
   const [items, setItems] = useState<BillItemRow[]>([defaultItemRow()]);
   const [desc, setDesc] = useState("");
@@ -85,6 +91,7 @@ export default function BillEditModal() {
       setVendorBillNumber(bill.vendorBillNumber ?? "");
       setBd(bill.bDate ?? "");
       setTrm(bill.terms || "net30");
+      setPaymentPriority(priorityValueFromApiLabel(bill.paymentPriority));
       setTds(bill.tds || "none");
       setDesc(bill.desc);
       setDiscountPct(String(bill.discountPercent ?? 0));
@@ -182,6 +189,7 @@ export default function BillEditModal() {
         billDate,
         dueDate,
         paymentTerms: trm,
+        paymentPriority,
         taxConfigId: tds === "none" ? null : tds,
         ccEmails: "",
         amount: totalBeforeTds,
@@ -217,6 +225,14 @@ export default function BillEditModal() {
           <Inp label="Vendor bill number" value={vendorBillNumber} onChange={(e) => setVendorBillNumber(e.target.value)} req ph="Enter vendor bill number" style={cellCompact} />
           <Inp label="Bill date" type="date" value={bd} onChange={(e) => setBd(e.target.value)} max={new Date().toISOString().split("T")[0]} req style={cellCompact} />
           <Inp label="Payment terms" type="select" value={trm} onChange={(e) => setTrm(e.target.value)} opts={PAY_TERMS.map((x) => ({ v: x.v, l: x.l }))} style={cellCompact} />
+          <Inp
+            label="Payment priority"
+            type="select"
+            value={paymentPriority}
+            onChange={(e) => setPaymentPriority(e.target.value)}
+            opts={BILL_PAYMENT_PRIORITY_OPTIONS.map((x) => ({ v: x.v, l: x.l }))}
+            style={cellCompact}
+          />
           {due && (
             <div style={{ fontSize: "12px", color: C.muted, alignSelf: "center" }}>
               📅 Due date: <strong>{due}</strong>

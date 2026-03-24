@@ -11,7 +11,7 @@ public record PaginatedResult<T>(List<T> Items, int TotalCount, int Page, int Pa
     public bool HasNext => Page < TotalPages;
 }
 
-public record FilterParams(int Page = 1, int PageSize = 20, string? Status = null, string? Search = null, string SortBy = "CreatedAt", bool Desc = true);
+public record FilterParams(int Page = 1, int PageSize = 20, string? Status = null, string? Search = null, string SortBy = "CreatedAt", bool Desc = true, string? PaymentPriority = null);
 
 public record CommentDto(Guid Id, string By, string Text, string ActionType, DateTime CreatedAt);
 public record DocumentDto(Guid Id, string FileName, string? ContentType, long FileSizeBytes, DateTime UploadedAt);
@@ -206,6 +206,8 @@ public class CreateBillRequest
     public DateTime BillDate { get; set; }
     public DateTime DueDate { get; set; }
     public string PaymentTerms { get; set; } = "";
+    /// <summary>Form field: "immediate" or "later" (optional; default immediate).</summary>
+    public string? PaymentPriority { get; set; }
     public string? CCEmails { get; set; }
     /// <summary>JSON array of CreateBillLineItemRequest. Sent as form field "items".</summary>
     public string? Items { get; set; }
@@ -221,6 +223,8 @@ public class UpdateBillRequest
     public DateTime BillDate { get; set; }
     public DateTime DueDate { get; set; }
     public string PaymentTerms { get; set; } = "net30";
+    /// <summary>"immediate" or "later".</summary>
+    public string? PaymentPriority { get; set; }
     public Guid? TaxConfigId { get; set; }
     public string? CCEmails { get; set; }
     public decimal Amount { get; set; }
@@ -237,7 +241,7 @@ public class UploadVendorBillRequest
     public IFormFile? Attachment { get; set; }
 }
 public record BillLineItemDto(int LineNumber, string Description, string? Account, decimal Quantity, decimal Rate, Guid? GSTConfigId, string? GSTName, decimal? GSTRate, decimal Amount);
-public record BillDto(Guid Id, string BillCode, Guid VendorId, string VendorName, string? vendorBillNumber, string? VendorGSTIN, string VendorEmail, decimal Amount, decimal DiscountPercent, decimal Rounding, string? TaxName, decimal TDSAmount, decimal TotalPayable, decimal PaidAmount, string Description, DateTime BillDate, DateTime DueDate, string PaymentTerms, string Status, string? AttachmentUrl, string? PaymentReference, DateTime? PaidAt, string SubmittedByName, DateTime CreatedAt, List<BillLineItemDto> LineItems, List<CommentDto> Comments, List<DocumentDto> Documents);
+public record BillDto(Guid Id, string BillCode, Guid VendorId, string VendorName, string? vendorBillNumber, string? VendorGSTIN, string VendorEmail, decimal Amount, decimal DiscountPercent, decimal Rounding, string? TaxName, decimal TDSAmount, decimal TotalPayable, decimal PaidAmount, string Description, DateTime BillDate, DateTime DueDate, string PaymentTerms, string PaymentPriority, string Status, string? AttachmentUrl, string? PaymentReference, DateTime? PaidAt, string SubmittedByName, DateTime CreatedAt, List<BillLineItemDto> LineItems, List<CommentDto> Comments, List<DocumentDto> Documents);
 
 // ═══════════════════════════════════════════════════
 //  CLIENT

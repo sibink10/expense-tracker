@@ -4,14 +4,14 @@ import { C } from "../shared/theme";
 import { Inp, Btn, Toggle } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
 import { getOrganization } from "../shared/api";
-import { isEmailListValid } from "../shared/utils";
+import { isEmailListValid, fmtCur } from "../shared/utils";
 import { bulkUpsertOrganizationSettings } from "../shared/api/organizationSettings";
 
 const GRID_COLS = { sm: 1, md: 2, lg: 3 };
 
 export default function AdminSettingsPage() {
   const navigate = useNavigate();
-  const { cfg, t, orgSettings, refreshOrgSettings, activeOrg, setActiveOrg } = useAppContext();
+  const { cfg, t, orgSettings, refreshOrgSettings, activeOrg, setActiveOrg, is } = useAppContext();
   const [c, setC] = useState(cfg);
   const [ccError, setCcError] = useState<string | null>(null);
   const [cols, setCols] = useState(3);
@@ -77,6 +77,12 @@ export default function AdminSettingsPage() {
       setCcError("Enter valid email addresses (comma-separated)");
       return;
     }
+    const advCapNum = Number(c.advCap) || 0;
+    const balanceCapNum = Number(c.balanceCap) || 0;
+    if (balanceCapNum > advCapNum) {
+      t(`Balance cap cannot exceed the advance cap (${fmtCur(advCapNum)}).`, "no");
+      return;
+    }
     setSaving(true);
     try {
       await bulkUpsertOrganizationSettings([
@@ -86,6 +92,7 @@ export default function AdminSettingsPage() {
         { id: orgSettings.invFmt?.id ?? null, key: "invFmt", value: c.invFmt },
         { id: orgSettings.advEnabled?.id ?? null, key: "advEnabled", value: String(!!c.advEnabled) },
         { id: orgSettings.advCap?.id ?? null, key: "advCap", value: String(c.advCap ?? 0) },
+        { id: orgSettings.balanceCap?.id ?? null, key: "balanceCap", value: String(Number(c.balanceCap) || 0) },
         { id: orgSettings.ccEmails?.id ?? null, key: "ccEmails", value: c.ccEmails.join(", ") },
       ]);
       await refreshOrgSettings();
@@ -109,6 +116,7 @@ export default function AdminSettingsPage() {
         },
       ]);
       await refreshOrgSettings();
+      setC((prev) => ({ ...prev, balanceCap: cap }));
       t("Balance cap reset to cap amount");
     } catch {
       t("Failed to reset balance cap");
@@ -263,7 +271,16 @@ export default function AdminSettingsPage() {
             label="Cap (₹)"
             type="number"
             value={String(c.advCap)}
-            onChange={(e) => setC({ ...c, advCap: parseInt(e.target.value) || 0 })}
+            onChange={(e) => {
+              const n = parseFloat(e.target.value);
+              const adv = Number.isFinite(n) ? Math.max(0, n) : 0;
+              setC((prev) => ({
+                ...prev,
+                advCap: adv,
+                balanceCap: Math.min(Number(prev.balanceCap) || 0, adv),
+              }));
+            }}
+            min="0"
           />
           <div style={{ marginBottom: "14px" }}>
             <div
@@ -299,9 +316,20 @@ export default function AdminSettingsPage() {
             <Inp
               type="number"
               value={String(c.balanceCap)}
-              onChange={() => undefined}
-              disabled
-              hint="Remaining advance pool. Reset sets this to the cap amount above."
+              onChange={(e) => {
+                const n = parseFloat(e.target.value);
+                const adv = Number(c.advCap) || 0;
+                const raw = Number.isFinite(n) ? Math.max(0, n) : 0;
+                setC({ ...c, balanceCap: Math.min(raw, adv) });
+              }}
+              disabled={!is("admin")}
+              min="0"
+              max={String(Math.max(0, Number(c.advCap) || 0))}
+              hint={
+                is("admin")
+                  ? `Remaining advance pool for approvals (cannot exceed advance cap ${fmtCur(Number(c.advCap) || 0)}). Save with other settings, or use Reset to match the cap above.`
+                  : "Remaining advance pool. Only an administrator can adjust this value."
+              }
               style={{ marginBottom: 0 }}
             />
           </div>
@@ -325,7 +353,8 @@ export default function AdminSettingsPage() {
               if (v.trim() && !isEmailListValid(v)) setCcError("Enter valid email addresses (comma-separated)");
               else setCcError(null);
             }}
-            hint="CC'd on all payment emails"
+            ph="a@company.com, b@company.com"
+            hint="CC'd on all payment emails. Separate multiple addresses with commas."
           />
           {ccError && <div style={{ fontSize: "11px", color: C.danger, marginTop: "-8px" }}>{ccError}</div>}
         </div>

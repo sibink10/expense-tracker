@@ -33,6 +33,7 @@ export interface ApiBill {
   billDate: string;
   dueDate: string;
   paymentTerms: string;
+  paymentPriority?: string;
   status: string;
   attachmentUrl?: string | null;
   documents?: ApiBillDocument[];
@@ -118,6 +119,7 @@ function mapApiBillToApp(item: ApiBill): Bill {
     bDate: item.billDate?.split("T")[0] ?? "",
     due: item.dueDate?.split("T")[0] ?? "",
     terms: item.paymentTerms ?? "",
+    paymentPriority: item.paymentPriority ?? "Pay immediately",
     status: mapStatus(item.status),
     file,
     documents,
@@ -155,6 +157,8 @@ export interface GetBillsParams {
   status?: string;
   sortBy?: string;
   desc?: boolean;
+  /** `immediate` | `later` — matches vendor bill payment priority */
+  paymentPriority?: string;
 }
 
 export async function getBillsRaw(params: GetBillsParams = {}): Promise<ApiBillsResponse> {
@@ -165,6 +169,7 @@ export async function getBillsRaw(params: GetBillsParams = {}): Promise<ApiBills
     Status: params.status,
     SortBy: params.sortBy,
     Desc: params.desc,
+    PaymentPriority: params.paymentPriority,
   };
 
   const { data } = await apiClient.get<ApiBill[] | ApiBillsResponse>("/bills", {
@@ -228,6 +233,7 @@ export interface CreateBillPayload {
   billDate: string;
   dueDate: string;
   paymentTerms: string;
+  paymentPriority: string;
   ccEmails: string;
   discountPercent?: number;
   rounding?: number;
@@ -244,6 +250,7 @@ export async function createBill(payload: CreateBillPayload, files: File[]): Pro
   form.append("billDate", payload.billDate);
   form.append("dueDate", payload.dueDate);
   form.append("paymentTerms", payload.paymentTerms);
+  form.append("paymentPriority", payload.paymentPriority);
   form.append("ccEmails", payload.ccEmails);
   form.append("discountPercent", String(payload.discountPercent ?? 0));
   form.append("rounding", String(payload.rounding ?? 0));
@@ -261,6 +268,7 @@ export interface UpdateBillPayload {
   billDate: string;
   dueDate: string;
   paymentTerms: string;
+  paymentPriority: string;
   taxConfigId: string | null;
   ccEmails: string;
   amount: number;

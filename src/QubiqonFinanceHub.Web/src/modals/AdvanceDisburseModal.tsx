@@ -70,12 +70,17 @@ export default function AdvanceDisburseModal() {
       setError(validation.message || "Cannot disburse this amount");
       return;
     }
+    if (!paymentReference.trim()) {
+      setError("Payment reference is required");
+      return;
+    }
     setLoading(true);
     setError(null);
     const paid = parseFloat(paidAmt) || defaultPaid;
     try {
+      const refTrim = paymentReference.trim();
       await disburseAdvance(id, {
-        paymentReference,
+        paymentReference: refTrim.length > 0 ? refTrim : undefined,
         method,
         notes,
         paidAmount: paid,
@@ -180,7 +185,7 @@ export default function AdvanceDisburseModal() {
           v="advance"
           onClick={handleDisburse}
           disabled={
-            !paymentReference ||
+            !paymentReference.trim() ||
             !!paidError ||
             loading ||
             validating ||

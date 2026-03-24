@@ -153,7 +153,8 @@ export default function InvoicesPage() {
   const paged = f;
 
   const invoiceBalanceDue = (inv: Invoice) => Math.max(inv.total - (inv.paidAmound ?? 0), 0);
-  const showMarkPaidOnRow = (inv: Invoice) => invoiceBalanceDue(inv) > 0.005;
+  const showMarkPaidOnRow = (inv: Invoice) =>
+    invoiceBalanceDue(inv) > 0.005 && inv.status !== INV_S.DRAFT;
 
   return (
     <div>
@@ -273,21 +274,19 @@ export default function InvoicesPage() {
                               "Download"
                             )}
                           </Btn>
-                          {canSendInvoice &&
-                            (inv.status === INV_S.PAID || inv.status === INV_S.PARTIALLY_PAID) &&
-                            inv.apiId && (
-                              <Btn
-                                sm
-                                v="info"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSendConfirm(inv);
-                                }}
-                              >
-                                Send
-                              </Btn>
-                            )}
-                          {showMarkPaidOnRow(inv) && (
+                          {canSendInvoice && inv.status === INV_S.DRAFT && inv.apiId && (
+                            <Btn
+                              sm
+                              v="info"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSendConfirm(inv);
+                              }}
+                            >
+                              Send
+                            </Btn>
+                          )}
+                          {canSendInvoice && showMarkPaidOnRow(inv) && (
                             <Btn
                               sm
                               v="success"
@@ -353,7 +352,7 @@ export default function InvoicesPage() {
         zIndex={INVOICE_MODAL_Z_INDEX + 50}
       >
         <p style={{ fontSize: "13px", color: C.primary, margin: "0 0 16px", lineHeight: 1.5 }}>
-          Email this paid invoice to the client and mark it as <strong>Sent</strong>. Use this after payment has been recorded.
+          Email this invoice to the client and mark it as <strong>Sent</strong>. You can record payment after it has been sent.
         </p>
         <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", flexWrap: "wrap" }}>
           <Btn v="secondary" onClick={() => setSendConfirm(null)} disabled={sendLoading}>

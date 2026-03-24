@@ -40,17 +40,20 @@ export interface PagedVendorsResponse {
   hasNext: boolean;
 }
 
+/** Filter vendors that have at least one bill with this payment priority (`immediate` | `later`). */
 export async function getVendors(
   page = 1,
   pageSize = 10,
   search?: string,
   sortBy?: string,
-  desc?: boolean
+  desc?: boolean,
+  paymentPriority?: string | null
 ): Promise<PagedVendorsResponse> {
   const params: Record<string, string | number | boolean> = { page, pageSize };
   if (search?.trim()) params.search = search.trim();
   if (sortBy) params.SortBy = sortBy;
   if (desc !== undefined) params.Desc = desc;
+  if (paymentPriority && paymentPriority !== "all") params.PaymentPriority = paymentPriority;
 
   const { data } = await apiClient.get<
     ApiVendor[] | { items: ApiVendor[]; totalCount: number; page: number; pageSize: number; totalPages: number; hasNext: boolean }
@@ -102,4 +105,8 @@ export type UpdateVendorPayload = CreateVendorPayload;
 export async function updateVendor(id: string, payload: UpdateVendorPayload): Promise<unknown> {
   const { data } = await apiClient.put(`/vendors/${id}`, payload);
   return data;
+}
+
+export async function deleteVendor(id: string): Promise<void> {
+  await apiClient.delete(`/vendors/${id}`);
 }

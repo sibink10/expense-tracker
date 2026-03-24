@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
-import { PAY_TERMS, BILL_ACCOUNTS } from "../shared/constants";
+import { PAY_TERMS, BILL_ACCOUNTS, BILL_PAYMENT_PRIORITY, BILL_PAYMENT_PRIORITY_OPTIONS } from "../shared/constants";
 import { addDays, fmtCur, round2, aggregateLineGstRows, formatTdsOptionLabel, formatTdsSummarySnippet } from "../shared/utils";
 import { Inp, Btn, MultiFileUp, Alert } from "../components/ui";
 import DecimalLineInput from "../components/DecimalLineInput";
@@ -80,6 +80,7 @@ export default function SubmitBillPage() {
   const [desc, setDesc] = useState("");
   const [bd, setBd] = useState("");
   const [trm, setTrm] = useState("net30");
+  const [paymentPriority, setPaymentPriority] = useState<string>(BILL_PAYMENT_PRIORITY.IMMEDIATE);
   const [tds, setTds] = useState("none");
   const [discountPct, setDiscountPct] = useState("");
   const [rounding, setRounding] = useState("");
@@ -188,6 +189,7 @@ export default function SubmitBillPage() {
           billDate,
           dueDate,
           paymentTerms: trm,
+          paymentPriority,
           ccEmails: "",
           discountPercent: parseFloat(discountPct) || 0,
           rounding: roundingVal,
@@ -255,6 +257,15 @@ export default function SubmitBillPage() {
             value={trm}
             onChange={(e) => setTrm(e.target.value)}
             opts={PAY_TERMS.map((x) => ({ v: x.v, l: x.l }))}
+            style={cellCompact}
+          />
+          <Inp
+            label="Payment priority"
+            type="select"
+            value={paymentPriority}
+            onChange={(e) => setPaymentPriority(e.target.value)}
+            opts={BILL_PAYMENT_PRIORITY_OPTIONS.map((x) => ({ v: x.v, l: x.l }))}
+            hint="When finance should process payment"
             style={cellCompact}
           />
           {due && (

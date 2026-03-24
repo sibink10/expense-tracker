@@ -6,7 +6,10 @@ public enum ExpenseStatus { PendingApproval = 0, Approved = 1, Rejected = 2, Can
 
 public enum BillStatus { Draft = 0, Submitted = 1, Approved = 2, Rejected = 3, Paid = 4, Overdue = 5, PartiallyPaid = 6 }
 
-public enum AdvanceStatus { Pending = 0, Approved = 1, Rejected = 2, Disbursed = 3, Settled = 4, PartiallyDisbursed = 5 }
+/// <summary>When finance should pay this vendor bill (submitter preference).</summary>
+public enum PaymentPriority { Immediate = 0, Later = 1 }
+
+public enum AdvanceStatus { Pending = 0, Approved = 1, Rejected = 2, Disbursed = 3, Settled = 4, PartiallyDisbursed = 5, Cancelled = 6 }
 
 public enum InvoiceStatus { Draft = 0, Sent = 1, Viewed = 2, Paid = 3, PartiallyPaid = 4, Overdue = 5 }
 

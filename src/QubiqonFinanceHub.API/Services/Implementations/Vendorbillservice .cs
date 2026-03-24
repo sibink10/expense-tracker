@@ -32,6 +32,8 @@ public class VendorBillService : IVendorBillService
         var code = await _codeGen.GenerateBillNumberAsync(orgId, "bill");
         var vendor = await _db.Vendors.FindAsync(dto.VendorId)
             ?? throw new KeyNotFoundException("Vendor not found");
+        if (vendor.OrganizationId != orgId || vendor.IsDelete)
+            throw new KeyNotFoundException("Vendor not found");
 
         decimal tdsAmount = 0;
         if (dto.TaxConfigId.HasValue)
@@ -60,6 +62,7 @@ public class VendorBillService : IVendorBillService
             BillDate = dto.BillDate,
             DueDate = dto.DueDate,
             PaymentTerms = dto.PaymentTerms,
+            PaymentPriority = ParsePaymentPriority(dto.PaymentPriority),
             CCEmails = dto.CCEmails,
             DiscountPercent = dto.DiscountPercent,
             Rounding = dto.Rounding,
@@ -183,6 +186,8 @@ public class VendorBillService : IVendorBillService
         bill.BillDate = dto.BillDate;
         bill.DueDate = dto.DueDate;
         bill.PaymentTerms = dto.PaymentTerms ?? bill.PaymentTerms;
+        if (dto.PaymentPriority != null)
+            bill.PaymentPriority = ParsePaymentPriority(dto.PaymentPriority);
         bill.TaxConfigId = dto.TaxConfigId;
         bill.CCEmails = string.IsNullOrWhiteSpace(dto.CCEmails) ? null : dto.CCEmails.Trim();
         bill.Amount = dto.Amount;
@@ -341,6 +346,11 @@ public class VendorBillService : IVendorBillService
             var s = f.Search.ToLower();
             q = q.Where(x => x.BillCode.ToLower().Contains(s) || x.Vendor.Name.ToLower().Contains(s));
         }
+        if (!string.IsNullOrWhiteSpace(f.PaymentPriority) &&
+            PaymentPriorityFilters.TryParseListFilter(f.PaymentPriority, out var priority))
+        {
+            q = q.Where(x => x.PaymentPriority == priority);
+        }
 
         var total = await q.CountAsync();
         q = q.ApplyVendorBillSorting(f);
@@ -488,12 +498,15 @@ public class VendorBillService : IVendorBillService
         if (bill.Status != BillStatus.Approved && bill.Status != BillStatus.PartiallyPaid)
             throw new InvalidOperationException("Bill must be approved before payment.");
 
+        if (string.IsNullOrWhiteSpace(dto.PaymentReference))
+            throw new InvalidOperationException("Payment reference is required.");
+
         var remainingBefore = bill.TotalPayable - bill.PaidAmount;
         var paidAmount = dto.PaidAmount > 0 ? dto.PaidAmount : bill.TotalPayable;
         if (paidAmount > remainingBefore)
             throw new InvalidOperationException($"Paid amount (₹{paidAmount:N2}) cannot exceed the remaining balance (₹{remainingBefore:N2}).");
         bill.PaidAmount += paidAmount;
-        bill.PaymentReference = dto.PaymentReference;
+        bill.PaymentReference = dto.PaymentReference.Trim();
         bill.PaidAt = DateTime.UtcNow;
         bill.UpdatedAt = DateTime.UtcNow;
         bill.Status = bill.PaidAmount >= bill.TotalPayable ? BillStatus.Paid : BillStatus.PartiallyPaid;
@@ -530,14 +543,14 @@ public class VendorBillService : IVendorBillService
                 ["vendor_bill_number"] = bill.vendorBillNumber ?? "",
                 ["amount"] = $"₹{bill.Amount:N2}",
                 ["total_payable"] = $"₹{bill.TotalPayable:N2}",
-                ["paid_amount"] = $"₹{bill.PaidAmount:N2}",
+                ["paid_amount"] = $"₹{paidAmount:N2}",
                 ["balance_due"] = $"₹{balanceDueAfter:N2}",
                 ["bill_date"] = bill.BillDate.ToString("dd MMM yyyy"),
                 ["due_date"] = bill.DueDate.ToString("dd MMM yyyy"),
                 ["description"] = bill.Description,
                 ["actor_name"] = emp.FullName,
                 ["details_text"] = dto.Notes ?? "",
-                ["payment_reference"] = dto.PaymentReference,
+                ["payment_reference"] = dto.PaymentReference ?? "",
                 ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
             };
             await AppendBillEmailTaxVariablesAsync(bill.Id, paidVars);
@@ -607,8 +620,8 @@ public class VendorBillService : IVendorBillService
                 label += $" · #{i + 1}";
             gstRows.Append($"""
                 <tr>
-                    <td style="padding:10px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:500;color:#475569;">{label}</td>
-                    <td style="padding:10px 16px;border-top:1px solid #e2e8f0;font-size:14px;text-align:right;color:#0f172a;">₹{gstPart:N2}</td>
+                    <td style="padding:10px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:500;color:#475569;width:35%;vertical-align:top;text-align:left;">{label}</td>
+                    <td style="padding:10px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;vertical-align:top;text-align:left;">₹{gstPart:N2}</td>
                 </tr>
                 """);
         }
@@ -631,8 +644,8 @@ public class VendorBillService : IVendorBillService
         var tdsLabel = WebUtility.HtmlEncode(rawLabel);
         return $"""
             <tr>
-                <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">{tdsLabel}</td>
-                <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#dc2626;text-align:right;">-₹{bill.TDSAmount:N2}</td>
+                <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">{tdsLabel}</td>
+                <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#dc2626;vertical-align:top;text-align:left;">-₹{bill.TDSAmount:N2}</td>
             </tr>
             """;
     }
@@ -645,9 +658,9 @@ public class VendorBillService : IVendorBillService
             <tr>
                 <td style="padding:10px 12px;border-top:1px solid #e2e8f0;font-size:13px;color:#0f172a;">{i + 1}</td>
                 <td style="padding:10px 12px;border-top:1px solid #e2e8f0;font-size:13px;color:#0f172a;">{System.Net.WebUtility.HtmlEncode(l.Description)}</td>
-                <td style="padding:10px 12px;border-top:1px solid #e2e8f0;font-size:13px;color:#0f172a;text-align:center;">{l.Quantity:N2}</td>
-                <td style="padding:10px 12px;border-top:1px solid #e2e8f0;font-size:13px;color:#0f172a;text-align:right;">₹{l.Rate:N2}</td>
-                <td style="padding:10px 12px;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#0f172a;text-align:right;">₹{l.Amount:N2}</td>
+                <td style="padding:10px 12px;border-top:1px solid #e2e8f0;font-size:13px;color:#0f172a;text-align:left;">{l.Quantity:N2}</td>
+                <td style="padding:10px 12px;border-top:1px solid #e2e8f0;font-size:13px;color:#0f172a;text-align:left;">₹{l.Rate:N2}</td>
+                <td style="padding:10px 12px;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#0f172a;text-align:left;">₹{l.Amount:N2}</td>
             </tr>
             """));
         return $"""
@@ -658,9 +671,9 @@ public class VendorBillService : IVendorBillService
                         <tr style="background:#f8fafc;">
                             <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:#475569;">#</th>
                             <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:#475569;">Description</th>
-                            <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:600;color:#475569;">Qty</th>
-                            <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:600;color:#475569;">Rate</th>
-                            <th style="padding:10px 12px;text-align:right;font-size:11px;font-weight:600;color:#475569;">Amount</th>
+                            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:#475569;">Qty</th>
+                            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:#475569;">Rate</th>
+                            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:#475569;">Amount</th>
                         </tr>
                     </thead>
                     <tbody>{rows}</tbody>
@@ -676,6 +689,19 @@ public class VendorBillService : IVendorBillService
         var isOverdue = b.DueDate < today && b.PaidAmount < b.TotalPayable && b.Status != BillStatus.Paid;
         return isOverdue ? BillStatus.Overdue.ToString() : b.Status.ToString();
     }
+
+    private static PaymentPriority ParsePaymentPriority(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return PaymentPriority.Immediate;
+        return value.Trim().ToLowerInvariant() switch
+        {
+            "later" or "paylater" => PaymentPriority.Later,
+            _ => PaymentPriority.Immediate,
+        };
+    }
+
+    private static string MapPaymentPriorityDisplay(PaymentPriority p) =>
+        p == PaymentPriority.Later ? "Pay later" : "Pay immediately";
 
     private static List<CreateBillLineItemRequest> ParseLineItems(string? itemsJson)
     {
@@ -709,6 +735,7 @@ public class VendorBillService : IVendorBillService
             b.Id, b.BillCode, b.VendorId, b.Vendor.Name, b.vendorBillNumber, b.Vendor.GSTIN, b.Vendor.Email,
             b.Amount, b.DiscountPercent, b.Rounding, b.TaxConfig?.Name, b.TDSAmount, b.TotalPayable, b.PaidAmount,
             b.Description, b.BillDate, b.DueDate, b.PaymentTerms,
+            MapPaymentPriorityDisplay(b.PaymentPriority),
             GetDisplayBillStatus(b), b.AttachmentUrl, b.PaymentReference, b.PaidAt,
             submittedBy?.FullName ?? "Unknown", b.CreatedAt,
             lineItems,

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { Bill } from "../types";
 import { C } from "../shared/theme";
-import { BILL_S } from "../shared/constants";
+import { BILL_S, BILL_PAYMENT_PRIORITY } from "../shared/constants";
 import { fmtCur, daysOverdueFromDueYmd, nextListSort } from "../shared/utils";
 import { Av, Btn, Badge, Tbl, Filter, Empty, ListRefreshButton, type TblCol } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
@@ -25,6 +25,12 @@ export default function BillListPage() {
   const statusParam = searchParams.get("status") ?? "all";
   const normalizedStatus = validStatusValues.has(statusParam) ? statusParam : "all";
 
+  const payPriorityParam = searchParams.get("payPriority");
+  const payPriority =
+    payPriorityParam === BILL_PAYMENT_PRIORITY.IMMEDIATE || payPriorityParam === BILL_PAYMENT_PRIORITY.LATER
+      ? payPriorityParam
+      : "all";
+
   useEffect(() => {
     const handler = () => setRefreshKey((k) => k + 1);
     window.addEventListener("bills-refresh", handler);
@@ -42,6 +48,9 @@ export default function BillListPage() {
     ? (sf === BILL_S.PARTIALLY_PAID ? "PartiallyPaid" : sf)
     : undefined;
 
+  const paymentPriorityForApi =
+    payPriority === "all" ? undefined : payPriority;
+
   useEffect(() => {
     setLoading(true);
     getBills({
@@ -49,6 +58,7 @@ export default function BillListPage() {
       pageSize,
       search: search || undefined,
       status: statusForApi,
+      paymentPriority: paymentPriorityForApi,
       sortBy,
       desc: sortDesc,
     })
@@ -63,7 +73,7 @@ export default function BillListPage() {
         setTotalPages(0);
       })
       .finally(() => setLoading(false));
-  }, [page, pageSize, search, statusForApi, refreshKey, sortBy, sortDesc]);
+  }, [page, pageSize, search, statusForApi, paymentPriorityForApi, refreshKey, sortBy, sortDesc]);
 
   const handleSort = (key: string) => {
     const n = nextListSort(key, sortBy, sortDesc);
@@ -128,6 +138,54 @@ export default function BillListPage() {
             BILL_S.OVERDUE,
             BILL_S.REJECTED,
           ]}
+          prepend={
+            <div
+              style={{
+                display: "flex",
+                gap: "2px",
+                background: C.surface,
+                borderRadius: "8px",
+                padding: "2px",
+                minHeight: "34px",
+                alignItems: "center",
+              }}
+            >
+              {(
+                [
+                  ["all", "All"],
+                  [BILL_PAYMENT_PRIORITY.IMMEDIATE, "Pay now"],
+                  [BILL_PAYMENT_PRIORITY.LATER, "Pay later"],
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => {
+                    const nextParams = new URLSearchParams(searchParams);
+                    if (key === "all") nextParams.delete("payPriority");
+                    else nextParams.set("payPriority", key);
+                    setSearchParams(nextParams, { replace: true });
+                    setPage(1);
+                  }}
+                  style={{
+                    minHeight: "30px",
+                    padding: "6px 10px",
+                    borderRadius: "6px",
+                    border: "none",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    fontFamily: "'DM Sans'",
+                    background: payPriority === key ? "#fff" : "transparent",
+                    color: payPriority === key ? C.primary : C.muted,
+                    boxShadow: payPriority === key ? "0 1px 3px rgba(0,0,0,0.06)" : "none",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          }
           trailing={
             <ListRefreshButton
               loading={loading}
@@ -153,6 +211,7 @@ export default function BillListPage() {
                     { label: "Payable", sortKey: "TotalPayable" },
                     { label: "Balance Due", sortKey: "BalanceDue" },
                     { label: "Due", sortKey: "DueDate" },
+                    { label: "Priority" },
                     { label: "Status" },
                     ...(is("approver") || is("finance") || is("admin") ? (["Action"] as TblCol[]) : []),
                   ] as TblCol[]
@@ -184,6 +243,11 @@ export default function BillListPage() {
                     { v: <span style={{ fontWeight: 700 }}>{fmtCur(b.pay)}</span> },
                     { v: <span style={{ fontSize: "11px", color: (b.pay - (b.paidAmount ?? 0)) > 0 ? C.vendor : C.muted }}>{fmtCur(b.pay - (b.paidAmount ?? 0))}</span> },
                     { v: <span style={{ fontSize: "11px", color: C.muted }}>{b.due}</span> },
+                    {
+                      v: (
+                        <span style={{ fontSize: "11px", fontWeight: 500 }}>{b.paymentPriority ?? "—"}</span>
+                      ),
+                    },
                     {
                       v: (
                         <Badge

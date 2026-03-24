@@ -49,10 +49,6 @@ export default function InvPayModal() {
   }, [inv.id, remainingAmount]);
 
   const handleConfirm = async () => {
-    if (!paymentReference.trim()) {
-      setError("Payment reference is required");
-      return;
-    }
     if (amountError) {
       setError(amountError);
       return;
@@ -61,8 +57,9 @@ export default function InvPayModal() {
     setLoading(true);
     setError(null);
     try {
+      const refTrim = paymentReference.trim();
       await markInvoicePaid(id, {
-        paymentReference: paymentReference.trim(),
+        paymentReference: refTrim.length > 0 ? refTrim : undefined,
         paidAmount: parsedPaidAmount,
         method,
         notes: notes.trim(),
@@ -123,8 +120,7 @@ export default function InvPayModal() {
         label="Payment reference"
         value={paymentReference}
         onChange={(e) => setPaymentReference(e.target.value)}
-        req
-        ph="e.g. NEFT20260325..."
+        ph="Optional — e.g. NEFT ref"
       />
       <Inp
         label="Method"
@@ -143,7 +139,7 @@ export default function InvPayModal() {
       {amountError && <Alert sx={{ marginBottom: "8px" }}>{amountError}</Alert>}
       {error && <Alert sx={{ marginBottom: "8px" }}>{error}</Alert>}
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <Btn v="success" onClick={handleConfirm} disabled={!paymentReference.trim() || !!amountError || loading}>
+        <Btn v="success" onClick={handleConfirm} disabled={!!amountError || loading}>
           {loading ? "Saving..." : "Confirm"}
         </Btn>
       </div>

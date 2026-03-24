@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using Microsoft.EntityFrameworkCore;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Entities;
@@ -157,7 +158,26 @@ namespace QubiqonFinanceHub.API.Services.Implementations
                 }
             }
 
+            ValidateBalanceCapVsAdvCap(orgId);
+
             await _db.SaveChangesAsync();
+        }
+
+        /// <summary>Ensures balance cap (remaining pool) does not exceed the advance cap (max pool size).</summary>
+        private void ValidateBalanceCapVsAdvCap(Guid orgId)
+        {
+            var orgSettings = _db.OrganizationSettings.Local
+                .Where(s => s.OrganizationId == orgId)
+                .ToList();
+            var adv = orgSettings.FirstOrDefault(s => s.Key == "advCap");
+            var bal = orgSettings.FirstOrDefault(s => s.Key == "balanceCap");
+            if (bal == null) return;
+            if (!decimal.TryParse(bal.Value, NumberStyles.Any, CultureInfo.InvariantCulture, out var b)) return;
+            var a = 0m;
+            if (adv != null && decimal.TryParse(adv.Value, NumberStyles.Any, CultureInfo.InvariantCulture, out var ap))
+                a = ap;
+            if (b > a)
+                throw new InvalidOperationException("Balance cap cannot exceed the advance cap amount.");
         }
     }
 }

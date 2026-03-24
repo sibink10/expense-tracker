@@ -37,16 +37,17 @@ export default function PayModal() {
   }, [defaultPaid, mdl?.d]);
 
   const handlePay = async () => {
-    if (!r) return;
+    if (!r.trim()) return;
     if (paidError) return;
     const paid = round2(parseFloat(paidAmt) || defaultPaid);
+    const paymentReference = r.trim();
     if (mdl.it === "bill") {
       const b = d as Bill;
       const id = b.apiId ?? b.id;
       setLoading(true);
       setError(null);
       try {
-        await payBill(id, { paymentReference: r, paidAmount: paid });
+        await payBill(id, { paymentReference, paidAmount: paid });
         setMdl(null);
         window.dispatchEvent(new CustomEvent("bills-refresh"));
       } catch (err: unknown) {
@@ -60,7 +61,7 @@ export default function PayModal() {
       setLoading(true);
       setError(null);
       try {
-        await payExpense(id, { paymentReference: r, paidAmount: paid });
+        await payExpense(id, { paymentReference, paidAmount: paid });
         setMdl(null);
         window.dispatchEvent(new CustomEvent("expenses-refresh"));
       } catch (err: unknown) {
@@ -69,7 +70,7 @@ export default function PayModal() {
         setLoading(false);
       }
     } else if (mdl.it === "advance") {
-      pay(d, mdl.it, r);
+      pay(d, mdl.it, paymentReference);
     }
   };
 
@@ -113,15 +114,14 @@ export default function PayModal() {
         label="Payment ref (NEFT/IMPS/UPI)"
         value={r}
         onChange={(e) => setR(e.target.value)}
-        req
-        ph="Reference..."
+        ph="Optional reference"
       />
       {error && <Alert sx={{ marginBottom: "8px" }}>{error}</Alert>}
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <Btn
           v={mdl.it === "bill" ? "vendor" : mdl.it === "advance" ? "advance" : "info"}
           onClick={handlePay}
-          disabled={!r || !!paidError || loading}
+          disabled={!r.trim() || !!paidError || loading}
         >
           {loading ? "Processing..." : "Confirm payment"}
         </Btn>

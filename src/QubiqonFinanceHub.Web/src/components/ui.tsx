@@ -11,7 +11,7 @@ interface InpOpt {
 
 export interface InpProps {
   label?: ReactNode;
-  type?: "text" | "number" | "date" | "select" | "textarea" | "email";
+  type?: "text" | "number" | "date" | "select" | "textarea" | "email" | "password";
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
   onBlur?: (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
@@ -144,10 +144,13 @@ export const Inp: React.FC<InpProps> = ({
           onChange={onChange as React.ChangeEventHandler<HTMLInputElement>}
           onBlur={onBlur as React.FocusEventHandler<HTMLInputElement>}
           required={req}
-          min={min}
-          max={max}
+          min={type === "password" ? undefined : min}
+          max={type === "password" ? undefined : max}
           placeholder={ph}
           disabled={disabled}
+          autoComplete={type === "password" ? "off" : undefined}
+          inputMode={type === "password" ? "numeric" : undefined}
+          spellCheck={type === "password" ? false : undefined}
           style={{
             width: "100%",
             padding: endAdornment ? "8px 40px 8px 12px" : "8px 12px",
@@ -222,7 +225,9 @@ const _b: Record<string, [string, string]> = {};
   [ADV_S.APPROVED, C.successBg, C.success],
   [ADV_S.REJECTED, C.dangerBg, C.danger],
   [ADV_S.DISBURSED, C.advanceBg, C.advance],
+  [ADV_S.SETTLED, C.advanceBg, C.advance],
   [ADV_S.PARTIALLY_DISBURSED, C.advanceBg, C.advance],
+  [ADV_S.CANCELLED, "#F1EFE8", "#5F5E5A"],
   [INV_S.DRAFT, "#F1EFE8", "#5F5E5A"],
   [INV_S.SENT, C.infoBg, C.info],
   [INV_S.VIEWED, "#EDE9FE", "#6C3FA0"],
@@ -901,9 +906,11 @@ export const Filter: React.FC<{
   status: string;
   onStatus: (s: string) => void;
   opts: string[];
+  /** Renders after the search box, before status pills (e.g. payment priority toggles) */
+  prepend?: ReactNode;
   /** Renders on the right end of the filter row (e.g. refresh), inside the card with tabs */
   trailing?: ReactNode;
-}> = ({ search, onSearch, status, onStatus, opts, trailing }) => (
+}> = ({ search, onSearch, status, onStatus, opts, trailing, prepend }) => (
   <div
     style={{
       display: "flex",
@@ -933,6 +940,7 @@ export const Filter: React.FC<{
       />
       <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", fontSize: "12px", color: C.muted }}>⌕</span>
     </div>
+    {prepend}
     <div
       style={{
         display: "flex",

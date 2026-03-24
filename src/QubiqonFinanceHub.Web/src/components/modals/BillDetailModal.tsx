@@ -158,7 +158,7 @@ export default function BillDetailModal({ bill: b }: Props) {
           />
         </div>
       </div>
-      {(b.bDate || b.due || b.terms) && (
+      {(b.bDate || b.due || b.terms || b.paymentPriority) && (
         <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "12px", fontSize: "12px", alignItems: "flex-start" }}>
           {b.bDate && (
             <div>
@@ -173,6 +173,11 @@ export default function BillDetailModal({ bill: b }: Props) {
           {b.terms && (
             <div>
               <span style={{ color: C.muted }}>Payment terms</span> <span style={{ fontWeight: 600 }}>{b.terms}</span>
+            </div>
+          )}
+          {b.paymentPriority && (
+            <div>
+              <span style={{ color: C.muted }}>Payment priority</span> <span style={{ fontWeight: 600 }}>{b.paymentPriority}</span>
             </div>
           )}
         </div>

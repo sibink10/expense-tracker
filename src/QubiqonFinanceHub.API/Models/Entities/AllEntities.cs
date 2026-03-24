@@ -166,6 +166,8 @@ public class Vendor
     [MaxLength(50)] public string? AccountNumber { get; set; }
     [MaxLength(20)] public string? IfscCode { get; set; }
     public bool IsActive { get; set; } = true;
+    /// <summary>Soft delete: true when removed from directory.</summary>
+    public bool IsDelete { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 }
@@ -190,6 +192,7 @@ public class VendorBill
     public DateTime BillDate { get; set; }
     public DateTime DueDate { get; set; }
     [MaxLength(20)] public string PaymentTerms { get; set; } = "net30";
+    public PaymentPriority PaymentPriority { get; set; } = PaymentPriority.Immediate;
     public BillStatus Status { get; set; } = BillStatus.Submitted;
     [MaxLength(2048)] public string? AttachmentUrl { get; set; }
     [MaxLength(1000)] public string? CCEmails { get; set; }
@@ -265,6 +268,9 @@ public class Client
     public CustomerType CustomerType { get; set; } = CustomerType.Business;
     [MaxLength(500)] public string? BillingAddress { get; set; }
     [MaxLength(500)] public string? ShippingAddress { get; set; }
+
+    /// <summary>Soft delete: true when removed from directory.</summary>
+    public bool IsDelete { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
 }

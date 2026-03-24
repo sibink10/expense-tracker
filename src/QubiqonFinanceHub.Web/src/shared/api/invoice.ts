@@ -243,7 +243,7 @@ export async function updateInvoice(id: string, payload: UpdateInvoicePayload): 
 }
 
 export interface MarkInvoicePaidPayload {
-  paymentReference: string;
+  paymentReference?: string | null;
   paidAmount: number;
   method: string;
   notes: string;

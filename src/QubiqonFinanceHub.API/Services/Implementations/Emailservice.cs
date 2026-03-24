@@ -145,7 +145,7 @@ public class EmailService : IEmailService
                 inlineLogo,
                 "Submitted",
                 "#0f766e",
-                BuildNewSubject("Expense", GetVariable(variables, "expense_id")),
+                BuildExpenseSubmittedSubject(GetVariable(variables, "expense_id")),
                 "Expense Submitted For Review",
                 $"A new expense request <strong>{Encode(GetVariable(variables, "expense_id"))}</strong> has been submitted for review.",
                 "Please review the request and take the appropriate action.",
@@ -264,7 +264,7 @@ public class EmailService : IEmailService
                 inlineLogo,
                 "Submitted",
                 "#0f766e",
-                BuildNewSubject("Advance", GetVariable(variables, "advance_id")),
+                BuildAdvanceSubmittedSubject(GetVariable(variables, "advance_id")),
                 "Advance Request Submitted",
                 $"A new advance request <strong>{Encode(GetVariable(variables, "advance_id"))}</strong> has been submitted for review.",
                 "Please review the request and proceed with approval or rejection.",
@@ -341,7 +341,8 @@ public class EmailService : IEmailService
                 string.Empty,
                 "Notes",
                 variables,
-                includePaymentReference: false),
+                includePaymentReference: false,
+                includeBillIdRow: true),
 
             var key when key == Constants.EmailTemplateKeys.VendorBillApproved => BuildVendorBillEmailContent(
                 org,
@@ -358,7 +359,8 @@ public class EmailService : IEmailService
                 GetVariableOrEmpty(variables, "details_text"),
                 "Approver Comments",
                 variables,
-                includePaymentReference: false),
+                includePaymentReference: false,
+                includeBillIdRow: true),
 
             var key when key == Constants.EmailTemplateKeys.VendorBillRejected => BuildVendorBillEmailContent(
                 org,
@@ -375,7 +377,8 @@ public class EmailService : IEmailService
                 GetVariableOrEmpty(variables, "details_text"),
                 "Rejection Reason",
                 variables,
-                includePaymentReference: false),
+                includePaymentReference: false,
+                includeBillIdRow: true),
 
             var key when key == Constants.EmailTemplateKeys.VendorBillPaid => BuildVendorBillEmailContent(
                 org,
@@ -383,16 +386,17 @@ public class EmailService : IEmailService
                 inlineLogo,
                 "Paid",
                 "#2563eb",
-                $"Notification of payment - {GetVariable(variables, "bill_id")}",
-                "Vendor Bill Paid",
-                $"Hi {Encode(GetVariable(variables, "vendor_name"))},<br/><br/>Payment has been processed for vendor bill <strong>{Encode(GetVariable(variables, "bill_id"))}</strong>.",
+                "Bill paid",
+                "Bill paid",
+                $"Hi {Encode(GetVariable(variables, "vendor_name"))},<br/><br/>Payment has been processed for your bill.",
                 "Please find the payment reference and processing details below.",
                 "Processed By",
                 GetVariable(variables, "actor_name"),
                 GetVariableOrEmpty(variables, "details_text"),
                 "Payment Notes",
                 variables,
-                includePaymentReference: true),
+                includePaymentReference: true,
+                includeBillIdRow: false),
 
             var key when key == Constants.EmailTemplateKeys.InvoiceCreated => await BuildSafeInvoiceEmailContentAsync(
                 org,
@@ -583,6 +587,12 @@ public class EmailService : IEmailService
 
     private static string BuildNewSubject(string entity, string identifier) =>
         $"NEW {entity.ToUpperInvariant()} - {identifier}";
+
+    private static string BuildExpenseSubmittedSubject(string expenseCode) =>
+        $"New Expense - {expenseCode} - Submitted";
+
+    private static string BuildAdvanceSubmittedSubject(string advanceCode) =>
+        $"New Advance Request - {advanceCode} - Submitted";
 
     private static void NormalizeActionDateToIst(Dictionary<string, string> variables)
     {
@@ -953,7 +963,8 @@ public class EmailService : IEmailService
         string detailsText,
         string detailsHeading,
         Dictionary<string, string> variables,
-        bool includePaymentReference)
+        bool includePaymentReference,
+        bool includeBillIdRow = true)
     {
         var detailsSection = string.IsNullOrWhiteSpace(detailsText)
             ? string.Empty
@@ -963,6 +974,15 @@ public class EmailService : IEmailService
                    <div style="font-size:14px;line-height:1.6;color:#0f172a;">{EncodeMultiline(detailsText)}</div>
                </div>
                """;
+
+        var billIdRow = includeBillIdRow
+            ? $"""
+                <tr>
+                    <td style="padding:14px 16px;background:#f8fafc;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Bill ID</td>
+                    <td style="padding:14px 16px;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{Encode(GetVariable(variables, "bill_id"))}</td>
+                </tr>
+                """
+            : string.Empty;
 
         var paymentReferenceRow = includePaymentReference
             ? BuildOptionalTableRow("Payment Reference", GetVariableOrEmpty(variables, "payment_reference"))
@@ -1015,58 +1035,55 @@ public class EmailService : IEmailService
                         <p style="margin:0 0 24px;font-size:14px;line-height:1.7;color:#475569;">{{Encode(nextStepMessage)}}</p>
 
                         <div style="border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;">
-                            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
-                                <tr>
-                                    <td style="padding:14px 16px;background:#f8fafc;font-size:13px;font-weight:600;color:#475569;width:35%;">Bill ID</td>
-                                    <td style="padding:14px 16px;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "bill_id"))}}</td>
-                                </tr>
+                            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;table-layout:fixed;width:100%;">
+                                {{billIdRow}}
                                 {{vendorBillNumberRow}}
                                 <tr>
-                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Vendor</td>
-                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "vendor_name"))}}</td>
+                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Vendor</td>
+                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{{Encode(GetVariable(variables, "vendor_name"))}}</td>
                                 </tr>
                                 <tr>
-                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Description</td>
-                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "description"))}}</td>
+                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Description</td>
+                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{{Encode(GetVariable(variables, "description"))}}</td>
                                 </tr>
                                 <tr>
-                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Sub total (items)</td>
-                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariableOrEmpty(variables, "sub_total"))}}</td>
+                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Sub total (items)</td>
+                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{{Encode(GetVariableOrEmpty(variables, "sub_total"))}}</td>
                                 </tr>
                                 {{gstBreakdownRowsHtml}}
                                 <tr>
-                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Total GST</td>
-                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariableOrEmpty(variables, "total_line_gst"))}}</td>
+                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Total GST</td>
+                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{{Encode(GetVariableOrEmpty(variables, "total_line_gst"))}}</td>
                                 </tr>
                                 {{discountPercentRow}}
                                 {{roundingRow}}
                                 <tr>
-                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Total (before TDS)</td>
-                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "amount"))}}</td>
+                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Total (before TDS)</td>
+                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{{Encode(GetVariable(variables, "amount"))}}</td>
                                 </tr>
                                 {{tdsRowHtml}}
                                 <tr>
-                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Total Payable</td>
-                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "total_payable"))}}</td>
+                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Total Payable</td>
+                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{{Encode(GetVariable(variables, "total_payable"))}}</td>
                                 </tr>
                                 {{paidAmountRow}}
                                 {{balanceDueRow}}
                                 <tr>
-                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Bill Date</td>
-                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "bill_date"))}}</td>
+                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Bill Date</td>
+                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{{Encode(GetVariable(variables, "bill_date"))}}</td>
                                 </tr>
                                 <tr>
-                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Due Date</td>
-                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "due_date"))}}</td>
+                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Due Date</td>
+                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{{Encode(GetVariable(variables, "due_date"))}}</td>
                                 </tr>
                                 {{paymentReferenceRow}}
                                 <tr>
-                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">{{Encode(actorLabel)}}</td>
-                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(actorName)}}</td>
+                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">{{Encode(actorLabel)}}</td>
+                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{{Encode(actorName)}}</td>
                                 </tr>
                                 <tr>
-                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Updated On</td>
-                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "action_date"))}}</td>
+                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Updated On</td>
+                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{{Encode(GetVariable(variables, "action_date"))}}</td>
                                 </tr>
                             </table>
                         </div>
@@ -1502,8 +1519,8 @@ public class EmailService : IEmailService
 
         return $"""
             <tr>
-                <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">{Encode(label)}</td>
-                <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{Encode(value)}</td>
+                <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">{Encode(label)}</td>
+                <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{Encode(value)}</td>
             </tr>
             """;
     }

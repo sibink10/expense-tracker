@@ -213,6 +213,7 @@ export default function DashPage() {
   ];
 
   const financeStats: StatItem[] = [
+    { label: "Pending advances", value: data.pendingAdvances, icon: "💸", tone: "advance", to: buildStatusPath("/advances", "Pending") },
     { label: "Bills to pay", value: data.billsToPayCount, icon: "📋", tone: "vendor", to: buildStatusPath("/bills", "Approved") },
     { label: "Bills amount", value: fmtCur(data.billsToPayAmount), icon: "₹", tone: "danger", to: buildStatusPath("/bills", "Approved") },
     { label: "Draft invoices", value: data.draftInvoices, icon: "📝", tone: "invoice", to: buildStatusPath("/invoices", "Draft") },

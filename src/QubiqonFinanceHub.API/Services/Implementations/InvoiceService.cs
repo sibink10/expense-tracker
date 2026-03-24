@@ -30,6 +30,8 @@ public class InvoiceService : IInvoiceService
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var client = await _db.Clients.FindAsync(dto.ClientId)
             ?? throw new KeyNotFoundException("Client not found");
+        if (client.OrganizationId != orgId || client.IsDelete)
+            throw new KeyNotFoundException("Client not found");
 
         var code = await _codeGen.GenerateBillNumberAsync(orgId, "invoice");
 
@@ -354,11 +356,8 @@ public class InvoiceService : IInvoiceService
         if (emp.Role != UserRole.Finance && emp.Role != UserRole.Admin)
             throw new InvalidOperationException("Only Finance or Admin can send invoices to the client.");
 
-        if (inv.Status is InvoiceStatus.Sent or InvoiceStatus.Viewed)
-            throw new InvalidOperationException("Invoice was already sent to the client.");
-
-        if (inv.Status != InvoiceStatus.Paid && inv.Status != InvoiceStatus.PartiallyPaid)
-            throw new InvalidOperationException("Record payment on the invoice before sending it to the client.");
+        if (inv.Status != InvoiceStatus.Draft)
+            throw new InvalidOperationException("Only draft invoices can be sent to the client.");
 
         inv.Status = InvoiceStatus.Sent;
         inv.SentAt = DateTime.UtcNow;
@@ -395,6 +394,9 @@ public class InvoiceService : IInvoiceService
         if (inv.Status == InvoiceStatus.Paid || inv.paidAmound >= inv.Total)
             throw new InvalidOperationException("Invoice is already fully paid.");
 
+        if (inv.Status == InvoiceStatus.Draft)
+            throw new InvalidOperationException("Send the invoice to the client before recording payment.");
+
         var currentPaid = inv.paidAmound;
         var newTotalPaid = currentPaid + dto.PaidAmount;
         if (newTotalPaid > inv.Total)
@@ -404,23 +406,20 @@ public class InvoiceService : IInvoiceService
             inv.Status = InvoiceStatus.PartiallyPaid;
         else
             inv.Status = InvoiceStatus.Paid;
-        inv.PaymentReference = dto.PaymentReference;
+        inv.PaymentReference = string.IsNullOrWhiteSpace(dto.PaymentReference)
+            ? null
+            : dto.PaymentReference.Trim();
         inv.PaidAt = DateTime.UtcNow;
         inv.UpdatedAt = DateTime.UtcNow;
 
         _db.ActivityComments.Add(new ActivityComment
         {
             Id = Guid.NewGuid(), InvoiceId = id, CommentByEmployeeId = emp.Id,
-            Text = $"Payment received. Ref: {dto.PaymentReference}",
+            Text = paymentComment,
             ActionType = CommentActionType.PaymentProcessed
         });
 
         await _db.SaveChangesAsync();
-
-        await _email.SendNotificationAsync(
-            Constants.EmailTemplateKeys.InvoicePaid,
-            await BuildInvoiceEmailVariablesAsync(inv, inv.Client, emp.FullName, GetInvoiceStatusLabel(inv.Status), inv.paidAmound, dto.Notes ?? string.Empty, "detail"),
-            inv.Client.Email);
 
         return (await GetByIdAsync(id))!;
     }
@@ -459,11 +458,12 @@ public class InvoiceService : IInvoiceService
         Client client,
         string actorName,
         string statusLabel,
-        decimal paymentMade,
+        decimal paymentAmountShownInEmail,
         string detailsText,
         string? linkType = null)
     {
-        var balanceDue = Math.Max(invoice.Total - paymentMade, 0);
+        var totalPaidCumulative = invoice.paidAmound;
+        var balanceDue = Math.Max(invoice.Total - totalPaidCumulative, 0);
 
         var dict = new Dictionary<string, string>
         {
@@ -484,7 +484,7 @@ public class InvoiceService : IInvoiceService
             ["total_gst"] = FormatCurrency(invoice.TotalGST, invoice.Currency),
             ["tax_amount"] = FormatCurrency(invoice.TaxAmount, invoice.Currency),
             ["amount"] = FormatCurrency(invoice.Total, invoice.Currency),
-            ["payment_made"] = FormatCurrency(paymentMade, invoice.Currency),
+            ["payment_made"] = FormatCurrency(paymentAmountShownInEmail, invoice.Currency),
             ["balance_due"] = FormatCurrency(balanceDue, invoice.Currency),
             ["payment_reference"] = invoice.PaymentReference ?? "",
             ["notes"] = invoice.Notes ?? "",

@@ -9,6 +9,7 @@ import AdvanceDisburseModal from "../modals/AdvanceDisburseModal";
 import VendorEditModal from "../modals/VendorEditModal";
 import ClientEditModal from "../modals/ClientEditModal";
 import TaxConfigEditModal from "../modals/TaxConfigEditModal";
+import CancelRequestConfirmModal from "../modals/CancelRequestConfirmModal";
 import ExpenseDetailModal from "./modals/ExpenseDetailModal";
 import AdvanceDetailModal from "./modals/AdvanceDetailModal";
 import BillDetailModal from "./modals/BillDetailModal";
@@ -24,6 +25,9 @@ export default function Modals() {
 
   if (!mdl) return null;
 
+  if (mdl.t === "exp-cancel-confirm" || mdl.t === "adv-cancel-confirm") {
+    return <CancelRequestConfirmModal />;
+  }
   if (mdl.t === "reject") return <RejectModal />;
   if (mdl.t === "pay") return <PayModal />;
   if (mdl.t === "inv-pay") return <InvPayModal />;

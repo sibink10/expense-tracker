@@ -1,9 +1,7 @@
 import type { NavSection, UserRole } from "../types";
 
 /** Build nav sections for the sidebar (no count badges). */
-export function buildNav(cfg: { advEnabled: boolean }): NavSection[] {
-  const { advEnabled } = cfg;
-
+export function buildNav(_cfg?: { advEnabled?: boolean }): NavSection[] {
   const allRoles: UserRole[] = ["employee", "approver", "finance", "admin"];
   return [
     {
@@ -16,20 +14,24 @@ export function buildNav(cfg: { advEnabled: boolean }): NavSection[] {
       s: "Employee expenses",
       c: "#E8593C",
       items: [
-        { path: "/expenses", l: "Expense requests", i: "☰", r: allRoles, end: true, addPath: "/expenses/add", addRoles: ["employee", "approver", "finance", "admin"] as UserRole[] },
+        { path: "/expenses", l: "Expense requests", i: "☰", r: allRoles, end: true, addPath: "/expenses/add", addRoles: allRoles },
       ],
     },
-    ...(advEnabled
-      ? [
-          {
-            s: "Advance payments",
-            c: "#0E7490",
-            items: [
-              { path: "/advances", l: "Requests", i: "⤴", r: ["employee", "approver", "finance", "admin"] as UserRole[], end: true, addPath: "/advances/add", addRoles: ["employee", "approver", "finance", "admin"] as UserRole[] },
-            ],
-          },
-        ]
-      : []),
+    {
+      s: "Advance payments",
+      c: "#0E7490",
+      items: [
+        {
+          path: "/advances",
+          l: "Requests",
+          i: "⤴",
+          r: allRoles,
+          end: true,
+          addPath: "/advances/add",
+          addRoles: allRoles,
+        },
+      ],
+    },
     {
       s: "Vendor payments",
       c: "#6C3FA0",
@@ -61,7 +63,6 @@ export function buildNav(cfg: { advEnabled: boolean }): NavSection[] {
         { path: "/admin/org", l: "Organization", i: "🏢", r: ["admin"] as UserRole[] },
         { path: "/admin/tax", l: "Tax config", i: "📊", r: ["admin"] as UserRole[] },
         { path: "/admin/categories", l: "Categories", i: "🏷", r: ["admin"] as UserRole[] },
-        { path: "/admin/email", l: "Email templates", i: "✉", r: ["admin"] as UserRole[] },
       ],
     },
   ];

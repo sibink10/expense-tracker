@@ -7,6 +7,7 @@ import { fmtCur, nextListSort } from "../shared/utils";
 import { Btn, Badge, Tbl, Empty, ListRefreshButton, type TblCol } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
 import { getExpensesMapped } from "../shared/api/expense";
+import { canCancelExpenseByStatus } from "../shared/expensePermissions";
 
 const STATUS_TABS = [
   { label: "All", value: "" },
@@ -16,12 +17,13 @@ const STATUS_TABS = [
   { label: EXP_S.COMPLETED, value: "Completed" },
   { label: EXP_S.PARTIALLY_PAID, value: "PartiallyPaid" },
   { label: EXP_S.REJECTED, value: "Rejected" },
+  { label: EXP_S.CANCELLED, value: "Cancelled" },
 ] as const;
 
 export default function ExpenseListPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { is, setMdl } = useAppContext();
+  const { is, setMdl, user } = useAppContext();
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [search, setSearch] = useState("");
@@ -37,6 +39,8 @@ export default function ExpenseListPage() {
   const [sortDesc, setSortDesc] = useState(true);
 
   const myOnly = is("employee");
+  const showActionCol =
+    is("approver") || is("finance") || is("admin") || is("employee");
 
   useEffect(() => {
     const handler = () => setRefreshKey((k) => k + 1);
@@ -198,7 +202,7 @@ export default function ExpenseListPage() {
                 { label: "Balance Due", sortKey: "BalanceDue" },
                 { label: "Bill date", sortKey: "BillDate" },
                 { label: "Status" },
-                ...(is("approver") || is("finance") || is("admin") ? ["Action"] : []),
+                ...(showActionCol ? ["Action"] : []),
               ] as TblCol[]
             }
             sortBy={sortBy}
@@ -206,7 +210,16 @@ export default function ExpenseListPage() {
             onSortChange={handleSort}
             rows={data.map((e) => {
               const hasDocuments = e.documents.length > 0 || !!(e.file || e.attachmentUrl);
-              const canShowPayAction = (is("finance") || is("admin")) && (e.status === EXP_S.AWAITING_PAYMENT || e.status === EXP_S.PARTIALLY_PAID || e.status === EXP_S.APPROVED || e.status === EXP_S.AWAITING_BILL);
+              const canShowPayAction =
+                e.status !== EXP_S.CANCELLED &&
+                (is("finance") || is("admin")) &&
+                (e.status === EXP_S.AWAITING_PAYMENT ||
+                  e.status === EXP_S.PARTIALLY_PAID ||
+                  e.status === EXP_S.APPROVED ||
+                  e.status === EXP_S.AWAITING_BILL);
+              const canCancelExpenseRow =
+                canCancelExpenseByStatus(e.status) &&
+                (is("admin") || (!!user?.employeeId && user.employeeId === e.employeeId));
               return ({
                 ...e,
                 _cells: [
@@ -217,26 +230,67 @@ export default function ExpenseListPage() {
                 { v: <span style={{ fontSize: "11px", color: (e.amt - (e.paidAmount ?? 0)) > 0 ? C.info : C.muted }}>{fmtCur(e.amt - (e.paidAmount ?? 0))}</span> },
                 { v: <span style={{ fontSize: "11px" }}>{e.billDate ?? "—"}</span> },
                 { v: <Badge s={e.status} /> },
-                ...(is("approver") || is("finance") || is("admin")
+                ...(showActionCol
                   ? [
                       {
                         v: (
-                          <div onClick={(ev) => ev.stopPropagation()} style={{ display: "flex", gap: "3px" }}>
+                          <div
+                            role="presentation"
+                            onClick={(ev) => ev.stopPropagation()}
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              alignItems: "center",
+                              justifyContent: "flex-start",
+                              gap: "6px",
+                              width: "100%",
+                            }}
+                          >
                             {(is("approver") || is("admin")) &&
-                              (e.status === EXP_S.PENDING || e.status === EXP_S.PENDING_BILL_APPROVAL) && (
-                              <>
-                                <Btn sm v="success" onClick={() => setMdl({ t: "exp-approve", d: e })}>✓</Btn>
-                                <Btn sm v="danger" onClick={() => setMdl({ t: "reject", d: e, it: "expense" })}>✕</Btn>
-                              </>
-                            )}
+                              e.status !== EXP_S.CANCELLED &&
+                              (e.status === EXP_S.PENDING ||
+                                e.status === EXP_S.PENDING_BILL_APPROVAL) && (
+                                <>
+                                  <Btn sm v="success" onClick={() => setMdl({ t: "exp-approve", d: e })}>
+                                    ✓
+                                  </Btn>
+                                  <Btn sm v="danger" onClick={() => setMdl({ t: "reject", d: e, it: "expense" })}>
+                                    ✕
+                                  </Btn>
+                                </>
+                              )}
                             {canShowPayAction && (
                               <>
-                                <Btn sm v="danger" onClick={() => setMdl({ t: "reject", d: e, it: "expense" })}>Reject</Btn>
-                                <Btn sm v="info" onClick={() => setMdl({ t: "pay", d: e, it: "expense" })} disabled={!hasDocuments}>Pay</Btn>
+                                <Btn
+                                  sm
+                                  v="danger"
+                                  onClick={() => setMdl({ t: "reject", d: e, it: "expense" })}
+                                >
+                                  Reject
+                                </Btn>
+                                <Btn
+                                  sm
+                                  v="info"
+                                  onClick={() => setMdl({ t: "pay", d: e, it: "expense" })}
+                                  disabled={!hasDocuments}
+                                >
+                                  Pay
+                                </Btn>
                               </>
+                            )}
+                            {canCancelExpenseRow && (
+                              <Btn
+                                sm
+                                v="secondary"
+                                title="Cancel request"
+                                onClick={() => setMdl({ t: "exp-cancel-confirm", d: e })}
+                              >
+                                Cancel
+                              </Btn>
                             )}
                           </div>
                         ),
+                        sx: { textAlign: "left" as const, verticalAlign: "middle" },
                       },
                     ]
                   : []),

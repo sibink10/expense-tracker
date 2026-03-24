@@ -184,8 +184,26 @@ export default function AddVendorPage() {
           <div style={gridStyle}>
             <Inp label="Bank name" value={bankName} onChange={(e) => setBankName(e.target.value)} ph="e.g. HDFC Bank" req style={cellStyle} />
             <Inp label="IFSC code" value={ifscCode} onChange={(e) => setIfscCode(e.target.value)} ph="e.g. HDFC0001234" req style={cellStyle} />
-            <Inp label="Account number" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} ph="Account number" req style={cellStyle} />
-            <Inp label="Re-enter account number" value={accountNumberRe} onChange={(e) => setAccountNumberRe(e.target.value)} ph="Re-enter account number" req style={cellStyle} />
+            <Inp
+              label="Account number"
+              type="password"
+              value={accountNumber}
+              onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ""))}
+              ph="Account number"
+              req
+              style={cellStyle}
+              hint="Digits only; masked while typing. You can copy and paste."
+            />
+            <Inp
+              label="Re-enter account number"
+              type="password"
+              value={accountNumberRe}
+              onChange={(e) => setAccountNumberRe(e.target.value.replace(/\D/g, ""))}
+              ph="Re-enter account number"
+              req
+              style={cellStyle}
+              hint="Must match the account number above."
+            />
           </div>
         </div>
         {error && <Alert sx={{ marginTop: "16px", marginBottom: "14px" }}>{error}</Alert>}

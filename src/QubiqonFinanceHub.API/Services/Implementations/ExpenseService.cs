@@ -121,19 +121,7 @@ public class ExpenseService : IExpenseService
             throw new UnauthorizedAccessException("Only the submitter or an admin can upload the bill.");
 
         var hasExistingDocuments = HasExpenseDocument(expense);
-
-        if (expense.Status == ExpenseStatus.Rejected || expense.Status == ExpenseStatus.Completed || expense.Status == ExpenseStatus.Cancelled)
-            throw new InvalidOperationException($"Bill cannot be uploaded when expense is in '{expense.Status}' status.");
-
-        if ((expense.Status == ExpenseStatus.Approved || expense.Status == ExpenseStatus.AwaitingPayment) && hasExistingDocuments)
-            throw new InvalidOperationException("Bill documents have already been uploaded for this approved expense.");
-
-        if (expense.Status != ExpenseStatus.PendingApproval &&
-            expense.Status != ExpenseStatus.PendingBillApproval &&
-            expense.Status != ExpenseStatus.Approved &&
-            expense.Status != ExpenseStatus.AwaitingPayment &&
-            expense.Status != ExpenseStatus.AwaitingBill)
-            throw new InvalidOperationException("Bill can only be uploaded for pending or approved expenses.");
+        EnsureExpenseBillUploadAllowed(expense, hasExistingDocuments);
 
         var uploadedBills = ResolveUploadedFiles(dto.BillImages, dto.BillImage);
         if (uploadedBills.Count == 0)
@@ -215,13 +203,15 @@ public class ExpenseService : IExpenseService
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
 
+        if (expense.Status == ExpenseStatus.Cancelled)
+            throw new InvalidOperationException("A cancelled expense cannot be edited.");
+
         if (expense.SubmittedByEmployeeId != empId && currentEmployee.Role != UserRole.Admin)
             throw new UnauthorizedAccessException("Only the submitter or an admin can edit this expense.");
 
-        if (expense.Status == ExpenseStatus.Approved ||
-            expense.Status == ExpenseStatus.AwaitingPayment ||
-            expense.Status == ExpenseStatus.Completed)
-            throw new InvalidOperationException("Only pending expenses can be edited.");
+        if (currentEmployee.Role != UserRole.Admin && IsExpenseLockedForNonAdminEdit(expense.Status))
+            throw new InvalidOperationException(
+                "This expense cannot be edited in its current status. Only an administrator can edit expenses after approval or once payment has started.");
 
         var wasRejected = expense.Status == ExpenseStatus.Rejected;
 
@@ -305,12 +295,8 @@ public class ExpenseService : IExpenseService
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
 
-        if (expense.Status == ExpenseStatus.Approved ||
-            expense.Status == ExpenseStatus.AwaitingPayment ||
-            expense.Status == ExpenseStatus.AwaitingBill ||
-            expense.Status == ExpenseStatus.Completed ||
-            expense.Status == ExpenseStatus.PartiallyPaid)
-            throw new InvalidOperationException("Expense is already approved.");
+        if (expense.Status != ExpenseStatus.PendingApproval && expense.Status != ExpenseStatus.PendingBillApproval)
+            throw new InvalidOperationException("Expense can only be approved while pending approval.");
 
         var hasDocuments = HasExpenseDocument(expense);
         expense.Status = hasDocuments ? ExpenseStatus.AwaitingPayment : ExpenseStatus.Approved;
@@ -402,6 +388,12 @@ public class ExpenseService : IExpenseService
         if (expense.Status == ExpenseStatus.Rejected)
             throw new InvalidOperationException("Expense is already rejected.");
 
+        if (expense.Status == ExpenseStatus.Cancelled)
+            throw new InvalidOperationException("Cannot reject a cancelled expense.");
+
+        if (expense.Status == ExpenseStatus.Completed)
+            throw new InvalidOperationException("Cannot reject a completed expense.");
+
         expense.Status = ExpenseStatus.Rejected;
         expense.UpdatedAt = DateTime.UtcNow;
 
@@ -475,18 +467,24 @@ public class ExpenseService : IExpenseService
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
 
+        if (expense.Status == ExpenseStatus.Cancelled)
+            throw new InvalidOperationException("Cannot process payment for a cancelled expense.");
+
         if (expense.Status != ExpenseStatus.Approved && expense.Status != ExpenseStatus.AwaitingPayment && expense.Status != ExpenseStatus.PartiallyPaid)
             throw new InvalidOperationException("Expense not ready for payment.");
 
         if (!HasExpenseDocument(expense))
             throw new InvalidOperationException("Bill upload is required before payment.");
 
+        if (string.IsNullOrWhiteSpace(dto.PaymentReference))
+            throw new InvalidOperationException("Payment reference is required.");
+
         var remainingBefore = expense.Amount - expense.PaidAmount;
         var paidAmount = dto.PaidAmount > 0 ? dto.PaidAmount : expense.Amount;
         if (paidAmount > remainingBefore)
             throw new InvalidOperationException($"Paid amount (₹{paidAmount:N2}) cannot exceed the remaining balance (₹{remainingBefore:N2}).");
         expense.PaidAmount += paidAmount;
-        expense.PaymentReference = dto.PaymentReference;
+        expense.PaymentReference = dto.PaymentReference.Trim();
         expense.UpdatedAt = DateTime.UtcNow;
         expense.Status = expense.PaidAmount >= expense.Amount ? ExpenseStatus.Completed : ExpenseStatus.PartiallyPaid;
         var balanceDueAfter = Math.Max(0, expense.Amount - expense.PaidAmount);
@@ -512,10 +510,10 @@ public class ExpenseService : IExpenseService
                 ["expense_id"] = expense.ExpenseCode,
                 ["purpose"] = expense.Purpose,
                 ["amount"] = $"₹{expense.Amount:N2}",
-                ["paid_amount"] = $"₹{expense.PaidAmount:N2}",
+                ["paid_amount"] = $"₹{paidAmount:N2}",
                 ["balance_due"] = $"₹{balanceDueAfter:N2}",
                 ["bill_date"] = expense.BillDate.ToString("dd MMM yyyy"),
-                ["payment_reference"] = dto.PaymentReference,
+                ["payment_reference"] = dto.PaymentReference ?? "",
                 ["processed_by"] = emp.FullName,
                 ["payment_notes"] = dto.Notes ?? "",
                 ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
@@ -528,13 +526,19 @@ public class ExpenseService : IExpenseService
     public async Task AttachBillAsync(Guid id, string billImageUrl)
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
+        var currentEmployee = await _tenant.GetCurrentEmployeeAsync();
         var expense = await _db.ExpenseRequests
             .Include(x => x.Documents)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
 
+        if (expense.SubmittedByEmployeeId != currentEmployee.Id && currentEmployee.Role != UserRole.Admin)
+            throw new UnauthorizedAccessException("Only the submitter or an admin can attach a bill.");
+
+        var hasExistingDocuments = HasExpenseDocument(expense);
+        EnsureExpenseBillUploadAllowed(expense, hasExistingDocuments);
+
         expense.BillImageUrl = billImageUrl;
-        var currentEmployee = await _tenant.GetCurrentEmployeeAsync();
         expense.Documents.Add(new RequestDocument
         {
             Id = Guid.NewGuid(),
@@ -597,6 +601,9 @@ public class ExpenseService : IExpenseService
 
         if (expense.Status == ExpenseStatus.Rejected || expense.Status == ExpenseStatus.Completed || expense.Status == ExpenseStatus.Cancelled)
             throw new InvalidOperationException($"Documents cannot be removed when expense is in '{expense.Status}' status.");
+
+        if (currentEmp.Role != UserRole.Admin && expense.Status == ExpenseStatus.PartiallyPaid)
+            throw new InvalidOperationException("Documents cannot be removed after a payment has been recorded.");
 
         var document = expense.Documents.FirstOrDefault(x => x.Id == documentId)
             ?? throw new KeyNotFoundException("Document not found");
@@ -687,6 +694,39 @@ public class ExpenseService : IExpenseService
 
     private static bool HasExpenseDocument(ExpenseRequest expense) =>
         expense.Documents.Count > 0 || !string.IsNullOrWhiteSpace(expense.BillImageUrl);
+
+    /// <summary>
+    /// After approval (or once in payment / closed states), only administrators may change expense fields.
+    /// </summary>
+    private static bool IsExpenseLockedForNonAdminEdit(ExpenseStatus status) =>
+        status is ExpenseStatus.Approved
+            or ExpenseStatus.AwaitingBill
+            or ExpenseStatus.AwaitingPayment
+            or ExpenseStatus.PartiallyPaid
+            or ExpenseStatus.Completed
+            or ExpenseStatus.Cancelled;
+
+    /// <summary>
+    /// Rules for uploading an expense bill: allowed while pending or, after approval, until documents exist and before any payment is recorded.
+    /// </summary>
+    private static void EnsureExpenseBillUploadAllowed(ExpenseRequest expense, bool hasExistingDocuments)
+    {
+        if ( expense.Status == ExpenseStatus.Completed || expense.Status == ExpenseStatus.Cancelled)
+            throw new InvalidOperationException($"Bill cannot be uploaded when expense is in '{expense.Status}' status.");
+
+        if (expense.Status == ExpenseStatus.PartiallyPaid)
+            throw new InvalidOperationException("Bill cannot be uploaded after a payment has been recorded.");
+
+        if ((expense.Status == ExpenseStatus.Approved || expense.Status == ExpenseStatus.AwaitingPayment) && hasExistingDocuments)
+            throw new InvalidOperationException("Bill documents have already been uploaded for this approved expense.");
+
+        if (expense.Status != ExpenseStatus.PendingApproval &&
+            expense.Status != ExpenseStatus.PendingBillApproval &&
+            expense.Status != ExpenseStatus.Approved &&
+            expense.Status != ExpenseStatus.AwaitingPayment &&
+            expense.Status != ExpenseStatus.AwaitingBill)
+            throw new InvalidOperationException("Bill can only be uploaded for pending or approved expenses.");
+    }
 
     private static string GetFileNameFromUrl(string fileUrl)
     {

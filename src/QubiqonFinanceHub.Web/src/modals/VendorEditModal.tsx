@@ -160,8 +160,24 @@ export default function VendorEditModal() {
         </div>
         <Inp label="Bank name" value={bankName} onChange={(e) => setBankName(e.target.value)} ph="e.g. HDFC Bank" req />
         <Inp label="IFSC code" value={ifscCode} onChange={(e) => setIfscCode(e.target.value)} ph="e.g. HDFC0001234" req />
-        <Inp label="Account number" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} ph="Account number" req />
-        <Inp label="Re-enter account number" value={accountNumberRe} onChange={(e) => setAccountNumberRe(e.target.value)} ph="Re-enter account number" req />
+        <Inp
+          label="Account number"
+          type="password"
+          value={accountNumber}
+          onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ""))}
+          ph="Account number"
+          req
+          hint="Digits only; masked while typing. You can copy and paste."
+        />
+        <Inp
+          label="Re-enter account number"
+          type="password"
+          value={accountNumberRe}
+          onChange={(e) => setAccountNumberRe(e.target.value.replace(/\D/g, ""))}
+          ph="Re-enter account number"
+          req
+          hint="Must match the account number above."
+        />
       </div>
       {error && <Alert sx={{ marginBottom: "8px" }}>{error}</Alert>}
       <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>

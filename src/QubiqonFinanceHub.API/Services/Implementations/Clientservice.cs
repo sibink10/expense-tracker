@@ -35,6 +35,7 @@ public class ClientService : IClientService
             BillingAddress = dto.BillingAddress,
             ShippingAddress = dto.ShippingAddress,
             IsActive = true,
+            IsDelete = false,
             CreatedAt = DateTime.UtcNow
         };
         _db.Clients.Add(client);
@@ -48,6 +49,8 @@ public class ClientService : IClientService
         var client = await _db.Clients
             .FirstOrDefaultAsync(c => c.Id == id && c.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Client not found");
+        if (client.IsDelete)
+            throw new KeyNotFoundException("Client not found");
 
         if (dto.Name != null) client.Name = dto.Name;
         if (dto.Email != null) client.Email = dto.Email;
@@ -70,7 +73,7 @@ public class ClientService : IClientService
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
         var client = await _db.Clients.AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == id && c.OrganizationId == orgId);
+            .FirstOrDefaultAsync(c => c.Id == id && c.OrganizationId == orgId && !c.IsDelete);
         return client == null ? null : MapToDto(client);
     }
 
@@ -78,7 +81,7 @@ public class ClientService : IClientService
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
         var q = _db.Clients
-            .Where(c => c.OrganizationId == orgId)
+            .Where(c => c.OrganizationId == orgId && !c.IsDelete)
             .AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(f.Search))
@@ -93,6 +96,18 @@ public class ClientService : IClientService
         var items = await q.Skip((f.Page - 1) * f.PageSize).Take(f.PageSize).ToListAsync();
 
         return new PaginatedResult<ClientDto>(items.Select(MapToDto).ToList(), total, f.Page, f.PageSize);
+    }
+
+    public async Task DeleteAsync(Guid id)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var client = await _db.Clients
+            .FirstOrDefaultAsync(c => c.Id == id && c.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Client not found");
+        if (client.IsDelete) return;
+        client.IsDelete = true;
+        client.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
     }
 
     private static ClientDto MapToDto(Client c) => new(

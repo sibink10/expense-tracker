@@ -47,15 +47,21 @@ function createClient(): AxiosInstance {
     (err: unknown) => {
       if (axios.isAxiosError(err)) {
         const data = err.response?.data as
-          | { message?: string; error?: { message?: string } | string; errors?: Record<string, string[] | string> }
+          | {
+              message?: string;
+              title?: string;
+              detail?: string;
+              error?: { message?: string } | string;
+              errors?: Record<string, string[] | string>;
+            }
           | undefined;
 
         const nestedError =
           typeof data?.error === "string"
             ? data.error
             : data?.error && typeof data.error === "object"
-            ? data.error.message
-            : undefined;
+              ? data.error.message
+              : undefined;
 
         const validationError = data?.errors
           ? Object.values(data.errors)
@@ -63,8 +69,11 @@ function createClient(): AxiosInstance {
               .find((value) => typeof value === "string" && value.trim())
           : undefined;
 
+        const problemDetail = data?.detail?.trim() || data?.title?.trim();
+
         const message =
           nestedError?.trim() ||
+          problemDetail ||
           data?.message?.trim() ||
           validationError?.trim() ||
           err.message ||
@@ -82,3 +91,9 @@ function createClient(): AxiosInstance {
 
 export const apiClient = createClient();
 export { apiScope };
+
+/** Message from axios error interceptor, or fallback (e.g. for non-Error throws). */
+export function getApiErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message.trim()) return err.message.trim();
+  return fallback;
+}

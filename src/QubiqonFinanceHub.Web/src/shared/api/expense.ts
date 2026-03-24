@@ -109,6 +109,7 @@ function mapApiExpenseToApp(item: ApiExpenseItem): Expense {
   return {
     id: item.expenseCode,
     apiId: item.id,
+    employeeId: item.employeeId,
     empId: 0,
     empName: item.employeeName,
     dept: item.department || "",
@@ -208,6 +209,12 @@ export async function approveExpense(id: string, comments?: string): Promise<unk
 
 export async function rejectExpense(id: string, comments: string): Promise<unknown> {
   const { data } = await apiClient.post(`/expenses/${id}/reject`, { comments });
+  return data;
+}
+
+/** Submitter or admin cancels a pending expense (POST /api/expenses/{id}/cancel). */
+export async function cancelExpense(id: string): Promise<unknown> {
+  const { data } = await apiClient.post(`/expenses/${id}/cancel`);
   return data;
 }
 

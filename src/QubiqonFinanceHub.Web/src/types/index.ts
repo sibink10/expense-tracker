@@ -56,6 +56,8 @@ export interface Expense {
   id: string;
   /** Backend API id (GUID) for approve/reject endpoints */
   apiId?: string;
+  /** Submitter employee id (GUID) for cancel permission */
+  employeeId?: string;
   empId: number;
   empName: string;
   dept: string;
@@ -103,6 +105,8 @@ export interface Bill {
   bDate: string;
   due: string;
   terms: string;
+  /** From API: "Pay immediately" | "Pay later" */
+  paymentPriority?: string;
   status: string;
   file: FileRef | null;
   documents: UploadedDocument[];
@@ -122,6 +126,8 @@ export interface Advance {
   id: string;
   /** Backend API id (GUID) for approve/reject endpoints */
   apiId?: string;
+  /** Submitter employee id (GUID) for cancel permission */
+  employeeId?: string;
   empId: number;
   empName: string;
   dept: string;

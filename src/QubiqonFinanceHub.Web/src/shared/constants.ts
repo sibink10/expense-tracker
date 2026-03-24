@@ -24,7 +24,9 @@ export const ADV_S = {
   APPROVED: "Approved",
   REJECTED: "Rejected",
   DISBURSED: "Disbursed",
+  SETTLED: "Settled",
   PARTIALLY_DISBURSED: "Partially Disbursed",
+  CANCELLED: "Cancelled",
 } as const;
 
 export const INV_S = {
@@ -35,6 +37,17 @@ export const INV_S = {
   PARTIALLY_PAID: "Partial",
   OVERDUE: "Overdue",
 } as const;
+
+/** Vendor bill: when finance should pay (stored as immediate | later). */
+export const BILL_PAYMENT_PRIORITY = {
+  IMMEDIATE: "immediate",
+  LATER: "later",
+} as const;
+
+export const BILL_PAYMENT_PRIORITY_OPTIONS = [
+  { v: BILL_PAYMENT_PRIORITY.IMMEDIATE, l: "Pay immediately" },
+  { v: BILL_PAYMENT_PRIORITY.LATER, l: "Pay later" },
+] as const;
 
 export const PAY_TERMS = [
   { v: "immediate", l: "Immediate", d: 1 },

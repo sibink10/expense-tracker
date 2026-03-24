@@ -42,6 +42,8 @@ const STATUS_MAP: Record<string, string> = {
   Rejected: ADV_S.REJECTED,
   Disbursed: ADV_S.DISBURSED,
   PartiallyDisbursed: ADV_S.PARTIALLY_DISBURSED,
+  Settled: ADV_S.SETTLED,
+  Cancelled: ADV_S.CANCELLED,
 };
 
 function mapActionTypeToT(actionType: string): "ok" | "no" | "pay" | "sent" {
@@ -67,6 +69,7 @@ function mapApiAdvanceToApp(item: ApiAdvanceItem): Advance {
   return {
     id: item.advanceCode,
     apiId: item.id,
+    employeeId: item.employeeId,
     empId: 0,
     empName: item.employeeName,
     dept: item.department || "",
@@ -148,6 +151,12 @@ export async function approveAdvance(id: string, comments?: string): Promise<unk
 
 export async function rejectAdvance(id: string, comments: string): Promise<unknown> {
   const { data } = await apiClient.post(`/advances/${id}/reject`, { comments });
+  return data;
+}
+
+/** Submitter or admin cancels a pending advance (POST /api/advances/{id}/cancel). */
+export async function cancelAdvance(id: string): Promise<unknown> {
+  const { data } = await apiClient.post(`/advances/${id}/cancel`);
   return data;
 }
 
