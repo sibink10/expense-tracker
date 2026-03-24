@@ -2,6 +2,7 @@ import { useState } from "react";
 import { C } from "../../shared/theme";
 import { ADV_S } from "../../shared/constants";
 import { fmtCur } from "../../shared/utils";
+import { advanceRaisedByCurrentUser, canCancelAdvanceRequest } from "../../shared/expensePermissions";
 import { Btn, Badge, Mdl, CLog } from "../ui";
 import { getApiErrorMessage } from "../../shared/api/client";
 import { cancelAdvance } from "../../shared/api/advance";
@@ -17,10 +18,7 @@ export default function AdvanceDetailModal({ advance: a, previousAdvances: hist 
   const { setMdl, is, t, user } = useAppContext();
   const [cancelLoading, setCancelLoading] = useState(false);
   const isCancelled = a.status === ADV_S.CANCELLED;
-  const canCancelAdvance =
-    !isCancelled &&
-    a.status === ADV_S.PENDING &&
-    (is("admin") || (!!user?.employeeId && user.employeeId === a.employeeId));
+  const canCancelAdvance = !isCancelled && canCancelAdvanceRequest(a, user);
 
   return (
     <Mdl open close={() => setMdl(null)} title={a.id} w>
@@ -74,7 +72,9 @@ export default function AdvanceDetailModal({ advance: a, previousAdvances: hist 
             {cancelLoading ? "Cancelling…" : "Cancel request"}
           </Btn>
         )}
-        {(is("approver") || is("admin")) && !isCancelled && a.status === ADV_S.PENDING && (
+        {(is("approver") || is("admin")) &&
+          !advanceRaisedByCurrentUser(a, user) &&
+          !isCancelled && a.status === ADV_S.PENDING && (
           <>
             <Btn v="success" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "adv-approve", d: a }), 50); }}>Approve</Btn>
             <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "reject", d: a, it: "advance" }), 50); }}>Reject</Btn>

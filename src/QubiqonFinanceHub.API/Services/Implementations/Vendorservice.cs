@@ -18,11 +18,17 @@ public class VendorService : IVendorService
     public async Task<VendorDto> CreateAsync(CreateVendorRequest dto)
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
+        var nameTrim = (dto.Name ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(nameTrim))
+            throw new InvalidOperationException("Vendor name is required.");
+        if (await NameExistsAsync(orgId, nameTrim, excludeId: null))
+            throw new InvalidOperationException("A vendor with this name already exists.");
+
         var vendor = new Vendor
         {
             Id = Guid.NewGuid(),
             OrganizationId = orgId,
-            Name = dto.Name,
+            Name = nameTrim,
             Email = dto.Email,
             Address = dto.Address,
             Phone = dto.Phone,
@@ -50,7 +56,15 @@ public class VendorService : IVendorService
         if (vendor.IsDelete)
             throw new KeyNotFoundException("Vendor not found");
 
-        if (dto.Name != null) vendor.Name = dto.Name;
+        if (dto.Name != null)
+        {
+            var nameTrim = dto.Name.Trim();
+            if (string.IsNullOrWhiteSpace(nameTrim))
+                throw new InvalidOperationException("Vendor name is required.");
+            if (await NameExistsAsync(orgId, nameTrim, id))
+                throw new InvalidOperationException("A vendor with this name already exists.");
+            vendor.Name = nameTrim;
+        }
         if (dto.Email != null) vendor.Email = dto.Email;
         if (dto.Address != null) vendor.Address = dto.Address;
         if (dto.Phone != null) vendor.Phone = dto.Phone;
@@ -113,6 +127,16 @@ public class VendorService : IVendorService
         vendor.IsDelete = true;
         vendor.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+    }
+
+    private async Task<bool> NameExistsAsync(Guid orgId, string nameTrim, Guid? excludeId)
+    {
+        var lower = nameTrim.ToLowerInvariant();
+        return await _db.Vendors.AnyAsync(v =>
+            v.OrganizationId == orgId &&
+            !v.IsDelete &&
+            (excludeId == null || v.Id != excludeId.Value) &&
+            v.Name.ToLower() == lower);
     }
 
     private static VendorDto MapToDto(Vendor v) => new(

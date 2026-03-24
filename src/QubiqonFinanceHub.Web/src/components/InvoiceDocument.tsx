@@ -351,16 +351,15 @@ export default function InvoiceDocument({ invoice: inv, organization: org, hideS
           </div>
           <div
             style={{
-              marginTop: "48px",
-              paddingTop: "48px",
+              marginTop: "50px",
+              paddingTop: "40px",
               borderTop: `1px solid ${C.border}`,
               textAlign: "center",
             }}
           >
-            <div style={{ fontSize: "11px", color: C.muted, marginBottom: "48px" }}>
-              {org?.orgName || "Authorized by organization"}
-            </div>
-            <div style={{ borderTop: `1px solid ${C.primary}`, width: "160px", margin: "0 auto 8px" }} />
+            {/* Blank area for handwritten / stamped signature when printed */}
+            <div style={{ minHeight: "120px" }} aria-hidden />
+            <div style={{ borderTop: `1px solid ${C.primary}`, width: "200px", margin: "0 auto 10px" }} />
             <div style={{ fontSize: "11px", fontWeight: 600, color: C.primary }}>Authorized Signature</div>
           </div>
         </div>

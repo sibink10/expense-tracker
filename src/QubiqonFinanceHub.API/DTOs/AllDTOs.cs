@@ -133,7 +133,7 @@ public class UploadBillRequest
     public IFormFile? BillImage { get; set; }
 }
 
-public record ExpenseDto(Guid Id, string ExpenseCode, Guid EmployeeId, string EmployeeName, string Department, decimal Amount, decimal PaidAmount, string Purpose, DateOnly BillDate, string Status, string? AttachmentUrl, string? PaymentReference, DateTime CreatedAt, List<CommentDto> Comments, List<DocumentDto> Documents);
+public record ExpenseDto(Guid Id, string ExpenseCode, Guid EmployeeId, string EmployeeName, string Department, Guid? SubmittedByEmployeeId, decimal Amount, decimal PaidAmount, string Purpose, DateOnly BillDate, string Status, string? AttachmentUrl, string? PaymentReference, DateTime CreatedAt, List<CommentDto> Comments, List<DocumentDto> Documents);
 
 // ═══════════════════════════════════════════════════
 //  ADVANCE
@@ -354,7 +354,7 @@ public record AdvanceDisburseValidationDto(
     decimal PaidAmount,
     bool CanDisburse,
     string? Message);
-public record ProcessPaymentRequest(string PaymentReference, PaymentMethod? Method, string? Notes, decimal PaidAmount);
+public record ProcessPaymentRequest(string? PaymentReference, PaymentMethod? Method, string? Notes, decimal PaidAmount);
 
 // ═══════════════════════════════════════════════════
 //  DASHBOARD

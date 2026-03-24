@@ -17,7 +17,7 @@ interface LoginProps {
 
 export default function Login({ onLogin }: LoginProps) {
   const { instance } = useMsal();
-  const [sel, setSel] = useState<number | null>(null);
+  const [sel, setSel] = useState<number | string | null>(null);
   const [ld, setLd] = useState(false);
   const [msalError, setMsalError] = useState<string | null>(null);
 

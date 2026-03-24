@@ -7,7 +7,7 @@ import { fmtCur, nextListSort } from "../shared/utils";
 import { Btn, Badge, Tbl, Empty, ListRefreshButton, type TblCol } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
 import { getExpensesMapped } from "../shared/api/expense";
-import { canCancelExpenseByStatus } from "../shared/expensePermissions";
+import { canCancelExpenseRequest, expenseUserIsSubmitterOrBeneficiary } from "../shared/expensePermissions";
 
 const STATUS_TABS = [
   { label: "All", value: "" },
@@ -217,9 +217,8 @@ export default function ExpenseListPage() {
                   e.status === EXP_S.PARTIALLY_PAID ||
                   e.status === EXP_S.APPROVED ||
                   e.status === EXP_S.AWAITING_BILL);
-              const canCancelExpenseRow =
-                canCancelExpenseByStatus(e.status) &&
-                (is("admin") || (!!user?.employeeId && user.employeeId === e.employeeId));
+              const canCancelExpenseRow = canCancelExpenseRequest(e, user);
+              const canSelfApprove = expenseUserIsSubmitterOrBeneficiary(e, user);
               return ({
                 ...e,
                 _cells: [
@@ -247,6 +246,7 @@ export default function ExpenseListPage() {
                             }}
                           >
                             {(is("approver") || is("admin")) &&
+                              !canSelfApprove &&
                               e.status !== EXP_S.CANCELLED &&
                               (e.status === EXP_S.PENDING ||
                                 e.status === EXP_S.PENDING_BILL_APPROVAL) && (

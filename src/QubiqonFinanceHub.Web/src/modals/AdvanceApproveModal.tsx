@@ -3,6 +3,7 @@ import { Btn, Mdl, Alert, Inp } from "../components/ui";
 import { C } from "../shared/theme";
 import { useAppContext } from "../context/AppContext";
 import { approveAdvance, rejectAdvance } from "../shared/api/advance";
+import { advanceRaisedByCurrentUser } from "../shared/expensePermissions";
 import type { Advance } from "../types";
 
 function isInsufficientBalanceError(message: string): boolean {
@@ -11,7 +12,7 @@ function isInsufficientBalanceError(message: string): boolean {
 }
 
 export default function AdvanceApproveModal() {
-  const { mdl, setMdl } = useAppContext();
+  const { mdl, setMdl, user } = useAppContext();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
@@ -20,6 +21,7 @@ export default function AdvanceApproveModal() {
   if (!mdl?.d || mdl.t !== "adv-approve") return null;
   const a = mdl.d as Advance;
   const id = a.apiId ?? a.id;
+  const selfRaised = advanceRaisedByCurrentUser(a, user);
 
   useEffect(() => {
     setError(null);
@@ -49,6 +51,7 @@ export default function AdvanceApproveModal() {
   };
 
   const handleSubmit = async () => {
+    if (selfRaised) return;
     setLoading(true);
     setError(null);
     try {
@@ -69,6 +72,7 @@ export default function AdvanceApproveModal() {
       <div style={{ marginBottom: "12px", fontSize: "12px" }}>
         Are you sure you want to approve this advance request?
       </div>
+      {selfRaised && <Alert sx={{ marginBottom: "8px" }}>You cannot approve a request raised by yourself.</Alert>}
       {error && !showRejectInstead && <Alert sx={{ marginBottom: "8px" }}>{error}</Alert>}
       {showRejectInstead && (
         <>
@@ -122,7 +126,7 @@ export default function AdvanceApproveModal() {
           </>
         ) : (
           <>
-            <Btn v="success" onClick={handleSubmit} disabled={loading}>
+            <Btn v="success" onClick={handleSubmit} disabled={loading || selfRaised}>
               {loading ? "Approving..." : "Approve"}
             </Btn>
             <Btn v="secondary" onClick={() => setMdl(null)} disabled={loading}>

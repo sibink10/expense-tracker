@@ -243,6 +243,45 @@ public class ExpenseService : IExpenseService
         });
 
         await _db.SaveChangesAsync();
+
+        // Rejected expense edited and resubmitted: notify approvers again.
+        if (wasRejected)
+        {
+            var reviewers = await _db.Employees
+                .Where(e => e.OrganizationId == orgId &&
+                            e.IsActive &&
+                            !e.IsDelete &&
+                            !string.IsNullOrWhiteSpace(e.Email) &&
+                            e.Role == UserRole.Approver)
+                .Select(e => e.Email)
+                .Distinct()
+                .ToListAsync();
+
+            if (reviewers.Count > 0)
+            {
+                var targetEmp = await _db.Employees
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(e => e.Id == expense.EmployeeId && e.OrganizationId == orgId);
+
+                await _email.SendNotificationAsync(Constants.EmailTemplateKeys.ExpenseSubmitted,
+                    new Dictionary<string, string>
+                    {
+                        ["link_type"] = "approve",
+                        ["entity_type"] = "expense",
+                        ["entity_api_id"] = expense.Id.ToString(),
+                        ["employee_name"] = targetEmp?.FullName ?? currentEmployee.FullName,
+                        ["expense_id"] = expense.ExpenseCode,
+                        ["purpose"] = expense.Purpose,
+                        ["amount"] = $"₹{expense.Amount:N2}",
+                        ["bill_date"] = expense.BillDate.ToString("dd MMM yyyy"),
+                        ["submitted_by"] = currentEmployee.FullName,
+                        ["submission_notes"] = "Resubmitted after edits.",
+                        ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
+                    },
+                    string.Join(",", reviewers));
+            }
+        }
+
         return (await GetByIdAsync(id))!;
     }
 
@@ -294,6 +333,9 @@ public class ExpenseService : IExpenseService
             .Include(x => x.Documents)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
+
+        if (expense.SubmittedByEmployeeId == emp.Id || expense.EmployeeId == emp.Id)
+            throw new InvalidOperationException("You cannot approve an expense request raised by yourself.");
 
         if (expense.Status != ExpenseStatus.PendingApproval && expense.Status != ExpenseStatus.PendingBillApproval)
             throw new InvalidOperationException("Expense can only be approved while pending approval.");
@@ -437,9 +479,12 @@ public class ExpenseService : IExpenseService
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
 
-        if (expense.EmployeeId != empId && currentEmployee.Role != UserRole.Admin)
-            throw new UnauthorizedAccessException("Only the submitter or an admin can cancel.");
-        if (expense.Status != ExpenseStatus.PendingApproval) throw new InvalidOperationException("Can only cancel pending expenses.");
+        if (expense.Status != ExpenseStatus.PendingApproval)
+            throw new InvalidOperationException("You can only cancel an expense while it is pending approval.");
+
+        var raisedById = expense.SubmittedByEmployeeId ?? expense.EmployeeId;
+        if (raisedById != empId)
+            throw new UnauthorizedAccessException("Only the person who raised this request can cancel.");
 
         expense.Status = ExpenseStatus.Cancelled;
         expense.UpdatedAt = DateTime.UtcNow;
@@ -627,6 +672,7 @@ public class ExpenseService : IExpenseService
         e.EmployeeId,
         e.Employee.FullName,
         e.Employee.Department ?? "",
+        e.SubmittedByEmployeeId,
         e.Amount,
         e.PaidAmount,
         e.Purpose, 

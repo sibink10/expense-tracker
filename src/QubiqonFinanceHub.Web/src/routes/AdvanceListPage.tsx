@@ -7,7 +7,7 @@ import { fmtCur, nextListSort } from "../shared/utils";
 import { Btn, Badge, Tbl, Empty, ListRefreshButton, type TblCol } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
 import { getAdvancesMyMapped } from "../shared/api/advance";
-import { canCancelAdvanceByStatus } from "../shared/expensePermissions";
+import { advanceRaisedByCurrentUser, canCancelAdvanceRequest } from "../shared/expensePermissions";
 
 const STATUS_TABS = [
   { label: "All", value: "" },
@@ -208,9 +208,8 @@ export default function AdvanceListPage() {
               sortDesc={sortDesc}
               onSortChange={handleSort}
               rows={data.map((a) => {
-                const canCancelAdvanceRow =
-                  canCancelAdvanceByStatus(a.status) &&
-                  (is("admin") || (!!user?.employeeId && user.employeeId === a.employeeId));
+                const canCancelAdvanceRow = canCancelAdvanceRequest(a, user);
+                const canSelfApprove = advanceRaisedByCurrentUser(a, user);
                 return {
                   ...a,
                   _cells: [
@@ -237,6 +236,7 @@ export default function AdvanceListPage() {
                                 }}
                               >
                                 {(is("approver") || is("admin")) &&
+                                  !canSelfApprove &&
                                   a.status !== ADV_S.CANCELLED &&
                                   a.status === ADV_S.PENDING && (
                                     <>

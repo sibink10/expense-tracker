@@ -58,11 +58,12 @@ export default function InvPayModal() {
     setError(null);
     try {
       const refTrim = paymentReference.trim();
+      const notesTrim = notes.trim();
       await markInvoicePaid(id, {
-        paymentReference: refTrim.length > 0 ? refTrim : undefined,
         paidAmount: parsedPaidAmount,
         method,
-        notes: notes.trim(),
+        notes: notesTrim,
+        ...(refTrim.length > 0 ? { paymentReference: refTrim } : {}),
       });
       t(parsedPaidAmount >= remainingAmount ? "Invoice marked paid" : "Invoice marked partially paid");
       setMdl(null);
@@ -117,10 +118,10 @@ export default function InvPayModal() {
         hint={`Enter an amount between 0 and ${fmtCur(remainingAmount, inv.currency)}`}
       />
       <Inp
-        label="Payment reference"
+        label="Payment reference (optional)"
         value={paymentReference}
         onChange={(e) => setPaymentReference(e.target.value)}
-        ph="Optional — e.g. NEFT ref"
+        ph="e.g. NEFT / UPI ref"
       />
       <Inp
         label="Method"

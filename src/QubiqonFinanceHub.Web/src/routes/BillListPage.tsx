@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { Bill } from "../types";
 import { C } from "../shared/theme";
@@ -31,6 +31,17 @@ export default function BillListPage() {
       ? payPriorityParam
       : "all";
 
+  /** When filtering by payment priority, client-side status filter must stay "all". */
+  const effectiveSfForContext = useMemo(() => {
+    if (payPriority !== "all") return "all";
+    return normalizedStatus;
+  }, [payPriority, normalizedStatus]);
+
+  const combinedFilterValue = useMemo(() => {
+    if (payPriority !== "all") return `pay:${payPriority}`;
+    return normalizedStatus;
+  }, [payPriority, normalizedStatus]);
+
   useEffect(() => {
     const handler = () => setRefreshKey((k) => k + 1);
     window.addEventListener("bills-refresh", handler);
@@ -38,15 +49,18 @@ export default function BillListPage() {
   }, []);
 
   useEffect(() => {
-    if (sf !== normalizedStatus) {
-      setSf(normalizedStatus);
+    if (sf !== effectiveSfForContext) {
+      setSf(effectiveSfForContext);
       setPage(1);
     }
-  }, [normalizedStatus, setSf, sf]);
+  }, [effectiveSfForContext, setSf, sf]);
 
-  const statusForApi = sf && sf !== "all"
-    ? (sf === BILL_S.PARTIALLY_PAID ? "PartiallyPaid" : sf)
-    : undefined;
+  const statusForApi =
+    effectiveSfForContext && effectiveSfForContext !== "all"
+      ? effectiveSfForContext === BILL_S.PARTIALLY_PAID
+        ? "PartiallyPaid"
+        : effectiveSfForContext
+      : undefined;
 
   const paymentPriorityForApi =
     payPriority === "all" ? undefined : payPriority;
@@ -120,71 +134,63 @@ export default function BillListPage() {
         <Filter
           search={search}
           onSearch={setSearch}
-          status={sf}
-          onStatus={(nextStatus) => {
-            setSf(nextStatus);
-            const nextParams = new URLSearchParams(searchParams);
-            if (nextStatus && nextStatus !== "all") nextParams.set("status", nextStatus);
-            else nextParams.delete("status");
-            setSearchParams(nextParams, { replace: true });
-            setPage(1);
-          }}
-          opts={[
-            "all",
-            BILL_S.SUBMITTED,
-            BILL_S.APPROVED,
-            BILL_S.PAID,
-            BILL_S.PARTIALLY_PAID,
-            BILL_S.OVERDUE,
-            BILL_S.REJECTED,
-          ]}
-          prepend={
-            <div
+          status={combinedFilterValue}
+          onStatus={() => {}}
+          opts={[]}
+          statusSlot={
+            <select
+              aria-label="Filter by status or payment priority"
+              value={combinedFilterValue}
+              onChange={(e) => {
+                const next = e.target.value;
+                const nextParams = new URLSearchParams(searchParams);
+                if (next === "all") {
+                  nextParams.delete("status");
+                  nextParams.delete("payPriority");
+                  setSf("all");
+                } else if (next.startsWith("pay:")) {
+                  nextParams.delete("status");
+                  nextParams.set("payPriority", next.slice(4));
+                  setSf("all");
+                } else {
+                  nextParams.delete("payPriority");
+                  if (next !== "all") nextParams.set("status", next);
+                  else nextParams.delete("status");
+                  setSf(next);
+                }
+                setSearchParams(nextParams, { replace: true });
+                setPage(1);
+              }}
               style={{
-                display: "flex",
-                gap: "2px",
-                background: C.surface,
-                borderRadius: "8px",
-                padding: "2px",
+                minWidth: "200px",
+                maxWidth: "min(280px, 100%)",
                 minHeight: "34px",
-                alignItems: "center",
+                padding: "6px 10px",
+                borderRadius: "8px",
+                border: `1.5px solid ${C.border}`,
+                fontSize: "12px",
+                fontWeight: 600,
+                fontFamily: "'DM Sans'",
+                color: C.primary,
+                background: "#fff",
+                cursor: "pointer",
+                boxSizing: "border-box",
               }}
             >
-              {(
-                [
-                  ["all", "All"],
-                  [BILL_PAYMENT_PRIORITY.IMMEDIATE, "Pay now"],
-                  [BILL_PAYMENT_PRIORITY.LATER, "Pay later"],
-                ] as const
-              ).map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => {
-                    const nextParams = new URLSearchParams(searchParams);
-                    if (key === "all") nextParams.delete("payPriority");
-                    else nextParams.set("payPriority", key);
-                    setSearchParams(nextParams, { replace: true });
-                    setPage(1);
-                  }}
-                  style={{
-                    minHeight: "30px",
-                    padding: "6px 10px",
-                    borderRadius: "6px",
-                    border: "none",
-                    fontSize: "11px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    fontFamily: "'DM Sans'",
-                    background: payPriority === key ? "#fff" : "transparent",
-                    color: payPriority === key ? C.primary : C.muted,
-                    boxShadow: payPriority === key ? "0 1px 3px rgba(0,0,0,0.06)" : "none",
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+              <option value="all">All bills</option>
+              <optgroup label="Status">
+                <option value={BILL_S.SUBMITTED}>{BILL_S.SUBMITTED}</option>
+                <option value={BILL_S.APPROVED}>{BILL_S.APPROVED}</option>
+                <option value={BILL_S.PAID}>{BILL_S.PAID}</option>
+                <option value={BILL_S.PARTIALLY_PAID}>{BILL_S.PARTIALLY_PAID}</option>
+                <option value={BILL_S.OVERDUE}>{BILL_S.OVERDUE}</option>
+                <option value={BILL_S.REJECTED}>{BILL_S.REJECTED}</option>
+              </optgroup>
+              <optgroup label="Payment priority">
+                <option value={`pay:${BILL_PAYMENT_PRIORITY.IMMEDIATE}`}>Pay now</option>
+                <option value={`pay:${BILL_PAYMENT_PRIORITY.LATER}`}>Pay later</option>
+              </optgroup>
+            </select>
           }
           trailing={
             <ListRefreshButton

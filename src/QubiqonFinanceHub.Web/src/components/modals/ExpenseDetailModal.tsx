@@ -6,7 +6,8 @@ import {
   canEditExpenseFields,
   canShowApprovedBillUploadPanel,
   isExpenseCancelled,
-  canCancelExpenseByStatus,
+  canCancelExpenseRequest,
+  expenseUserIsSubmitterOrBeneficiary,
 } from "../../shared/expensePermissions";
 import { Btn, Badge, Mdl, CLog, Inp, MultiFileUp, Alert, MODAL_Z_INDEX } from "../ui";
 import { EditIcon } from "../icons";
@@ -42,10 +43,9 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
   const canApproveReject =
     !cancelled &&
     (e.status === EXP_S.PENDING || e.status === EXP_S.PENDING_BILL_APPROVAL) &&
-    (isApprover || isAdmin);
-  const canCancelExpense =
-    canCancelExpenseByStatus(e.status) &&
-    (isAdmin || (!!user?.employeeId && e.employeeId === user.employeeId));
+    (isApprover || isAdmin) &&
+    !expenseUserIsSubmitterOrBeneficiary(e, user);
+  const canCancelExpense = canCancelExpenseRequest(e, user);
   const canShowPay =
     !cancelled &&
     (isFinance || isAdmin) &&
@@ -479,7 +479,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
               <Btn v="info" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "pay", d: e, it: "expense" }), 50); }} disabled={!hasBill}>Pay</Btn>
             </>
           )}
-          <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>
+          {!editing && <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>}
         </div>
       </div>
     </Mdl>

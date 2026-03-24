@@ -1,14 +1,13 @@
 export type UserRole = "employee" | "approver" | "finance" | "admin";
 
 export interface AppUser {
-  id: number;
+  /** Logged-in employee id: API returns employee `Guid` as string; dev mock uses numeric id. */
+  id: string;
   name: string;
   email: string;
   role: UserRole;
   dept: string;
   av: string;
-  /** Backend employee UUID for API calls (e.g. onBehalfOfEmployeeId) */
-  employeeId?: string;
 }
 
 export interface NavItem {
@@ -36,6 +35,8 @@ export interface ActivityComment {
   text: string;
   d: string;
   t: "ok" | "no" | "pay" | "sent";
+  /** Action / status label for this entry (e.g. Approved, Payment processed). */
+  status?: string;
 }
 
 export interface FileRef {
@@ -56,8 +57,10 @@ export interface Expense {
   id: string;
   /** Backend API id (GUID) for approve/reject endpoints */
   apiId?: string;
-  /** Submitter employee id (GUID) for cancel permission */
+  /** Beneficiary employee id (GUID) — whose expense this is */
   employeeId?: string;
+  /** Who raised/submitted the request (GUID); cancel only when this matches the logged-in user */
+  submittedByEmployeeId?: string;
   empId: number;
   empName: string;
   dept: string;
@@ -126,7 +129,7 @@ export interface Advance {
   id: string;
   /** Backend API id (GUID) for approve/reject endpoints */
   apiId?: string;
-  /** Submitter employee id (GUID) for cancel permission */
+  /** Employee who raised the advance (GUID); cancel allowed only when this matches the logged-in user */
   employeeId?: string;
   empId: number;
   empName: string;

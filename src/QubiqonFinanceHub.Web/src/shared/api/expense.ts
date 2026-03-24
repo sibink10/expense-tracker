@@ -1,6 +1,11 @@
 import { apiClient } from "./client";
 import type { Expense } from "../../types";
 import type { ActivityComment, FileRef, UploadedDocument } from "../../types";
+import {
+  activityCommentStatusFallback,
+  formatActivityCommentAction,
+  mapActionTypeToAccentT,
+} from "../activityCommentStatus";
 import { EXP_S } from "../constants";
 
 // ─── API types ─────────────────────────────────────────────────
@@ -24,6 +29,8 @@ export interface ApiExpenseItem {
   id: string;
   expenseCode: string;
   employeeId: string;
+  /** Who submitted the request; used for cancel permission (may differ from employeeId for on-behalf). */
+  submittedByEmployeeId?: string | null;
   employeeName: string;
   department: string;
   amount: number;
@@ -61,21 +68,15 @@ const STATUS_MAP: Record<string, string> = {
   PartiallyPaid: EXP_S.PARTIALLY_PAID,
 };
 
-function mapActionTypeToT(actionType: string): "ok" | "no" | "pay" | "sent" {
-  const s = actionType?.toLowerCase() || "";
-  if (s.includes("approv") || s === "ok") return "ok";
-  if (s.includes("reject") || s === "no") return "no";
-  if (s.includes("pay") || s.includes("disburs")) return "pay";
-  return "sent";
-}
-
 function mapApiComment(c: ApiExpenseComment): ActivityComment {
   const d = c.createdAt ? c.createdAt.split("T")[0] : "";
+  const t = mapActionTypeToAccentT(c.actionType);
   return {
     by: c.by,
     text: c.text,
     d,
-    t: mapActionTypeToT(c.actionType),
+    t,
+    status: formatActivityCommentAction(c.actionType) || activityCommentStatusFallback(t),
   };
 }
 
@@ -110,6 +111,7 @@ function mapApiExpenseToApp(item: ApiExpenseItem): Expense {
     id: item.expenseCode,
     apiId: item.id,
     employeeId: item.employeeId,
+    submittedByEmployeeId: item.submittedByEmployeeId ?? undefined,
     empId: 0,
     empName: item.employeeName,
     dept: item.department || "",
@@ -212,7 +214,7 @@ export async function rejectExpense(id: string, comments: string): Promise<unkno
   return data;
 }
 
-/** Submitter or admin cancels a pending expense (POST /api/expenses/{id}/cancel). */
+/** Only the person who raised the request can cancel a pending expense (POST /api/expenses/{id}/cancel). */
 export async function cancelExpense(id: string): Promise<unknown> {
   const { data } = await apiClient.post(`/expenses/${id}/cancel`);
   return data;

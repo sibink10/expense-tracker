@@ -19,11 +19,17 @@ public class ClientService : IClientService
     public async Task<ClientDto> CreateAsync(CreateClientRequest dto)
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
+        var nameTrim = (dto.Name ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(nameTrim))
+            throw new InvalidOperationException("Client name is required.");
+        if (await NameExistsAsync(orgId, nameTrim, excludeId: null))
+            throw new InvalidOperationException("A client with this name already exists.");
+
         var client = new Client
         {
             Id = Guid.NewGuid(),
             OrganizationId = orgId,
-            Name = dto.Name,
+            Name = nameTrim,
             Email = dto.Email,
             Country = dto.Country,
             Currency = dto.Currency,
@@ -52,7 +58,15 @@ public class ClientService : IClientService
         if (client.IsDelete)
             throw new KeyNotFoundException("Client not found");
 
-        if (dto.Name != null) client.Name = dto.Name;
+        if (dto.Name != null)
+        {
+            var nameTrim = dto.Name.Trim();
+            if (string.IsNullOrWhiteSpace(nameTrim))
+                throw new InvalidOperationException("Client name is required.");
+            if (await NameExistsAsync(orgId, nameTrim, id))
+                throw new InvalidOperationException("A client with this name already exists.");
+            client.Name = nameTrim;
+        }
         if (dto.Email != null) client.Email = dto.Email;
         if (dto.Country != null) client.Country = dto.Country;
         if (dto.Currency != null) client.Currency = dto.Currency;
@@ -108,6 +122,16 @@ public class ClientService : IClientService
         client.IsDelete = true;
         client.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+    }
+
+    private async Task<bool> NameExistsAsync(Guid orgId, string nameTrim, Guid? excludeId)
+    {
+        var lower = nameTrim.ToLowerInvariant();
+        return await _db.Clients.AnyAsync(x =>
+            x.OrganizationId == orgId &&
+            !x.IsDelete &&
+            (excludeId == null || x.Id != excludeId.Value) &&
+            x.Name.ToLower() == lower);
     }
 
     private static ClientDto MapToDto(Client c) => new(

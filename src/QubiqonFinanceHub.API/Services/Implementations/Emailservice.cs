@@ -386,7 +386,7 @@ public class EmailService : IEmailService
                 inlineLogo,
                 "Paid",
                 "#2563eb",
-                "Bill paid",
+                BuildVendorBillPaidSubject(variables),
                 "Bill paid",
                 $"Hi {Encode(GetVariable(variables, "vendor_name"))},<br/><br/>Payment has been processed for your bill.",
                 "Please find the payment reference and processing details below.",
@@ -593,6 +593,15 @@ public class EmailService : IEmailService
 
     private static string BuildAdvanceSubmittedSubject(string advanceCode) =>
         $"New Advance Request - {advanceCode} - Submitted";
+
+    /// <summary>Subject for vendor-facing email when a bill payment is recorded.</summary>
+    private static string BuildVendorBillPaidSubject(Dictionary<string, string> variables)
+    {
+        var num = GetVariableOrEmpty(variables, "vendor_bill_number");
+        if (string.IsNullOrWhiteSpace(num))
+            num = GetVariable(variables, "bill_id");
+        return $"Notification of Payment : {num} - Success";
+    }
 
     private static void NormalizeActionDateToIst(Dictionary<string, string> variables)
     {
@@ -1000,7 +1009,7 @@ public class EmailService : IEmailService
         var lineItemsHtml = GetVariableOrEmpty(variables, "line_items_html");
         var gstBreakdownRowsHtml = GetVariableOrEmpty(variables, "gst_breakdown_rows_html");
         var tdsRowHtml = GetVariableOrEmpty(variables, "tds_row_html");
-        var viewLinkSection = string.Empty;
+        var viewLinkSection = BuildViewLinkSection(variables);
         var organizationDetails = BuildOrganizationDetails(org);
 
         var htmlBody = $$"""

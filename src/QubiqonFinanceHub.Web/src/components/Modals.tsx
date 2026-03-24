@@ -46,7 +46,12 @@ export default function Modals() {
 
   if (mdl.t === "adv-detail" && mdl.d && "empName" in mdl.d && "purpose" in mdl.d && !("reqBy" in mdl.d)) {
     const a = mdl.d as Advance;
-    const hist = advs.filter((x) => x.empId === a.empId && x.id !== a.id);
+    const hist = advs.filter(
+      (x) =>
+        x.id !== a.id &&
+        ((x.employeeId && a.employeeId && x.employeeId === a.employeeId) ||
+          (x.empId && a.empId && x.empId === a.empId)),
+    );
     return <AdvanceDetailModal advance={a} previousAdvances={hist} />;
   }
 

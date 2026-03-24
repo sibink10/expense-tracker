@@ -130,7 +130,7 @@ export default function InvoicesPage() {
       setRefreshKey((k) => k + 1);
       window.dispatchEvent(new CustomEvent("invoices-refresh"));
     } catch (err: unknown) {
-      t(err instanceof Error ? err.message : "Could not send invoice", "error");
+      t(err instanceof Error ? err.message : "Could not mark invoice as sent", "error");
     } finally {
       setSendLoading(false);
     }
@@ -283,7 +283,7 @@ export default function InvoicesPage() {
                                 setSendConfirm(inv);
                               }}
                             >
-                              Send
+                              Mark sent
                             </Btn>
                           )}
                           {canSendInvoice && showMarkPaidOnRow(inv) && (
@@ -348,18 +348,18 @@ export default function InvoicesPage() {
         close={() => {
           if (!sendLoading) setSendConfirm(null);
         }}
-        title="Send invoice to client?"
+        title="Mark invoice as sent?"
         zIndex={INVOICE_MODAL_Z_INDEX + 50}
       >
         <p style={{ fontSize: "13px", color: C.primary, margin: "0 0 16px", lineHeight: 1.5 }}>
-          Email this invoice to the client and mark it as <strong>Sent</strong>. You can record payment after it has been sent.
+          This sets the invoice status to <strong>Sent</strong>. You can record payment afterward.
         </p>
         <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", flexWrap: "wrap" }}>
           <Btn v="secondary" onClick={() => setSendConfirm(null)} disabled={sendLoading}>
             Cancel
           </Btn>
           <Btn v="invoice" onClick={handleConfirmSend} disabled={sendLoading}>
-            {sendLoading ? "Sending…" : "Confirm send"}
+            {sendLoading ? "Updating…" : "Mark as sent"}
           </Btn>
         </div>
       </Mdl>

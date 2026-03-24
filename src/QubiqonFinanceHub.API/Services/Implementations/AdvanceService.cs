@@ -144,6 +144,9 @@ public class AdvanceService : IAdvanceService
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Advance not found");
 
+        if (advance.EmployeeId == emp.Id)
+            throw new InvalidOperationException("You cannot approve an advance request raised by yourself.");
+
         if (advance.Status != AdvanceStatus.Pending)
             throw new InvalidOperationException("Only pending advances can be approved.");
 
@@ -322,11 +325,11 @@ public class AdvanceService : IAdvanceService
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Advance not found");
 
-        if (advance.EmployeeId != currentEmployee.Id && currentEmployee.Role != UserRole.Admin)
-            throw new UnauthorizedAccessException("Only the submitter or an admin can cancel.");
-
         if (advance.Status != AdvanceStatus.Pending)
-            throw new InvalidOperationException("Only pending advances can be cancelled.");
+            throw new InvalidOperationException("You can only cancel an advance while it is pending.");
+
+        if (advance.EmployeeId != currentEmployee.Id)
+            throw new UnauthorizedAccessException("Only the person who raised this request can cancel.");
 
         advance.Status = AdvanceStatus.Cancelled;
 

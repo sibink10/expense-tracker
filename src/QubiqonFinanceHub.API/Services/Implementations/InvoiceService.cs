@@ -1,9 +1,6 @@
-using System.Net;
-using System.Text;
 using Microsoft.EntityFrameworkCore;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
-using QubiqonFinanceHub.API.Models.Constants;
 using QubiqonFinanceHub.API.Models.Entities;
 using QubiqonFinanceHub.API.Models.Enums;
 using QubiqonFinanceHub.API.Services.Helpers;
@@ -17,12 +14,11 @@ public class InvoiceService : IInvoiceService
     private readonly FinanceHubDbContext _db;
     private readonly ITenantService _tenant;
     private readonly ICodeGeneratorService _codeGen;
-    private readonly IEmailService _email;
     private readonly IOrganizationService _orgService;
     private readonly ILogger<InvoiceService> _log;
 
-    public InvoiceService(FinanceHubDbContext db, ITenantService tenant, ICodeGeneratorService codeGen, IEmailService email, IOrganizationService orgService, ILogger<InvoiceService> log)
-    { _db = db; _tenant = tenant; _codeGen = codeGen; _email = email; _orgService = orgService; _log = log; }
+    public InvoiceService(FinanceHubDbContext db, ITenantService tenant, ICodeGeneratorService codeGen, IOrganizationService orgService, ILogger<InvoiceService> log)
+    { _db = db; _tenant = tenant; _codeGen = codeGen; _orgService = orgService; _log = log; }
 
     public async Task<InvoiceDto> CreateAsync(CreateInvoiceRequest dto)
     {
@@ -116,40 +112,6 @@ public class InvoiceService : IInvoiceService
 
         _db.Invoices.Add(invoice);
         await _db.SaveChangesAsync();
-
-        var approverEmails = await _db.Employees
-            .Where(e => e.OrganizationId == orgId &&
-                        e.IsActive &&
-                        !e.IsDelete &&
-                        !string.IsNullOrWhiteSpace(e.Email) &&
-                        (e.Role == UserRole.Finance || e.Role == UserRole.Approver))
-            .Select(e => e.Email)
-            .Distinct()
-            .ToListAsync();
-
-        var invoiceForEmail = await _db.Invoices
-            .AsNoTracking()
-            .Include(x => x.Client)
-            .Include(x => x.LineItems)
-            .ThenInclude(l => l.GSTConfig)
-            .Include(x => x.TaxConfig)
-            .FirstAsync(x => x.Id == invoice.Id);
-
-        if (approverEmails.Count > 0)
-        {
-            await _email.SendNotificationAsync(
-                Constants.EmailTemplateKeys.InvoiceCreated,
-                await BuildInvoiceEmailVariablesAsync(invoiceForEmail, invoiceForEmail.Client, emp.FullName, dto.SendImmediately ? "Sent" : "Draft", 0m, string.Empty, dto.SendImmediately ? "inv-pay" : "detail"),
-                string.Join(",", approverEmails));
-        }
-
-        if (dto.SendImmediately)
-        {
-            await _email.SendNotificationAsync(
-                Constants.EmailTemplateKeys.InvoiceSent,
-                await BuildInvoiceEmailVariablesAsync(invoiceForEmail, invoiceForEmail.Client, emp.FullName, "Sent", 0m, string.Empty, "inv-pay"),
-                client.Email);
-        }
 
         _log.LogInformation("Invoice {Code} created for {Client}", code, client.Name);
         return (await GetByIdAsync(invoice.Id))!;
@@ -346,10 +308,6 @@ public class InvoiceService : IInvoiceService
         var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var inv = await _db.Invoices
-            .Include(x => x.Client)
-            .Include(x => x.LineItems)
-            .ThenInclude(l => l.GSTConfig)
-            .Include(x => x.TaxConfig)
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Invoice not found");
 
@@ -370,11 +328,6 @@ public class InvoiceService : IInvoiceService
         });
 
         await _db.SaveChangesAsync();
-
-        await _email.SendNotificationAsync(
-            Constants.EmailTemplateKeys.InvoiceSent,
-            await BuildInvoiceEmailVariablesAsync(inv, inv.Client, emp.FullName, "Sent", inv.paidAmound, string.Empty, "inv-pay"),
-            inv.Client.Email);
 
         return (await GetByIdAsync(id))!;
     }
@@ -451,116 +404,6 @@ public class InvoiceService : IInvoiceService
             "CAD" => $"CA${amount:N2}",
             _ => $"₹{amount:N2}"
         };
-
-    private static string GetInvoiceStatusLabel(InvoiceStatus status) =>
-        status switch
-        {
-            InvoiceStatus.PartiallyPaid => "Partially Paid",
-            _ => status.ToString()
-        };
-
-    private async Task<Dictionary<string, string>> BuildInvoiceEmailVariablesAsync(
-        Invoice invoice,
-        Client client,
-        string actorName,
-        string statusLabel,
-        decimal paymentAmountShownInEmail,
-        string detailsText,
-        string? linkType = null)
-    {
-        var totalPaidCumulative = invoice.paidAmound;
-        var balanceDue = Math.Max(invoice.Total - totalPaidCumulative, 0);
-
-        var dict = new Dictionary<string, string>
-        {
-            ["entity_type"] = "invoice",
-            ["entity_api_id"] = invoice.Id.ToString(),
-            ["invoice_number"] = invoice.InvoiceCode,
-            ["invoice_date"] = invoice.InvoiceDate.ToString("dd/MM/yyyy"),
-            ["due_date"] = invoice.DueDate.ToString("dd/MM/yyyy"),
-            ["payment_terms"] = string.IsNullOrWhiteSpace(invoice.PaymentTerms) ? "NA" : invoice.PaymentTerms,
-            ["purchase_order"] = string.IsNullOrWhiteSpace(invoice.PurchaseOrder) ? "NA" : invoice.PurchaseOrder,
-            ["client_name"] = client.Name,
-            ["client_email"] = client.Email,
-            ["client_billing_address"] = client.BillingAddress ?? client.Address ?? "",
-            ["client_shipping_address"] = client.ShippingAddress ?? client.BillingAddress ?? client.Address ?? "",
-            ["currency"] = invoice.Currency,
-            ["description"] = string.Join(", ", invoice.LineItems.Select(x => x.Description)),
-            ["sub_total"] = FormatCurrency(invoice.SubTotal, invoice.Currency),
-            ["total_gst"] = FormatCurrency(invoice.TotalGST, invoice.Currency),
-            ["tax_amount"] = FormatCurrency(invoice.TaxAmount, invoice.Currency),
-            ["amount"] = FormatCurrency(invoice.Total, invoice.Currency),
-            ["payment_made"] = FormatCurrency(paymentAmountShownInEmail, invoice.Currency),
-            ["balance_due"] = FormatCurrency(balanceDue, invoice.Currency),
-            ["payment_reference"] = invoice.PaymentReference ?? "",
-            ["notes"] = invoice.Notes ?? "",
-            ["total_in_words"] = invoice.TotalInWords ?? "",
-            ["line_items_html"] = BuildInvoiceLineItemsHtml(invoice),
-            ["gst_line_breakdown_html"] = await BuildInvoiceGstLineBreakdownHtmlAsync(invoice),
-            ["actor_name"] = actorName,
-            ["details_text"] = detailsText,
-            ["invoice_status"] = statusLabel,
-            ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
-        };
-        if (!string.IsNullOrWhiteSpace(linkType))
-            dict["link_type"] = linkType.Trim();
-        return dict;
-    }
-
-    private async Task<string> BuildInvoiceGstLineBreakdownHtmlAsync(Invoice invoice)
-    {
-        var items = invoice.LineItems?.OrderBy(l => l.LineNumber).ToList() ?? new List<InvoiceLineItem>();
-        if (items.Count == 0) return string.Empty;
-        var sb = new StringBuilder();
-        for (var i = 0; i < items.Count; i++)
-        {
-            var item = items[i];
-            if (item.GSTAmount <= 0) continue;
-            string? name = item.GSTConfig?.Name;
-            decimal? rate = item.GSTConfig?.Rate;
-            if (item.GSTConfigId.HasValue && (name == null || rate == null))
-            {
-                var tc = await _db.TaxConfigurations.AsNoTracking().FirstOrDefaultAsync(t => t.Id == item.GSTConfigId.Value);
-                if (tc != null)
-                {
-                    name = tc.Name;
-                    rate = tc.Rate;
-                }
-            }
-            var labelBase = $"{name ?? "GST"} ({(rate ?? 0):N2}%)";
-            var desc = item.Description?.Trim();
-            var labelSuffix = !string.IsNullOrEmpty(desc)
-                ? $" · {(desc.Length > 40 ? desc[..40] + "…" : desc)}"
-                : $" · #{i + 1}";
-            var fullLabel = WebUtility.HtmlEncode(labelBase + labelSuffix);
-            sb.Append($"""
-                <div style="display:flex;justify-content:space-between;font-size:12px;color:#111827;margin-bottom:6px;padding-left:2px;padding-right:2px;">
-                    <span>{fullLabel}</span><strong>{FormatCurrency(item.GSTAmount, invoice.Currency)}</strong>
-                </div>
-                """);
-        }
-        return sb.ToString();
-    }
-
-    private static string BuildInvoiceLineItemsHtml(Invoice invoice)
-    {
-        var rows = invoice.LineItems
-            .OrderBy(x => x.LineNumber)
-            .Select(item =>
-                $"""
-                <tr>
-                    <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">{item.LineNumber}</td>
-                    <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;font-weight:500;">{System.Net.WebUtility.HtmlEncode(item.Description)}</td>
-                    <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">{System.Net.WebUtility.HtmlEncode(item.HSNCode ?? "—")}</td>
-                    <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:right;">{item.Quantity:N2}</td>
-                    <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:right;">{FormatCurrency(item.Rate, invoice.Currency)}</td>
-                    <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:right;">{FormatCurrency(item.GSTAmount, invoice.Currency)}</td>
-                    <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;">{FormatCurrency(item.TotalAmount, invoice.Currency)}</td>
-                </tr>
-                """);
-
-        return string.Join(string.Empty, rows);
-    }
 
     private static InvoiceDto MapToDto(Invoice inv) => new(
      inv.Id, inv.InvoiceCode,

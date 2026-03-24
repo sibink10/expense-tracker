@@ -1,5 +1,10 @@
 import { apiClient } from "./client";
 import type { Invoice, InvoiceItem } from "../../types";
+import {
+  activityCommentStatusFallback,
+  formatActivityCommentAction,
+  mapActionTypeToAccentT,
+} from "../activityCommentStatus";
 import { INV_S } from "../constants";
 
 export interface CreateInvoiceLineItem {
@@ -111,12 +116,16 @@ function mapApiInvoiceToApp(item: ApiInvoice): Invoice {
     po: item.purchaseOrder ?? "",
     notes: item.notes ?? "",
     at: item.createdAt?.split("T")[0] ?? "",
-    comments: (item.comments ?? []).map((c) => ({
-      by: c.by,
-      text: c.text,
-      d: c.createdAt?.split("T")[0] ?? "",
-      t: "ok" as const,
-    })),
+    comments: (item.comments ?? []).map((c) => {
+      const t = mapActionTypeToAccentT(c.actionType ?? "");
+      return {
+        by: c.by,
+        text: c.text,
+        d: c.createdAt?.split("T")[0] ?? "",
+        t,
+        status: formatActivityCommentAction(c.actionType) || activityCommentStatusFallback(t),
+      };
+    }),
     paidRef: item.paymentReference ?? undefined,
     paidAmound: item.paidAmound ?? 0,
   };

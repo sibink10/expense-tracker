@@ -2,7 +2,21 @@ import { useRef, type CSSProperties, type ReactNode } from "react";
 import Select from "react-select";
 import { C } from "../shared/theme";
 import { EXP_S, BILL_S, ADV_S, INV_S } from "../shared/constants";
+import { activityCommentStatusFallback } from "../shared/activityCommentStatus";
 import type { ActivityComment } from "../types";
+
+function activityStatusPillColors(t: ActivityComment["t"]): { color: string; background: string } {
+  switch (t) {
+    case "ok":
+      return { color: C.success, background: C.successBg };
+    case "no":
+      return { color: C.danger, background: C.dangerBg };
+    case "pay":
+      return { color: C.info, background: C.infoBg };
+    default:
+      return { color: C.accent, background: "rgba(232, 89, 60, 0.12)" };
+  }
+}
 
 interface InpOpt {
   v: string;
@@ -142,6 +156,12 @@ export const Inp: React.FC<InpProps> = ({
           type={type === "email" ? "email" : type}
           value={value}
           onChange={onChange as React.ChangeEventHandler<HTMLInputElement>}
+          onClick={(e) => {
+            if (type === "date" && !disabled) {
+              const input = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
+              input.showPicker?.();
+            }
+          }}
           onBlur={onBlur as React.FocusEventHandler<HTMLInputElement>}
           required={req}
           min={type === "password" ? undefined : min}
@@ -910,7 +930,9 @@ export const Filter: React.FC<{
   prepend?: ReactNode;
   /** Renders on the right end of the filter row (e.g. refresh), inside the card with tabs */
   trailing?: ReactNode;
-}> = ({ search, onSearch, status, onStatus, opts, trailing, prepend }) => (
+  /** When set, replaces the status pill row (e.g. combined filters) */
+  statusSlot?: ReactNode;
+}> = ({ search, onSearch, status, onStatus, opts, trailing, prepend, statusSlot }) => (
   <div
     style={{
       display: "flex",
@@ -941,6 +963,7 @@ export const Filter: React.FC<{
       <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", fontSize: "12px", color: C.muted }}>⌕</span>
     </div>
     {prepend}
+    {statusSlot ?? (
     <div
       style={{
         display: "flex",
@@ -974,6 +997,7 @@ export const Filter: React.FC<{
         </button>
       ))}
     </div>
+    )}
     </div>
     {trailing ? <div style={{ flexShrink: 0, alignSelf: "center" }}>{trailing}</div> : null}
   </div>
@@ -983,26 +1007,68 @@ export const CLog: React.FC<{ comments: ActivityComment[] }> = ({ comments }) =>
   comments?.length > 0 ? (
     <div style={{ marginBottom: "16px" }}>
       <div style={{ fontSize: "10px", color: C.muted, marginBottom: "6px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-        Activity
+        Activity comments
       </div>
-      {comments.map((c, i) => (
-        <div
-          key={i}
-          style={{
-            padding: "8px 12px",
-            background: C.surface,
-            borderRadius: "6px",
-            borderLeft: `3px solid ${c.t === "pay" ? C.info : c.t === "ok" ? C.success : c.t === "no" ? C.danger : C.accent}`,
-            marginBottom: "4px",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ fontSize: "11px", fontWeight: 600 }}>{c.by}</span>
-            <span style={{ fontSize: "10px", color: C.muted }}>{c.d}</span>
+      {comments.map((c, i) => {
+        const statusLabel = (c.status?.trim() || activityCommentStatusFallback(c.t)).trim();
+        const border =
+          c.t === "pay" ? C.info : c.t === "ok" ? C.success : c.t === "no" ? C.danger : C.accent;
+        const pill = activityStatusPillColors(c.t);
+        return (
+          <div
+            key={i}
+            style={{
+              padding: "8px 12px",
+              background: C.surface,
+              borderRadius: "6px",
+              borderLeft: `3px solid ${border}`,
+              marginBottom: "4px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "10px",
+                marginBottom: "4px",
+              }}
+            >
+              <span style={{ fontSize: "11px", fontWeight: 600, minWidth: 0 }}>{c.by}</span>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-end",
+                  gap: "4px",
+                  flexShrink: 0,
+                  marginLeft: "auto",
+                  textAlign: "right",
+                }}
+              >
+                {c.d ? (
+                  <span style={{ fontSize: "10px", color: C.muted, whiteSpace: "nowrap" }}>{c.d}</span>
+                ) : null}
+                <span
+                  style={{
+                    fontSize: "10px",
+                    fontWeight: 600,
+                    color: pill.color,
+                    background: pill.background,
+                    padding: "2px 8px",
+                    borderRadius: "4px",
+                    lineHeight: 1.3,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {statusLabel}
+                </span>
+              </div>
+            </div>
+            <div style={{ fontSize: "11px", color: C.muted }}>{c.text}</div>
           </div>
-          <div style={{ fontSize: "11px", color: C.muted }}>{c.text}</div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   ) : null;
 

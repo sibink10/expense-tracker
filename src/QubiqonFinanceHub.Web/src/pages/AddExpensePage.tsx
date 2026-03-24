@@ -37,7 +37,7 @@ export default function AddExpensePage() {
   };
 
   const submit = async () => {
-    const employeeId = is("finance") ? ob.trim() || null : user.employeeId?.trim() || null;
+    const employeeId = is("finance") ? ob.trim() || null : null;
     const displayName = user.name;
     const amount = parseFloat(amt);
     if (isNaN(amount) || amount <= 0 || !pur.trim() || !billDate) return;

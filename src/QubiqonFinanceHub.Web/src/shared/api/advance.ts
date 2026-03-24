@@ -1,6 +1,11 @@
 import { apiClient } from "./client";
 import type { Advance } from "../../types";
 import type { ActivityComment } from "../../types";
+import {
+  activityCommentStatusFallback,
+  formatActivityCommentAction,
+  mapActionTypeToAccentT,
+} from "../activityCommentStatus";
 import { ADV_S } from "../constants";
 
 // ─── API types ─────────────────────────────────────────────────
@@ -46,21 +51,15 @@ const STATUS_MAP: Record<string, string> = {
   Cancelled: ADV_S.CANCELLED,
 };
 
-function mapActionTypeToT(actionType: string): "ok" | "no" | "pay" | "sent" {
-  const s = actionType?.toLowerCase() || "";
-  if (s.includes("approv") || s === "ok") return "ok";
-  if (s.includes("reject") || s === "no") return "no";
-  if (s.includes("pay") || s.includes("disburs")) return "pay";
-  return "sent";
-}
-
 function mapApiComment(c: ApiAdvanceComment): ActivityComment {
   const d = c.createdAt ? c.createdAt.split("T")[0] : "";
+  const t = mapActionTypeToAccentT(c.actionType);
   return {
     by: c.by,
     text: c.text,
     d,
-    t: mapActionTypeToT(c.actionType),
+    t,
+    status: formatActivityCommentAction(c.actionType) || activityCommentStatusFallback(t),
   };
 }
 
@@ -154,7 +153,7 @@ export async function rejectAdvance(id: string, comments: string): Promise<unkno
   return data;
 }
 
-/** Submitter or admin cancels a pending advance (POST /api/advances/{id}/cancel). */
+/** Only the person who raised the request can cancel a pending advance (POST /api/advances/{id}/cancel). */
 export async function cancelAdvance(id: string): Promise<unknown> {
   const { data } = await apiClient.post(`/advances/${id}/cancel`);
   return data;

@@ -20,6 +20,7 @@ import {
   INIT_CLIENTS,
 } from "../shared/initData";
 import { EXP_S, BILL_S, ADV_S } from "../shared/constants";
+import { expenseBelongsToCurrentUser } from "../shared/expensePermissions";
 import { getOrganizations, type OrganizationPayload } from "../shared/api";
 import {
   getOrganizationSettings,
@@ -237,6 +238,7 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
         text: "Approved.",
         d: new Date().toISOString().split("T")[0],
         t: "ok" as const,
+        status: "Approved",
       };
       if (type === "expense") {
         const exp = item as Expense;
@@ -290,6 +292,7 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
         text: reason || "Rejected.",
         d: new Date().toISOString().split("T")[0],
         t: "no" as const,
+        status: "Rejected",
       };
       if (type === "expense") {
         const exp = item as Expense;
@@ -338,6 +341,7 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
         text: `Paid. Ref: ${ref}`,
         d: new Date().toISOString().split("T")[0],
         t: "pay" as const,
+        status: "Payment processed",
       };
       if (type === "expense") {
         const exp = item as Expense;
@@ -395,7 +399,7 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
   const is = useCallback((r: AppUser["role"]) => user?.role === r, [user]);
 
   const myExps = useMemo(
-    () => exps.filter((e) => e.empId === user.id),
+    () => exps.filter((e) => expenseBelongsToCurrentUser(e, user)),
     [user, exps],
   );
 

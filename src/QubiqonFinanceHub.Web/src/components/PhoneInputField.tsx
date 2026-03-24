@@ -58,8 +58,10 @@ export default function PhoneInputField({
           {label} {required && showReqStar && <span style={{ color: C.accent }}>*</span>}
         </label>
       )}
+      {/* Country code is not editable in the text field; country changes only via the flag dropdown. */}
       <PhoneInput
         international
+        countryCallingCodeEditable={false}
         defaultCountry={defaultCountry}
         value={value || undefined}
         onChange={(v) => onChange(v ?? undefined)}

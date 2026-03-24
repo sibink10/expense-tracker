@@ -52,7 +52,7 @@ export default function InvoiceDetailModal({ invoice: inv }: Props) {
       setMdl({ t: "inv-detail", d: updated });
       window.dispatchEvent(new CustomEvent("invoices-refresh"));
     } catch (err: unknown) {
-      t(err instanceof Error ? err.message : "Could not send invoice", "error");
+      t(err instanceof Error ? err.message : "Could not mark invoice as sent", "error");
     } finally {
       setSendLoading(false);
     }
@@ -108,7 +108,7 @@ export default function InvoiceDetailModal({ invoice: inv }: Props) {
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "flex-end" }}>
           {canSendInvoice && (
             <Btn v="info" onClick={() => setSendConfirmOpen(true)} disabled={sendLoading}>
-              Send to client
+              Mark as sent
             </Btn>
           )}
           <Btn v="invoice" onClick={handleDownload} disabled={downloading}>
@@ -135,18 +135,18 @@ export default function InvoiceDetailModal({ invoice: inv }: Props) {
         close={() => {
           if (!sendLoading) setSendConfirmOpen(false);
         }}
-        title="Send invoice to client?"
+        title="Mark invoice as sent?"
         zIndex={INVOICE_MODAL_Z_INDEX + 50}
       >
         <p style={{ fontSize: "13px", color: C.primary, margin: "0 0 16px", lineHeight: 1.5 }}>
-          Email this invoice to the client and mark it as <strong>Sent</strong>. Record payment after it has been sent.
+          This sets the invoice status to <strong>Sent</strong>. You can record payment afterward.
         </p>
         <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", flexWrap: "wrap" }}>
           <Btn v="secondary" onClick={() => setSendConfirmOpen(false)} disabled={sendLoading}>
             Cancel
           </Btn>
           <Btn v="invoice" onClick={handleConfirmSend} disabled={sendLoading}>
-            {sendLoading ? "Sending…" : "Confirm send"}
+            {sendLoading ? "Updating…" : "Mark as sent"}
           </Btn>
         </div>
       </Mdl>

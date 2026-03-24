@@ -1,6 +1,11 @@
 import { apiClient } from "./client";
 import type { Bill } from "../../types";
 import type { UploadedDocument } from "../../types";
+import {
+  activityCommentStatusFallback,
+  formatActivityCommentAction,
+  mapActionTypeToAccentT,
+} from "../activityCommentStatus";
 
 export interface ApiBillLineItem {
   lineNumber: number;
@@ -126,12 +131,16 @@ function mapApiBillToApp(item: ApiBill): Bill {
     by: 0,
     byName: item.submittedBy ?? "",
     at: item.submittedAt?.split("T")[0] ?? "",
-    comments: (item.comments ?? []).map((c) => ({
-      by: c.by,
-      text: c.text,
-      d: c.createdAt?.split("T")[0] ?? "",
-      t: "ok" as const,
-    })),
+    comments: (item.comments ?? []).map((c) => {
+      const t = mapActionTypeToAccentT(c.actionType);
+      return {
+        by: c.by,
+        text: c.text,
+        d: c.createdAt?.split("T")[0] ?? "",
+        t,
+        status: formatActivityCommentAction(c.actionType) || activityCommentStatusFallback(t),
+      };
+    }),
     cc: item.ccEmails,
     paidRef: item.paymentReference ?? undefined,
     paidAmount: item.paidAmount ?? 0,

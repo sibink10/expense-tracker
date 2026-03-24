@@ -114,7 +114,8 @@ export default function PayModal() {
         label="Payment ref (NEFT/IMPS/UPI)"
         value={r}
         onChange={(e) => setR(e.target.value)}
-        ph="Optional reference"
+        req
+        ph="Reference..."
       />
       {error && <Alert sx={{ marginBottom: "8px" }}>{error}</Alert>}
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
