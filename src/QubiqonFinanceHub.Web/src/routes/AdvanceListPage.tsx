@@ -256,7 +256,6 @@ export default function AdvanceListPage() {
                                   <Btn
                                     sm
                                     v="secondary"
-                                    title="Cancel request"
                                     onClick={() => setMdl({ t: "adv-cancel-confirm", d: a })}
                                   >
                                     Cancel

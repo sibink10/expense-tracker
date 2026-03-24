@@ -80,7 +80,7 @@ export default function AdvanceDisburseModal() {
     try {
       const refTrim = paymentReference.trim();
       await disburseAdvance(id, {
-        paymentReference: refTrim.length > 0 ? refTrim : undefined,
+        paymentReference: refTrim.length > 0 ? refTrim : "",
         method,
         notes,
         paidAmount: paid,

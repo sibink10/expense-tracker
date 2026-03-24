@@ -412,6 +412,12 @@ public class InvoiceService : IInvoiceService
         inv.PaidAt = DateTime.UtcNow;
         inv.UpdatedAt = DateTime.UtcNow;
 
+        var refPart = string.IsNullOrWhiteSpace(dto.PaymentReference) ? "—" : dto.PaymentReference.Trim();
+        var paymentComment =
+            $"Payment recorded. Amount: {FormatCurrency(dto.PaidAmount, inv.Currency)}. Ref: {refPart}";
+        if (!string.IsNullOrWhiteSpace(dto.Notes))
+            paymentComment += $". Notes: {dto.Notes.Trim()}";
+
         _db.ActivityComments.Add(new ActivityComment
         {
             Id = Guid.NewGuid(), InvoiceId = id, CommentByEmployeeId = emp.Id,

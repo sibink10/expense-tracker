@@ -282,7 +282,6 @@ export default function ExpenseListPage() {
                               <Btn
                                 sm
                                 v="secondary"
-                                title="Cancel request"
                                 onClick={() => setMdl({ t: "exp-cancel-confirm", d: e })}
                               >
                                 Cancel
