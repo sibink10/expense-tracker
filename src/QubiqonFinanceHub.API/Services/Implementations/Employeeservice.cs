@@ -48,13 +48,81 @@ public class EmployeeService : IEmployeeService
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
         var entraId = string.IsNullOrWhiteSpace(dto.EntraObjectId) ? null : dto.EntraObjectId.Trim();
+        var email = dto.Email?.Trim() ?? "";
+
+        if (string.IsNullOrWhiteSpace(email))
+            throw new ArgumentException("Email is required", nameof(dto));
+
+        // Uniqueness should ignore soft-deleted employees (IsDelete == true).
+        // If a soft-deleted employee exists for a unique field, re-activate it instead of inserting a new row.
+        var activeByEmail = await _db.Employees
+            .FirstOrDefaultAsync(e => e.OrganizationId == orgId && !e.IsDelete && e.Email == email);
+        if (activeByEmail != null)
+            throw new InvalidOperationException("Employee with this email already exists");
+
+        var deletedByEmail = await _db.Employees
+            .FirstOrDefaultAsync(e => e.OrganizationId == orgId && e.IsDelete && e.Email == email);
+        if (deletedByEmail != null)
+        {
+            // Avoid violating unique constraints when we update EntraObjectId on this re-activated employee.
+            if (!string.IsNullOrWhiteSpace(entraId))
+            {
+                var otherWithSameEntra = await _db.Employees
+                    .FirstOrDefaultAsync(e => e.OrganizationId == orgId && e.Id != deletedByEmail.Id && e.EntraObjectId == entraId);
+                if (otherWithSameEntra != null)
+                    throw new InvalidOperationException("Employee with this EntraObjectId already exists");
+            }
+
+            deletedByEmail.EntraObjectId = entraId;
+            deletedByEmail.FullName = dto.FullName;
+            deletedByEmail.Department = dto.Department;
+            deletedByEmail.Designation = dto.Designation;
+            deletedByEmail.EmployeeCode = dto.EmployeeCode;
+            deletedByEmail.Role = Enum.Parse<UserRole>(dto.Role, true);
+            deletedByEmail.Email = email;
+            deletedByEmail.IsActive = true;
+            deletedByEmail.IsDelete = false;
+            deletedByEmail.UpdatedAt = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+            return MapToDto(deletedByEmail);
+        }
+
+        if (!string.IsNullOrWhiteSpace(entraId))
+        {
+            var activeByEntra = await _db.Employees
+                .FirstOrDefaultAsync(e => e.OrganizationId == orgId && !e.IsDelete && e.EntraObjectId == entraId);
+            if (activeByEntra != null)
+                throw new InvalidOperationException("Employee with this EntraObjectId already exists");
+
+            var deletedByEntra = await _db.Employees
+                .FirstOrDefaultAsync(e => e.OrganizationId == orgId && e.IsDelete && e.EntraObjectId == entraId);
+            if (deletedByEntra != null)
+            {
+                // Email uniqueness was checked above (activeByEmail + deletedByEmail).
+                deletedByEntra.EntraObjectId = entraId;
+                deletedByEntra.FullName = dto.FullName;
+                deletedByEntra.Department = dto.Department;
+                deletedByEntra.Designation = dto.Designation;
+                deletedByEntra.EmployeeCode = dto.EmployeeCode;
+                deletedByEntra.Role = Enum.Parse<UserRole>(dto.Role, true);
+                deletedByEntra.Email = email;
+                deletedByEntra.IsActive = true;
+                deletedByEntra.IsDelete = false;
+                deletedByEntra.UpdatedAt = DateTime.UtcNow;
+
+                await _db.SaveChangesAsync();
+                return MapToDto(deletedByEntra);
+            }
+        }
+
         var emp = new Employee
         {
             Id = Guid.NewGuid(),
             OrganizationId = orgId,
             EntraObjectId = entraId,
             FullName = dto.FullName,
-            Email = dto.Email,
+            Email = email,
             Department = dto.Department,
             Designation = dto.Designation,
             EmployeeCode = dto.EmployeeCode,
