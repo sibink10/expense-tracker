@@ -40,20 +40,17 @@ export interface PagedVendorsResponse {
   hasNext: boolean;
 }
 
-/** Filter vendors that have at least one bill with this payment priority (`immediate` | `later`). */
 export async function getVendors(
   page = 1,
   pageSize = 10,
   search?: string,
   sortBy?: string,
-  desc?: boolean,
-  paymentPriority?: string | null
+  desc?: boolean
 ): Promise<PagedVendorsResponse> {
   const params: Record<string, string | number | boolean> = { page, pageSize };
   if (search?.trim()) params.search = search.trim();
   if (sortBy) params.SortBy = sortBy;
   if (desc !== undefined) params.Desc = desc;
-  if (paymentPriority && paymentPriority !== "all") params.PaymentPriority = paymentPriority;
 
   const { data } = await apiClient.get<
     ApiVendor[] | { items: ApiVendor[]; totalCount: number; page: number; pageSize: number; totalPages: number; hasNext: boolean }

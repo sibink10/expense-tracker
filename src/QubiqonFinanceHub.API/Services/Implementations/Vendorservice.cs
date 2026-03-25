@@ -101,14 +101,6 @@ public class VendorService : IVendorService
             q = q.Where(x => x.Name.ToLower().Contains(s) ||
                              x.Email.ToLower().Contains(s));
         }
-        if (!string.IsNullOrWhiteSpace(f.PaymentPriority) &&
-            PaymentPriorityFilters.TryParseListFilter(f.PaymentPriority, out var pp))
-        {
-            q = q.Where(v => _db.VendorBills.Any(b =>
-                b.VendorId == v.Id &&
-                b.OrganizationId == orgId &&
-                b.PaymentPriority == pp));
-        }
 
         var total = await q.CountAsync();
         q = q.ApplyVendorSorting(f);

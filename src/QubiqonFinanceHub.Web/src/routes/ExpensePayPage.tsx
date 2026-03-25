@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { C } from "../shared/theme";
-import { EXP_S } from "../shared/constants";
+import { EXP_S, EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP } from "../shared/constants";
 import { fmtCur } from "../shared/utils";
 import { Av, Btn, Empty, ListRefreshButton } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
@@ -67,7 +67,9 @@ export default function ExpensePayPage() {
         {payableExp.length === 0 ? (
           <Empty icon="✓" title="All caught up" sub="" />
         ) : (
-          payableExp.map((e) => (
+          payableExp.map((e) => {
+            const hasBill = e.documents.length > 0 || !!e.file;
+            return (
             <div
               key={e.id}
               style={{
@@ -87,17 +89,24 @@ export default function ExpensePayPage() {
               </div>
               <div style={{ textAlign: "right" }}>
                 <div style={{ fontWeight: 700, fontSize: "14px" }}>{fmtCur(e.amt)}</div>
-                {e.documents.length > 0 || e.file ? (
+                {hasBill ? (
                   <span style={{ fontSize: "10px", color: C.success }}>📎 Bill</span>
                 ) : (
                   <span style={{ fontSize: "10px", color: C.warning }}>⚠ No bill</span>
                 )}
               </div>
-              <Btn sm v="info" onClick={() => setMdl({ t: "pay", d: e, it: "expense" })} disabled={!(e.documents.length > 0 || e.file)}>
+              <Btn
+                sm
+                v="info"
+                onClick={() => setMdl({ t: "pay", d: e, it: "expense" })}
+                disabled={!hasBill}
+                title={!hasBill ? EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP : undefined}
+              >
                 Pay
               </Btn>
             </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

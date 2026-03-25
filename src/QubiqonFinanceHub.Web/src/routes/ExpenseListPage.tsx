@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { Expense } from "../types";
 import { C } from "../shared/theme";
-import { EXP_S } from "../shared/constants";
+import { EXP_S, EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP } from "../shared/constants";
 import { fmtCur, nextListSort } from "../shared/utils";
 import { Btn, Badge, Tbl, Empty, ListRefreshButton, type TblCol } from "../components/ui";
 import { useAppContext } from "../context/AppContext";
@@ -273,6 +273,7 @@ export default function ExpenseListPage() {
                                   v="info"
                                   onClick={() => setMdl({ t: "pay", d: e, it: "expense" })}
                                   disabled={!hasDocuments}
+                                  title={!hasDocuments ? EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP : undefined}
                                 >
                                   Pay
                                 </Btn>

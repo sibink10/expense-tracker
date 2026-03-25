@@ -10,6 +10,10 @@ export const EXP_S = {
   PARTIALLY_PAID: "Partially Paid",
 } as const;
 
+/** Shown when Pay is disabled until supporting bill documents exist */
+export const EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP =
+  "Upload at least one bill document before recording payment.";
+
 export const BILL_S = {
   SUBMITTED: "Submitted",
   APPROVED: "Approved",

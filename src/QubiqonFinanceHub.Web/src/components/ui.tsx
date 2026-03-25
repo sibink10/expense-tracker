@@ -288,7 +288,9 @@ export const Btn: React.FC<{
   disabled?: boolean;
   sm?: boolean;
   sx?: CSSProperties;
-}> = ({ children, onClick, v = "primary", disabled, sm, sx }) => {
+  /** Native tooltip; when `disabled`, wrapped so the tooltip still shows on hover */
+  title?: string;
+}> = ({ children, onClick, v = "primary", disabled, sm, sx, title }) => {
   const vs: Record<string, CSSProperties> = {
     primary: { background: C.accent, color: "#fff" },
     secondary: { background: C.surface, color: C.primary, border: `1.5px solid ${C.border}` },
@@ -300,30 +302,41 @@ export const Btn: React.FC<{
     info: { background: C.info, color: "#fff" },
     invoice: { background: C.invoice, color: "#fff" },
   };
-  return (
+  const buttonStyle: CSSProperties = {
+    padding: sm ? "6px 12px" : "8px 18px",
+    borderRadius: "8px",
+    fontSize: sm ? "11px" : "12px",
+    fontWeight: 600,
+    cursor: disabled ? "not-allowed" : "pointer",
+    border: "none",
+    transition: "all 0.2s",
+    fontFamily: "'DM Sans'",
+    opacity: disabled ? 0.5 : 1,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "5px",
+    ...vs[v],
+    ...sx,
+  };
+  const buttonEl = (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
-      style={{
-        padding: sm ? "6px 12px" : "8px 18px",
-        borderRadius: "8px",
-        fontSize: sm ? "11px" : "12px",
-        fontWeight: 600,
-        cursor: disabled ? "not-allowed" : "pointer",
-        border: "none",
-        transition: "all 0.2s",
-        fontFamily: "'DM Sans'",
-        opacity: disabled ? 0.5 : 1,
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "5px",
-        ...vs[v],
-        ...sx,
-      }}
+      title={disabled ? undefined : title}
+      style={buttonStyle}
     >
       {children}
     </button>
   );
+  if (disabled && title) {
+    return (
+      <span title={title} style={{ display: "inline-flex", cursor: "not-allowed" }}>
+        {buttonEl}
+      </span>
+    );
+  }
+  return buttonEl;
 };
 
 /** Secondary action for list pages — place on the right; calls the page’s GET again via `onRefresh`. */

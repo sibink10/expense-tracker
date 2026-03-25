@@ -171,7 +171,7 @@ export default function VendorEditModal() {
         />
         <Inp
           label="Re-enter account number"
-          type="password"
+          type="text"
           value={accountNumberRe}
           onChange={(e) => setAccountNumberRe(e.target.value.replace(/\D/g, ""))}
           ph="Re-enter account number"

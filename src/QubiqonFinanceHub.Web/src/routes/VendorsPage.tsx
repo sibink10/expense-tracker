@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
 import { TrashIcon } from "../components/icons";
 import { Av, Btn, Empty, Inp, Mdl, ListRefreshButton, SortTh } from "../components/ui";
-import { BILL_PAYMENT_PRIORITY } from "../shared/constants";
 import { nextListSort } from "../shared/utils";
 import { useAppContext } from "../context/AppContext";
 import { getApiErrorMessage } from "../shared/api/client";
@@ -27,8 +26,6 @@ export default function VendorsPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [sortBy, setSortBy] = useState("CreatedAt");
   const [sortDesc, setSortDesc] = useState(true);
-  /** Vendors that have at least one bill with this payment priority */
-  const [payPriority, setPayPriority] = useState<"all" | typeof BILL_PAYMENT_PRIORITY.IMMEDIATE | typeof BILL_PAYMENT_PRIORITY.LATER>("all");
 
   const handleSort = (key: string) => {
     const n = nextListSort(key, sortBy, sortDesc);
@@ -56,7 +53,7 @@ export default function VendorsPage() {
 
   useEffect(() => {
     setLoading(true);
-    getVendors(page, pageSize, search, sortBy, sortDesc, payPriority)
+    getVendors(page, pageSize, search, sortBy, sortDesc)
       .then((res) => {
         setVendors(res.items);
         setTotalCount(res.totalCount);
@@ -68,7 +65,7 @@ export default function VendorsPage() {
         setTotalPages(0);
       })
       .finally(() => setLoading(false));
-  }, [page, pageSize, search, refreshKey, sortBy, sortDesc, payPriority]);
+  }, [page, pageSize, search, refreshKey, sortBy, sortDesc]);
 
  
 
@@ -149,49 +146,6 @@ export default function VendorsPage() {
               >
                 ⌕
               </span>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                gap: "2px",
-                background: C.surface,
-                borderRadius: "8px",
-                padding: "2px",
-                minHeight: "34px",
-                alignItems: "center",
-              }}
-            >
-              {(
-                [
-                  ["all", "All"],
-                  [BILL_PAYMENT_PRIORITY.IMMEDIATE, "Pay now"],
-                  [BILL_PAYMENT_PRIORITY.LATER, "Pay later"],
-                ] as const
-              ).map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => {
-                    setPayPriority(key);
-                    setPage(1);
-                  }}
-                  style={{
-                    minHeight: "30px",
-                    padding: "6px 10px",
-                    borderRadius: "6px",
-                    border: "none",
-                    fontSize: "11px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    fontFamily: "'DM Sans'",
-                    background: payPriority === key ? "#fff" : "transparent",
-                    color: payPriority === key ? C.primary : C.muted,
-                    boxShadow: payPriority === key ? "0 1px 3px rgba(0,0,0,0.06)" : "none",
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
             </div>
             {search.trim() && totalCount > 0 && (
               <span style={{ fontSize: "12px", color: C.muted }}>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { C } from "../../shared/theme";
-import { EXP_S } from "../../shared/constants";
+import { EXP_S, EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP } from "../../shared/constants";
 import { fmtCur, downloadFromSasUrl, buildDownloadFilename } from "../../shared/utils";
 import {
   canEditExpenseFields,
@@ -476,7 +476,14 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
           {canShowPay && !editing && (
             <>
               <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "reject", d: e, it: "expense" }), 50); }}>Reject</Btn>
-              <Btn v="info" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "pay", d: e, it: "expense" }), 50); }} disabled={!hasBill}>Pay</Btn>
+              <Btn
+                v="info"
+                onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "pay", d: e, it: "expense" }), 50); }}
+                disabled={!hasBill}
+                title={!hasBill ? EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP : undefined}
+              >
+                Pay
+              </Btn>
             </>
           )}
           {!editing && <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>}
