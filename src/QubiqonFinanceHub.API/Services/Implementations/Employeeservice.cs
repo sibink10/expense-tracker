@@ -60,6 +60,7 @@ public class EmployeeService : IEmployeeService
             EmployeeCode = dto.EmployeeCode,
             Role = Enum.Parse<UserRole>(dto.Role, true),
             IsActive = true,
+            IsDelete = false,
             CreatedAt = DateTime.UtcNow
         };
         _db.Employees.Add(emp);
