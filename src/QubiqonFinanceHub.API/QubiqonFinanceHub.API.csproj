@@ -21,6 +21,10 @@
     <!-- Azure AD / Entra ID Authentication -->
     <PackageReference Include="Microsoft.Identity.Web" Version="4.5.0" />
 
+    <!-- Excel upload -->
+    <PackageReference Include="ExcelDataReader" Version="3.7.0" />
+    <PackageReference Include="ExcelDataReader.DataSet" Version="3.7.0" />
+
     <!-- Swagger / OpenAPI -->
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
 

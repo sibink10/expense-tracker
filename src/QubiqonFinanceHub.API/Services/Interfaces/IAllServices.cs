@@ -157,3 +157,13 @@ public interface ICategoryService
     Task DeleteAsync(Guid id);
     Task<CategoryDto> ToggleActiveAsync(Guid id);
 }
+
+public interface IExcelUploadService
+{
+    Task<List<string>> ReadExcelColumnsAsync(IFormFile file, CancellationToken ct = default);
+
+    Task<(List<string> Columns, List<Dictionary<string, object?>> Rows)> ReadExcelAsync(
+        IFormFile file,
+        CancellationToken ct = default
+    );
+}

@@ -32,6 +32,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IEmployeeService, EmployeeService>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IOrganizationSettingsService, OrganizationSettingsService>();
+        services.AddScoped<IExcelUploadService, ExcelUploadService>();
 
         services.AddFluentValidationAutoValidation();
         return services;

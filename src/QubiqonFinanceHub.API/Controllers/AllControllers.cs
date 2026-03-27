@@ -344,6 +344,335 @@ public class CategoryController(ICategoryService svc) : ControllerBase
 
 
 // ═══════════════════════════════════════════════════
+//  EXCEL UPLOAD (COLUMNS DISCOVERY)
+// ═══════════════════════════════════════════════════
+
+public class ExcelUploadRequest
+{
+    public IFormFile File { get; set; } = null!;
+}
+
+[ApiController, Route("api/excel-upload")]
+public class ExcelUploadController(IExcelUploadService excel, FinanceHubDbContext db, ITenantService tenant) : ControllerBase
+{
+    [HttpPost("columns")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> ReadColumns([FromForm] ExcelUploadRequest request, CancellationToken ct)
+    {
+        if (request.File == null || request.File.Length <= 0) return BadRequest("File is required");
+        var cols = await excel.ReadExcelColumnsAsync(request.File, ct);
+        return Ok(new { columns = cols });
+    }
+
+    [HttpGet("dto-columns")]
+    public IActionResult DtoColumns([FromQuery] string dtoClass)
+    {
+        if (string.IsNullOrWhiteSpace(dtoClass)) return BadRequest("dtoClass is required");
+
+        var dtoType = typeof(QubiqonFinanceHub.API.DTOs.PaginatedResult<>).Assembly
+            .GetTypes()
+            .FirstOrDefault(t =>
+                t.Namespace == "QubiqonFinanceHub.API.DTOs"
+                && string.Equals(t.Name, dtoClass.Trim(), StringComparison.Ordinal));
+
+        if (dtoType == null) return NotFound($"DTO class '{dtoClass}' not found");
+
+        var props = dtoType
+            .GetProperties(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public)
+            .Select(p => p.Name)
+            .OrderBy(x => x)
+            .ToList();
+
+        return Ok(new { dtoClass = dtoType.Name, properties = props });
+    }
+
+    [HttpPost("vendors/preview")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> PreviewVendors([FromForm] ExcelUploadRequest request, CancellationToken ct)
+    {
+        if (request.File == null || request.File.Length <= 0) return BadRequest("File is required");
+
+        var orgId = await tenant.GetCurrentOrganizationId();
+        var (_, rows) = await excel.ReadExcelAsync(request.File, ct);
+
+        var preview = new List<object>();
+        var errors = new List<string>();
+        var skipped = 0;
+
+        // Excel data rows start at row 2 (row 1 is headers)
+        var excelRowNumber = 1;
+        foreach (var r in rows)
+        {
+            excelRowNumber++;
+            ct.ThrowIfCancellationRequested();
+
+            // 1) skip row where Type == "Employee"
+            var type = GetCellString(r, "Type");
+            if (string.Equals(type, "Employee", StringComparison.OrdinalIgnoreCase))
+            {
+                skipped++;
+                continue;
+            }
+
+            // 2) display name only if there is no company name
+            var companyName = GetCellString(r, "Company Name");
+            var displayName = GetCellString(r, "Display Name");
+            var vendorName = !string.IsNullOrWhiteSpace(companyName) ? companyName : displayName;
+
+            // 3) concat first name + last name (fallback for contact person)
+            var firstName = GetCellString(r, "First Name");
+            var lastName = GetCellString(r, "Last Name");
+            var fullName = string.Join(" ", new[] { firstName, lastName }.Where(x => !string.IsNullOrWhiteSpace(x))).Trim();
+
+            // 4) use phone or mobile for phone number
+            var phone = GetCellString(r, "Phone");
+            var mobile = GetCellString(r, "MobilePhone");
+            var phoneNumber = !string.IsNullOrWhiteSpace(phone) ? phone : mobile;
+
+            // 5) contact name as contact person (fallback to first+last)
+            var contactPerson = fullName;
+
+            // 6) GST Identification Number (GSTIN) as GSTIN
+            var gstin = GetCellString(r, "GST Identification Number (GSTIN)");
+
+            // 7) concat billing address fields with new lines
+            var address = JoinLines(
+                GetCellString(r, "Billing Attention"),
+                GetCellString(r, "Billing Address"),
+                GetCellString(r, "Billing Street2"),
+                GetCellString(r, "Billing City"),
+                GetCellString(r, "Billing State"),
+                GetCellString(r, "Billing Country"),
+                GetCellString(r, "Billing Code")
+            );
+
+            // 8) bank fields
+            var bankName = GetCellString(r, "Vendor Bank Name");
+            var accountNumber = GetCellString(r, "Vendor Bank Account Number");
+            var ifsc = GetCellString(r, "Vendor Bank Code");
+
+            var email = GetCellString(r, "EmailID");
+            if (string.IsNullOrWhiteSpace(email)) email = GetCellString(r, "Email");
+
+            var vendorNameValue = vendorName?.Trim() ?? "";
+            var emailValue = email?.Trim() ?? "";
+            var addressValue = address?.Trim() ?? "";
+            var phoneValue = phoneNumber?.Trim();
+            var contactPersonValue = contactPerson?.Trim();
+            var gstinValue = gstin?.Trim();
+            var bankNameValue = bankName?.Trim();
+            var accountNumberValue = accountNumber?.Trim();
+            var ifscValue = ifsc?.Trim();
+
+            var hasName = !string.IsNullOrWhiteSpace(vendorNameValue);
+            var hasEmail = !string.IsNullOrWhiteSpace(emailValue);
+
+            var nameLower = hasName ? vendorNameValue.ToLower() : null;
+            var emailLower = hasEmail ? emailValue.ToLower() : null;
+
+            var exists = (hasName || hasEmail) && await db.Vendors.AsNoTracking().AnyAsync(v =>
+                v.OrganizationId == orgId
+                && !v.IsDelete
+                && (
+                    (nameLower != null && v.Name.ToLower() == nameLower)
+                    || (emailLower != null && v.Email.ToLower() == emailLower)
+                ), ct);
+
+            preview.Add(new
+            {
+                row = excelRowNumber,
+                exists,
+                vendor = new
+                {
+                    name = vendorNameValue,
+                    email = emailValue,
+                    address = addressValue,
+                    phone = phoneValue ?? "",
+                    contactPerson = contactPersonValue ?? "",
+                    gstin = gstinValue ?? "",
+                    bankName = bankNameValue ?? "",
+                    accountNumber = accountNumberValue ?? "",
+                    ifscCode = ifscValue ?? ""
+                }
+            });
+        }
+
+        return Ok(new { preview, skipped, errors });
+    }
+
+    [HttpPost("vendors/import")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> ImportVendors([FromForm] ExcelUploadRequest request, [FromQuery] int? take = null, CancellationToken ct = default)
+    {
+        if (request.File == null || request.File.Length <= 0) return BadRequest("File is required");
+        if (take.HasValue && take.Value <= 0) return BadRequest("take must be >= 1");
+
+        var orgId = await tenant.GetCurrentOrganizationId();
+        var (_, rows) = await excel.ReadExcelAsync(request.File, ct);
+
+        var inserted = 0;
+        var skipped = 0;
+        var errors = new List<string>();
+        var results = new List<object>();
+
+        var existing = await db.Vendors.AsNoTracking()
+            .Where(v => v.OrganizationId == orgId && !v.IsDelete)
+            .Select(v => new { v.Name, v.Email })
+            .ToListAsync(ct);
+        var existingNames = existing
+            .Select(x => (x.Name ?? "").Trim().ToLower())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToHashSet();
+        var existingEmails = existing
+            .Select(x => (x.Email ?? "").Trim().ToLower())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToHashSet();
+
+        var pending = new List<Vendor>();
+
+        var excelRowNumber = 1;
+        foreach (var r in rows)
+        {
+            excelRowNumber++;
+            ct.ThrowIfCancellationRequested();
+
+            var type = GetCellString(r, "Type");
+            if (string.Equals(type, "Employee", StringComparison.OrdinalIgnoreCase))
+            {
+                skipped++;
+                continue;
+            }
+
+            var companyName = GetCellString(r, "Company Name");
+            var displayName = GetCellString(r, "Display Name");
+            var vendorName = (!string.IsNullOrWhiteSpace(companyName) ? companyName : displayName)?.Trim() ?? "";
+
+            var firstName = GetCellString(r, "First Name");
+            var lastName = GetCellString(r, "Last Name");
+            var fullName = string.Join(" ", new[] { firstName, lastName }.Where(x => !string.IsNullOrWhiteSpace(x))).Trim();
+
+            var phone = GetCellString(r, "Phone");
+            var mobile = GetCellString(r, "MobilePhone");
+            var phoneNumber = (!string.IsNullOrWhiteSpace(phone) ? phone : mobile)?.Trim() ?? "";
+
+            var contactPerson = "";
+
+            var gstin = (GetCellString(r, "GST Identification Number (GSTIN)") ?? "").Trim();
+
+            var address = JoinLines(
+                GetCellString(r, "Billing Attention"),
+                GetCellString(r, "Billing Address"),
+                GetCellString(r, "Billing Street2"),
+                GetCellString(r, "Billing City"),
+                GetCellString(r, "Billing State"),
+                GetCellString(r, "Billing Country"),
+                GetCellString(r, "Billing Code")
+            ).Trim();
+
+            var bankName = (GetCellString(r, "Vendor Bank Name") ?? "").Trim();
+            var accountNumber = (GetCellString(r, "Vendor Bank Account Number") ?? "").Trim();
+            var ifsc = (GetCellString(r, "Vendor Bank Code") ?? "").Trim();
+
+            var email = GetCellString(r, "EmailID");
+            if (string.IsNullOrWhiteSpace(email)) email = GetCellString(r, "Email");
+            email = (email ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(email)) email = "";
+            if (string.IsNullOrWhiteSpace(address)) address = "";
+
+            if (string.IsNullOrWhiteSpace(vendorName))
+            {
+                skipped++;
+                results.Add(new
+                {
+                    row = excelRowNumber,
+                    inserted = false,
+                    skipped = true,
+                    reason = "Missing required field (name)",
+                    vendor = new { name = vendorName, email, address }
+                });
+                continue;
+            }
+
+            var nameLower = vendorName.ToLower();
+            var emailLower = string.IsNullOrWhiteSpace(email) ? "" : email.ToLower();
+            var exists = existingNames.Contains(nameLower) || (!string.IsNullOrWhiteSpace(emailLower) && existingEmails.Contains(emailLower));
+
+            if (exists)
+            {
+                skipped++;
+                results.Add(new { row = excelRowNumber, inserted = false, skipped = true, reason = "Vendor already exists (name/email match)" });
+                continue;
+            }
+
+            try
+            {
+                var v = new Vendor
+                {
+                    Id = Guid.NewGuid(),
+                    OrganizationId = orgId,
+                    Name = vendorName,
+                    Email = email,
+                    Address = address,
+                    Phone = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber,
+                    ContactPerson = string.IsNullOrWhiteSpace(contactPerson) ? null : contactPerson,
+                    GSTIN = string.IsNullOrWhiteSpace(gstin) ? null : gstin,
+                    BankName = string.IsNullOrWhiteSpace(bankName) ? null : bankName,
+                    AccountNumber = string.IsNullOrWhiteSpace(accountNumber) ? null : accountNumber,
+                    IfscCode = string.IsNullOrWhiteSpace(ifsc) ? null : ifsc,
+                    IsActive = true,
+                    IsDelete = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                pending.Add(v);
+                existingNames.Add(nameLower);
+                if (!string.IsNullOrWhiteSpace(emailLower)) existingEmails.Add(emailLower);
+
+                if (pending.Count >= 200)
+                {
+                    db.Vendors.AddRange(pending);
+                    await db.SaveChangesAsync(ct);
+                    pending.Clear();
+                }
+
+                inserted++;
+                results.Add(new { row = excelRowNumber, inserted = true, name = vendorName, email });
+            }
+            catch (Exception ex)
+            {
+                skipped++;
+                errors.Add($"Row {excelRowNumber}: {ex.Message}");
+                results.Add(new { row = excelRowNumber, inserted = false, skipped = true, reason = "DB error" });
+            }
+
+            if (take.HasValue && inserted >= take.Value) break;
+        }
+
+        if (pending.Count > 0)
+        {
+            db.Vendors.AddRange(pending);
+            await db.SaveChangesAsync(ct);
+        }
+
+        return Ok(new { inserted, skipped, errors, results });
+    }
+
+    private static string? GetCellString(Dictionary<string, object?> row, string column)
+    {
+        return row.TryGetValue(column, out var v) ? (v?.ToString() ?? "").Trim() : null;
+    }
+
+    private static string JoinLines(params string?[] parts)
+    {
+        var lines = parts
+            .Select(p => (p ?? "").Trim())
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .ToList();
+        return string.Join("\n", lines);
+    }
+}
+
+// ═══════════════════════════════════════════════════
 //  HEALTH
 // ═══════════════════════════════════════════════════
 [ApiController, Route("api/health")]
