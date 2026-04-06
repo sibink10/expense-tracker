@@ -52,25 +52,51 @@ public class EmailService : IEmailService
             await InjectViewLinkAsync(variables);
             var template = await ResolveTemplateAsync(templateKey, variables);
 
-            // 3. Get user's incoming bearer token
-            var userToken = _httpContext.HttpContext!.Request.Headers["Authorization"]
-                .ToString().Replace("Bearer ", "").Trim();
+            // Payment-related notifications must be sent from a fixed finance mailbox using
+            // app-only Graph auth (application permissions), not delegated OBO.
+            var isFinanceAppOnlyPaymentNotification =
+                templateKey == Constants.EmailTemplateKeys.VendorBillPaid || // includes partial payments
+                templateKey == Constants.EmailTemplateKeys.VendorBillRejected ||
+                templateKey == Constants.EmailTemplateKeys.PaymentConfirmation || // expense pay
+                templateKey == Constants.EmailTemplateKeys.AdvanceDisbursed; // advance pay
 
-            if (string.IsNullOrEmpty(userToken))
-                throw new InvalidOperationException("No bearer token found in request.");
+            if (isFinanceAppOnlyPaymentNotification)
+            {
+                var senderEmail = GetFinanceSenderEmail();
+                var graphToken = await GetGraphTokenForAppAsync();
 
-            // 4. OBO exchange — get Graph token on behalf of user
-            var graphToken = await GetGraphTokenOnBehalfOfAsync(userToken);
+                await SendViaGraphAsAppAsync(
+                    senderEmail,
+                    toEmail,
+                    ccEmails,
+                    template.Subject,
+                    template.HtmlBody,
+                    attachmentPath,
+                    graphToken,
+                    template.InlineAttachments);
+            }
+            else
+            {
+                // 3. Get user's incoming bearer token (delegated flow)
+                var userToken = _httpContext.HttpContext!.Request.Headers["Authorization"]
+                    .ToString().Replace("Bearer ", "").Trim();
 
-            // 5. Send via Graph API
-            await SendViaGraphAsync(
-                toEmail,
-                ccEmails,
-                template.Subject,
-                template.HtmlBody,
-                attachmentPath,
-                graphToken,
-                template.InlineAttachments);
+                if (string.IsNullOrEmpty(userToken))
+                    throw new InvalidOperationException("No bearer token found in request.");
+
+                // 4. OBO exchange — get Graph token on behalf of user
+                var graphToken = await GetGraphTokenOnBehalfOfAsync(userToken);
+
+                // 5. Send via Graph API (delegated flow)
+                await SendViaGraphAsync(
+                    toEmail,
+                    ccEmails,
+                    template.Subject,
+                    template.HtmlBody,
+                    attachmentPath,
+                    graphToken,
+                    template.InlineAttachments);
+            }
 
             _log.LogInformation("Email sent | Template: {Key} | To: {To}", templateKey, toEmail);
         }
@@ -474,6 +500,39 @@ public class EmailService : IEmailService
         return result.AccessToken;
     }
 
+    private async Task<string> GetGraphTokenForAppAsync()
+    {
+        var tenantId = _config["ServerApp:TenantId"]!;
+        var clientId = _config["ServerApp:ClientId"]!;
+        var clientSecret = _config["ServerApp:ClientSecret"]!;
+
+        var app = ConfidentialClientApplicationBuilder
+            .Create(clientId)
+            .WithClientSecret(clientSecret)
+            .WithAuthority($"https://login.microsoftonline.com/{tenantId}")
+            .Build();
+
+        // App-only (application permissions) token.
+        var result = await app
+            .AcquireTokenForClient(new[] { "https://graph.microsoft.com/.default" })
+            .ExecuteAsync();
+
+        return result.AccessToken;
+    }
+
+    private string GetFinanceSenderEmail()
+    {
+        // Primary source: appsettings.json (Email:FromEmail)
+        if (!string.IsNullOrWhiteSpace(_config["Email:FromEmail"]))
+            return _config["Email:FromEmail"]!.Trim();
+
+        // Optional override if you want a separate config key.
+        if (!string.IsNullOrWhiteSpace(_config["Mail:FinanceSenderEmail"]))
+            return _config["Mail:FinanceSenderEmail"]!.Trim();
+
+        throw new InvalidOperationException("Missing required config: Email:FromEmail.");
+    }
+
     private async Task SendViaGraphAsync(
         string to, string? cc,
         string subject, string htmlBody,
@@ -535,6 +594,74 @@ public class EmailService : IEmailService
             var error = await response.Content.ReadAsStringAsync();
             _log.LogError("Graph sendMail failed: {Error}", error);
             throw new Exception($"Graph sendMail failed: {error}");
+        }
+    }
+
+    private async Task SendViaGraphAsAppAsync(
+        string senderEmail,
+        string to, string? cc,
+        string subject, string htmlBody,
+        string? attachmentPath, string graphToken,
+        IReadOnlyList<EmailAttachment>? inlineAttachments = null)
+    {
+        var toRecipients = BuildRecipients(to);
+        var ccRecipients = BuildRecipients(cc);
+
+        if (toRecipients.Length == 0)
+            throw new InvalidOperationException("No valid recipient email addresses were provided.");
+
+        var attachments = new List<Dictionary<string, object>>();
+        if (attachmentPath != null && File.Exists(attachmentPath))
+        {
+            var bytes = File.ReadAllBytes(attachmentPath);
+            attachments.Add(new Dictionary<string, object>
+            {
+                ["@odata.type"] = "#microsoft.graph.fileAttachment",
+                ["name"] = Path.GetFileName(attachmentPath),
+                ["contentBytes"] = Convert.ToBase64String(bytes)
+            });
+        }
+
+        if (inlineAttachments != null)
+        {
+            attachments.AddRange(inlineAttachments.Select(attachment => new Dictionary<string, object>
+            {
+                ["@odata.type"] = "#microsoft.graph.fileAttachment",
+                ["name"] = attachment.Name,
+                ["contentType"] = attachment.ContentType,
+                ["contentBytes"] = attachment.ContentBytes,
+                ["contentId"] = attachment.ContentId,
+                ["isInline"] = true
+            }));
+        }
+
+        var payload = new
+        {
+            message = new
+            {
+                subject,
+                body = new { contentType = "HTML", content = htmlBody },
+                toRecipients,
+                ccRecipients,
+                attachments
+            },
+            saveToSentItems = false
+        };
+
+        _httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", graphToken);
+
+        // App-only mail send from a specific mailbox.
+        var senderPath = Uri.EscapeDataString(senderEmail);
+        var response = await _httpClient.PostAsJsonAsync(
+            $"https://graph.microsoft.com/v1.0/users/{senderPath}/sendMail",
+            payload);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            _log.LogError("Graph sendMail (app) failed: {Error}", error);
+            throw new Exception($"Graph sendMail (app) failed: {error}");
         }
     }
 

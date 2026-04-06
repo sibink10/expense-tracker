@@ -1,5 +1,6 @@
 using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Entities;
+using QubiqonFinanceHub.API.Models.Enums;
 
 namespace QubiqonFinanceHub.API.Services.Interfaces;
 
@@ -166,4 +167,10 @@ public interface IExcelUploadService
         IFormFile file,
         CancellationToken ct = default
     );
+}
+
+public interface IAzureRoleService
+{
+    Task AssignRoleAsync(string azureObjectId, UserRole role);
+    Task RemoveAllRolesAsync(string azureObjectId);
 }

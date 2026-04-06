@@ -1,4 +1,5 @@
 namespace QubiqonFinanceHub.API.Models.Constants
+
 {
     public class Constants
     {

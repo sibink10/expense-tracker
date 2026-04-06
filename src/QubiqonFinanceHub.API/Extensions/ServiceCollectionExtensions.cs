@@ -5,6 +5,7 @@ using Microsoft.Identity.Web;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.Services.Implementations;
 using QubiqonFinanceHub.API.Services.Interfaces;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace QubiqonFinanceHub.API.Extensions;
 
@@ -49,13 +50,21 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddApplicationAuth(this IServiceCollection services, IConfiguration config)
     {
         services.AddMicrosoftIdentityWebApiAuthentication(config, "AzureAd")
-        .EnableTokenAcquisitionToCallDownstreamApi()
-        .AddInMemoryTokenCaches();
+            .EnableTokenAcquisitionToCallDownstreamApi()
+            .AddInMemoryTokenCaches();
+
+        // Tell .NET to read roles from "roles" claim
+        services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
+        {
+            options.TokenValidationParameters.RoleClaimType = "roles";
+        });
+
         services.AddAuthorizationBuilder()
             .AddPolicy("EmployeeOnly", p => p.RequireRole("Employee", "Approver", "Finance", "Admin"))
             .AddPolicy("ApproverOnly", p => p.RequireRole("Approver", "Admin"))
             .AddPolicy("FinanceOnly", p => p.RequireRole("Finance", "Admin"))
             .AddPolicy("AdminOnly", p => p.RequireRole("Admin"));
+
         return services;
     }
 

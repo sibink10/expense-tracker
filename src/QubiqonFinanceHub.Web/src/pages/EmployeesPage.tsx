@@ -12,6 +12,7 @@ export default function EmployeesPage() {
     (user.email || "").toLowerCase().trim() === (emp.email || "").toLowerCase().trim();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
@@ -105,7 +106,7 @@ export default function EmployeesPage() {
   };
 
   const handleSave = async () => {
-    if (!isFormValid) return;
+    if (!isFormValid || saving) return;
     const payload = {
       id: editing?.id,
       name: form.name.trim(),
@@ -115,9 +116,17 @@ export default function EmployeesPage() {
       designation: form.designation.trim() || undefined,
       employeeCode: form.employeeCode.trim() || undefined,
     };
-    await saveEmployee(payload);
-    setMdlOpen(false);
-    load();
+    setSaving(true);
+    try {
+      await saveEmployee(payload);
+      setMdlOpen(false);
+      load();
+      t(editing ? "Employee updated" : "Employee added");
+    } catch {
+      t("Failed to save employee");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const cols: TblCol[] = [
@@ -348,8 +357,8 @@ export default function EmployeesPage() {
           <Btn v="secondary" sm onClick={() => setMdlOpen(false)}>
             Cancel
           </Btn>
-          <Btn v="primary" sm onClick={handleSave} disabled={!isFormValid}>
-            Save
+          <Btn v="primary" sm onClick={handleSave} disabled={!isFormValid || saving}>
+            {saving ? "⏳ Saving..." : "Save"}
           </Btn>
         </div>
       </Mdl>

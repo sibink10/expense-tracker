@@ -26,7 +26,7 @@ export default function Login({ onLogin }: LoginProps) {
     setMsalError(null);
     instance
       .loginRedirect({
-        scopes: [import.meta.env.VITE_API_SCOPE],
+        scopes: [import.meta.env.VITE_API_SCOPE!],
       })
       .catch((err) => {
         setLd(false);

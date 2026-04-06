@@ -12,9 +12,10 @@ public class EmployeeService : IEmployeeService
 {
     private readonly FinanceHubDbContext _db;
     private readonly ITenantService _tenant;
+    private readonly IAzureRoleService _azureRoleService;
 
-    public EmployeeService(FinanceHubDbContext db, ITenantService tenant)
-    { _db = db; _tenant = tenant; }
+    public EmployeeService(FinanceHubDbContext db, ITenantService tenant, IAzureRoleService azureRoleService)
+    { _db = db; _tenant = tenant; _azureRoleService = azureRoleService; }
 
     public async Task<PaginatedResult<EmployeeDto>> ListAsync(FilterParams f)
     {
@@ -111,6 +112,8 @@ public class EmployeeService : IEmployeeService
                 deletedByEntra.IsDelete = false;
                 deletedByEntra.UpdatedAt = DateTime.UtcNow;
 
+                if (!string.IsNullOrWhiteSpace(deletedByEntra.EntraObjectId))
+                    await _azureRoleService.AssignRoleAsync(deletedByEntra.EntraObjectId, deletedByEntra.Role);
                 await _db.SaveChangesAsync();
                 return MapToDto(deletedByEntra);
             }
@@ -137,22 +140,30 @@ public class EmployeeService : IEmployeeService
     }
 
     public async Task<EmployeeDto> UpdateAsync(Guid id, UpdateEmployeeRequest dto)
-    {
-        var orgId = await _tenant.GetCurrentOrganizationId();
-        var emp = await _db.Employees
-            .FirstOrDefaultAsync(e => e.Id == id && e.OrganizationId == orgId)
-            ?? throw new KeyNotFoundException("Employee not found");
+        {
+            var orgId = await _tenant.GetCurrentOrganizationId();
+            var emp = await _db.Employees
+                .FirstOrDefaultAsync(e => e.Id == id && e.OrganizationId == orgId)
+                ?? throw new KeyNotFoundException("Employee not found");
 
-        if (dto.FullName != null) emp.FullName = dto.FullName;
-        if (dto.Department != null) emp.Department = dto.Department;
-        if (dto.Designation != null) emp.Designation = dto.Designation;
-        if (dto.EmployeeCode != null) emp.EmployeeCode = dto.EmployeeCode;
-        if (dto.Role != null) emp.Role = Enum.Parse<UserRole>(dto.Role, true);
-        emp.UpdatedAt = DateTime.UtcNow;
+            if (dto.FullName != null)     emp.FullName     = dto.FullName;
+            if (dto.Department != null)   emp.Department   = dto.Department;
+            if (dto.Designation != null)  emp.Designation  = dto.Designation;
+            if (dto.EmployeeCode != null) emp.EmployeeCode = dto.EmployeeCode;
 
-        await _db.SaveChangesAsync();
-        return MapToDto(emp);
-    }
+            if (dto.Role != null)
+            {
+                var newRole = Enum.Parse<UserRole>(dto.Role, true);
+                emp.Role = newRole;
+
+                // Sync role to Azure AD
+                await _azureRoleService.AssignRoleAsync(emp.EntraObjectId ?? "", newRole);
+            }
+
+            emp.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            return MapToDto(emp);
+        }
 
     public async Task<EmployeeDto> ToggleActiveAsync(Guid id)
     {

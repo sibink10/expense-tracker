@@ -5,14 +5,15 @@ import { MsalProvider } from '@azure/msal-react';
 import { Toaster } from 'react-hot-toast';
 import App from "./App";
 
+
 const msalConfig = {
   auth: {
-    clientId: import.meta.env.VITE_AZURE_CLIENT_ID || '00000000-0000-0000-0000-000000000000',
+    clientId: import.meta.env.VITE_AZURE_CLIENT_ID!,
     authority: `https://login.microsoftonline.com/${import.meta.env.VITE_AZURE_TENANT_ID || 'common'}`,
     redirectUri: window.location.origin,
     postLogoutRedirectUri: window.location.origin,
   },
-  cache: { cacheLocation: 'sessionStorage' as const, storeAuthStateInCookie: false },
+  cache: { cacheLocation: 'localStorage' as const, storeAuthStateInCookie: false },
 };
 
 const msalInstance = new PublicClientApplication(msalConfig);

@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <!-- Entity Framework Core + Azure SQL -->
+    <PackageReference Include="Azure.Identity" Version="1.19.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0" />
@@ -16,6 +17,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.Graph" Version="5.103.0" />
     <PackageReference Include="Microsoft.Identity.Client" Version="4.83.1" />
 
     <!-- Azure AD / Entra ID Authentication -->

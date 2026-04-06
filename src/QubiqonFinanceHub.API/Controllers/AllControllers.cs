@@ -9,11 +9,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace QubiqonFinanceHub.API.Controllers;
 
+
+
 // ═══════════════════════════════════════════════════
 //  AUTH
 // ═══════════════════════════════════════════════════
 [ApiController, Route("api/auth"), Authorize]
-public class AuthController(ITenantService tenant, FinanceHubDbContext db) : ControllerBase
+public class AuthController(ITenantService tenant, FinanceHubDbContext db, IAzureRoleService azureRoleService) : ControllerBase
 {
     [HttpGet("me")]
     public async Task<IActionResult> Me()
@@ -46,6 +48,7 @@ public class AuthController(ITenantService tenant, FinanceHubDbContext db) : Con
                 CreatedAt = DateTime.UtcNow,
                 IsDelete = false
             };
+            await azureRoleService.AssignRoleAsync(emp.EntraObjectId!, UserRole.Employee);
             db.Employees.Add(emp);
             await db.SaveChangesAsync();
         }
@@ -134,11 +137,15 @@ public class ExpensesController(IExpenseService svc) : ControllerBase
     }
     [HttpGet("{id:guid}")] public async Task<IActionResult> GetById(Guid id) { var r = await svc.GetByIdAsync(id); return r != null ? Ok(r) : NotFound(); }
     [HttpGet("my")] public async Task<IActionResult> ListMine([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f, true));
-    [HttpGet] public async Task<IActionResult> ListAll([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
-    [HttpPost("{id:guid}/approve")] public async Task<IActionResult> Approve(Guid id, [FromBody] ApproveRequest dto) => Ok(await svc.ApproveAsync(id, dto));
-    [HttpPost("{id:guid}/reject")] public async Task<IActionResult> Reject(Guid id, [FromBody] RejectRequest dto) => Ok(await svc.RejectAsync(id, dto));
+    [HttpGet, Authorize(Roles = "Approver,Finance,Admin")]
+    public async Task<IActionResult> ListAll([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
+    [HttpPost("{id:guid}/approve"), Authorize(Roles = "Approver,Admin")]
+    public async Task<IActionResult> Approve(Guid id, [FromBody] ApproveRequest dto) => Ok(await svc.ApproveAsync(id, dto));
+    [HttpPost("{id:guid}/reject"), Authorize(Roles = "Approver,Admin")]
+    public async Task<IActionResult> Reject(Guid id, [FromBody] RejectRequest dto) => Ok(await svc.RejectAsync(id, dto));
     [HttpPost("{id:guid}/cancel")] public async Task<IActionResult> Cancel(Guid id) => Ok(await svc.CancelAsync(id));
-    [HttpPost("{id:guid}/pay")] public async Task<IActionResult> Pay(Guid id, [FromBody] ProcessPaymentRequest dto) => Ok(await svc.ProcessPaymentAsync(id, dto));
+    [HttpPost("{id:guid}/pay"), Authorize(Roles = "Finance,Admin")]
+    public async Task<IActionResult> Pay(Guid id, [FromBody] ProcessPaymentRequest dto) => Ok(await svc.ProcessPaymentAsync(id, dto));
     [HttpPost("{id:guid}/attach")] public async Task<IActionResult> Attach(Guid id, [FromBody] string url) { await svc.AttachBillAsync(id, url); return Ok(); }
 }
 
@@ -151,12 +158,17 @@ public class AdvancesController(IAdvanceService svc) : ControllerBase
     [HttpPost] public async Task<IActionResult> Create([FromBody] CreateAdvanceRequest dto) => Ok(await svc.CreateAsync(dto));
     [HttpGet("{id:guid}")] public async Task<IActionResult> GetById(Guid id) { var r = await svc.GetByIdAsync(id); return r != null ? Ok(r) : NotFound(); }
     [HttpGet("my")] public async Task<IActionResult> ListMine([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f, true));
-    [HttpGet] public async Task<IActionResult> ListAll([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
+    [HttpGet, Authorize(Roles = "Approver,Finance,Admin")]
+    public async Task<IActionResult> ListAll([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
     [HttpGet("employee/{empId:guid}/history")] public async Task<IActionResult> History(Guid empId) => Ok(await svc.GetEmployeeHistoryAsync(empId));
-    [HttpPost("{id:guid}/approve")] public async Task<IActionResult> Approve(Guid id, [FromBody] ApproveRequest dto) => Ok(await svc.ApproveAsync(id, dto));
-    [HttpPost("{id:guid}/reject")] public async Task<IActionResult> Reject(Guid id, [FromBody] RejectRequest dto) => Ok(await svc.RejectAsync(id, dto));
-    [HttpGet("{id:guid}/disburse/validate")] public async Task<IActionResult> ValidateDisburse(Guid id, [FromQuery] decimal paidAmount) => Ok(await svc.ValidateDisburseAsync(id, paidAmount));
-    [HttpPost("{id:guid}/disburse")] public async Task<IActionResult> Disburse(Guid id, [FromBody] ProcessPaymentRequest dto) => Ok(await svc.DisburseAsync(id, dto));
+    [HttpPost("{id:guid}/approve"), Authorize(Roles = "Approver,Admin")]
+    public async Task<IActionResult> Approve(Guid id, [FromBody] ApproveRequest dto) => Ok(await svc.ApproveAsync(id, dto));
+    [HttpPost("{id:guid}/reject"), Authorize(Roles = "Approver,Admin")]
+    public async Task<IActionResult> Reject(Guid id, [FromBody] RejectRequest dto) => Ok(await svc.RejectAsync(id, dto));
+    [HttpGet("{id:guid}/disburse/validate"), Authorize(Roles = "Finance,Admin")]
+    public async Task<IActionResult> ValidateDisburse(Guid id, [FromQuery] decimal paidAmount) => Ok(await svc.ValidateDisburseAsync(id, paidAmount));
+    [HttpPost("{id:guid}/disburse"), Authorize(Roles = "Finance,Admin")]
+    public async Task<IActionResult> Disburse(Guid id, [FromBody] ProcessPaymentRequest dto) => Ok(await svc.DisburseAsync(id, dto));
     [HttpPost("{id:guid}/cancel")] public async Task<IActionResult> Cancel(Guid id) => Ok(await svc.CancelAsync(id));
 }
 
@@ -199,10 +211,14 @@ public class BillsController(IVendorBillService svc) : ControllerBase
         return Ok(result);
     }
     [HttpGet("{id:guid}")] public async Task<IActionResult> GetById(Guid id) { var r = await svc.GetByIdAsync(id); return r != null ? Ok(r) : NotFound(); }
-    [HttpGet] public async Task<IActionResult> List([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
-    [HttpPost("{id:guid}/approve")] public async Task<IActionResult> Approve(Guid id, [FromBody] ApproveRequest dto) => Ok(await svc.ApproveAsync(id, dto));
-    [HttpPost("{id:guid}/reject")] public async Task<IActionResult> Reject(Guid id, [FromBody] RejectRequest dto) => Ok(await svc.RejectAsync(id, dto));
-    [HttpPost("{id:guid}/pay")] public async Task<IActionResult> Pay(Guid id, [FromBody] ProcessPaymentRequest dto) => Ok(await svc.ProcessPaymentAsync(id, dto));
+    [HttpGet, Authorize(Roles = "Approver,Finance,Admin")]
+    public async Task<IActionResult> List([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
+    [HttpPost("{id:guid}/approve"), Authorize(Roles = "Approver,Admin")]
+    public async Task<IActionResult> Approve(Guid id, [FromBody] ApproveRequest dto) => Ok(await svc.ApproveAsync(id, dto));
+    [HttpPost("{id:guid}/reject"), Authorize(Roles = "Approver,Admin")]
+    public async Task<IActionResult> Reject(Guid id, [FromBody] RejectRequest dto) => Ok(await svc.RejectAsync(id, dto));
+    [HttpPost("{id:guid}/pay"), Authorize(Roles = "Finance,Admin")]
+    public async Task<IActionResult> Pay(Guid id, [FromBody] ProcessPaymentRequest dto) => Ok(await svc.ProcessPaymentAsync(id, dto));
     [HttpGet("{id:guid}/attachment")]
     public async Task<IActionResult> GetAttachmentUrl(Guid id)
     {
@@ -246,17 +262,21 @@ public class InvoicesController(IInvoiceService svc) : ControllerBase
     [HttpPost] public async Task<IActionResult> Create([FromBody] CreateInvoiceRequest dto) => Ok(await svc.CreateAsync(dto));
     [HttpPut("{id:guid}")] public async Task<IActionResult> Update(Guid id, [FromBody] UpdateInvoiceRequest dto) => Ok(await svc.UpdateAsync(id, dto));
     [HttpGet("{id:guid}")] public async Task<IActionResult> GetById(Guid id) { var r = await svc.GetByIdAsync(id); return r != null ? Ok(r) : NotFound(); }
-    [HttpGet] public async Task<IActionResult> List([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
-    [HttpGet("counts")] public async Task<IActionResult> Counts() => Ok(await svc.GetStatusCountsAsync());
-    [HttpPost("{id:guid}/send")] public async Task<IActionResult> Send(Guid id) => Ok(await svc.MarkSentAsync(id));
-    [HttpPost("{id:guid}/paid")] public async Task<IActionResult> Paid(Guid id, [FromBody] ProcessPaymentRequest dto) => Ok(await svc.MarkPaidAsync(id, dto));
+    [HttpGet, Authorize(Roles = "Approver,Finance,Admin")]
+    public async Task<IActionResult> List([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
+    [HttpGet("counts"), Authorize(Roles = "Approver,Finance,Admin")]
+    public async Task<IActionResult> Counts() => Ok(await svc.GetStatusCountsAsync());
+    [HttpPost("{id:guid}/send"), Authorize(Roles = "Finance,Admin")]
+    public async Task<IActionResult> Send(Guid id) => Ok(await svc.MarkSentAsync(id));
+    [HttpPost("{id:guid}/paid"), Authorize(Roles = "Finance,Admin")]
+    public async Task<IActionResult> Paid(Guid id, [FromBody] ProcessPaymentRequest dto) => Ok(await svc.MarkPaidAsync(id, dto));
     [HttpGet("{id:guid}/pdf")] public async Task<IActionResult> Pdf(Guid id) { var pdf = await svc.GeneratePdfAsync(id); return File(pdf, "application/pdf"); }
 }
 
 // ═══════════════════════════════════════════════════
 //  TAX CONFIG
 // ═══════════════════════════════════════════════════
-[ApiController, Route("api/tax-config"), Authorize]
+[ApiController, Route("api/tax-config"), Authorize(Roles = "Admin")]
 public class TaxConfigController(ITaxConfigService svc) : ControllerBase
 {
     [HttpPost] public async Task<IActionResult> Create([FromBody] CreateTaxConfigRequest dto) => Ok(await svc.CreateAsync(dto));
@@ -269,7 +289,7 @@ public class TaxConfigController(ITaxConfigService svc) : ControllerBase
 // ═══════════════════════════════════════════════════
 //  ORGANIZATION
 // ═══════════════════════════════════════════════════
-[ApiController, Route("api/organization"), Authorize]
+[ApiController, Route("api/organization"), Authorize(Roles = "Admin")]
 public class OrganizationController(IOrganizationService svc) : ControllerBase
 {
 
@@ -286,7 +306,7 @@ public class OrganizationController(IOrganizationService svc) : ControllerBase
 // ═══════════════════════════════════════════════════
 //  ORGANIZATION SETTINGS
 // ═══════════════════════════════════════════════════
-[ApiController, Route("api/settings/organization"), Authorize]
+[ApiController, Route("api/settings/organization"), Authorize(Roles = "Admin")]
 public class OrganizationSettingsController(IOrganizationSettingsService svc) : ControllerBase
 {
     [HttpGet] public async Task<IActionResult> GetSettings() => Ok(await svc.GetSettingsAsync());
@@ -298,7 +318,7 @@ public class OrganizationSettingsController(IOrganizationSettingsService svc) : 
 //  EMPLOYEES
 // ═══════════════════════════════════════════════════
 
-[ApiController, Route("api/employees"), Authorize]
+[ApiController, Route("api/employees"), Authorize(Roles = "Admin")]
 public class EmployeesController(IEmployeeService svc) : ControllerBase
 {
     [HttpGet] public async Task<IActionResult> List([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
