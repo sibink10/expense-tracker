@@ -49,6 +49,12 @@ public class EmployeeService : IEmployeeService
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
         var entraId = string.IsNullOrWhiteSpace(dto.EntraObjectId) ? null : dto.EntraObjectId.Trim();
+        if (string.IsNullOrWhiteSpace(entraId))
+        {
+            entraId = await _azureRoleService.GetObjectIdByEmailAsync(dto.Email);
+            if (string.IsNullOrWhiteSpace(entraId))
+                throw new InvalidOperationException("Employee with this email not found in Azure AD");
+        }
         var email = dto.Email?.Trim() ?? "";
 
         if (string.IsNullOrWhiteSpace(email))
@@ -145,6 +151,11 @@ public class EmployeeService : IEmployeeService
             var emp = await _db.Employees
                 .FirstOrDefaultAsync(e => e.Id == id && e.OrganizationId == orgId)
                 ?? throw new KeyNotFoundException("Employee not found");
+
+            if (string.IsNullOrWhiteSpace(emp.EntraObjectId))
+            {
+                emp.EntraObjectId = await _azureRoleService.GetObjectIdByEmailAsync(emp.Email);
+            }
 
             if (dto.FullName != null)     emp.FullName     = dto.FullName;
             if (dto.Department != null)   emp.Department   = dto.Department;

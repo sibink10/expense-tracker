@@ -173,4 +173,5 @@ public interface IAzureRoleService
 {
     Task AssignRoleAsync(string azureObjectId, UserRole role);
     Task RemoveAllRolesAsync(string azureObjectId);
+    Task<string?> GetObjectIdByEmailAsync(string email);      // <-- fix return type
 }

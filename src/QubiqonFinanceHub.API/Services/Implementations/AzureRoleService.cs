@@ -65,4 +65,16 @@ public class AzureRoleService : IAzureRoleService
                 .DeleteAsync();
         }
     }
+
+    public async Task<string?> GetObjectIdByEmailAsync(string email)
+    {
+        var users = await _graphClient.Users
+            .GetAsync(config =>
+            {
+                config.QueryParameters.Filter = $"mail eq '{email}' or userPrincipalName eq '{email}'";
+                config.QueryParameters.Select = new[] { "id", "mail", "userPrincipalName", "displayName" };
+            });
+
+        return users?.Value?.FirstOrDefault()?.Id;
+    }
 }
