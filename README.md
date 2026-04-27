@@ -140,3 +140,6 @@ sqlcmd -S <server> -d QubiqonFinanceHub -i scripts/002_MultiTenant_Schema.sql
 ## License
 
 Proprietary — Qubiqon Consulting India Ltd. All rights reserved.
+
+
+version: V1.01
