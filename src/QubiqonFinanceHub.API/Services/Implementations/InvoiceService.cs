@@ -29,7 +29,7 @@ public class InvoiceService : IInvoiceService
         if (client.OrganizationId != orgId || client.IsDelete)
             throw new KeyNotFoundException("Client not found");
 
-        var code = await _codeGen.GenerateBillNumberAsync(orgId, "invoice");
+        var code = await _codeGen.GenerateBillNumberAsync(orgId, "invoice", client.Country);
 
         var invoice = new Invoice
         {
@@ -95,6 +95,7 @@ public class InvoiceService : IInvoiceService
             "EUR" => "Euro",
             "GBP" => "British Pound",
             "CAD" => "Canadian Dollar",
+            "AED" => "United Arab Emirates Dirham",
             _ => "Indian Rupee"
         };
         var wholeAmount = (int)Math.Floor(invoice.Total);
@@ -209,6 +210,7 @@ public class InvoiceService : IInvoiceService
             "EUR" => "Euro",
             "GBP" => "British Pound",
             "CAD" => "Canadian Dollar",
+            "AED" => "United Arab Emirates Dirham",
             _ => "Indian Rupee"
         };
 
@@ -402,6 +404,7 @@ public class InvoiceService : IInvoiceService
             "EUR" => $"€{amount:N2}",
             "GBP" => $"£{amount:N2}",
             "CAD" => $"CA${amount:N2}",
+            "AED" => $"AED {amount:N2}",
             _ => $"₹{amount:N2}"
         };
 

@@ -49,7 +49,7 @@ public class CodeGeneratorService : ICodeGeneratorService
     }
 
     // 🔥 Format-based number generation
-    public async Task<string> GenerateBillNumberAsync(Guid orgId, string type)
+    public async Task<string> GenerateBillNumberAsync(Guid orgId, string type, string? countryCode = null)
     {
         // 🔹 1. Get format key
         var formatKey = type.ToLower() switch
@@ -86,7 +86,7 @@ public class CodeGeneratorService : ICodeGeneratorService
         }
 
         // 🔹 6. Apply format
-        return ApplyFormat(format, nextSeq);
+        return ApplyFormat(format, nextSeq, countryCode);
     }
 
     // ------------------ Helpers ------------------
@@ -199,12 +199,13 @@ public class CodeGeneratorService : ICodeGeneratorService
             .Replace("{YYYY}", "0000")
             .Replace("{YY+1}", "00")
             .Replace("{YY}", "00")
-            .Replace("{MM}", "00");
+            .Replace("{MM}", "00")
+            .Replace("{COUNTRYCODE}", "000");
 
         return rendered.Length;
     }
 
-    private string ApplyFormat(string format, int seq)
+    private string ApplyFormat(string format, int seq, string? countryCode)
     {
         var result = format;
         var now = DateTime.UtcNow;
@@ -221,6 +222,9 @@ public class CodeGeneratorService : ICodeGeneratorService
         // Replace {MM} → 2-digit current month e.g. "03"
         result = result.Replace("{MM}", now.ToString("MM"));
 
+        // Replace {COUNTRYCODE} → client country code e.g. "USA"
+        result = result.Replace("{COUNTRYCODE}", NormalizeCountryCode(countryCode));
+
         // Replace {SEQ:n} → zero-padded sequence e.g. "001"
         var match = Regex.Match(result, @"\{SEQ:(\d+)\}");
         if (match.Success)
@@ -231,5 +235,17 @@ public class CodeGeneratorService : ICodeGeneratorService
         }
 
         return result;
+    }
+
+    private static string NormalizeCountryCode(string? countryCode)
+    {
+        if (string.IsNullOrWhiteSpace(countryCode))
+            return string.Empty;
+
+        var compact = Regex.Replace(countryCode.Trim().ToUpperInvariant(), @"[^A-Z]", "");
+        if (compact.Length == 0)
+            return string.Empty;
+
+        return compact.Length <= 3 ? compact : compact[..3];
     }
 }

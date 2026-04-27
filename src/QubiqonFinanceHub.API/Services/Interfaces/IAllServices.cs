@@ -16,7 +16,7 @@ public interface ITenantService
 public interface ICodeGeneratorService
 {
     Task<string> GenerateCodeAsync(Guid orgId, string sequenceType); 
-    Task<string> GenerateBillNumberAsync(Guid orgId, string type);
+    Task<string> GenerateBillNumberAsync(Guid orgId, string type, string? countryCode = null);
 }
 
 public interface IExpenseService
