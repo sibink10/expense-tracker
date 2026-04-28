@@ -404,3 +404,32 @@ public class Category
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
+
+// ═══════════════════════════════════════════════════
+//  PAYMENT TERM
+// ═══════════════════════════════════════════════════
+public class PaymentTerm
+{
+    [Key] public Guid Id { get; set; }
+    public Guid OrganizationId { get; set; }
+    [Required, MaxLength(100)] public string Name { get; set; } = string.Empty;
+    [Required, MaxLength(30)] public string ShortName { get; set; } = string.Empty;
+    public int Days { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+// ═══════════════════════════════════════════════════
+//  ACCOUNT
+// ═══════════════════════════════════════════════════
+public class Account
+{
+    [Key] public Guid Id { get; set; }
+    public Guid OrganizationId { get; set; }
+    [Required, MaxLength(120)] public string Name { get; set; } = string.Empty;
+    [Required, MaxLength(40)] public string ShortName { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}

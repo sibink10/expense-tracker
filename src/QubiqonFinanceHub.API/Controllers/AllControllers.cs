@@ -361,6 +361,72 @@ public class CategoryController(ICategoryService svc) : ControllerBase
     public async Task<IActionResult> Toggle(Guid id) => Ok(await svc.ToggleActiveAsync(id));
 }
 
+// ═══════════════════════════════════════════════════
+//  PAYMENT TERMS
+// ═══════════════════════════════════════════════════
+[ApiController, Route("api/payment-terms"), Authorize]
+public class PaymentTermsController(IPaymentTermService svc) : ControllerBase
+{
+    [HttpGet]
+    public async Task<IActionResult> List() => Ok(await svc.GetAllAsync());
+
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        var r = await svc.GetByIdAsync(id);
+        return r != null ? Ok(r) : NotFound();
+    }
+
+    [HttpPost, Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Create([FromBody] CreatePaymentTermRequest dto) => Ok(await svc.CreateAsync(dto));
+
+    [HttpPut("{id:guid}"), Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePaymentTermRequest dto) => Ok(await svc.UpdateAsync(id, dto));
+
+    [HttpDelete("{id:guid}"), Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        await svc.DeleteAsync(id);
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/toggle"), Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Toggle(Guid id) => Ok(await svc.ToggleActiveAsync(id));
+}
+
+// ═══════════════════════════════════════════════════
+//  ACCOUNTS
+// ═══════════════════════════════════════════════════
+[ApiController, Route("api/accounts"), Authorize]
+public class AccountsController(IAccountService svc) : ControllerBase
+{
+    [HttpGet]
+    public async Task<IActionResult> List() => Ok(await svc.GetAllAsync());
+
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        var r = await svc.GetByIdAsync(id);
+        return r != null ? Ok(r) : NotFound();
+    }
+
+    [HttpPost, Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Create([FromBody] CreateAccountRequest dto) => Ok(await svc.CreateAsync(dto));
+
+    [HttpPut("{id:guid}"), Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateAccountRequest dto) => Ok(await svc.UpdateAsync(id, dto));
+
+    [HttpDelete("{id:guid}"), Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        await svc.DeleteAsync(id);
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/toggle"), Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Toggle(Guid id) => Ok(await svc.ToggleActiveAsync(id));
+}
+
 
 
 // ═══════════════════════════════════════════════════
@@ -375,149 +441,25 @@ public class ExcelUploadRequest
 [ApiController, Route("api/excel-upload")]
 public class ExcelUploadController(IExcelUploadService excel, FinanceHubDbContext db, ITenantService tenant) : ControllerBase
 {
-    [HttpPost("columns")]
+    [HttpPost("vendor-bills/columns")]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> ReadColumns([FromForm] ExcelUploadRequest request, CancellationToken ct)
+    public async Task<IActionResult> GetVendorBillColumns([FromForm] ExcelUploadRequest request, CancellationToken ct = default)
     {
         if (request.File == null || request.File.Length <= 0) return BadRequest("File is required");
-        var cols = await excel.ReadExcelColumnsAsync(request.File, ct);
-        return Ok(new { columns = cols });
-    }
 
-    [HttpGet("dto-columns")]
-    public IActionResult DtoColumns([FromQuery] string dtoClass)
-    {
-        if (string.IsNullOrWhiteSpace(dtoClass)) return BadRequest("dtoClass is required");
-
-        var dtoType = typeof(QubiqonFinanceHub.API.DTOs.PaginatedResult<>).Assembly
-            .GetTypes()
-            .FirstOrDefault(t =>
-                t.Namespace == "QubiqonFinanceHub.API.DTOs"
-                && string.Equals(t.Name, dtoClass.Trim(), StringComparison.Ordinal));
-
-        if (dtoType == null) return NotFound($"DTO class '{dtoClass}' not found");
-
-        var props = dtoType
-            .GetProperties(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public)
-            .Select(p => p.Name)
-            .OrderBy(x => x)
+        var (_, rows) = await excel.ReadExcelAsync(request.File, ct);
+        var columns = rows
+            .SelectMany(r => r.Keys)
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(c => c)
             .ToList();
 
-        return Ok(new { dtoClass = dtoType.Name, properties = props });
-    }
-
-    [HttpPost("vendors/preview")]
-    [Consumes("multipart/form-data")]
-    public async Task<IActionResult> PreviewVendors([FromForm] ExcelUploadRequest request, CancellationToken ct)
-    {
-        if (request.File == null || request.File.Length <= 0) return BadRequest("File is required");
-
-        var orgId = await tenant.GetCurrentOrganizationId();
-        var (_, rows) = await excel.ReadExcelAsync(request.File, ct);
-
-        var preview = new List<object>();
-        var errors = new List<string>();
-        var skipped = 0;
-
-        // Excel data rows start at row 2 (row 1 is headers)
-        var excelRowNumber = 1;
-        foreach (var r in rows)
+        return Ok(new
         {
-            excelRowNumber++;
-            ct.ThrowIfCancellationRequested();
-
-            // 1) skip row where Type == "Employee"
-            var type = GetCellString(r, "Type");
-            if (string.Equals(type, "Employee", StringComparison.OrdinalIgnoreCase))
-            {
-                skipped++;
-                continue;
-            }
-
-            // 2) display name only if there is no company name
-            var companyName = GetCellString(r, "Company Name");
-            var displayName = GetCellString(r, "Display Name");
-            var vendorName = !string.IsNullOrWhiteSpace(companyName) ? companyName : displayName;
-
-            // 3) concat first name + last name (fallback for contact person)
-            var firstName = GetCellString(r, "First Name");
-            var lastName = GetCellString(r, "Last Name");
-            var fullName = string.Join(" ", new[] { firstName, lastName }.Where(x => !string.IsNullOrWhiteSpace(x))).Trim();
-
-            // 4) use phone or mobile for phone number
-            var phone = GetCellString(r, "Phone");
-            var mobile = GetCellString(r, "MobilePhone");
-            var phoneNumber = !string.IsNullOrWhiteSpace(phone) ? phone : mobile;
-
-            // 5) contact name as contact person (fallback to first+last)
-            var contactPerson = fullName;
-
-            // 6) GST Identification Number (GSTIN) as GSTIN
-            var gstin = GetCellString(r, "GST Identification Number (GSTIN)");
-
-            // 7) concat billing address fields with new lines
-            var address = JoinLines(
-                GetCellString(r, "Billing Attention"),
-                GetCellString(r, "Billing Address"),
-                GetCellString(r, "Billing Street2"),
-                GetCellString(r, "Billing City"),
-                GetCellString(r, "Billing State"),
-                GetCellString(r, "Billing Country"),
-                GetCellString(r, "Billing Code")
-            );
-
-            // 8) bank fields
-            var bankName = GetCellString(r, "Vendor Bank Name");
-            var accountNumber = GetCellString(r, "Vendor Bank Account Number");
-            var ifsc = GetCellString(r, "Vendor Bank Code");
-
-            var email = GetCellString(r, "EmailID");
-            if (string.IsNullOrWhiteSpace(email)) email = GetCellString(r, "Email");
-
-            var vendorNameValue = vendorName?.Trim() ?? "";
-            var emailValue = email?.Trim() ?? "";
-            var addressValue = address?.Trim() ?? "";
-            var phoneValue = phoneNumber?.Trim();
-            var contactPersonValue = contactPerson?.Trim();
-            var gstinValue = gstin?.Trim();
-            var bankNameValue = bankName?.Trim();
-            var accountNumberValue = accountNumber?.Trim();
-            var ifscValue = ifsc?.Trim();
-
-            var hasName = !string.IsNullOrWhiteSpace(vendorNameValue);
-            var hasEmail = !string.IsNullOrWhiteSpace(emailValue);
-
-            var nameLower = hasName ? vendorNameValue.ToLower() : null;
-            var emailLower = hasEmail ? emailValue.ToLower() : null;
-
-            var exists = (hasName || hasEmail) && await db.Vendors.AsNoTracking().AnyAsync(v =>
-                v.OrganizationId == orgId
-                && !v.IsDelete
-                && (
-                    (nameLower != null && v.Name.ToLower() == nameLower)
-                    || (emailLower != null && v.Email.ToLower() == emailLower)
-                ), ct);
-
-            preview.Add(new
-            {
-                row = excelRowNumber,
-                exists,
-                vendor = new
-                {
-                    name = vendorNameValue,
-                    email = emailValue,
-                    address = addressValue,
-                    phone = phoneValue ?? "",
-                    contactPerson = contactPersonValue ?? "",
-                    gstin = gstinValue ?? "",
-                    bankName = bankNameValue ?? "",
-                    accountNumber = accountNumberValue ?? "",
-                    ifscCode = ifscValue ?? ""
-                }
-            });
-        }
-
-        return Ok(new { preview, skipped, errors });
+            count = columns.Count,
+            columns
+        });
     }
 
     [HttpPost("vendors/import")]

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../shared/theme";
-import { PAY_TERMS, BILL_ACCOUNTS, BILL_PAYMENT_PRIORITY, BILL_PAYMENT_PRIORITY_OPTIONS } from "../shared/constants";
+import { PAY_TERMS, BILL_PAYMENT_PRIORITY, BILL_PAYMENT_PRIORITY_OPTIONS } from "../shared/constants";
 import { addDays, fmtCur, round2, aggregateLineGstRows, formatTdsOptionLabel, formatTdsSummarySnippet } from "../shared/utils";
 import { Inp, Btn, MultiFileUp, Alert } from "../components/ui";
 import DecimalLineInput from "../components/DecimalLineInput";
@@ -10,6 +10,8 @@ import { useAppContext } from "../context/AppContext";
 import { createBill } from "../shared/api/bill";
 import { getVendors } from "../shared/api/vendor";
 import { getTaxConfigs } from "../shared/api/taxConfig";
+import { getAccounts } from "../shared/api/accounts";
+import { getPaymentTerms } from "../shared/api/paymentTerms";
 import type { TaxConfig } from "../types";
 
 const GRID_BREAKPOINT = 600;
@@ -74,12 +76,14 @@ export default function SubmitBillPage() {
   const [narrow, setNarrow] = useState(typeof window !== "undefined" && window.innerWidth < GRID_BREAKPOINT);
   const [tdsOptions, setTdsOptions] = useState<TaxConfig[]>([]);
   const [gstOptions, setGstOptions] = useState<TaxConfig[]>([]);
+  const [accountOptions, setAccountOptions] = useState<Array<{ v: string; l: string }>>([]);
+  const [paymentTermOptions, setPaymentTermOptions] = useState<Array<{ v: string; l: string; d: number }>>(PAY_TERMS);
   const [vId, setVId] = useState("");
   const [vendorBillNumber, setVendorBillNumber] = useState("");
   const [items, setItems] = useState<BillItemRow[]>([defaultItemRow()]);
   const [desc, setDesc] = useState("");
   const [bd, setBd] = useState("");
-  const [trm, setTrm] = useState("net30");
+  const [trm, setTrm] = useState("");
   const [paymentPriority, setPaymentPriority] = useState<string>(BILL_PAYMENT_PRIORITY.IMMEDIATE);
   const [tds, setTds] = useState("none");
   const [discountPct, setDiscountPct] = useState("");
@@ -117,6 +121,30 @@ export default function SubmitBillPage() {
       .finally(() => setTdsLoading(false));
   }, []);
 
+  useEffect(() => {
+    getAccounts()
+      .then((items) => {
+        const active = items.filter((x) => x.isActive);
+        if (active.length > 0) {
+          setAccountOptions(active.map((x) => ({ v: x.shortName, l: x.name })));
+        }
+      })
+      .catch(() => setAccountOptions([]));
+
+    getPaymentTerms()
+      .then((items) => {
+        const active = items.filter((x) => x.isActive);
+        if (active.length > 0) {
+          const mapped = active.map((x) => ({ v: x.shortName, l: x.name, d: x.days }));
+          setPaymentTermOptions(mapped);
+          if (!mapped.some((x) => x.v === trm)) {
+            setTrm(mapped[0].v);
+          }
+        }
+      })
+      .catch(() => setPaymentTermOptions(PAY_TERMS));
+  }, []);
+
   const addItemRow = () => setItems((prev) => [...prev, defaultItemRow()]);
   const removeItemRow = (id: string) =>
     setItems((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : prev));
@@ -135,7 +163,7 @@ export default function SubmitBillPage() {
   const totalBeforeTds = subTotal + itemTaxAmount - discountAmount + roundingVal;
   const hasValidItems = items.some((it) => it.description.trim() && it.quantity > 0 && it.rate >= 0);
 
-  const due = bd ? addDays(bd, PAY_TERMS.find((x) => x.v === trm)?.d || 30) : "";
+  const due = bd ? addDays(bd, paymentTermOptions.find((x) => x.v === trm)?.d || 30) : "";
   const tx = tdsOptions.find((x) => x.id === tds);
   const tdsRate = tx?.rate || 0;
   const tdsA = Math.round((totalBeforeTds * tdsRate) / 100);
@@ -149,7 +177,7 @@ export default function SubmitBillPage() {
 
   const accountOpts = [
     { v: "", l: "Select Account" },
-    ...BILL_ACCOUNTS.map((a) => ({ v: a.v, l: a.l })),
+    ...(accountOptions.length > 0 ? accountOptions : []),
   ];
   const gstOpts = [
     { v: "", l: "Select Tax" },
@@ -170,11 +198,16 @@ export default function SubmitBillPage() {
     try {
       const billDate = new Date(bd).toISOString();
       const dueDate = new Date(due).toISOString();
+
+      const selectedPaymentTermName =
+        paymentTermOptions.find((x) => x.v === trm)?.l ?? PAY_TERMS.find((x) => x.v === trm)?.l ?? trm;
+      const accountNameByShortName = new Map(accountOptions.map((x) => [x.v, x.l]));
+
       const validItems = items
         .filter((it) => it.description.trim() && it.quantity > 0 && it.rate >= 0)
         .map((it) => ({
           description: it.description.trim(),
-          account: it.account || undefined,
+          account: it.account ? (accountNameByShortName.get(it.account) ?? it.account) : undefined,
           quantity: it.quantity,
           rate: it.rate,
           gstConfigId: it.gstConfigId || undefined,
@@ -188,7 +221,7 @@ export default function SubmitBillPage() {
           description: desc.trim(),
           billDate,
           dueDate,
-          paymentTerms: trm,
+          paymentTerms: selectedPaymentTermName,
           paymentPriority,
           ccEmails: "",
           discountPercent: parseFloat(discountPct) || 0,
@@ -256,7 +289,7 @@ export default function SubmitBillPage() {
             type="select"
             value={trm}
             onChange={(e) => setTrm(e.target.value)}
-            opts={PAY_TERMS.map((x) => ({ v: x.v, l: x.l }))}
+            opts={(paymentTermOptions.length > 0 ? paymentTermOptions : PAY_TERMS).map((x) => ({ v: x.v, l: x.l }))}
             style={cellCompact}
           />
           <Inp

@@ -375,3 +375,17 @@ public record UpdateEmployeeRequest(string? FullName, string? Department, string
 public record CategoryDto(Guid Id, string Name, bool IsActive);
 public record CreateCategoryRequest(string Name); 
 public record UpdateCategoryRequest(string Name, bool IsActive);
+
+// ═══════════════════════════════════════════════════
+//  PAYMENT TERMS
+// ═══════════════════════════════════════════════════
+public record PaymentTermDto(Guid Id, string Name, string ShortName, int Days, bool IsActive);
+public record CreatePaymentTermRequest(string Name, string ShortName, int Days);
+public record UpdatePaymentTermRequest(string Name, string ShortName, int Days, bool IsActive);
+
+// ═══════════════════════════════════════════════════
+//  ACCOUNTS
+// ═══════════════════════════════════════════════════
+public record AccountDto(Guid Id, string Name, string ShortName, bool IsActive);
+public record CreateAccountRequest(string Name, string ShortName);
+public record UpdateAccountRequest(string Name, string ShortName, bool IsActive);

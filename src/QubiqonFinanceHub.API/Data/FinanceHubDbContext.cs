@@ -25,6 +25,8 @@ public class FinanceHubDbContext : DbContext
     public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
     public DbSet<CodeSequence> CodeSequences => Set<CodeSequence>();
     public DbSet<Category> Categories => Set<Category>();
+    public DbSet<PaymentTerm> PaymentTerms => Set<PaymentTerm>();
+    public DbSet<Account> Accounts => Set<Account>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -178,6 +180,18 @@ public class FinanceHubDbContext : DbContext
         // ─── Category ───────────────────────────────  
         b.Entity<Category>(e => {
             e.ToTable("Categories");
+            e.HasIndex(x => new { x.OrganizationId, x.Name }).IsUnique();
+        });
+
+        b.Entity<PaymentTerm>(e => {
+            e.ToTable("PaymentTerms");
+            e.HasIndex(x => new { x.OrganizationId, x.ShortName }).IsUnique();
+            e.HasIndex(x => new { x.OrganizationId, x.Name }).IsUnique();
+        });
+
+        b.Entity<Account>(e => {
+            e.ToTable("Accounts");
+            e.HasIndex(x => new { x.OrganizationId, x.ShortName }).IsUnique();
             e.HasIndex(x => new { x.OrganizationId, x.Name }).IsUnique();
         });
     }

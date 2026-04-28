@@ -63,6 +63,8 @@ export function buildNav(_cfg?: { advEnabled?: boolean }): NavSection[] {
         { path: "/admin/org", l: "Organization", i: "🏢", r: ["admin"] as UserRole[] },
         { path: "/admin/tax", l: "Tax config", i: "📊", r: ["admin"] as UserRole[] },
         { path: "/admin/categories", l: "Categories", i: "🏷", r: ["admin"] as UserRole[] },
+        { path: "/admin/payment-terms", l: "Payment terms", i: "⏱", r: ["admin"] as UserRole[] },
+        { path: "/admin/accounts", l: "Accounts", i: "💼", r: ["admin"] as UserRole[] },
       ],
     },
   ];

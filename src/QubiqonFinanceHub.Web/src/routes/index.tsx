@@ -24,6 +24,8 @@ import AdminTaxPage from "../pages/AdminTaxPage";
 import AdminGstPage from "../pages/AdminGstPage";
 import AdminEmailPage from "../pages/AdminEmailPage";
 import AdminCategoriesPage from "../pages/AdminCategoriesPage";
+import AdminPaymentTermsPage from "../pages/AdminPaymentTermsPage";
+import AdminAccountsPage from "../pages/AdminAccountsPage";
 import NotFoundPage from "../pages/NotFoundPage";
 
 function DashOrRedirect() {
@@ -58,6 +60,8 @@ export const router = createBrowserRouter([
       { path: "admin/tax", element: <AdminTaxPage /> },
       { path: "admin/gst", element: <AdminGstPage /> },
       { path: "admin/categories", element: <AdminCategoriesPage /> },
+      { path: "admin/payment-terms", element: <AdminPaymentTermsPage /> },
+      { path: "admin/accounts", element: <AdminAccountsPage /> },
       { path: "admin/email", element: <AdminEmailPage /> },
       { path: "*", element: <NotFoundPage /> },
     ],

@@ -159,6 +159,26 @@ public interface ICategoryService
     Task<CategoryDto> ToggleActiveAsync(Guid id);
 }
 
+public interface IPaymentTermService
+{
+    Task<List<PaymentTermDto>> GetAllAsync();
+    Task<PaymentTermDto?> GetByIdAsync(Guid id);
+    Task<PaymentTermDto> CreateAsync(CreatePaymentTermRequest dto);
+    Task<PaymentTermDto> UpdateAsync(Guid id, UpdatePaymentTermRequest dto);
+    Task DeleteAsync(Guid id);
+    Task<PaymentTermDto> ToggleActiveAsync(Guid id);
+}
+
+public interface IAccountService
+{
+    Task<List<AccountDto>> GetAllAsync();
+    Task<AccountDto?> GetByIdAsync(Guid id);
+    Task<AccountDto> CreateAsync(CreateAccountRequest dto);
+    Task<AccountDto> UpdateAsync(Guid id, UpdateAccountRequest dto);
+    Task DeleteAsync(Guid id);
+    Task<AccountDto> ToggleActiveAsync(Guid id);
+}
+
 public interface IExcelUploadService
 {
     Task<List<string>> ReadExcelColumnsAsync(IFormFile file, CancellationToken ct = default);
