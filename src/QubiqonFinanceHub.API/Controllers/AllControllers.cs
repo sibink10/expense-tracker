@@ -394,9 +394,9 @@ public class PaymentTermsController(IPaymentTermService svc) : ControllerBase
     public async Task<IActionResult> Toggle(Guid id) => Ok(await svc.ToggleActiveAsync(id));
 }
 
-// ═══════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
 //  ACCOUNTS
-// ═══════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
 [ApiController, Route("api/accounts"), Authorize]
 public class AccountsController(IAccountService svc) : ControllerBase
 {
