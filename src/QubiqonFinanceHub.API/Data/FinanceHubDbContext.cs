@@ -32,15 +32,14 @@ public class FinanceHubDbContext : DbContext
     {
         base.OnModelCreating(b);
 
-        // ─── Organization ───────────────────────────
+        // ─── dbo (shared / platform) ─────────────────
         b.Entity<Organization>(e => {
-            e.ToTable("Organizations");
+            e.ToTable("Organizations", DbSchemas.Dbo);
             e.HasIndex(x => x.OrgName).IsUnique();
         });
 
-        //Organization settings
         b.Entity<OrganizationSetting>(e => {
-            e.ToTable("OrganizationSettings");
+            e.ToTable("OrganizationSettings", DbSchemas.Dbo);
             e.HasIndex(x => new { x.OrganizationId, x.Key }).IsUnique();
             e.HasOne(x => x.Organization)
              .WithMany()
@@ -48,14 +47,13 @@ public class FinanceHubDbContext : DbContext
              .OnDelete(DeleteBehavior.Cascade);
         });
 
-        b.Entity<OrganizationSetting>(e => {
-            e.ToTable("OrganizationSettings");
-            e.HasIndex(x => new { x.OrganizationId, x.Key }).IsUnique();
+        b.Entity<EmailTemplate>(e => {
+            e.ToTable("EmailTemplates", DbSchemas.Dbo);
+            e.HasIndex(x => new { x.OrganizationId, x.TemplateKey }).IsUnique();
         });
 
-        // ─── Employee ───────────────────────────────
         b.Entity<Employee>(e => {
-            e.ToTable("Employees");
+            e.ToTable("Employees", DbSchemas.Dbo);
             // Multiple employees may omit Entra (manual adds); uniqueness only when set (matches DB filter).
             e.HasIndex(x => new { x.OrganizationId, x.EntraObjectId })
                 .IsUnique()
@@ -64,9 +62,9 @@ public class FinanceHubDbContext : DbContext
             e.Property(x => x.Role).HasConversion<string>().HasMaxLength(20);
         });
 
-        // ─── Expense ────────────────────────────────
+        // ─── finance (domain tables) ─────────────────
         b.Entity<ExpenseRequest>(e => {
-            e.ToTable("ExpenseRequests");
+            e.ToTable("ExpenseRequests", DbSchemas.Finance);
             e.HasIndex(x => new { x.OrganizationId, x.ExpenseCode }).IsUnique();
             e.HasIndex(x => new { x.OrganizationId, x.Status, x.CreatedAt });
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
@@ -75,7 +73,7 @@ public class FinanceHubDbContext : DbContext
 
         // ─── Advance ────────────────────────────────
         b.Entity<AdvancePayment>(e => {
-            e.ToTable("AdvancePayments");
+            e.ToTable("AdvancePayments", DbSchemas.Finance);
             e.HasIndex(x => new { x.OrganizationId, x.AdvanceCode }).IsUnique();
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
             e.HasOne(x => x.Employee).WithMany().HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Restrict);
@@ -83,13 +81,13 @@ public class FinanceHubDbContext : DbContext
 
         // ─── Vendor ─────────────────────────────────
         b.Entity<Vendor>(e => {
-            e.ToTable("Vendors");
+            e.ToTable("Vendors", DbSchemas.Finance);
             e.HasIndex(x => x.OrganizationId);
         });
 
         // ─── Vendor Bill ────────────────────────────
         b.Entity<VendorBill>(e => {
-            e.ToTable("VendorBills");
+            e.ToTable("VendorBills", DbSchemas.Finance);
             e.HasIndex(x => new { x.OrganizationId, x.BillCode }).IsUnique();
             e.HasIndex(x => new { x.OrganizationId, x.Status });
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
@@ -97,7 +95,7 @@ public class FinanceHubDbContext : DbContext
         });
 
         b.Entity<VendorBillLineItem>(e => {
-            e.ToTable("VendorBillLineItems");
+            e.ToTable("VendorBillLineItems", DbSchemas.Finance);
             e.HasIndex(x => new { x.VendorBillId, x.LineNumber });
             e.HasOne(x => x.VendorBill)
                 .WithMany(x => x.LineItems)
@@ -108,14 +106,14 @@ public class FinanceHubDbContext : DbContext
 
         // ─── Client ─────────────────────────────────
         b.Entity<Client>(e => {
-            e.ToTable("Clients");
+            e.ToTable("Clients", DbSchemas.Finance);
             e.HasIndex(x => x.OrganizationId);
             e.Property(x => x.TaxType).HasConversion<string>().HasMaxLength(20);
         });
 
         // ─── Invoice ────────────────────────────────
         b.Entity<Invoice>(e => {
-            e.ToTable("Invoices");
+            e.ToTable("Invoices", DbSchemas.Finance);
             e.HasIndex(x => new { x.OrganizationId, x.InvoiceCode }).IsUnique();
             e.HasIndex(x => new { x.OrganizationId, x.Status });
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
@@ -123,20 +121,20 @@ public class FinanceHubDbContext : DbContext
         });
 
         b.Entity<InvoiceLineItem>(e => {
-            e.ToTable("InvoiceLineItems");
+            e.ToTable("InvoiceLineItems", DbSchemas.Finance);
             e.HasIndex(x => new { x.InvoiceId, x.LineNumber });
         });
 
         // ─── Tax Configuration ──────────────────────
         b.Entity<TaxConfiguration>(e => {
-            e.ToTable("TaxConfigurations");
+            e.ToTable("TaxConfigurations", DbSchemas.Finance);
             e.HasIndex(x => new { x.OrganizationId, x.Type, x.IsActive });
             e.Property(x => x.Type).HasConversion<string>().HasMaxLength(10);
         });
 
         // ─── Activity Comment ───────────────────────
         b.Entity<ActivityComment>(e => {
-            e.ToTable("ActivityComments");
+            e.ToTable("ActivityComments", DbSchemas.Finance);
             e.HasIndex(x => x.ExpenseRequestId).HasFilter("[ExpenseRequestId] IS NOT NULL");
             e.HasIndex(x => x.VendorBillId).HasFilter("[VendorBillId] IS NOT NULL");
             e.HasIndex(x => x.AdvancePaymentId).HasFilter("[AdvancePaymentId] IS NOT NULL");
@@ -147,7 +145,7 @@ public class FinanceHubDbContext : DbContext
 
         // ─── Request Document ───────────────────────
         b.Entity<RequestDocument>(e => {
-            e.ToTable("RequestDocuments");
+            e.ToTable("RequestDocuments", DbSchemas.Finance);
             e.HasIndex(x => x.ExpenseRequestId).HasFilter("[ExpenseRequestId] IS NOT NULL");
             e.HasIndex(x => x.VendorBillId).HasFilter("[VendorBillId] IS NOT NULL");
             e.HasIndex(x => new { x.OrganizationId, x.CreatedAt });
@@ -165,32 +163,26 @@ public class FinanceHubDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // ─── Email Template ─────────────────────────
-        b.Entity<EmailTemplate>(e => {
-            e.ToTable("EmailTemplates");
-            e.HasIndex(x => new { x.OrganizationId, x.TemplateKey }).IsUnique();
-        });
-
         // ─── Code Sequence ──────────────────────────
         b.Entity<CodeSequence>(e => {
-            e.ToTable("CodeSequences");
+            e.ToTable("CodeSequences", DbSchemas.Finance);
             e.HasIndex(x => new { x.OrganizationId, x.SequenceType }).IsUnique();
         });
 
         // ─── Category ───────────────────────────────  
         b.Entity<Category>(e => {
-            e.ToTable("Categories");
+            e.ToTable("Categories", DbSchemas.Finance);
             e.HasIndex(x => new { x.OrganizationId, x.Name }).IsUnique();
         });
 
         b.Entity<PaymentTerm>(e => {
-            e.ToTable("PaymentTerms");
+            e.ToTable("PaymentTerms", DbSchemas.Finance);
             e.HasIndex(x => new { x.OrganizationId, x.ShortName }).IsUnique();
             e.HasIndex(x => new { x.OrganizationId, x.Name }).IsUnique();
         });
 
         b.Entity<Account>(e => {
-            e.ToTable("Accounts");
+            e.ToTable("Accounts", DbSchemas.Finance);
             e.HasIndex(x => new { x.OrganizationId, x.ShortName }).IsUnique();
             e.HasIndex(x => new { x.OrganizationId, x.Name }).IsUnique();
         });

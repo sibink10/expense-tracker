@@ -50,6 +50,18 @@ public class Organization
     [MaxLength(100)]
     public string? Industry { get; set; }
 
+    [MaxLength(100)]
+    public string? BankName { get; set; }
+
+    [MaxLength(20)]
+    public string? IfscCode { get; set; }
+
+    [MaxLength(50)]
+    public string? AccountNumber { get; set; }
+
+    [MaxLength(500)]
+    public string? BankAddress { get; set; }
+
     [MaxLength(2048)]
     public string? LogoUrl { get; set; }
 

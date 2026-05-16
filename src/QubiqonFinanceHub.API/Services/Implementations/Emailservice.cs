@@ -478,7 +478,6 @@ public class EmailService : IEmailService
         };
     }
 
-    // Mirrors Python's get_graph_token_on_behalf_of()
     private async Task<string> GetGraphTokenOnBehalfOfAsync(string userToken)
     {
         var tenantId = _config["ServerApp:TenantId"]!;

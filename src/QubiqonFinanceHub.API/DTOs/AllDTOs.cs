@@ -38,6 +38,10 @@ public record CreateOrganizationRequest(
     string? Fax,
     string? Website,
     string? Industry,
+    string? BankName,
+    string? IfscCode,
+    string? AccountNumber,
+    string? BankAddress,
     string? Tenant,
     bool? Selected,
     IFormFile? LogoFile
@@ -57,6 +61,10 @@ public record UpdateOrganizationRequest(
     string? Fax,
     string? Website,
     string? Industry,
+    string? BankName,
+    string? IfscCode,
+    string? AccountNumber,
+    string? BankAddress,
     string? Tenant,
     bool? Selected,
     IFormFile? LogoFile
@@ -79,7 +87,11 @@ public record OrganizationDto(
     string? Phone,
     string? Fax,
     string? Website,
-    string? Industry
+    string? Industry,
+    string? BankName,
+    string? IfscCode,
+    string? AccountNumber,
+    string? BankAddress
 );
 
 // ═══════════════════════════════════════════════════

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using QubiqonFinanceHub.API.Data;
 
@@ -11,9 +12,11 @@ using QubiqonFinanceHub.API.Data;
 namespace QubiqonFinanceHub.API.Migrations
 {
     [DbContext(typeof(FinanceHubDbContext))]
-    partial class FinanceHubDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260515122427_MoveFinanceTablesToFinanceSchema")]
+    partial class MoveFinanceTablesToFinanceSchema
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -339,7 +342,7 @@ namespace QubiqonFinanceHub.API.Migrations
                     b.HasIndex("OrganizationId", "TemplateKey")
                         .IsUnique();
 
-                    b.ToTable("EmailTemplates", "dbo");
+                    b.ToTable("EmailTemplates", "finance");
                 });
 
             modelBuilder.Entity("QubiqonFinanceHub.API.Models.Entities.Employee", b =>
@@ -626,21 +629,9 @@ namespace QubiqonFinanceHub.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("AccountNumber")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
                     b.Property<string>("Address")
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
-
-                    b.Property<string>("BankAddress")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("BankName")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("City")
                         .HasMaxLength(100)
@@ -651,10 +642,6 @@ namespace QubiqonFinanceHub.API.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Fax")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("IfscCode")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 

@@ -46,6 +46,11 @@ public class OrganizationService(
 
             Industry = dto.Industry?.Trim(),
 
+            BankName = dto.BankName?.Trim(),
+            IfscCode = dto.IfscCode?.Trim(),
+            AccountNumber = dto.AccountNumber?.Trim(),
+            BankAddress = dto.BankAddress?.Trim(),
+
             IsActive = true,
             UpdatedAt = DateTime.UtcNow
         };
@@ -100,6 +105,10 @@ public class OrganizationService(
         if (dto.Fax != null) org.Fax = dto.Fax.Trim();
         if (dto.Website != null) org.Website = dto.Website.Trim();
         if (dto.Industry != null) org.Industry = dto.Industry.Trim();
+        if (dto.BankName != null) org.BankName = dto.BankName.Trim();
+        if (dto.IfscCode != null) org.IfscCode = dto.IfscCode.Trim();
+        if (dto.AccountNumber != null) org.AccountNumber = dto.AccountNumber.Trim();
+        if (dto.BankAddress != null) org.BankAddress = dto.BankAddress.Trim();
         if (dto.Tenant != null) org.Tenant = dto.Tenant;
         if (dto.Selected != null) org.Selected = dto.Selected.Value;
 
@@ -183,6 +192,10 @@ public class OrganizationService(
         o.Phone,
         o.Fax,
         o.Website,
-        o.Industry
+        o.Industry,
+        o.BankName,
+        o.IfscCode,
+        o.AccountNumber,
+        o.BankAddress
     );
 }
