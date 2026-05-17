@@ -213,10 +213,13 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
       .then((list) => {
         if (cancelled) return;
         setOrgs(list);
-        if (!activeOrg && list.length > 0) {
-          const selected = list.find((o) => o.selected) ?? list[0];
-          setActiveOrg(selected);
-        }
+        if (list.length === 0) return;
+        const effectiveId = user.effectiveOrganizationId;
+        const current =
+          (effectiveId ? list.find((o) => o.id === effectiveId) : null) ??
+          list.find((o) => o.isCurrent) ??
+          list[0];
+        setActiveOrg(current);
       })
       .catch(() => {
         if (!cancelled) setOrgs([]);
@@ -224,8 +227,7 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user.effectiveOrganizationId]);
 
   useEffect(() => {
     void refreshOrgSettings().catch(() => undefined);

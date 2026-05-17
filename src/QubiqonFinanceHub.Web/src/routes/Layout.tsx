@@ -65,8 +65,17 @@ export default function Layout() {
     }))
     .filter((sec) => sec.items.length > 0);
 
+  const sidebarWidth = 260;
+
   return (
-    <>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
+        overflow: "hidden",
+      }}
+    >
       <header
         style={{
           background: "#fff",
@@ -76,8 +85,7 @@ export default function Layout() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          position: "sticky",
-          top: 0,
+          flexShrink: 0,
           zIndex: 100,
         }}
       >
@@ -278,7 +286,15 @@ export default function Layout() {
           </button>
         </div>
       </header>
-      <div style={{ display: "flex", minHeight: "calc(100vh - 50px)" }}>
+      <div
+        style={{
+          display: "flex",
+          flex: 1,
+          minHeight: 0,
+          overflow: "hidden",
+          position: "relative",
+        }}
+      >
         {/* Sidebar */}
         {(sidebarOpen || !isMobile) && (
           <>
@@ -296,17 +312,17 @@ export default function Layout() {
             <nav
               className="app-sidebar"
               style={{
-                position: isMobile ? "fixed" : "relative",
-                top: isMobile ? 50 : 0,
+                position: "fixed",
+                top: 50,
                 left: 0,
-                height: isMobile ? "calc(100vh - 50px)" : "auto",
-                width: "210px",
+                height: "calc(100vh - 50px)",
+                width: sidebarWidth,
                 background: "#fff",
                 borderRight: `1px solid ${C.border}`,
                 padding: "8px",
-                flexShrink: 0,
                 overflowY: "auto",
-                zIndex: isMobile ? 100 : 0,
+                overscrollBehavior: "contain",
+                zIndex: isMobile ? 100 : 10,
               }}
             >
               <style>{`
@@ -396,7 +412,19 @@ export default function Layout() {
             </nav>
           </>
         )}
-        <main style={{ flex: 1, padding: "20px 24px", overflow: "auto" }}><Outlet /></main>
+        <main
+          style={{
+            flex: 1,
+            minWidth: 0,
+            minHeight: 0,
+            padding: "20px 24px",
+            overflowY: "auto",
+            overscrollBehavior: "contain",
+            marginLeft: !isMobile ? sidebarWidth : 0,
+          }}
+        >
+          <Outlet />
+        </main>
       </div>
       <DeepLinkHandler />
       <Modals />
@@ -419,6 +447,6 @@ export default function Layout() {
           {toast.m}
         </div>
       )}
-    </>
+    </div>
   );
 }

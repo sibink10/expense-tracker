@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QubiqonFinanceHub.API.DTOs;
+using QubiqonFinanceHub.API.Services;
 using QubiqonFinanceHub.API.Services.Interfaces;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.Models.Entities;
@@ -15,31 +16,32 @@ namespace QubiqonFinanceHub.API.Controllers;
 //  AUTH
 // ═══════════════════════════════════════════════════
 [ApiController, Route("api/auth"), Authorize]
-public class AuthController(ITenantService tenant, FinanceHubDbContext db, IAzureRoleService azureRoleService) : ControllerBase
+public class AuthController(FinanceHubDbContext db, IAzureRoleService azureRoleService) : ControllerBase
 {
     [HttpGet("me")]
     public async Task<IActionResult> Me()
     {
-        // Get claims from Azure AD token
         var oid = User.FindFirst("oid")?.Value ?? User.FindFirst("sub")?.Value;
         var email = User.FindFirst("preferred_username")?.Value ?? User.FindFirst("email")?.Value;
         var name = User.FindFirst("name")?.Value ?? email ?? "Unknown";
-        var tid = User.FindFirst("tid")?.Value;
 
-        // Find org by tenant ID
-        var org = await db.Organizations.FirstOrDefaultAsync(o => o.Id.ToString() == tid)
-                  ?? await db.Organizations.FirstOrDefaultAsync(); // fallback to first org
+        var emp = await db.Employees
+            .Include(e => e.OrganizationContext)
+            .FirstOrDefaultAsync(e => e.EntraObjectId == oid);
 
-        if (org == null) return NotFound("Organization not found");
-
-        // Find or auto-provision employee
-        var emp = await db.Employees.FirstOrDefaultAsync(e => e.EntraObjectId == oid);
         if (emp == null)
         {
+            var seedOrg = await db.Organizations
+                .Where(o => o.IsActive)
+                .OrderBy(o => o.OrgName)
+                .FirstOrDefaultAsync();
+
+            if (seedOrg == null) return NotFound("Organization not found");
+
             emp = new Employee
             {
                 Id = Guid.Parse(oid!),
-                OrganizationId = org.Id,
+                OrganizationId = seedOrg.Id,
                 EntraObjectId = oid!,
                 FullName = name,
                 Email = email ?? "",
@@ -54,7 +56,14 @@ public class AuthController(ITenantService tenant, FinanceHubDbContext db, IAzur
         }
 
         if (emp.IsActive == false || emp.IsDelete == true)
-            throw new Exception("You have been deactivated from the application or deleted from the application");  
+            throw new Exception("You have been deactivated from the application or deleted from the application");
+
+        var homeOrgId = emp.OrganizationId;
+        var activeOrgId = emp.OrganizationContext?.ActiveOrganizationId;
+        var effectiveOrgId = OrganizationContextResolver.ResolveEffective(homeOrgId, activeOrgId);
+
+        var effectiveOrg = await db.Organizations.FirstOrDefaultAsync(o => o.Id == effectiveOrgId && o.IsActive);
+        if (effectiveOrg == null) return NotFound("Organization not found");
 
         var parts = emp.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var initials = parts.Length >= 2
@@ -62,8 +71,18 @@ public class AuthController(ITenantService tenant, FinanceHubDbContext db, IAzur
             : emp.FullName[..Math.Min(2, emp.FullName.Length)];
 
         return Ok(new CurrentUserDto(
-            emp.Id, emp.FullName, emp.Email, emp.Department,
-            emp.Designation, emp.Role, initials.ToUpper(), org.Id, org.OrgName
+            emp.Id,
+            emp.FullName,
+            emp.Email,
+            emp.Department,
+            emp.Designation,
+            emp.Role,
+            initials.ToUpper(),
+            effectiveOrgId,
+            effectiveOrg.OrgName,
+            homeOrgId,
+            activeOrgId,
+            effectiveOrgId
         ));
     }
 

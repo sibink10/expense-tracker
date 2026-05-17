@@ -8,4 +8,5 @@ public static class DbSchemas
 {
     public const string Dbo = "dbo";
     public const string Finance = "finance";
+    public const string Project_Management = "pm";
 }

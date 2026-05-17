@@ -8,6 +8,9 @@ public interface ITenantService
 {
     Guid GetCurrentEmployeeId();
     string? GetCurrentUserEmail();
+    Task<Guid> GetHomeOrganizationIdAsync();
+    Task<Guid?> GetActiveOrganizationIdAsync();
+    Task<Guid> GetEffectiveOrganizationIdAsync();
     Task<Guid> GetCurrentOrganizationId();
     Task<Employee> GetCurrentEmployeeAsync();
     Task<Organization> GetCurrentOrganizationAsync();

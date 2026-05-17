@@ -46,6 +46,13 @@ export default function InvoiceDocument({ invoice: inv, organization: org, hideS
   const overdueDays =
     inv.status === INV_S.OVERDUE ? daysOverdueFromDueYmd(inv.due) : null;
 
+  const hasBankDetails = Boolean(
+    org?.bankName?.trim() ||
+      org?.ifscCode?.trim() ||
+      org?.accountNumber?.trim() ||
+      org?.bankAddress?.trim(),
+  );
+
   return (
     <div
       style={{
@@ -296,19 +303,69 @@ export default function InvoiceDocument({ invoice: inv, organization: org, hideS
           gridTemplateColumns: "1.2fr 0.8fr",
         }}
       >
-        <div style={{ padding: "16px 24px", borderRight: `1px solid ${C.border}` }}>
-          <div
-            style={{
-              fontSize: "11px",
-              fontWeight: 700,
-              color: C.muted,
-              textTransform: "uppercase",
-              marginBottom: "6px",
-            }}
-          >
-            Notes
+        <div
+          style={{
+            padding: "16px 24px",
+            borderRight: `1px solid ${C.border}`,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                color: C.muted,
+                textTransform: "uppercase",
+                marginBottom: "6px",
+              }}
+            >
+              Notes
+            </div>
+            <div style={{ fontSize: "12px", color: C.primary, minHeight: "48px" }}>{inv.notes || "—"}</div>
           </div>
-          <div style={{ fontSize: "12px", color: C.primary, minHeight: "48px" }}>{inv.notes || "—"}</div>
+          {hasBankDetails && (
+            <div>
+              <div
+                style={{
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  color: C.muted,
+                  textTransform: "uppercase",
+                  marginBottom: "6px",
+                }}
+              >
+                Bank details
+              </div>
+              <div style={{ fontSize: "12px", color: C.primary, lineHeight: 1.5 }}>
+                {org?.bankName && (
+                  <div>
+                    <span style={{ color: C.muted }}>Bank: </span>
+                    {org.bankName}
+                  </div>
+                )}
+                {org?.ifscCode && (
+                  <div>
+                    <span style={{ color: C.muted }}>IFSC: </span>
+                    {org.ifscCode}
+                  </div>
+                )}
+                {org?.accountNumber && (
+                  <div>
+                    <span style={{ color: C.muted }}>Account: </span>
+                    {org.accountNumber}
+                  </div>
+                )}
+                {org?.bankAddress && (
+                  <div>
+                    <span style={{ color: C.muted }}>Address: </span>
+                    {org.bankAddress}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
         <div
           style={{

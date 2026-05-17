@@ -11,6 +11,7 @@ public class FinanceHubDbContext : DbContext
     public DbSet<Organization> Organizations => Set<Organization>();
     public DbSet<OrganizationSetting> OrganizationSettings => Set<OrganizationSetting>();
     public DbSet<Employee> Employees => Set<Employee>();
+    public DbSet<EmployeeOrganizationContext> EmployeeOrganizationContexts => Set<EmployeeOrganizationContext>();
     public DbSet<ExpenseRequest> ExpenseRequests => Set<ExpenseRequest>();
     public DbSet<AdvancePayment> AdvancePayments => Set<AdvancePayment>();
     public DbSet<Vendor> Vendors => Set<Vendor>();
@@ -60,6 +61,24 @@ public class FinanceHubDbContext : DbContext
                 .HasFilter("[EntraObjectId] IS NOT NULL");
             e.HasIndex(x => new { x.OrganizationId, x.Email }).IsUnique();
             e.Property(x => x.Role).HasConversion<string>().HasMaxLength(20);
+        });
+
+        b.Entity<EmployeeOrganizationContext>(e => {
+            e.ToTable("employee_organization_context", DbSchemas.Dbo);
+            e.HasKey(x => x.EmployeeId);
+            e.Property(x => x.EmployeeId).HasColumnName("employee_id");
+            e.Property(x => x.ActiveOrganizationId).HasColumnName("active_organization_id");
+            e.Property(x => x.UpdatedAt)
+                .HasColumnName("updated_at")
+                .HasDefaultValueSql("(sysutcdatetime())");
+            e.HasOne(x => x.Employee)
+                .WithOne(x => x.OrganizationContext)
+                .HasForeignKey<EmployeeOrganizationContext>(x => x.EmployeeId)
+                .HasConstraintName("FK_employee_org_ctx_employee");
+            e.HasOne(x => x.ActiveOrganization)
+                .WithMany()
+                .HasForeignKey(x => x.ActiveOrganizationId)
+                .HasConstraintName("FK_employee_org_ctx_organization");
         });
 
         // ─── finance (domain tables) ─────────────────

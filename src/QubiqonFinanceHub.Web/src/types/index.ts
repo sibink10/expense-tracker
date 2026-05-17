@@ -8,6 +8,12 @@ export interface AppUser {
   role: UserRole;
   dept: string;
   av: string;
+  /** Home org from Employees.OrganizationId */
+  homeOrganizationId?: string;
+  /** Override from employee_organization_context; null when working in home org */
+  activeOrganizationId?: string | null;
+  /** Active override or home — tenant for API data */
+  effectiveOrganizationId?: string;
 }
 
 export interface NavItem {

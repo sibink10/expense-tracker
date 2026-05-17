@@ -12,7 +12,6 @@ public class OrganizationService(
     IStorageService _storage)
     : IOrganizationService
 {
-    // ── Create ────────────────────────────────────────────────────────────
     public async Task<OrganizationDto> CreateAsync(CreateOrganizationRequest dto)
     {
         var orgId = Guid.NewGuid();
@@ -27,30 +26,22 @@ public class OrganizationService(
             OrgName = dto.OrgName.Trim(),
             SubName = dto.SubName?.Trim(),
             Tenant = dto.Tenant,
-            Selected = dto.Selected ?? false,
-
             LogoUrl = logoUrl,
-
             Address = dto.Address?.Trim(),
             PaymentAddress = dto.PaymentAddress?.Trim(),
             UseSeparatePaymentAddress = dto.UseSeparatePaymentAddress ?? false,
-
             City = dto.City?.Trim(),
             State = dto.State?.Trim(),
             Country = dto.Country?.Trim() ?? "India",
             PostalCode = dto.PostalCode?.Trim(),
-
             Phone = dto.Phone?.Trim(),
             Fax = dto.Fax?.Trim(),
             Website = dto.Website?.Trim(),
-
             Industry = dto.Industry?.Trim(),
-
             BankName = dto.BankName?.Trim(),
             IfscCode = dto.IfscCode?.Trim(),
             AccountNumber = dto.AccountNumber?.Trim(),
             BankAddress = dto.BankAddress?.Trim(),
-
             IsActive = true,
             UpdatedAt = DateTime.UtcNow
         };
@@ -58,34 +49,32 @@ public class OrganizationService(
         _db.Organizations.Add(org);
         await _db.SaveChangesAsync();
 
-        return MapToDto(org);
+        var effectiveId = await _tenant.GetEffectiveOrganizationIdAsync();
+        return MapToDto(org, org.Id == effectiveId);
     }
 
-    // ── Get ───────────────────────────────────────────────────────────────
     public async Task<OrganizationDto> GetAsync()
     {
-        var orgId = await _tenant.GetCurrentOrganizationId();
-
+        var orgId = await _tenant.GetEffectiveOrganizationIdAsync();
         var org = await _db.Organizations
             .FirstOrDefaultAsync(o => o.Id == orgId)
             ?? throw new KeyNotFoundException("Organization not found.");
 
-        return MapToDto(org);
+        return MapToDto(org, isCurrent: true);
     }
 
-    // ── Get by id ───────────────────────────────────────────────────────────────
     public async Task<OrganizationDto> GetByIdAsync(Guid id)
     {
         var org = await _db.Organizations.FirstOrDefaultAsync(o => o.Id == id)
                   ?? throw new KeyNotFoundException("Organization not found.");
 
-        var mapped = MapToDto(org);
+        var effectiveId = await _tenant.GetEffectiveOrganizationIdAsync();
+        var mapped = MapToDto(org, org.Id == effectiveId);
         return org.LogoUrl != null
             ? mapped with { LogoUrl = _storage.GenerateSasUrl(org.LogoUrl) }
             : mapped;
     }
 
-    // ── Update ────────────────────────────────────────────────────────────
     public async Task<OrganizationDto> UpdateAsync(Guid id, UpdateOrganizationRequest dto)
     {
         var org = await _db.Organizations.FirstOrDefaultAsync(x => x.Id == id)
@@ -110,7 +99,6 @@ public class OrganizationService(
         if (dto.AccountNumber != null) org.AccountNumber = dto.AccountNumber.Trim();
         if (dto.BankAddress != null) org.BankAddress = dto.BankAddress.Trim();
         if (dto.Tenant != null) org.Tenant = dto.Tenant;
-        if (dto.Selected != null) org.Selected = dto.Selected.Value;
 
         if (dto.LogoFile != null)
         {
@@ -122,7 +110,8 @@ public class OrganizationService(
         org.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        var mapped = MapToDto(org);
+        var effectiveId = await _tenant.GetEffectiveOrganizationIdAsync();
+        var mapped = MapToDto(org, org.Id == effectiveId);
         return org.LogoUrl != null
             ? mapped with { LogoUrl = _storage.GenerateSasUrl(org.LogoUrl) }
             : mapped;
@@ -131,56 +120,74 @@ public class OrganizationService(
     public async Task<List<OrganizationDto>> GetAllAsync()
     {
         var currentEmployee = await _tenant.GetCurrentEmployeeAsync();
+        var effectiveOrgId = await _tenant.GetEffectiveOrganizationIdAsync();
         var orgsQuery = _db.Organizations.Where(o => o.IsActive);
 
         if (currentEmployee.Role != UserRole.Admin)
-        {
-            var currentOrgId = await _tenant.GetCurrentOrganizationId();
-            orgsQuery = orgsQuery.Where(o => o.Id == currentOrgId);
-        }
+            orgsQuery = orgsQuery.Where(o => o.Id == effectiveOrgId);
 
         var orgs = await orgsQuery.ToListAsync();
         return orgs.Select(o =>
         {
-            var dto = MapToDto(o);
+            var dto = MapToDto(o, o.Id == effectiveOrgId);
             var logoUrl = o.LogoUrl != null ? _storage.GenerateSasUrl(o.LogoUrl) : null;
-            return dto with { LogoUrl = logoUrl };  // replace stored URL with SAS URL
+            return dto with { LogoUrl = logoUrl };
         }).ToList();
     }
 
     public async Task<OrganizationDto> SelectAsync(Guid id)
     {
-        // Deselect all first, then select the chosen one
-        await _db.Organizations.ExecuteUpdateAsync(o =>
-            o.SetProperty(x => x.Selected, false));
+        var employee = await _tenant.GetCurrentEmployeeAsync();
+        if (employee.Role != UserRole.Admin)
+            throw new UnauthorizedAccessException("Only administrators can switch organization context.");
 
-        var org = await _db.Organizations.FirstOrDefaultAsync(x => x.Id == id)
-                  ?? throw new KeyNotFoundException("Organization not found.");
+        var targetOrg = await _db.Organizations.FirstOrDefaultAsync(o => o.Id == id && o.IsActive)
+                        ?? throw new KeyNotFoundException("Organization not found.");
 
-        org.Selected = true;
-        org.UpdatedAt = DateTime.UtcNow;
+        var homeOrgId = employee.OrganizationId;
+        Guid? activeOrgId = id == homeOrgId ? null : id;
+
+        var context = await _db.EmployeeOrganizationContexts
+            .FirstOrDefaultAsync(c => c.EmployeeId == employee.Id);
+
+        if (context == null)
+        {
+            context = new EmployeeOrganizationContext
+            {
+                EmployeeId = employee.Id,
+                ActiveOrganizationId = activeOrgId,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _db.EmployeeOrganizationContexts.Add(context);
+        }
+        else
+        {
+            context.ActiveOrganizationId = activeOrgId;
+            context.UpdatedAt = DateTime.UtcNow;
+        }
+
         await _db.SaveChangesAsync();
 
-        var mapped = MapToDto(org);
-        return org.LogoUrl != null
-            ? mapped with { LogoUrl = _storage.GenerateSasUrl(org.LogoUrl) }
+        employee.OrganizationContext = context;
+
+        var mapped = MapToDto(targetOrg, isCurrent: true);
+        return targetOrg.LogoUrl != null
+            ? mapped with { LogoUrl = _storage.GenerateSasUrl(targetOrg.LogoUrl) }
             : mapped;
     }
 
-    // ── Settings (stubs) ──────────────────────────────────────────────────
     public Task<Dictionary<string, string>> GetSettingsAsync() =>
         Task.FromResult(new Dictionary<string, string>());
 
     public Task SetSettingAsync(string key, string value) =>
         Task.CompletedTask;
 
-    // ── Mapper ────────────────────────────────────────────────────────────
-    private static OrganizationDto MapToDto(Organization o) => new(
+    private static OrganizationDto MapToDto(Organization o, bool isCurrent) => new(
         o.Id,
         o.OrgName,
         o.SubName,
         o.Tenant,
-        o.Selected,
+        isCurrent,
         o.LogoUrl,
         o.Address,
         o.PaymentAddress,

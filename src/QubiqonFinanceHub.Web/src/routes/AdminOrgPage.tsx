@@ -28,6 +28,12 @@ export default function AdminOrgPage() {
   const [website, setWebsite] = useState("");
   const [useSeparatePaymentAddress, setUseSeparatePaymentAddress] = useState(false);
   const [paymentAddress, setPaymentAddress] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [ifscCode, setIfscCode] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [accountNumberRe, setAccountNumberRe] = useState("");
+  const [bankAddress, setBankAddress] = useState("");
+  const [bankError, setBankError] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<{ n: string; s: string } | null>(null);
   const [logoRawFile, setLogoRawFile] = useState<File | null>(null);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
@@ -61,6 +67,13 @@ export default function AdminOrgPage() {
         setWebsite(org.website ?? "");
         setUseSeparatePaymentAddress(org.useSeparatePaymentAddress ?? false);
         setPaymentAddress(org.paymentAddress ?? "");
+        setBankName(org.bankName ?? "");
+        setIfscCode(org.ifscCode ?? "");
+        const acct = org.accountNumber ?? "";
+        setAccountNumber(acct);
+        setAccountNumberRe(acct);
+        setBankAddress(org.bankAddress ?? "");
+        setBankError(null);
         setLogoPreviewUrl(org.logoUrl ?? null);
         setLogoRawFile(null);
         setLogoFile(null);
@@ -80,6 +93,17 @@ export default function AdminOrgPage() {
       return;
     }
     setPhoneError(null);
+
+    if (!bankName.trim() || !ifscCode.trim() || !accountNumber.trim() || !accountNumberRe.trim() || !bankAddress.trim()) {
+      setBankError("All bank detail fields are required.");
+      return;
+    }
+    if (accountNumber.trim() !== accountNumberRe.trim()) {
+      setBankError("Account numbers do not match.");
+      return;
+    }
+    setBankError(null);
+
     await saveOrganization({
       id,
       orgName: orgName.trim(),
@@ -95,6 +119,10 @@ export default function AdminOrgPage() {
       website: website || undefined,
       useSeparatePaymentAddress: useSeparatePaymentAddress,
       paymentAddress: useSeparatePaymentAddress ? paymentAddress || undefined : undefined,
+      bankName: bankName.trim(),
+      ifscCode: ifscCode.trim(),
+      accountNumber: accountNumber.trim(),
+      bankAddress: bankAddress.trim(),
       logoFile: logoRawFile || undefined,
     });
     navigate("/admin/org");
@@ -323,6 +351,88 @@ export default function AdminOrgPage() {
               ph="Payment stub address"
               style={{ marginBottom: 0 }}
             />
+          )}
+        </div>
+
+        {/* Bank details */}
+        <div
+          style={{
+            marginTop: "20px",
+            paddingTop: "16px",
+            borderTop: `1px solid ${C.border}`,
+          }}
+        >
+          <div
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              color: C.muted,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              marginBottom: "12px",
+            }}
+          >
+            Bank details
+          </div>
+          <div style={gridStyle}>
+            <Inp
+              label="Bank name"
+              value={bankName}
+              onChange={(e) => {
+                setBankName(e.target.value);
+                setBankError(null);
+              }}
+              ph="e.g. HDFC Bank"
+              req
+            />
+            <Inp
+              label="IFSC code"
+              value={ifscCode}
+              onChange={(e) => {
+                setIfscCode(e.target.value);
+                setBankError(null);
+              }}
+              ph="e.g. HDFC0001234"
+              req
+            />
+            <Inp
+              label="Account number"
+              type="password"
+              value={accountNumber}
+              onChange={(e) => {
+                setAccountNumber(e.target.value.replace(/\D/g, ""));
+                setBankError(null);
+              }}
+              ph="Account number"
+              req
+              hint="Digits only; masked while typing."
+            />
+            <Inp
+              label="Re-enter account number"
+              type="text"
+              value={accountNumberRe}
+              onChange={(e) => {
+                setAccountNumberRe(e.target.value.replace(/\D/g, ""));
+                setBankError(null);
+              }}
+              ph="Re-enter account number"
+              req
+              hint="Must match the account number above."
+            />
+          </div>
+          <Inp
+            label="Bank address"
+            type="textarea"
+            value={bankAddress}
+            onChange={(e) => {
+              setBankAddress(e.target.value);
+              setBankError(null);
+            }}
+            req
+            ph="Branch name, street, city"
+          />
+          {bankError && (
+            <div style={{ marginTop: "8px", fontSize: "12px", color: C.danger }}>{bankError}</div>
           )}
         </div>
 

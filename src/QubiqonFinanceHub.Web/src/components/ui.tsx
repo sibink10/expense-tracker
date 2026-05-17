@@ -413,21 +413,21 @@ export const Mdl: React.FC<{
       <style>{`
         .app-modal-scroll {
           scrollbar-width: thin;
-          scrollbar-color: ${C.border} transparent;
+          scrollbar-color: ${C.surface} transparent;
         }
         .app-modal-scroll::-webkit-scrollbar {
-          width: 6px;
-          height: 6px;
+          width: 2px;
+          height: 2px;
         }
         .app-modal-scroll::-webkit-scrollbar-track {
           background: transparent;
         }
         .app-modal-scroll::-webkit-scrollbar-thumb {
-          background: ${C.border};
-          border-radius: 999px;
+          background: ${C.surface};
+          border-radius: 1px;
         }
         .app-modal-scroll::-webkit-scrollbar-thumb:hover {
-          background: ${C.muted};
+          background: ${C.border};
         }
       `}</style>
       <div

@@ -50,7 +50,7 @@ export default function AdminSettingsPage() {
         setActiveOrg((prev) => ({
           ...(prev ?? {}),
           ...org,
-          selected: org.selected ?? prev?.selected,
+          isCurrent: org.isCurrent ?? prev?.isCurrent,
         }));
       })
       .catch(() => undefined);

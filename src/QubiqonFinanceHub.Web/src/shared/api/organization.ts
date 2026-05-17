@@ -31,10 +31,18 @@ export interface OrganizationDto {
   website?: string;
   Industry?: string;
   industry?: string;
+  BankName?: string;
+  bankName?: string;
+  IfscCode?: string;
+  ifscCode?: string;
+  AccountNumber?: string;
+  accountNumber?: string;
+  BankAddress?: string;
+  bankAddress?: string;
   Tenant?: string;
   tenant?: string;
-  Selected?: boolean;
-  selected?: boolean;
+  IsCurrent?: boolean;
+  isCurrent?: boolean;
   LogoUrl?: string | null;
   logoUrl?: string | null;
 }
@@ -54,8 +62,12 @@ export interface OrganizationPayload {
   fax?: string;
   website?: string;
   industry?: string;
+  bankName?: string;
+  ifscCode?: string;
+  accountNumber?: string;
+  bankAddress?: string;
   tenant?: string;
-  selected?: boolean;
+  isCurrent?: boolean;
   logoUrl?: string | null;
   logoFile?: File | null;
 }
@@ -79,8 +91,12 @@ function mapDtoToPayload(dto: OrganizationDto): OrganizationPayload {
     fax: (anyDto.Fax as string) ?? (anyDto.fax as string),
     website: (anyDto.Website as string) ?? (anyDto.website as string),
     industry: (anyDto.Industry as string) ?? (anyDto.industry as string),
+    bankName: (anyDto.BankName as string) ?? (anyDto.bankName as string),
+    ifscCode: (anyDto.IfscCode as string) ?? (anyDto.ifscCode as string),
+    accountNumber: (anyDto.AccountNumber as string) ?? (anyDto.accountNumber as string),
+    bankAddress: (anyDto.BankAddress as string) ?? (anyDto.bankAddress as string),
     tenant: (anyDto.Tenant as string) ?? (anyDto.tenant as string),
-    selected: (anyDto.Selected as boolean) ?? (anyDto.selected as boolean),
+    isCurrent: (anyDto.IsCurrent as boolean) ?? (anyDto.isCurrent as boolean) ?? false,
     logoUrl: (anyDto.LogoUrl as string) ?? (anyDto.logoUrl as string) ?? null,
   };
 }
@@ -123,6 +139,10 @@ export async function saveOrganization(payload: OrganizationPayload): Promise<Or
   if (payload.fax) form.append("Fax", payload.fax);
   if (payload.website) form.append("Website", payload.website);
   if (payload.industry) form.append("Industry", payload.industry);
+  if (payload.bankName) form.append("BankName", payload.bankName);
+  if (payload.ifscCode) form.append("IfscCode", payload.ifscCode);
+  if (payload.accountNumber) form.append("AccountNumber", payload.accountNumber);
+  if (payload.bankAddress) form.append("BankAddress", payload.bankAddress);
   if (payload.tenant) form.append("Tenant", payload.tenant);
   if (payload.logoFile) form.append("LogoFile", payload.logoFile);
   if (payload.id) {

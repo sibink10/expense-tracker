@@ -19,7 +19,19 @@ public record DocumentDto(Guid Id, string FileName, string? ContentType, long Fi
 // ═══════════════════════════════════════════════════
 //  AUTH
 // ═══════════════════════════════════════════════════
-public record CurrentUserDto(Guid Id, string FullName, string Email, string? Department, string? Designation, UserRole Role, string Initials, Guid OrganizationId, string OrganizationName);
+public record CurrentUserDto(
+    Guid Id,
+    string FullName,
+    string Email,
+    string? Department,
+    string? Designation,
+    UserRole Role,
+    string Initials,
+    Guid OrganizationId,
+    string OrganizationName,
+    Guid HomeOrganizationId,
+    Guid? ActiveOrganizationId,
+    Guid EffectiveOrganizationId);
 
 // ═══════════════════════════════════════════════════
 //  ORGANIZATION
@@ -43,7 +55,6 @@ public record CreateOrganizationRequest(
     string? AccountNumber,
     string? BankAddress,
     string? Tenant,
-    bool? Selected,
     IFormFile? LogoFile
 );
 
@@ -66,7 +77,6 @@ public record UpdateOrganizationRequest(
     string? AccountNumber,
     string? BankAddress,
     string? Tenant,
-    bool? Selected,
     IFormFile? LogoFile
 );
 
@@ -75,7 +85,7 @@ public record OrganizationDto(
     string OrgName,
     string? SubName,
     string? Tenant,
-    bool Selected,
+    bool IsCurrent,
     string? LogoUrl,
     string? Address,
     string? PaymentAddress,

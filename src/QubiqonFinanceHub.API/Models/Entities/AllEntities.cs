@@ -67,8 +67,6 @@ public class Organization
 
     public bool IsActive { get; set; } = true;
 
-    public bool Selected { get; set; } = false;
-
     public string? Tenant { get; set; }
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
@@ -112,6 +110,27 @@ public class Employee
     public bool IsDelete { get; set; } = false;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
+
+    public EmployeeOrganizationContext? OrganizationContext { get; set; }
+}
+
+// ═══════════════════════════════════════════════════
+//  EMPLOYEE ORGANIZATION CONTEXT (per-user active org)
+// ═══════════════════════════════════════════════════
+public class EmployeeOrganizationContext
+{
+    [Key]
+    public Guid EmployeeId { get; set; }
+
+    public Guid? ActiveOrganizationId { get; set; }
+
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    [ForeignKey(nameof(EmployeeId))]
+    public Employee Employee { get; set; } = null!;
+
+    [ForeignKey(nameof(ActiveOrganizationId))]
+    public Organization? ActiveOrganization { get; set; }
 }
 
 // ═══════════════════════════════════════════════════

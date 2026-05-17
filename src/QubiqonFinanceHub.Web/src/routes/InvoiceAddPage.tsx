@@ -111,7 +111,7 @@ export default function InvoiceAddPage() {
 
   const subTotal = lineItems.reduce((sum, it) => sum + it.quantity * it.rate, 0);
   const selectedClient = clients.find((c) => c.id === clientId);
-  const clientCurrency = selectedClient?.currency || currency;
+  const invoiceCurrency = currency || selectedClient?.currency || "INR";
   const lineGstRows = aggregateLineGstRows(lineItems, gstConfigs);
   const totalGstAmount = round2(lineGstRows.reduce((s, r) => s + r.amount, 0));
   const selectedTds = tdsConfigs.find((t) => t.id === taxConfigId);
@@ -126,6 +126,7 @@ export default function InvoiceAddPage() {
   const canSubmit =
     !!clientId.trim() &&
     !!currency.trim() &&
+    !!purchaseOrder.trim() &&
     !!invoiceDate &&
     hasValidLineItems;
 
@@ -147,13 +148,17 @@ export default function InvoiceAddPage() {
       setError("Invoice date is required");
       return;
     }
+    if (!purchaseOrder.trim()) {
+      setError("Purchase order is required (enter NA if not applicable)");
+      return;
+    }
 
     setLoading(true);
     setError(null);
     try {
       await createInvoice({
         clientId,
-        currency: clientCurrency,
+        currency: invoiceCurrency,
         lineItems: validLineItems.map((it) => ({
           description: it.description.trim(),
           hsnCode: it.hsnCode.trim() || "998314",
@@ -165,7 +170,7 @@ export default function InvoiceAddPage() {
         invoiceDate: new Date(invoiceDate).toISOString(),
         dueDate: new Date(dueDate).toISOString(),
         paymentTerms,
-        purchaseOrder: purchaseOrder.trim() || "",
+        purchaseOrder: purchaseOrder.trim(),
         notes: notes.trim(),
         sendImmediately,
       });
@@ -418,7 +423,31 @@ export default function InvoiceAddPage() {
             label="Purchase order"
             value={purchaseOrder}
             onChange={(e) => setPurchaseOrder(e.target.value)}
-            ph="PO reference (optional)"
+            ph="PO reference or NA"
+            req
+            endAdornment={
+              <span
+                title="Purchase order is mandatory. If not available, enter NA."
+                style={{
+                  width: "18px",
+                  height: "18px",
+                  borderRadius: "50%",
+                  border: `1px solid ${C.border}`,
+                  background: C.surface,
+                  color: C.muted,
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "help",
+                  fontFamily: "'DM Sans'",
+                }}
+                aria-label="Purchase order help"
+              >
+                i
+              </span>
+            }
             style={cellStyle}
           />
           <Inp
@@ -442,7 +471,7 @@ export default function InvoiceAddPage() {
             >
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
                 <span style={{ color: C.muted }}>Sub total</span>
-                <span style={{ fontWeight: 600 }}>{fmtCur(subTotal, clientCurrency)}</span>
+                <span style={{ fontWeight: 600 }}>{fmtCur(subTotal, invoiceCurrency)}</span>
               </div>
               {lineGstRows.map((row) => (
                 <div
@@ -450,13 +479,13 @@ export default function InvoiceAddPage() {
                   style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}
                 >
                   <span style={{ color: C.muted }}>{row.label}</span>
-                  <span style={{ fontWeight: 600 }}>{fmtCur(row.amount, clientCurrency)}</span>
+                  <span style={{ fontWeight: 600 }}>{fmtCur(row.amount, invoiceCurrency)}</span>
                 </div>
               ))}
               {tdsRate > 0 && (
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", color: C.danger }}>
                   <span>TDS ({selectedTds?.section ?? ""} @ {tdsRate}%)</span>
-                  <span style={{ fontWeight: 600 }}>-{fmtCur(tdsAmount, clientCurrency)}</span>
+                  <span style={{ fontWeight: 600 }}>-{fmtCur(tdsAmount, invoiceCurrency)}</span>
                 </div>
               )}
               <div
@@ -468,7 +497,7 @@ export default function InvoiceAddPage() {
                 }}
               >
                 <span style={{ fontWeight: 700, color: C.invoice }}>Total</span>
-                <span style={{ fontSize: "14px", fontWeight: 700, color: C.invoice }}>{fmtCur(invoiceGrandTotal, clientCurrency)}</span>
+                <span style={{ fontSize: "14px", fontWeight: 700, color: C.invoice }}>{fmtCur(invoiceGrandTotal, invoiceCurrency)}</span>
               </div>
             </div>
           )}

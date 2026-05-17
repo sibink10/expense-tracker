@@ -106,7 +106,7 @@ export default function AdminOrgViewPage() {
                     overflow: "hidden",
                   }}
                 >
-                  {org.selected && (
+                  {org.isCurrent && (
                     <div
                       style={{
                         position: "absolute",

@@ -1,5 +1,6 @@
 ﻿using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.Models.Entities;
+using QubiqonFinanceHub.API.Services;
 using QubiqonFinanceHub.API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
@@ -8,6 +9,8 @@ namespace QubiqonFinanceHub.API.Services.Implementations;
 
 public class TenantService : ITenantService
 {
+    private const string EffectiveOrgIdItemKey = "EffectiveOrganizationId";
+
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly FinanceHubDbContext _db;
 
@@ -20,29 +23,57 @@ public class TenantService : ITenantService
         _db = db;
     }
 
-    public async Task<Guid> GetCurrentOrganizationId()
+    public async Task<Guid> GetHomeOrganizationIdAsync()
     {
-        var selected = await _db.Organizations
-            .Where(o => o.Selected)
-            .Select(o => o.Id)
-            .FirstOrDefaultAsync();
-
-        if (selected != Guid.Empty)
-            return selected;
-
-        var first = await _db.Organizations
-            .Select(o => o.Id)
-            .FirstOrDefaultAsync();
-
-        return first != Guid.Empty ? first : DevOrgId;
+        var emp = await GetCurrentEmployeeAsync();
+        return emp.OrganizationId;
     }
+
+    public async Task<Guid?> GetActiveOrganizationIdAsync()
+    {
+        var emp = await GetCurrentEmployeeAsync();
+        return emp.OrganizationContext?.ActiveOrganizationId;
+    }
+
+    public async Task<Guid> GetEffectiveOrganizationIdAsync()
+    {
+        var httpContext = _httpContextAccessor.HttpContext;
+        if (httpContext?.Items.TryGetValue(EffectiveOrgIdItemKey, out var cached) == true && cached is Guid cachedId)
+            return cachedId;
+
+        var emp = await GetCurrentEmployeeAsync();
+        if (emp.Id == DevEmpId)
+        {
+            var devOrg = await _db.Organizations
+                .Where(o => o.IsActive)
+                .OrderBy(o => o.OrgName)
+                .Select(o => o.Id)
+                .FirstOrDefaultAsync();
+            return devOrg != Guid.Empty ? devOrg : DevOrgId;
+        }
+
+        var home = emp.OrganizationId;
+        var active = emp.OrganizationContext?.ActiveOrganizationId;
+        var effective = OrganizationContextResolver.ResolveEffective(home, active);
+
+        var org = await _db.Organizations.FirstOrDefaultAsync(o => o.Id == effective);
+        if (org == null || !org.IsActive)
+            throw new InvalidOperationException("Organization not found or inactive.");
+
+        if (httpContext != null)
+            httpContext.Items[EffectiveOrgIdItemKey] = effective;
+
+        return effective;
+    }
+
+    public Task<Guid> GetCurrentOrganizationId() => GetEffectiveOrganizationIdAsync();
 
     public Guid GetCurrentEmployeeId()
     {
         var claim = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
                     ?? _httpContextAccessor.HttpContext?.User?.FindFirst("oid")?.Value;
         if (Guid.TryParse(claim, out var id)) return id;
-        return DevEmpId; // DEV fallback
+        return DevEmpId;
     }
 
     public string? GetCurrentUserEmail()
@@ -57,25 +88,31 @@ public class TenantService : ITenantService
         var empId = GetCurrentEmployeeId();
         var email = GetCurrentUserEmail();
 
-        var emp = await _db.Employees.FirstOrDefaultAsync(e => e.EntraObjectId == empId.ToString());
+        var emp = await _db.Employees
+            .Include(e => e.OrganizationContext)
+            .FirstOrDefaultAsync(e => e.EntraObjectId == empId.ToString());
 
         if (emp == null)
         {
-            emp = await _db.Employees.FirstOrDefaultAsync(e => e.Email == email);
+            emp = await _db.Employees
+                .Include(e => e.OrganizationContext)
+                .FirstOrDefaultAsync(e => e.Email == email);
             if (emp != null)
             {
                 emp.EntraObjectId = empId.ToString();
                 await _db.SaveChangesAsync();
             }
         }
+
         if (emp != null && emp.IsActive == false)
             throw new Exception("You have been deactivated from the application");
-        return emp ?? new Employee { Id = DevEmpId, FullName = "Dev User", Email = "dev@local.com" };
+
+        return emp ?? new Employee { Id = DevEmpId, FullName = "Dev User", Email = "dev@local.com", OrganizationId = DevOrgId };
     }
 
     public async Task<Organization> GetCurrentOrganizationAsync()
     {
-        var orgId = await GetCurrentOrganizationId();
+        var orgId = await GetEffectiveOrganizationIdAsync();
         var org = await _db.Organizations.FirstOrDefaultAsync(o => o.Id == orgId);
         return org ?? new Organization { Id = DevOrgId, OrgName = "Dev Org", SubName = "dev" };
     }
