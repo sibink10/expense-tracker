@@ -8,7 +8,19 @@ export { getVendors, createVendor, updateVendor, deleteVendor, type CreateVendor
 export { getClients, createClient, updateClient, deleteClient, type ClientPayload } from "./clients";
 export { getBills, createBill, approveBill, rejectBill, payBill, type CreateBillPayload } from "./bill";
 export { getTaxConfigs, createTaxConfig, toggleTaxConfig, type CreateTaxConfigPayload } from "./taxConfig";
-export { getInvoices, createInvoice, markInvoicePaid, type CreateInvoicePayload, type CreateInvoiceLineItem, type MarkInvoicePaidPayload } from "./invoice";
+export {
+  getInvoices,
+  getInvoice,
+  createInvoice,
+  markInvoicePaid,
+  markInvoiceSent,
+  getInvoiceZohoSignStatus,
+  syncInvoiceSignedPdf,
+  type CreateInvoicePayload,
+  type CreateInvoiceLineItem,
+  type MarkInvoicePaidPayload,
+  type InvoiceZohoSignStatus,
+} from "./invoice";
 export { getCategories, createCategory, toggleCategory, type Category, type CreateCategoryPayload } from "./category";
 export {
   getPaymentTerms,
@@ -33,3 +45,14 @@ export {
   selectOrganization,
   type OrganizationPayload,
 } from "./organization";
+export {
+  getZohoIntegrationSetup,
+  getZohoTemplates,
+  getZohoSignRequests,
+  sendZohoDocument,
+  downloadZohoSignPdf,
+  parseZohoTemplates,
+  parseZohoSignRequests,
+  type ZohoIntegrationSetup,
+  type ZohoSignSendPayload,
+} from "./zoho";

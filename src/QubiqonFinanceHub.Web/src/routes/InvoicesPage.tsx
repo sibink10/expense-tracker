@@ -8,6 +8,7 @@ import { Btn, Badge, Tbl, Filter, Stat, Empty, ListRefreshButton, Mdl, INVOICE_M
 import { useAppContext } from "../context/AppContext";
 import { getInvoiceCounts, getInvoices, markInvoiceSent } from "../shared/api/invoice";
 import { downloadInvoicePdf } from "../shared/invoicePdf";
+import { sendZohoDocument } from "../shared/api/zoho";
 
 const DownloadSpinner = () => (
   <span
@@ -30,6 +31,8 @@ export default function InvoicesPage() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [sendConfirm, setSendConfirm] = useState<Invoice | null>(null);
   const [sendLoading, setSendLoading] = useState(false);
+  const [zohoSignConfirm, setZohoSignConfirm] = useState<Invoice | null>(null);
+  const [zohoSignLoading, setZohoSignLoading] = useState(false);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -133,6 +136,35 @@ export default function InvoicesPage() {
       t(err instanceof Error ? err.message : "Could not mark invoice as sent", "error");
     } finally {
       setSendLoading(false);
+    }
+  };
+
+  const openZohoSignModal = (inv: Invoice) => {
+    setZohoSignConfirm(inv);
+  };
+
+  const canSendForSigning = (inv: Invoice) =>
+    canSendInvoice &&
+    !!inv.apiId &&
+    (inv.status === INV_S.DRAFT || inv.status === INV_S.SIGNATURE_FAILED);
+
+  const handleConfirmZohoSign = async () => {
+    const inv = zohoSignConfirm;
+    if (!inv?.apiId) return;
+    setZohoSignLoading(true);
+    try {
+      const result = await sendZohoDocument({
+        type: "Invoice",
+        sourceId: inv.apiId,
+      });
+      t(result.requestId ? `Sent for signature (${result.requestId})` : "Sent for Zoho Sign");
+      setZohoSignConfirm(null);
+      setRefreshKey((k) => k + 1);
+      window.dispatchEvent(new CustomEvent("invoices-refresh"));
+    } catch (err: unknown) {
+      t(err instanceof Error ? err.message : "Zoho Sign send failed", "error");
+    } finally {
+      setZohoSignLoading(false);
     }
   };
 
@@ -286,6 +318,18 @@ export default function InvoicesPage() {
                               Mark sent
                             </Btn>
                           )}
+                          {canSendForSigning(inv) && (
+                            <Btn
+                              sm
+                              v="secondary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openZohoSignModal(inv);
+                              }}
+                            >
+                              Send for signing
+                            </Btn>
+                          )}
                           {canSendInvoice && showMarkPaidOnRow(inv) && (
                             <Btn
                               sm
@@ -360,6 +404,37 @@ export default function InvoicesPage() {
           </Btn>
           <Btn v="invoice" onClick={handleConfirmSend} disabled={sendLoading}>
             {sendLoading ? "Updating…" : "Mark as sent"}
+          </Btn>
+        </div>
+      </Mdl>
+      <Mdl
+        open={!!zohoSignConfirm}
+        close={() => {
+          if (!zohoSignLoading) setZohoSignConfirm(null);
+        }}
+        title="Send invoice for signing?"
+        zIndex={INVOICE_MODAL_Z_INDEX + 50}
+      >
+        <p style={{ fontSize: "13px", color: C.primary, margin: "0 0 12px", lineHeight: 1.5 }}>
+          A PDF is generated from this invoice and sent to your organization&apos;s{" "}
+          <strong>Zoho Sign email</strong> (configured under Admin → Organization). After signing, sync stores the
+          signed PDF and marks the invoice as sent.
+        </p>
+        {!activeOrg?.zohoSignEmail && (
+          <p style={{ fontSize: 12, color: C.danger, margin: "0 0 12px" }}>
+            Set Zoho Sign email on the active organization before sending.
+          </p>
+        )}
+        <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", flexWrap: "wrap" }}>
+          <Btn v="secondary" onClick={() => setZohoSignConfirm(null)} disabled={zohoSignLoading}>
+            Cancel
+          </Btn>
+          <Btn
+            v="invoice"
+            onClick={() => void handleConfirmZohoSign()}
+            disabled={zohoSignLoading || !activeOrg?.zohoSignEmail}
+          >
+            {zohoSignLoading ? "Sending…" : "Send for signing"}
           </Btn>
         </div>
       </Mdl>

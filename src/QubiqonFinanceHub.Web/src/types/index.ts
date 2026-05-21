@@ -182,6 +182,11 @@ export interface Invoice {
   comments: ActivityComment[];
   paidRef?: string;
   paidAmound?: number;
+  zohoSignRequestId?: string | null;
+  zohoSignStatus?: string | null;
+  signatureRequestedAt?: string | null;
+  signedPdfUrl?: string | null;
+  signedAt?: string | null;
 }
 
 export interface Vendor {

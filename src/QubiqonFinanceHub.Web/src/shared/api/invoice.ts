@@ -62,6 +62,11 @@ export interface ApiInvoice {
   comments?: { by: string; text: string; actionType?: string; createdAt?: string }[];
   paymentReference?: string | null;
   paidAmound?: number;
+  zohoSignRequestId?: string | null;
+  zohoSignStatus?: string | null;
+  signatureRequestedAt?: string | null;
+  signedPdfUrl?: string | null;
+  signedAt?: string | null;
 }
 
 const STATUS_MAP: Record<string, string> = {
@@ -71,6 +76,9 @@ const STATUS_MAP: Record<string, string> = {
   Paid: INV_S.PAID,
   PartiallyPaid: INV_S.PARTIALLY_PAID,
   Overdue: INV_S.OVERDUE,
+  PendingSignature: INV_S.PENDING_SIGNATURE,
+  Signed: INV_S.SIGNED,
+  SignatureFailed: INV_S.SIGNATURE_FAILED,
 };
 
 function mapStatus(s: string): string {
@@ -128,7 +136,42 @@ function mapApiInvoiceToApp(item: ApiInvoice): Invoice {
     }),
     paidRef: item.paymentReference ?? undefined,
     paidAmound: item.paidAmound ?? 0,
+    zohoSignRequestId: item.zohoSignRequestId ?? null,
+    zohoSignStatus: item.zohoSignStatus ?? null,
+    signatureRequestedAt: item.signatureRequestedAt ?? null,
+    signedPdfUrl: item.signedPdfUrl ?? null,
+    signedAt: item.signedAt ?? null,
   };
+}
+
+export interface InvoiceZohoSignStatus {
+  zohoRequestId?: string | null;
+  zohoStatus?: string | null;
+  invoiceStatus: string;
+  signedPdfUrl?: string | null;
+  canResend: boolean;
+  canSyncToStorage: boolean;
+  lastCheckedAt?: string;
+  signerEmail?: string | null;
+}
+
+export async function getInvoiceZohoSignStatus(invoiceId: string, refresh = true): Promise<InvoiceZohoSignStatus> {
+  const { data } = await apiClient.get<InvoiceZohoSignStatus>(
+    `/invoices/${invoiceId}/zoho-sign/status`,
+    { params: { refresh } },
+  );
+  return data;
+}
+
+export async function syncInvoiceSignedPdf(invoiceId: string): Promise<ApiInvoice> {
+  const { data } = await apiClient.post<ApiInvoice>(`/invoices/${invoiceId}/zoho-sign/sync`);
+  return data;
+}
+
+/** SAS URL for viewing/downloading the stored signed PDF (GET /api/invoices/{id}/signed-pdf). */
+export async function getInvoiceSignedPdfUrl(invoiceId: string): Promise<string> {
+  const { data } = await apiClient.get<{ url: string }>(`/invoices/${invoiceId}/signed-pdf`);
+  return data?.url ?? "";
 }
 
 export interface ApiInvoicesResponse {

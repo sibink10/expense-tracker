@@ -42,6 +42,10 @@ public class Organization
     [MaxLength(256)]
     public string? Website { get; set; }
 
+    /// <summary>Zoho Sign recipient — authorized org signatory email.</summary>
+    [MaxLength(256)]
+    public string? ZohoSignEmail { get; set; }
+
     [MaxLength(300)]
     public string? PaymentAddress { get; set; }
 
@@ -334,6 +338,12 @@ public class Invoice
     [MaxLength(100)] public string? PaymentReference { get; set; }
     public DateTime? PaidAt { get; set; }
     public DateTime? SentAt { get; set; }
+    [MaxLength(64)] public string? ZohoSignRequestId { get; set; }
+    [MaxLength(50)] public string? ZohoSignStatus { get; set; }
+    public DateTime? ZohoSignStatusUpdatedAt { get; set; }
+    public DateTime? SignatureRequestedAt { get; set; }
+    [MaxLength(2048)] public string? SignedPdfUrl { get; set; }
+    public DateTime? SignedAt { get; set; }
     public Guid CreatedByEmployeeId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }

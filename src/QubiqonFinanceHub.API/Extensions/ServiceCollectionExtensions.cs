@@ -5,21 +5,27 @@ using Microsoft.Identity.Web;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.Services.Implementations;
 using QubiqonFinanceHub.API.Services.Interfaces;
+using QubiqonFinanceHub.API.Services.Pdf;
+using QubiqonFinanceHub.API.Services.Zoho;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace QubiqonFinanceHub.API.Extensions;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddApplicationServices(this IServiceCollection services)
+    public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration config)
     {
         services.AddHttpContextAccessor();
         services.AddHttpClient("GraphClient");
+        services.AddHttpClient("ZohoSignClient");
+        services.Configure<ZohoOptions>(config.GetSection(ZohoOptions.SectionName));
+        services.AddSingleton<IZohoService, ZohoService>();
         services.AddScoped<ITenantService, TenantService>();
         services.AddScoped<ICodeGeneratorService, CodeGeneratorService>();
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IOrganizationService, OrganizationService>();
         services.AddScoped<IExpenseService, ExpenseService>();
+        services.AddScoped<IInvoicePdfGenerator, InvoicePdfGenerator>();
         services.AddScoped<IInvoiceService, InvoiceService>();
         services.AddScoped<IAdvanceService, AdvanceService>();
         services.AddScoped<IVendorService, VendorService>();

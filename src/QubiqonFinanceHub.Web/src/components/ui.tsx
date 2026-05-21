@@ -254,6 +254,9 @@ const _b: Record<string, [string, string]> = {};
   [INV_S.PAID, C.successBg, C.success],
   [INV_S.PARTIALLY_PAID, C.invoiceBg, C.invoice],
   [INV_S.OVERDUE, "#FEE2E2", "#991B1B"],
+  [INV_S.PENDING_SIGNATURE, "#E0F2FE", "#0369A1"],
+  [INV_S.SIGNED, "#DCFCE7", "#166534"],
+  [INV_S.SIGNATURE_FAILED, "#FEE2E2", "#991B1B"],
 ].forEach(([k, bg, fg]) => { _b[k as string] = [bg as string, fg as string]; });
 const BADGE_MAP = _b;
 

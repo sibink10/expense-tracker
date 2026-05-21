@@ -95,6 +95,15 @@ public interface IInvoiceService
     Task<InvoiceDto> MarkSentAsync(Guid id);
     Task<InvoiceDto> MarkPaidAsync(Guid id, ProcessPaymentRequest dto);
     Task<byte[]> GeneratePdfAsync(Guid id);
+    Task<InvoiceDto> TransitionToPendingSignatureAsync(Guid id, string zohoRequestId, string? zohoStatus);
+    Task<InvoiceDto> ApplyZohoSignStatusAsync(Guid id, string zohoStatus);
+    Task<InvoiceDto> CompleteSignedPdfSyncAsync(Guid id, string blobUrl);
+    Task<InvoiceDto> ClearZohoSignForResendAsync(Guid id);
+    Task<InvoiceZohoSignStatusDto> GetZohoSignStatusAsync(Guid id, bool refreshFromZoho = true);
+    Task<InvoiceDto> SyncSignedPdfFromZohoAsync(Guid id);
+    Task<string> GetSignedPdfUrlAsync(Guid id);
+    Task ApplyZohoSignStatusByRequestIdAsync(string zohoRequestId, string zohoStatus);
+    Task TrySyncSignedPdfByRequestIdAsync(string zohoRequestId);
 }
 
 public interface ITaxConfigService
@@ -148,6 +157,8 @@ public interface IEmployeeService
 public interface IStorageService
 {
     Task<string> UploadAsync(string folder, Guid entityId, IFormFile file);
+    Task<string> UploadBytesAsync(string blobPath, byte[] content, string contentType);
+    Task<byte[]?> DownloadBytesAsync(string fileUrl);
     Task DeleteAsync(string fileUrl);
     string GenerateSasUrl(string fileUrl, int expiryMinutes = 30);
 }

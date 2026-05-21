@@ -46,6 +46,7 @@ export function buildNav(_cfg?: { advEnabled?: boolean }): NavSection[] {
       items: [
         { path: "/invoices", l: "Invoices", i: "📄", r: ["finance", "admin"] as UserRole[], end: true, addPath: "/invoices/add", addRoles: ["finance", "admin"] as UserRole[] },
         { path: "/clients", l: "Clients", i: "👥", r: ["finance", "admin"] as UserRole[], end: true, addPath: "/clients/add", addRoles: ["admin"] as UserRole[] },
+        { path: "/admin/zoho-sign", l: "Zoho Sign", i: "✍", r: ["finance", "admin"] as UserRole[], end: true },
       ],
     },
     {

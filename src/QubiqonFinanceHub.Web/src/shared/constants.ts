@@ -40,6 +40,9 @@ export const INV_S = {
   PAID: "Paid",
   PARTIALLY_PAID: "Partial",
   OVERDUE: "Overdue",
+  PENDING_SIGNATURE: "PendingSignature",
+  SIGNED: "Signed",
+  SIGNATURE_FAILED: "SignatureFailed",
 } as const;
 
 /** Vendor bill: when finance should pay (stored as immediate | later). */

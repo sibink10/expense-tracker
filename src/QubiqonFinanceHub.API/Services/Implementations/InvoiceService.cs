@@ -5,6 +5,8 @@ using QubiqonFinanceHub.API.Models.Entities;
 using QubiqonFinanceHub.API.Models.Enums;
 using QubiqonFinanceHub.API.Services.Helpers;
 using QubiqonFinanceHub.API.Services.Interfaces;
+using QubiqonFinanceHub.API.Services.Pdf;
+using QubiqonFinanceHub.API.Services.Zoho;
 using Humanizer;
 
 namespace QubiqonFinanceHub.API.Services.Implementations;
@@ -15,10 +17,30 @@ public class InvoiceService : IInvoiceService
     private readonly ITenantService _tenant;
     private readonly ICodeGeneratorService _codeGen;
     private readonly IOrganizationService _orgService;
+    private readonly IInvoicePdfGenerator _pdfGenerator;
+    private readonly IStorageService _storage;
+    private readonly IZohoService _zoho;
     private readonly ILogger<InvoiceService> _log;
 
-    public InvoiceService(FinanceHubDbContext db, ITenantService tenant, ICodeGeneratorService codeGen, IOrganizationService orgService, ILogger<InvoiceService> log)
-    { _db = db; _tenant = tenant; _codeGen = codeGen; _orgService = orgService; _log = log; }
+    public InvoiceService(
+        FinanceHubDbContext db,
+        ITenantService tenant,
+        ICodeGeneratorService codeGen,
+        IOrganizationService orgService,
+        IInvoicePdfGenerator pdfGenerator,
+        IStorageService storage,
+        IZohoService zoho,
+        ILogger<InvoiceService> log)
+    {
+        _db = db;
+        _tenant = tenant;
+        _codeGen = codeGen;
+        _orgService = orgService;
+        _pdfGenerator = pdfGenerator;
+        _storage = storage;
+        _zoho = zoho;
+        _log = log;
+    }
 
     public async Task<InvoiceDto> CreateAsync(CreateInvoiceRequest dto)
     {
@@ -349,8 +371,8 @@ public class InvoiceService : IInvoiceService
         if (inv.Status == InvoiceStatus.Paid || inv.paidAmound >= inv.Total)
             throw new InvalidOperationException("Invoice is already fully paid.");
 
-        if (inv.Status == InvoiceStatus.Draft)
-            throw new InvalidOperationException("Send the invoice to the client before recording payment.");
+        if (inv.Status is InvoiceStatus.Draft or InvoiceStatus.PendingSignature or InvoiceStatus.Signed or InvoiceStatus.SignatureFailed)
+            throw new InvalidOperationException("Complete signing and send the invoice to the client before recording payment.");
 
         var currentPaid = inv.paidAmound;
         var newTotalPaid = currentPaid + dto.PaidAmount;
@@ -385,16 +407,286 @@ public class InvoiceService : IInvoiceService
         return (await GetByIdAsync(id))!;
     }
 
-    public async Task<byte[]> GeneratePdfAsync(Guid id)
-    {
-        var inv = await GetByIdAsync(id)
-            ?? throw new KeyNotFoundException("Invoice not found");
-        var org = await _orgService.GetAsync();
+    public Task<byte[]> GeneratePdfAsync(Guid id) => _pdfGenerator.GenerateAsync(id);
 
-        // QuestPDF document generation would go here
-        // For now return empty - in production this uses QuestPDF to match
-        // the exact Zoho Books format with logo, bank details, etc.
-        throw new NotImplementedException("PDF generation via QuestPDF — see InvoicePdfGenerator.cs");
+    public async Task<InvoiceDto> TransitionToPendingSignatureAsync(Guid id, string zohoRequestId, string? zohoStatus)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var emp = await _tenant.GetCurrentEmployeeAsync();
+        var inv = await _db.Invoices.FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Invoice not found.");
+
+        if (inv.Status is not (InvoiceStatus.Draft or InvoiceStatus.SignatureFailed))
+            throw new InvalidOperationException("Only draft or failed invoices can be sent for signing.");
+
+        inv.Status = InvoiceStatus.PendingSignature;
+        inv.ZohoSignRequestId = zohoRequestId.Trim();
+        inv.ZohoSignStatus = zohoStatus;
+        inv.ZohoSignStatusUpdatedAt = DateTime.UtcNow;
+        inv.SignatureRequestedAt = DateTime.UtcNow;
+        inv.UpdatedAt = DateTime.UtcNow;
+
+        _db.ActivityComments.Add(new ActivityComment
+        {
+            Id = Guid.NewGuid(),
+            InvoiceId = id,
+            CommentByEmployeeId = emp.Id,
+            Text = $"Sent for Zoho Sign (request {zohoRequestId}).",
+            ActionType = CommentActionType.Sent
+        });
+
+        await _db.SaveChangesAsync();
+        return (await GetByIdAsync(id))!;
+    }
+
+    public async Task<InvoiceDto> ApplyZohoSignStatusAsync(Guid id, string zohoStatus)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var inv = await _db.Invoices.FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Invoice not found.");
+
+        inv.ZohoSignStatus = zohoStatus;
+        inv.ZohoSignStatusUpdatedAt = DateTime.UtcNow;
+
+        var mapped = _zoho.MapZohoRequestStatusToInvoiceStatus(zohoStatus);
+        if (mapped == nameof(InvoiceStatus.Signed) && inv.Status == InvoiceStatus.PendingSignature)
+        {
+            inv.Status = InvoiceStatus.Signed;
+            inv.UpdatedAt = DateTime.UtcNow;
+            _db.ActivityComments.Add(new ActivityComment
+            {
+                Id = Guid.NewGuid(),
+                InvoiceId = id,
+                CommentByEmployeeId = (await _tenant.GetCurrentEmployeeAsync()).Id,
+                Text = "Document signed in Zoho Sign.",
+                ActionType = CommentActionType.General
+            });
+        }
+        else if (mapped == nameof(InvoiceStatus.SignatureFailed))
+        {
+            inv.Status = InvoiceStatus.SignatureFailed;
+            inv.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+        return (await GetByIdAsync(id))!;
+    }
+
+    public async Task<InvoiceDto> CompleteSignedPdfSyncAsync(Guid id, string blobUrl)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var emp = await _tenant.GetCurrentEmployeeAsync();
+        var inv = await _db.Invoices.FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Invoice not found.");
+
+        if (inv.Status != InvoiceStatus.Signed && inv.Status != InvoiceStatus.PendingSignature)
+            throw new InvalidOperationException("Invoice is not ready for signed PDF sync.");
+
+        inv.SignedPdfUrl = blobUrl;
+        inv.SignedAt = DateTime.UtcNow;
+        inv.Status = InvoiceStatus.Sent;
+        inv.SentAt ??= DateTime.UtcNow;
+        inv.UpdatedAt = DateTime.UtcNow;
+
+        _db.ActivityComments.Add(new ActivityComment
+        {
+            Id = Guid.NewGuid(),
+            InvoiceId = id,
+            CommentByEmployeeId = emp.Id,
+            Text = "Signed PDF stored; invoice marked as sent.",
+            ActionType = CommentActionType.Sent
+        });
+
+        await _db.SaveChangesAsync();
+        return (await GetByIdAsync(id))!;
+    }
+
+    public async Task<InvoiceDto> ClearZohoSignForResendAsync(Guid id)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var inv = await _db.Invoices.FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Invoice not found.");
+
+        inv.ZohoSignRequestId = null;
+        inv.ZohoSignStatus = null;
+        inv.ZohoSignStatusUpdatedAt = null;
+        inv.SignatureRequestedAt = null;
+        inv.SignedPdfUrl = null;
+        inv.SignedAt = null;
+        inv.Status = InvoiceStatus.Draft;
+        inv.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return (await GetByIdAsync(id))!;
+    }
+
+    public async Task<InvoiceZohoSignStatusDto> GetZohoSignStatusAsync(Guid id, bool refreshFromZoho = true)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var inv = await _db.Invoices
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Invoice not found.");
+
+        var org = await _db.Organizations.AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == inv.OrganizationId)
+            ?? throw new KeyNotFoundException("Organization not found.");
+
+        if (refreshFromZoho && !string.IsNullOrWhiteSpace(inv.ZohoSignRequestId))
+        {
+            try
+            {
+                var detail = await _zoho.GetSignRequestByIdAsync(inv.ZohoSignRequestId);
+                var zohoStatus = TryReadZohoRequestStatus(detail);
+                if (!string.IsNullOrWhiteSpace(zohoStatus))
+                    await ApplyZohoSignStatusAsync(id, zohoStatus);
+
+                inv = await _db.Invoices.AsNoTracking()
+                    .FirstAsync(x => x.Id == id && x.OrganizationId == orgId);
+            }
+            catch (Exception ex)
+            {
+                _log.LogWarning(ex, "Could not refresh Zoho sign status for invoice {InvoiceId}", id);
+            }
+        }
+
+        var statusName = GetDisplayStatus(inv);
+        var canSync = inv.Status == InvoiceStatus.Signed && string.IsNullOrWhiteSpace(inv.SignedPdfUrl);
+        var canResend = inv.Status is InvoiceStatus.SignatureFailed or InvoiceStatus.Draft;
+
+        return new InvoiceZohoSignStatusDto(
+            inv.ZohoSignRequestId,
+            inv.ZohoSignStatus,
+            statusName,
+            inv.SignedPdfUrl,
+            canResend,
+            canSync,
+            inv.ZohoSignStatusUpdatedAt ?? DateTime.UtcNow,
+            org.ZohoSignEmail
+        );
+    }
+
+    public async Task<InvoiceDto> SyncSignedPdfFromZohoAsync(Guid id)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var inv = await _db.Invoices.FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Invoice not found.");
+
+        await SyncSignedPdfCoreAsync(inv);
+        return (await GetByIdAsync(id))!;
+    }
+
+    public async Task<string> GetSignedPdfUrlAsync(Guid id)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var inv = await _db.Invoices.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Invoice not found.");
+
+        if (string.IsNullOrWhiteSpace(inv.SignedPdfUrl))
+            throw new InvalidOperationException("No signed PDF is stored for this invoice.");
+
+        return _storage.GenerateSasUrl(inv.SignedPdfUrl);
+    }
+
+    public async Task ApplyZohoSignStatusByRequestIdAsync(string zohoRequestId, string zohoStatus)
+    {
+        var inv = await _db.Invoices.FirstOrDefaultAsync(x => x.ZohoSignRequestId == zohoRequestId)
+            ?? throw new KeyNotFoundException("Invoice not found for Zoho request.");
+
+        inv.ZohoSignStatus = zohoStatus;
+        inv.ZohoSignStatusUpdatedAt = DateTime.UtcNow;
+
+        var mapped = _zoho.MapZohoRequestStatusToInvoiceStatus(zohoStatus);
+        if (mapped == nameof(InvoiceStatus.Signed) && inv.Status == InvoiceStatus.PendingSignature)
+        {
+            inv.Status = InvoiceStatus.Signed;
+            inv.UpdatedAt = DateTime.UtcNow;
+            _db.ActivityComments.Add(new ActivityComment
+            {
+                Id = Guid.NewGuid(),
+                InvoiceId = inv.Id,
+                CommentByEmployeeId = inv.CreatedByEmployeeId,
+                Text = "Document signed in Zoho Sign (webhook).",
+                ActionType = CommentActionType.General
+            });
+        }
+        else if (mapped == nameof(InvoiceStatus.SignatureFailed))
+        {
+            inv.Status = InvoiceStatus.SignatureFailed;
+            inv.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task TrySyncSignedPdfByRequestIdAsync(string zohoRequestId)
+    {
+        var inv = await _db.Invoices.FirstOrDefaultAsync(x => x.ZohoSignRequestId == zohoRequestId);
+        if (inv == null) return;
+        if (!string.IsNullOrWhiteSpace(inv.SignedPdfUrl)) return;
+        if (inv.Status != InvoiceStatus.Signed && inv.Status != InvoiceStatus.PendingSignature) return;
+
+        try
+        {
+            await SyncSignedPdfCoreAsync(inv);
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Auto sync signed PDF failed for Zoho request {RequestId}", zohoRequestId);
+        }
+    }
+
+    private async Task SyncSignedPdfCoreAsync(Invoice inv)
+    {
+        if (string.IsNullOrWhiteSpace(inv.ZohoSignRequestId))
+            throw new InvalidOperationException("No Zoho Sign request is linked to this invoice.");
+
+        if (!string.IsNullOrWhiteSpace(inv.SignedPdfUrl)) return;
+
+        var pdfBytes = await _zoho.DownloadSignRequestPdfAsync(inv.ZohoSignRequestId);
+        var safeCode = SanitizeBlobFileName(inv.InvoiceCode);
+        var blobPath = $"invoices/{safeCode}.pdf";
+        var url = await _storage.UploadBytesAsync(blobPath, pdfBytes, "application/pdf");
+
+        inv.SignedPdfUrl = url;
+        inv.SignedAt = DateTime.UtcNow;
+        inv.Status = InvoiceStatus.Sent;
+        inv.SentAt ??= DateTime.UtcNow;
+        inv.UpdatedAt = DateTime.UtcNow;
+
+        _db.ActivityComments.Add(new ActivityComment
+        {
+            Id = Guid.NewGuid(),
+            InvoiceId = inv.Id,
+            CommentByEmployeeId = inv.CreatedByEmployeeId,
+            Text = "Signed PDF stored; invoice marked as sent.",
+            ActionType = CommentActionType.Sent
+        });
+
+        await _db.SaveChangesAsync();
+    }
+
+    private static string SanitizeBlobFileName(string code)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var cleaned = new string(code.Select(c => invalid.Contains(c) ? '_' : c).ToArray());
+        return string.IsNullOrWhiteSpace(cleaned) ? "invoice" : cleaned;
+    }
+
+    private static string? TryReadZohoRequestStatus(System.Text.Json.Nodes.JsonNode detail)
+    {
+        try
+        {
+            if (detail["requests"] is System.Text.Json.Nodes.JsonObject req &&
+                req["request_status"] is System.Text.Json.Nodes.JsonValue v &&
+                v.TryGetValue<string>(out var s))
+                return s;
+            if (detail["request_status"] is System.Text.Json.Nodes.JsonValue v2 &&
+                v2.TryGetValue<string>(out var s2))
+                return s2;
+        }
+        catch { /* ignore */ }
+        return null;
     }
 
     private static string FormatCurrency(decimal amount, string currency) =>
@@ -416,6 +708,7 @@ public class InvoiceService : IInvoiceService
      inv.InvoiceDate, inv.DueDate, inv.PaymentTerms, inv.PurchaseOrder,
      GetDisplayStatus(inv), inv.Notes, inv.TotalInWords,
      inv.PaymentReference, inv.PaidAt, inv.CreatedAt,
+     inv.ZohoSignRequestId, inv.ZohoSignStatus, inv.SignatureRequestedAt, inv.SignedPdfUrl, inv.SignedAt,
      inv.LineItems.Select(l => new InvoiceLineItemDto(
          l.LineNumber, l.Description, l.HSNCode, l.Quantity, l.Rate, l.Amount,
          l.GSTConfig?.Name, l.GSTConfig?.Rate ?? 0, l.GSTAmount, l.TotalAmount, l.GSTConfigId
@@ -427,6 +720,9 @@ public class InvoiceService : IInvoiceService
 
     private static string GetDisplayStatus(Invoice inv)
     {
+        if (inv.Status is InvoiceStatus.PendingSignature or InvoiceStatus.Signed or InvoiceStatus.SignatureFailed)
+            return inv.Status.ToString();
+
         var today = DateTime.UtcNow.Date;
         var isOverdue = inv.DueDate < today && inv.paidAmound < inv.Total && inv.Status != InvoiceStatus.Paid;
         return isOverdue ? InvoiceStatus.Overdue.ToString() : inv.Status.ToString();

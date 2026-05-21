@@ -45,6 +45,8 @@ export interface OrganizationDto {
   isCurrent?: boolean;
   LogoUrl?: string | null;
   logoUrl?: string | null;
+  ZohoSignEmail?: string;
+  zohoSignEmail?: string;
 }
 
 export interface OrganizationPayload {
@@ -70,6 +72,7 @@ export interface OrganizationPayload {
   isCurrent?: boolean;
   logoUrl?: string | null;
   logoFile?: File | null;
+  zohoSignEmail?: string;
 }
 
 // Normalized shape used by the UI
@@ -98,6 +101,7 @@ function mapDtoToPayload(dto: OrganizationDto): OrganizationPayload {
     tenant: (anyDto.Tenant as string) ?? (anyDto.tenant as string),
     isCurrent: (anyDto.IsCurrent as boolean) ?? (anyDto.isCurrent as boolean) ?? false,
     logoUrl: (anyDto.LogoUrl as string) ?? (anyDto.logoUrl as string) ?? null,
+    zohoSignEmail: (anyDto.ZohoSignEmail as string) ?? (anyDto.zohoSignEmail as string),
   };
 }
 
@@ -143,6 +147,7 @@ export async function saveOrganization(payload: OrganizationPayload): Promise<Or
   if (payload.ifscCode) form.append("IfscCode", payload.ifscCode);
   if (payload.accountNumber) form.append("AccountNumber", payload.accountNumber);
   if (payload.bankAddress) form.append("BankAddress", payload.bankAddress);
+  if (payload.zohoSignEmail) form.append("ZohoSignEmail", payload.zohoSignEmail);
   if (payload.tenant) form.append("Tenant", payload.tenant);
   if (payload.logoFile) form.append("LogoFile", payload.logoFile);
   if (payload.id) {

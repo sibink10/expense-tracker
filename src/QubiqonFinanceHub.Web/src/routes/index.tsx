@@ -26,6 +26,7 @@ import AdminEmailPage from "../pages/AdminEmailPage";
 import AdminCategoriesPage from "../pages/AdminCategoriesPage";
 import AdminPaymentTermsPage from "../pages/AdminPaymentTermsPage";
 import AdminAccountsPage from "../pages/AdminAccountsPage";
+import ZohoSignPage from "../pages/ZohoSignPage";
 import NotFoundPage from "../pages/NotFoundPage";
 
 function DashOrRedirect() {
@@ -63,6 +64,7 @@ export const router = createBrowserRouter([
       { path: "admin/payment-terms", element: <AdminPaymentTermsPage /> },
       { path: "admin/accounts", element: <AdminAccountsPage /> },
       { path: "admin/email", element: <AdminEmailPage /> },
+      { path: "admin/zoho-sign", element: <ZohoSignPage /> },
       { path: "*", element: <NotFoundPage /> },
     ],
   },

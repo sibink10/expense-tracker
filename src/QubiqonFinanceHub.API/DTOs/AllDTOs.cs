@@ -54,6 +54,7 @@ public record CreateOrganizationRequest(
     string? IfscCode,
     string? AccountNumber,
     string? BankAddress,
+    string? ZohoSignEmail,
     string? Tenant,
     IFormFile? LogoFile
 );
@@ -76,6 +77,7 @@ public record UpdateOrganizationRequest(
     string? IfscCode,
     string? AccountNumber,
     string? BankAddress,
+    string? ZohoSignEmail,
     string? Tenant,
     IFormFile? LogoFile
 );
@@ -101,7 +103,8 @@ public record OrganizationDto(
     string? BankName,
     string? IfscCode,
     string? AccountNumber,
-    string? BankAddress
+    string? BankAddress,
+    string? ZohoSignEmail
 );
 
 // ═══════════════════════════════════════════════════
@@ -346,8 +349,24 @@ public record InvoiceDto(
     string? PaymentReference,
     DateTime? PaidAt,
     DateTime CreatedAt,
+    string? ZohoSignRequestId,
+    string? ZohoSignStatus,
+    DateTime? SignatureRequestedAt,
+    string? SignedPdfUrl,
+    DateTime? SignedAt,
     List<InvoiceLineItemDto> LineItems,
     List<CommentDto> Comments
+);
+
+public record InvoiceZohoSignStatusDto(
+    string? ZohoRequestId,
+    string? ZohoStatus,
+    string InvoiceStatus,
+    string? SignedPdfUrl,
+    bool CanResend,
+    bool CanSyncToStorage,
+    DateTime? LastCheckedAt,
+    string? SignerEmail
 );
 
 public record InvoiceStatusCountsDto(

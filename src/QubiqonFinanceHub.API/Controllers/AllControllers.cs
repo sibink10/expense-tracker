@@ -289,7 +289,55 @@ public class InvoicesController(IInvoiceService svc) : ControllerBase
     public async Task<IActionResult> Send(Guid id) => Ok(await svc.MarkSentAsync(id));
     [HttpPost("{id:guid}/paid"), Authorize(Roles = "Finance,Admin")]
     public async Task<IActionResult> Paid(Guid id, [FromBody] ProcessPaymentRequest dto) => Ok(await svc.MarkPaidAsync(id, dto));
-    [HttpGet("{id:guid}/pdf")] public async Task<IActionResult> Pdf(Guid id) { var pdf = await svc.GeneratePdfAsync(id); return File(pdf, "application/pdf"); }
+    [HttpGet("{id:guid}/pdf")] public async Task<IActionResult> Pdf(Guid id) { var pdf = await svc.GeneratePdfAsync(id); return File(pdf, "application/pdf", $"invoice-{id}.pdf"); }
+
+    [HttpGet("{id:guid}/signed-pdf")]
+    public async Task<IActionResult> GetSignedPdfUrl(Guid id)
+    {
+        try
+        {
+            var url = await svc.GetSignedPdfUrlAsync(id);
+            return Ok(new { url });
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpGet("{id:guid}/zoho-sign/status")]
+    public async Task<IActionResult> ZohoSignStatus(Guid id, [FromQuery] bool refresh = true)
+    {
+        try
+        {
+            return Ok(await svc.GetZohoSignStatusAsync(id, refresh));
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
+    [HttpPost("{id:guid}/zoho-sign/sync"), Authorize(Roles = "Finance,Admin")]
+    public async Task<IActionResult> ZohoSignSync(Guid id)
+    {
+        try
+        {
+            return Ok(await svc.SyncSignedPdfFromZohoAsync(id));
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════

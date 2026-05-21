@@ -34,6 +34,34 @@ public class AzureBlobStorageService : IStorageService
         return blobClient.Uri.ToString();
     }
 
+    public async Task<string> UploadBytesAsync(string blobPath, byte[] content, string contentType)
+    {
+        var containerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
+        await containerClient.CreateIfNotExistsAsync(PublicAccessType.None);
+
+        var blobClient = containerClient.GetBlobClient(blobPath.Trim().TrimStart('/'));
+        await using var stream = new MemoryStream(content);
+        await blobClient.UploadAsync(stream, overwrite: true, cancellationToken: default);
+        await blobClient.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = contentType });
+
+        return blobClient.Uri.ToString();
+    }
+
+    public async Task<byte[]?> DownloadBytesAsync(string fileUrl)
+    {
+        if (string.IsNullOrWhiteSpace(fileUrl)) return null;
+
+        var uri = new Uri(fileUrl);
+        var blobPath = string.Join("/", uri.AbsolutePath.TrimStart('/').Split('/').Skip(1));
+        var containerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
+        var blobClient = containerClient.GetBlobClient(blobPath);
+
+        if (!await blobClient.ExistsAsync()) return null;
+
+        var response = await blobClient.DownloadContentAsync();
+        return response.Value.Content.ToArray();
+    }
+
     public async Task DeleteAsync(string fileUrl)
     {
         var uri = new Uri(fileUrl);

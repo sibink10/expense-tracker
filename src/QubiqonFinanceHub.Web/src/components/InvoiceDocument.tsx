@@ -41,7 +41,13 @@ export default function InvoiceDocument({ invoice: inv, organization: org, hideS
             ? "#6C3FA0"
             : inv.status === INV_S.PARTIALLY_PAID
               ? C.invoice
-              : C.muted;
+              : inv.status === INV_S.PENDING_SIGNATURE
+                ? C.info
+                : inv.status === INV_S.SIGNED
+                  ? C.success
+                  : inv.status === INV_S.SIGNATURE_FAILED
+                    ? C.danger
+                    : C.muted;
 
   const overdueDays =
     inv.status === INV_S.OVERDUE ? daysOverdueFromDueYmd(inv.due) : null;

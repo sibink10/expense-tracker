@@ -26,6 +26,7 @@ export default function AdminOrgPage() {
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [fax, setFax] = useState("");
   const [website, setWebsite] = useState("");
+  const [zohoSignEmail, setZohoSignEmail] = useState("");
   const [useSeparatePaymentAddress, setUseSeparatePaymentAddress] = useState(false);
   const [paymentAddress, setPaymentAddress] = useState("");
   const [bankName, setBankName] = useState("");
@@ -65,6 +66,7 @@ export default function AdminOrgPage() {
         setPhone(normalizeStoredPhone(org.phone ?? undefined) ?? undefined);
         setFax(org.fax ?? "");
         setWebsite(org.website ?? "");
+        setZohoSignEmail(org.zohoSignEmail ?? "");
         setUseSeparatePaymentAddress(org.useSeparatePaymentAddress ?? false);
         setPaymentAddress(org.paymentAddress ?? "");
         setBankName(org.bankName ?? "");
@@ -117,6 +119,7 @@ export default function AdminOrgPage() {
       phone: phone?.trim() || undefined,
       fax: fax || undefined,
       website: website || undefined,
+      zohoSignEmail: zohoSignEmail.trim() || undefined,
       useSeparatePaymentAddress: useSeparatePaymentAddress,
       paymentAddress: useSeparatePaymentAddress ? paymentAddress || undefined : undefined,
       bankName: bankName.trim(),
@@ -263,6 +266,17 @@ export default function AdminOrgPage() {
               onChange={(e) => setWebsite(e.target.value)}
               ph="https://example.com"
             />
+            <Inp
+              label="Zoho Sign email"
+              type="email"
+              value={zohoSignEmail}
+              onChange={(e) => setZohoSignEmail(e.target.value)}
+              ph="authorized.signer@company.com"
+              req
+            />
+            <p style={{ margin: "-8px 0 12px", fontSize: "11px", color: C.muted, lineHeight: 1.4 }}>
+              Authorized signatory — invoice PDFs sent for Zoho Sign are delivered to this address only.
+            </p>
           </div>
         </div>
 

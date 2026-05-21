@@ -42,6 +42,7 @@ public class OrganizationService(
             IfscCode = dto.IfscCode?.Trim(),
             AccountNumber = dto.AccountNumber?.Trim(),
             BankAddress = dto.BankAddress?.Trim(),
+            ZohoSignEmail = dto.ZohoSignEmail?.Trim(),
             IsActive = true,
             UpdatedAt = DateTime.UtcNow
         };
@@ -98,6 +99,7 @@ public class OrganizationService(
         if (dto.IfscCode != null) org.IfscCode = dto.IfscCode.Trim();
         if (dto.AccountNumber != null) org.AccountNumber = dto.AccountNumber.Trim();
         if (dto.BankAddress != null) org.BankAddress = dto.BankAddress.Trim();
+        if (dto.ZohoSignEmail != null) org.ZohoSignEmail = string.IsNullOrWhiteSpace(dto.ZohoSignEmail) ? null : dto.ZohoSignEmail.Trim();
         if (dto.Tenant != null) org.Tenant = dto.Tenant;
 
         if (dto.LogoFile != null)
@@ -203,6 +205,7 @@ public class OrganizationService(
         o.BankName,
         o.IfscCode,
         o.AccountNumber,
-        o.BankAddress
+        o.BankAddress,
+        o.ZohoSignEmail
     );
 }

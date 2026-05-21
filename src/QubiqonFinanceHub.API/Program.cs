@@ -5,6 +5,9 @@ using QubiqonFinanceHub.API.Middleware;
 using QubiqonFinanceHub.API.Services.Implementations;
 using QubiqonFinanceHub.API.Services.Interfaces;
 using Serilog;
+using QuestPDF.Infrastructure;
+
+QuestPDF.Settings.License = LicenseType.Professional;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,7 +24,7 @@ builder.Host.UseSerilog();
 builder.Services.AddApplicationDatabase(builder.Configuration);
 Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler.DefaultInboundClaimTypeMap.Clear();
 builder.Services.AddApplicationAuth(builder.Configuration);
-builder.Services.AddApplicationServices();
+builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddApplicationCors(builder.Configuration);
 builder.Services.AddSingleton<IStorageService, AzureBlobStorageService>();
 builder.Services.AddSingleton<IAzureRoleService, AzureRoleService>();

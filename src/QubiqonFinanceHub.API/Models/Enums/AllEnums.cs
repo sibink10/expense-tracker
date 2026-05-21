@@ -11,7 +11,18 @@ public enum PaymentPriority { Immediate = 0, Later = 1 }
 
 public enum AdvanceStatus { Pending = 0, Approved = 1, Rejected = 2, Disbursed = 3, Settled = 4, PartiallyDisbursed = 5, Cancelled = 6 }
 
-public enum InvoiceStatus { Draft = 0, Sent = 1, Viewed = 2, Paid = 3, PartiallyPaid = 4, Overdue = 5 }
+public enum InvoiceStatus
+{
+    Draft = 0,
+    Sent = 1,
+    Viewed = 2,
+    Paid = 3,
+    PartiallyPaid = 4,
+    Overdue = 5,
+    PendingSignature = 6,
+    Signed = 7,
+    SignatureFailed = 8
+}
 
 public enum PaymentMethod { NEFT = 0, RTGS = 1, IMPS = 2, UPI = 3, Cheque = 4, BankTransfer = 5, Wire = 6 }
 
