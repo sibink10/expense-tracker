@@ -154,6 +154,11 @@ public interface IEmployeeService
     Task<EmployeeDto> DeleteAsync(Guid id);
 }
 
+public interface IGraphApiService
+{
+    Task<IReadOnlyList<GraphUserDto>> GetUsersAsync(CancellationToken cancellationToken = default);
+}
+
 public interface IStorageService
 {
     Task<string> UploadAsync(string folder, Guid entityId, IFormFile file);

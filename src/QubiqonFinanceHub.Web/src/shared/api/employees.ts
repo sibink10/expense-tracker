@@ -99,6 +99,7 @@ export async function getEmployees(params: GetEmployeesParams = {}): Promise<{
 
 export interface SaveEmployeePayload {
   id?: string;
+  entraObjectId?: string | null;
   name: string;
   email: string;
   role: string;
@@ -111,6 +112,7 @@ export async function saveEmployee(payload: SaveEmployeePayload): Promise<Employ
   const body = {
     // API expects this shape:
     // { fullName, email, department, designation, employeeCode, role }
+    entraObjectId: payload.entraObjectId ?? undefined,
     fullName: payload.name,
     email: payload.email,
     department: payload.dept,

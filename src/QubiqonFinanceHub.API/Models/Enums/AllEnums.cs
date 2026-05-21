@@ -1,6 +1,6 @@
 namespace QubiqonFinanceHub.API.Models.Enums;
 
-public enum UserRole { Employee = 0, Approver = 1, Finance = 2, Admin = 3 }
+public enum UserRole { Employee = 0, Approver = 1, Finance = 2, Admin = 3, PROJECT_MANAGER = 4 }
 
 public enum ExpenseStatus { PendingApproval = 0, Approved = 1, Rejected = 2, Cancelled = 3, AwaitingBill = 4, Completed = 5, PendingBillApproval = 6, AwaitingPayment = 7, PartiallyPaid = 8 }
 

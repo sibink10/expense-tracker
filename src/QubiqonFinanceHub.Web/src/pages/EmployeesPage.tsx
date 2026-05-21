@@ -4,6 +4,7 @@ import { Btn, Empty, Inp, Mdl, Tbl, Toggle, ListRefreshButton, type TblCol } fro
 import { TrashIcon } from "../components/icons";
 import { useAppContext } from "../context/AppContext";
 import { getEmployees, saveEmployee, toggleEmployee, deleteEmployee, type Employee } from "../shared/api/employees";
+import { getGraphUsers, type GraphUser } from "../shared/api/graph";
 import { nextListSort } from "../shared/utils";
 
 export default function EmployeesPage() {
@@ -22,7 +23,10 @@ export default function EmployeesPage() {
   const [mdlOpen, setMdlOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
   const [editing, setEditing] = useState<Employee | null>(null);
+  const [graphUsers, setGraphUsers] = useState<GraphUser[]>([]);
+  const [graphUsersLoading, setGraphUsersLoading] = useState(false);
   const [form, setForm] = useState({
+    entraObjectId: "",
     name: "",
     email: "",
     dept: "",
@@ -82,6 +86,7 @@ export default function EmployeesPage() {
   const openAdd = () => {
     setEditing(null);
     setForm({
+      entraObjectId: "",
       name: "",
       email: "",
       dept: "",
@@ -90,11 +95,19 @@ export default function EmployeesPage() {
       employeeCode: "",
     });
     setMdlOpen(true);
+    if (graphUsers.length === 0 && !graphUsersLoading) {
+      setGraphUsersLoading(true);
+      void getGraphUsers()
+        .then(setGraphUsers)
+        .catch(() => t("Failed to load Entra users", "no"))
+        .finally(() => setGraphUsersLoading(false));
+    }
   };
 
   const openEdit = (emp: Employee) => {
     setEditing(emp);
     setForm({
+      entraObjectId: "",
       name: emp.name,
       email: emp.email,
       dept: emp.dept,
@@ -109,6 +122,7 @@ export default function EmployeesPage() {
     if (!isFormValid || saving) return;
     const payload = {
       id: editing?.id,
+      entraObjectId: editing ? undefined : form.entraObjectId.trim() || undefined,
       name: form.name.trim(),
       email: form.email.trim(),
       dept: form.dept.trim(),
@@ -127,6 +141,21 @@ export default function EmployeesPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleEntraUserChange = (entraObjectId: string) => {
+    const selected = graphUsers.find((item) => item.id === entraObjectId);
+    const email = selected?.mail || selected?.userPrincipalName || "";
+
+    setForm((f) => ({
+      ...f,
+      entraObjectId,
+      name: selected?.displayName || f.name,
+      email: email || f.email,
+      dept: selected?.department || f.dept,
+      designation: selected?.jobTitle || f.designation,
+      employeeCode: selected?.employeeId || f.employeeCode,
+    }));
   };
 
   const cols: TblCol[] = [
@@ -306,6 +335,43 @@ export default function EmployeesPage() {
       >
         <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "16px" }}>
           <div>
+            {editing ? (
+              <Inp
+                label="Entra employee"
+                type="select"
+                value={form.email}
+                opts={[
+                  {
+                    v: form.email,
+                    l: `${form.name || form.email || "Selected employee"}${form.email ? ` (${form.email})` : ""}`,
+                  },
+                ]}
+                disabled
+                req
+              />
+            ) : (
+              <Inp
+                label="Entra employee"
+                type="select"
+                value={form.entraObjectId}
+                onChange={(e) => handleEntraUserChange(e.target.value)}
+                opts={[
+                  {
+                    v: "",
+                    l: graphUsersLoading ? "Loading Entra users..." : "Select employee from Entra...",
+                  },
+                  ...graphUsers.map((item) => {
+                    const email = item.mail || item.userPrincipalName || "No email";
+                    return {
+                      v: item.id,
+                      l: `${item.displayName || email} (${email})`,
+                    };
+                  }),
+                ]}
+                disabled={graphUsersLoading}
+                req
+              />
+            )}
             <Inp
               label="Full name"
               value={form.name}
@@ -337,6 +403,7 @@ export default function EmployeesPage() {
                 { v: "employee", l: "Employee" },
                 { v: "approver", l: "Approver" },
                 { v: "finance", l: "Finance" },
+                { v: "PROJECT_MANAGER", l: "Project Manager" },
                 { v: "admin", l: "Admin" },
               ]}
               req
