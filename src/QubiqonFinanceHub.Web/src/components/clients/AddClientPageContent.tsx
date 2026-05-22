@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { CirclePlus, HandCoins } from "lucide-react";
 import { C } from "../../shared/theme";
 import { Inp, Btn, Alert } from "../ui";
 import PhoneInputField, { isValidPhoneNumber } from "../PhoneInputField";
@@ -126,6 +127,7 @@ export default function AddClientPage() {
   };
   const fullWidth = { gridColumn: "1 / -1" as const };
   const cellStyle = { marginBottom: 0 };
+  const controlStyle = { borderRadius: "4px" };
   const canSubmit =
     name.trim() &&
     email.trim() &&
@@ -138,15 +140,30 @@ export default function AddClientPage() {
 
   return (
     <div style={{ width: "100%", maxWidth: "100%" }}>
-      <h1 style={{ fontSize: "20px", fontWeight: 700, margin: "0 0 20px", color: C.invoice }}>
+      <h1
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          color: C.text,
+          fontFamily: "'Manrope', sans-serif",
+          fontSize: "18px",
+          fontWeight: 600,
+          letterSpacing: "-0.02em",
+          lineHeight: "100%",
+          margin: "0 0 20px",
+        }}
+      >
+        <HandCoins size={22} color={C.text} strokeWidth={1.8} />
         Add client
       </h1>
       <div
         style={{
           background: "#fff",
-          borderRadius: "12px",
+          borderRadius: "4px",
           padding: "20px",
-          border: `1px solid ${C.border}`,
+          border: "none",
+          boxShadow: "-5px -2px 108.5px 0px #00024914",
           width: "100%",
           boxSizing: "border-box",
         }}
@@ -159,6 +176,7 @@ export default function AddClientPage() {
             req
             ph="Client name"
             style={cellStyle}
+            controlSx={controlStyle}
           />
           <div style={cellStyle}>
             <Inp
@@ -170,6 +188,7 @@ export default function AddClientPage() {
               req
               ph="email@example.com"
               style={{ marginBottom: 0 }}
+              controlSx={controlStyle}
             />
             {emailError && <div style={{ fontSize: "11px", color: C.danger, marginTop: "4px" }}>{emailError}</div>}
           </div>
@@ -180,6 +199,7 @@ export default function AddClientPage() {
             req
             ph="Contact name"
             style={cellStyle}
+            controlSx={controlStyle}
           />
           <PhoneInputField
             label="Phone"
@@ -192,6 +212,7 @@ export default function AddClientPage() {
             placeholder="Contact number"
             error={phoneError}
             style={cellStyle}
+            controlRadius={4}
           />
           <Inp
             label="Country"
@@ -204,6 +225,7 @@ export default function AddClientPage() {
             }}
             opts={[{ v: "", l: "Select country" }, ...COUNTRY_OPTS]}
             style={cellStyle}
+            controlSx={controlStyle}
           />
           <Inp
             label="Currency"
@@ -212,6 +234,7 @@ export default function AddClientPage() {
             onChange={(e) => setCurrency(e.target.value)}
             opts={CURRENCY_OPTS}
             style={cellStyle}
+            controlSx={controlStyle}
           />
           <div style={{ ...cellStyle, ...fullWidth }}>
             <div style={{ fontSize: "12px", fontWeight: 600, color: C.primary, marginBottom: "6px" }}>Customer type</div>
@@ -252,8 +275,9 @@ export default function AddClientPage() {
                 : [{ v: "", l: taxLoading ? "Loading..." : "No client tax configs" }]
             }
             style={cellStyle}
+            controlSx={controlStyle}
           />
-          <Inp label="GSTIN" value={gstin} onChange={(e) => setGstin(e.target.value)} ph="GST number" style={cellStyle} />
+          <Inp label="GSTIN" value={gstin} onChange={(e) => setGstin(e.target.value)} ph="GST number" style={cellStyle} controlSx={controlStyle} />
 
           <div style={{ ...fullWidth, marginTop: "8px" }}>
             <div style={{ fontSize: "11px", fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "10px" }}>
@@ -267,6 +291,7 @@ export default function AddClientPage() {
               req
               ph="Full shipping address"
               style={{ ...cellStyle, ...fullWidth }}
+              controlSx={controlStyle}
             />
             <label style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px", cursor: "pointer", fontSize: "13px" }}>
               <input
@@ -285,12 +310,14 @@ export default function AddClientPage() {
               ph="Full billing address"
               disabled={sameAddress}
               style={{ ...cellStyle, ...fullWidth }}
+              controlSx={controlStyle}
             />
           </div>
 
           {error && <Alert sx={{ ...fullWidth }}>{error}</Alert>}
           <div style={{ ...fullWidth, display: "flex", justifyContent: "flex-end" }}>
-            <Btn onClick={submit} disabled={!canSubmit || loading}>
+            <Btn onClick={submit} disabled={!canSubmit || loading} sx={{ borderRadius: "4px" }}>
+              <CirclePlus size={15} strokeWidth={1.8} />
               {loading ? "Adding..." : "Add client"}
             </Btn>
           </div>

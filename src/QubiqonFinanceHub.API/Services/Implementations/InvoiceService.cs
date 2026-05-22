@@ -646,15 +646,14 @@ public class InvoiceService : IInvoiceService
 
         if (!string.IsNullOrWhiteSpace(inv.SignedPdfUrl)) return;
 
-        var pdfBytes = await _zoho.DownloadSignRequestPdfAsync(inv.ZohoSignRequestId);
+        var pdfBytes = await _zoho.DownloadSignRequestPdfAsync(inv.ZohoSignRequestId, withCoc: false);
         var safeCode = SanitizeBlobFileName(inv.InvoiceCode);
         var blobPath = $"invoices/{safeCode}.pdf";
         var url = await _storage.UploadBytesAsync(blobPath, pdfBytes, "application/pdf");
 
         inv.SignedPdfUrl = url;
         inv.SignedAt = DateTime.UtcNow;
-        inv.Status = InvoiceStatus.Sent;
-        inv.SentAt ??= DateTime.UtcNow;
+        inv.Status = InvoiceStatus.Signed;
         inv.UpdatedAt = DateTime.UtcNow;
 
         _db.ActivityComments.Add(new ActivityComment
@@ -662,8 +661,8 @@ public class InvoiceService : IInvoiceService
             Id = Guid.NewGuid(),
             InvoiceId = inv.Id,
             CommentByEmployeeId = inv.CreatedByEmployeeId,
-            Text = "Signed PDF stored; invoice marked as sent.",
-            ActionType = CommentActionType.Sent
+            Text = "Signed PDF stored; invoice marked as signed.",
+            ActionType = CommentActionType.General
         });
 
         await _db.SaveChangesAsync();

@@ -17,6 +17,7 @@ export interface PhoneInputFieldProps {
   onBlur?: () => void;
   disabled?: boolean;
   placeholder?: string;
+  controlRadius?: number | string;
   style?: CSSProperties;
 }
 
@@ -31,6 +32,7 @@ export default function PhoneInputField({
   onBlur,
   disabled,
   placeholder = "Phone number",
+  controlRadius,
   style: sx,
 }: PhoneInputFieldProps) {
   return (
@@ -42,6 +44,7 @@ export default function PhoneInputField({
           ...sx,
           ["--phone-border" as string]: C.border,
           ["--phone-danger" as string]: C.danger,
+          ["--phone-radius" as string]: typeof controlRadius === "number" ? `${controlRadius}px` : controlRadius,
         } as CSSProperties
       }
     >

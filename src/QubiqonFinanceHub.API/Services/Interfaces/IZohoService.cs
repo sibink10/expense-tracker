@@ -39,7 +39,7 @@ public interface IZohoService
     Task<JsonNode> GetSignRequestByIdAsync(string requestId, CancellationToken cancellationToken = default);
     Task<byte[]> DownloadSignRequestPdfAsync(
         string requestId,
-        bool withCoc = true,
+        bool withCoc = false,
         bool merge = true,
         CancellationToken cancellationToken = default);
 

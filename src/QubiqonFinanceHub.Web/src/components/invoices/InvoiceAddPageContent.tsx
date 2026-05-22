@@ -199,7 +199,7 @@ export default function InvoiceAddPage() {
   };
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%", minWidth: 0, overflowX: "hidden" }}>
+    <div style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}>
       <div
         style={{
           display: "flex",
