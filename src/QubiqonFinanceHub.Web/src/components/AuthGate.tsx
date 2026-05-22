@@ -75,7 +75,7 @@ export function LoadingScreen({ message = "Checking login…" }: { message?: str
         alignItems: "center",
         justifyContent: "center",
         gap: "20px",
-        background: `linear-gradient(160deg, ${C.primary} 0%, #2C3E6A 50%, ${C.accent} 100%)`,
+        background: "#fff",
         fontFamily: "'Inter', 'Manrope', sans-serif",
       }}
     >
@@ -83,13 +83,13 @@ export function LoadingScreen({ message = "Checking login…" }: { message?: str
         style={{
           width: "48px",
           height: "48px",
-          border: "3px solid rgba(255,255,255,0.2)",
-          borderTopColor: "#fff",
+          border: "3px solid rgba(23, 168, 108, 0.18)",
+          borderTopColor: "#17A86C",
           borderRadius: "50%",
           animation: "authSpin 0.8s linear infinite",
         }}
       />
-      <div style={{ color: "rgba(255,255,255,0.9)", fontSize: "14px", fontWeight: 500 }}>{message}</div>
+      <div style={{ color: "#1F2937", fontSize: "14px", fontWeight: 500 }}>{message}</div>
       <style>{`@keyframes authSpin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );

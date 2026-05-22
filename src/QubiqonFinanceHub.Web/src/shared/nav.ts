@@ -61,6 +61,14 @@ export function buildNav(_cfg?: { advEnabled?: boolean }): NavSection[] {
       items: [{ path: "/employees", l: "Employees", i: "employees", r: ["admin"] as UserRole[], end: true }],
     },
     {
+      s: "Organization",
+      i: "organization",
+      items: [
+        { path: "/admin/org", l: "Organization", i: "", r: ["admin"] as UserRole[], end: true },
+        { path: "/admin", l: "Setting", i: "", r: ["admin"] as UserRole[], end: true },
+      ],
+    },
+    {
       s: "Workspace",
       i: "workspace",
       items: [
@@ -70,13 +78,6 @@ export function buildNav(_cfg?: { advEnabled?: boolean }): NavSection[] {
         { path: "/admin/payment-terms", l: "Payment Terms", i: "", r: ["admin"] as UserRole[] },
         { path: "/admin/zoho-sign", l: "Zoho Sign", i: "", r: ["finance", "admin"] as UserRole[], end: true },
       ],
-    },
-    {
-      s: "Settings",
-      i: "settings",
-      path: "/admin",
-      end: true,
-      items: [{ path: "/admin", l: "Settings", i: "settings", r: ["admin"] as UserRole[], end: true }],
     },
   ];
 }

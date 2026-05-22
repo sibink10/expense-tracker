@@ -9,6 +9,7 @@ import {
   HandCoins,
   LayoutDashboard,
   Menu,
+  Network,
   ReceiptText,
   Settings,
   Users,
@@ -28,6 +29,7 @@ const navIcons = {
   vendors: BriefcaseBusiness,
   clients: HandCoins,
   employees: Users,
+  organization: Network,
   workspace: FolderKanban,
   settings: Settings,
 } as const;
@@ -656,8 +658,6 @@ export default function Layout() {
                           style={{
                             display: "inline-flex",
                             color: "inherit",
-                            transform: expanded ? "rotate(0deg)" : "rotate(180deg)",
-                            transition: "transform 0.2s ease",
                           }}
                         >
                           {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}

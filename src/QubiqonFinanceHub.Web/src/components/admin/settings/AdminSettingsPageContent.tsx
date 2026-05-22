@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { ArrowUpRight, ClipboardList, Mail, Settings } from "lucide-react";
 import { C } from "../../../shared/theme";
 import { Inp, Btn, Toggle } from "../../ui";
 import { useAppContext } from "../../../context/AppContext";
@@ -10,7 +10,6 @@ import { bulkUpsertOrganizationSettings } from "../../../shared/api/organization
 const GRID_COLS = { sm: 1, md: 2, lg: 3 };
 
 export default function AdminSettingsPage() {
-  const navigate = useNavigate();
   const { cfg, t, orgSettings, refreshOrgSettings, activeOrg, setActiveOrg, is } = useAppContext();
   const [c, setC] = useState(cfg);
   const [ccError, setCcError] = useState<string | null>(null);
@@ -126,10 +125,11 @@ export default function AdminSettingsPage() {
   };
 
   const cardStyle: React.CSSProperties = {
-    borderRadius: "12px",
-    border: `1px solid ${C.border}`,
+    borderRadius: "4px",
+    border: "none",
     padding: "20px",
     background: "#fff",
+    boxShadow: "-5px -2px 108.5px 0px #00024914",
     display: "flex",
     flexDirection: "column",
     gap: "12px",
@@ -194,12 +194,22 @@ export default function AdminSettingsPage() {
   return (
     <div style={{ width: "100%", maxWidth: "100%" }}>
       <div style={{ marginBottom: "20px" }}>
-        <h1 style={{ fontSize: "20px", fontWeight: 700, margin: 0 }}>
-          <span style={{ color: C.primary }}>⚙</span> Settings
+        <h1
+          style={{
+            margin: 0,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontFamily: "Manrope, sans-serif",
+            fontWeight: 600,
+            fontSize: "18px",
+            lineHeight: "100%",
+            letterSpacing: "-0.02em",
+            color: "#242424",
+          }}
+        >
+          <Settings size={24} color="#242424" strokeWidth={1.9} /> Settings
         </h1>
-        <p style={{ margin: "4px 0 0", fontSize: "12px", color: C.muted }}>
-          Configure code formats, advance limits and email defaults.
-        </p>
       </div>
       <div
         style={{
@@ -211,7 +221,7 @@ export default function AdminSettingsPage() {
         {/* Code formats */}
         <div style={cardStyle}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-            <span style={{ fontSize: "20px" }}>📋</span>
+            <ClipboardList size={20} color={C.invoice} strokeWidth={1.9} />
             <h3 style={{ fontSize: "14px", fontWeight: 700, margin: 0 }}>Code formats</h3>
           </div>
           <Inp
@@ -260,7 +270,7 @@ export default function AdminSettingsPage() {
         {/* Advance settings */}
         <div style={cardStyle}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-            <span style={{ fontSize: "20px" }}>⤴</span>
+            <ArrowUpRight size={20} color={C.advance} strokeWidth={1.9} />
             <h3 style={{ fontSize: "14px", fontWeight: 700, margin: 0, color: C.advance }}>Advance settings</h3>
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
@@ -338,7 +348,7 @@ export default function AdminSettingsPage() {
         {/* Email CC */}
         <div style={{ ...cardStyle, gridColumn: cols === 3 ? "1 / -1" : undefined }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-            <span style={{ fontSize: "20px" }}>✉</span>
+            <Mail size={20} color={C.invoice} strokeWidth={1.9} />
             <h3 style={{ fontSize: "14px", fontWeight: 700, margin: 0 }}>Email CC</h3>
           </div>
           <Inp
@@ -357,57 +367,6 @@ export default function AdminSettingsPage() {
             hint="CC'd on all payment emails. Separate multiple addresses with commas."
           />
           {ccError && <div style={{ fontSize: "11px", color: C.danger, marginTop: "-8px" }}>{ccError}</div>}
-        </div>
-      </div>
-
-      {/* Quick links */}
-      <div
-        style={{
-          marginTop: "24px",
-          paddingTop: "20px",
-          borderTop: `1px solid ${C.border}`,
-        }}
-      >
-        <h3 style={{ fontSize: "12px", fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 12px" }}>
-          More settings
-        </h3>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: cols === 1 ? "1fr" : "repeat(auto-fill, minmax(180px, 1fr))",
-            gap: "10px",
-          }}
-        >
-          {[
-            { path: "/admin/org", icon: "🏢", label: "Organization" },
-            { path: "/admin/tax", icon: "📊", label: "Tax config" },
-            { path: "/admin/categories", icon: "🏷", label: "Categories" },
-            { path: "/admin/email", icon: "✉", label: "Email templates" },
-          ].map(({ path, icon, label }) => (
-            <button
-              key={path}
-              type="button"
-              onClick={() => navigate(path)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                padding: "12px 14px",
-                background: "#fff",
-                border: `1px solid ${C.border}`,
-                borderRadius: "10px",
-                fontSize: "13px",
-                fontWeight: 600,
-                color: C.primary,
-                cursor: "pointer",
-                fontFamily: "'Inter', 'Manrope', sans-serif",
-                textAlign: "left",
-              }}
-            >
-              <span>{icon}</span>
-              {label}
-            </button>
-          ))}
         </div>
       </div>
 

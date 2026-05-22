@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { Building2, ExternalLink, MapPin, Phone, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../../../shared/theme";
-import { Btn } from "../../ui";
+import { Btn, EditActionButton } from "../../ui";
 import { getOrganizations, type OrganizationPayload } from "../../../shared/api";
 
 export default function AdminOrgViewPage() {
@@ -57,15 +58,25 @@ export default function AdminOrgViewPage() {
         }}
       >
         <div>
-          <h1 style={{ fontSize: "20px", fontWeight: 700, margin: 0 }}>
-            <span style={{ color: C.invoice }}>🏢</span> Organizations
+          <h1
+            style={{
+              margin: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              fontFamily: "Manrope, sans-serif",
+              fontWeight: 600,
+              fontSize: "18px",
+              lineHeight: "100%",
+              letterSpacing: "-0.02em",
+              color: "#242424",
+            }}
+          >
+            <Building2 size={24} color="#242424" strokeWidth={1.9} /> Organizations
           </h1>
-          <p style={{ margin: "2px 0 0", fontSize: "12px", color: C.muted }}>
-            Manage organization profiles used on invoices, bills and vendor payments.
-          </p>
         </div>
         <Btn v="invoice" onClick={() => navigate("/admin/org/edit")}>
-          ＋ Add organization
+          <Plus size={14} /> Add organization
         </Btn>
       </div>
 
@@ -93,10 +104,11 @@ export default function AdminOrgViewPage() {
                 <div
                   key={org.id ?? org.orgName}
                   style={{
-                    borderRadius: "12px",
-                    border: `1px solid ${C.border}`,
+                    borderRadius: "4px",
+                    border: "none",
                     padding: "14px 16px 12px",
                     background: "#fff",
+                    boxShadow: "-5px -2px 108.5px 0px #00024914",
                     display: "flex",
                     flexDirection: "column",
                     gap: "10px",
@@ -132,9 +144,9 @@ export default function AdminOrgViewPage() {
                       style={{
                         width: 48,
                         height: 48,
-                        borderRadius: "12px",
+                        borderRadius: "4px",
                         background: C.surface,
-                        border: `1px solid ${C.border}`,
+                        border: "none",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -146,9 +158,7 @@ export default function AdminOrgViewPage() {
                         // eslint-disable-next-line jsx-a11y/alt-text
                         <img src={org.logoUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       ) : (
-                        <span style={{ fontSize: "20px", fontWeight: 700, color: C.invoice }}>
-                          {name?.trim?.()[0] ?? "?"}
-                        </span>
+                        <Building2 size={24} color={C.invoice} strokeWidth={1.8} />
                       )}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -160,8 +170,8 @@ export default function AdminOrgViewPage() {
                         <div style={{ fontSize: "12px", color: C.muted }}>{org.subName}</div>
                       )}
                       {locationLine && (
-                        <div style={{ fontSize: "11px", color: C.muted, marginTop: "4px" }}>
-                          <span style={{ fontWeight: 600 }}>Location: </span>
+                        <div style={{ fontSize: "11px", color: C.muted, marginTop: "4px", display: "flex", alignItems: "center", gap: 4 }}>
+                          <MapPin size={12} color={C.muted} strokeWidth={1.9} />
                           {locationLine}
                         </div>
                       )}
@@ -188,7 +198,9 @@ export default function AdminOrgViewPage() {
                   </div>
 
                   <div style={{ fontSize: "11px", color: C.muted, width: "100%" }}>
-                    <div style={{ fontWeight: 600, marginBottom: "2px" }}>Address</div>
+                    <div style={{ fontWeight: 600, marginBottom: "2px", display: "flex", alignItems: "center", gap: 4 }}>
+                      <MapPin size={12} color={C.muted} strokeWidth={1.9} /> Address
+                    </div>
                     <div>{org.address || locationLine || "No address set"}</div>
                   </div>
 
@@ -203,14 +215,14 @@ export default function AdminOrgViewPage() {
                     }}
                   >
                     {org.phone && (
-                      <div style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-                        <span style={{ fontWeight: 600 }}>Phone: </span>
+                      <div style={{ overflow: "hidden", textOverflow: "ellipsis", display: "flex", alignItems: "center", gap: 4 }}>
+                        <Phone size={12} color={C.muted} strokeWidth={1.9} />
                         <span>{org.phone}</span>
                       </div>
                     )}
                     {org.website && (
-                      <div style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-                        <span style={{ fontWeight: 600 }}>Website: </span>
+                      <div style={{ overflow: "hidden", textOverflow: "ellipsis", display: "flex", alignItems: "center", gap: 4 }}>
+                        <ExternalLink size={12} color={C.muted} strokeWidth={1.9} />
                         <a
                           href={org.website}
                           target="_blank"
@@ -224,13 +236,10 @@ export default function AdminOrgViewPage() {
                   </div>
 
                   <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "4px" }}>
-                    <Btn
-                      sm
-                      v="secondary"
+                    <EditActionButton
+                      sx={{ width: 30, height: 30, background: C.actionEditBg, borderRadius: "4px" }}
                       onClick={() => navigate(`/admin/org/edit/${org.id ?? ""}`)}
-                    >
-                      Edit
-                    </Btn>
+                    />
                   </div>
                 </div>
               );
