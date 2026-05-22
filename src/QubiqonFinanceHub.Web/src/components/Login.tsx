@@ -50,7 +50,7 @@ export default function Login({ onLogin }: LoginProps) {
         alignItems: "center",
         justifyContent: "center",
         background: `linear-gradient(160deg, ${C.primary} 0%, #2C3E6A 50%, ${C.accent} 100%)`,
-        fontFamily: "'DM Sans'",
+        fontFamily: "'Inter', 'Manrope', sans-serif",
         padding: "16px",
       }}
     >
@@ -58,7 +58,7 @@ export default function Login({ onLogin }: LoginProps) {
         <div style={{ textAlign: "center", marginBottom: "28px" }}>
           <svg width="48" height="48" viewBox="0 0 40 40" style={{ marginBottom: "12px" }}>
             <rect width="40" height="40" rx="10" fill="rgba(255,255,255,0.15)" />
-            <text x="20" y="27" textAnchor="middle" fill="#fff" fontSize="22" fontWeight="700" fontFamily="'DM Sans'">
+            <text x="20" y="27" textAnchor="middle" fill="#fff" fontSize="22" fontWeight="700" fontFamily="'Inter', 'Manrope', sans-serif">
               Q
             </text>
           </svg>
@@ -125,7 +125,7 @@ export default function Login({ onLogin }: LoginProps) {
                       cursor: ld ? "wait" : "pointer",
                       width: "100%",
                       textAlign: "left",
-                      fontFamily: "'DM Sans'",
+                      fontFamily: "'Inter', 'Manrope', sans-serif",
                       transition: "all 0.2s",
                     }}
                   >
@@ -198,7 +198,7 @@ export default function Login({ onLogin }: LoginProps) {
                   borderRadius: "8px",
                   background: "#fff",
                   cursor: ld ? "wait" : "pointer",
-                  fontFamily: "'DM Sans'",
+                  fontFamily: "'Inter', 'Manrope', sans-serif",
                   fontSize: "14px",
                   fontWeight: 600,
                   color: C.primary,

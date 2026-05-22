@@ -67,8 +67,8 @@ public class InvoiceService : IInvoiceService
             Notes = dto.Notes,
             TaxConfigId = dto.TaxConfigId,
             CreatedByEmployeeId = emp.Id,
-            Status = dto.SendImmediately ? InvoiceStatus.Sent : InvoiceStatus.Draft,
-            SentAt = dto.SendImmediately ? DateTime.UtcNow : null,
+            Status = InvoiceStatus.Draft,
+            SentAt = null,
         };
 
         decimal subTotal = 0, totalGst = 0;
@@ -338,8 +338,8 @@ public class InvoiceService : IInvoiceService
         if (emp.Role != UserRole.Finance && emp.Role != UserRole.Admin)
             throw new InvalidOperationException("Only Finance or Admin can send invoices to the client.");
 
-        if (inv.Status != InvoiceStatus.Draft)
-            throw new InvalidOperationException("Only draft invoices can be sent to the client.");
+        if (inv.Status != InvoiceStatus.Signed)
+            throw new InvalidOperationException("Only signed invoices can be sent to the client.");
 
         inv.Status = InvoiceStatus.Sent;
         inv.SentAt = DateTime.UtcNow;
@@ -373,6 +373,9 @@ public class InvoiceService : IInvoiceService
 
         if (inv.Status is InvoiceStatus.Draft or InvoiceStatus.PendingSignature or InvoiceStatus.Signed or InvoiceStatus.SignatureFailed)
             throw new InvalidOperationException("Complete signing and send the invoice to the client before recording payment.");
+
+        if (!inv.SignedAt.HasValue && string.IsNullOrWhiteSpace(inv.SignedPdfUrl))
+            throw new InvalidOperationException("Invoice must be signed before recording payment.");
 
         var currentPaid = inv.paidAmound;
         var newTotalPaid = currentPaid + dto.PaidAmount;

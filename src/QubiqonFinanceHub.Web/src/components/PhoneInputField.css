@@ -21,7 +21,7 @@
   min-height: 34px;
   padding: 6px 10px;
   font-size: 13px;
-  font-family: "DM Sans", system-ui, sans-serif;
+  font-family: "Inter", "Manrope", system-ui, sans-serif;
   border-radius: 8px;
   border: 1px solid var(--phone-border, #e2e8f0);
   outline: none;

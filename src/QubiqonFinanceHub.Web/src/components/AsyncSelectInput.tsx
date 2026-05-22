@@ -15,6 +15,7 @@ interface AsyncSelectInputProps {
   disabled?: boolean;
   placeholder?: string;
   req?: boolean;
+  controlRadius?: number;
 }
 
 export function AsyncSelectInput({
@@ -25,6 +26,7 @@ export function AsyncSelectInput({
   disabled,
   placeholder,
   req = true,
+  controlRadius = 8,
 }: AsyncSelectInputProps) {
   const [options, setOptions] = useState<Option[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,12 +103,12 @@ export function AsyncSelectInput({
           control: (base) => ({
             ...base,
             minHeight: "32px",
-            borderRadius: 8,
+            borderRadius: controlRadius,
             borderColor: C.border,
             boxShadow: "none",
             "&:hover": { borderColor: C.border },
             fontSize: 13,
-            fontFamily: "'DM Sans'",
+            fontFamily: "'Inter', 'Manrope', sans-serif",
           }),
           valueContainer: (base) => ({
             ...base,

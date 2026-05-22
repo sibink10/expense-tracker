@@ -32,6 +32,9 @@ export interface NavItem {
 export interface NavSection {
   s: string;
   c?: string;
+  i?: string;
+  path?: string;
+  end?: boolean;
   items: NavItem[];
 }
 

@@ -1,33 +1,32 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
 import Layout from "./Layout";
-import DashPage from "../pages/DashPage";
-import ExpenseListPage from "../pages/ExpenseListPage";
-import ExpensePayPage from "../pages/ExpensePayPage";
-import AddExpensePage from "../pages/AddExpensePage";
-import AdvanceListPage from "../pages/AdvanceListPage";
-import RequestAdvancePage from "../pages/RequestAdvancePage";
-import BillListPage from "../pages/BillListPage";
-import SubmitBillPage from "../pages/SubmitBillPage";
-import InvoicesPage from "../pages/InvoicesPage";
-import InvoiceAddPage from "../pages/InvoiceAddPage";
-import InvoiceEditPage from "../pages/InvoiceEditPage";
-import VendorsPage from "../pages/VendorsPage";
-import AddVendorPage from "../pages/AddVendorPage";
-import ClientsPage from "../pages/ClientsPage";
-import AddClientPage from "../pages/AddClientPage";
-import AdminSettingsPage from "../pages/AdminSettingsPage";
-import EmployeesPage from "../pages/EmployeesPage";
-import AdminOrgViewPage from "../pages/AdminOrgViewPage";
-import AdminOrgPage from "../pages/AdminOrgPage";
-import AdminTaxPage from "../pages/AdminTaxPage";
-import AdminGstPage from "../pages/AdminGstPage";
-import AdminEmailPage from "../pages/AdminEmailPage";
-import AdminCategoriesPage from "../pages/AdminCategoriesPage";
-import AdminPaymentTermsPage from "../pages/AdminPaymentTermsPage";
-import AdminAccountsPage from "../pages/AdminAccountsPage";
-import ZohoSignPage from "../pages/ZohoSignPage";
-import NotFoundPage from "../pages/NotFoundPage";
+import DashPage from "../pages/dashboard/DashPage";
+import ExpenseListPage from "../pages/expenses/ExpenseListPage";
+import ExpensePayPage from "../pages/expenses/ExpensePayPage";
+import AddExpensePage from "../pages/expenses/AddExpensePage";
+import AdvanceListPage from "../pages/advances/AdvanceListPage";
+import BillListPage from "../pages/bills/BillListPage";
+import SubmitBillPage from "../pages/bills/SubmitBillPage";
+import InvoicesPage from "../pages/invoices/InvoicesPage";
+import InvoiceAddPage from "../pages/invoices/InvoiceAddPage";
+import InvoiceEditPage from "../pages/invoices/InvoiceEditPage";
+import VendorsPage from "../pages/vendors/VendorsPage";
+import AddVendorPage from "../pages/vendors/AddVendorPage";
+import ClientsPage from "../pages/clients/ClientsPage";
+import AddClientPage from "../pages/clients/AddClientPage";
+import AdminSettingsPage from "../pages/admin/settings/AdminSettingsPage";
+import EmployeesPage from "../pages/employees/EmployeesPage";
+import AdminOrgViewPage from "../pages/admin/org/AdminOrgViewPage";
+import AdminOrgPage from "../pages/admin/org/AdminOrgPage";
+import AdminTaxPage from "../pages/admin/tax/AdminTaxPage";
+import AdminGstPage from "../pages/admin/gst/AdminGstPage";
+import AdminEmailPage from "../pages/admin/email/AdminEmailPage";
+import AdminCategoriesPage from "../pages/admin/categories/AdminCategoriesPage";
+import AdminPaymentTermsPage from "../pages/admin/payment-terms/AdminPaymentTermsPage";
+import AdminAccountsPage from "../pages/admin/accounts/AdminAccountsPage";
+import ZohoSignPage from "../pages/admin/zoho-sign/ZohoSignPage";
+import NotFoundPage from "../pages/not-found/NotFoundPage";
 
 function DashOrRedirect() {
   return <DashPage />;
@@ -43,7 +42,6 @@ export const router = createBrowserRouter([
       { path: "expenses/add", element: <AddExpensePage /> },
       { path: "expenses/pay", element: <ExpensePayPage /> },
       { path: "advances", element: <AdvanceListPage /> },
-      { path: "advances/add", element: <RequestAdvancePage /> },
       { path: "bills", element: <BillListPage /> },
       { path: "bills/add", element: <SubmitBillPage /> },
       { path: "vendors", element: <VendorsPage /> },

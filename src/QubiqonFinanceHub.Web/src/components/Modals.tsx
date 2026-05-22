@@ -1,22 +1,24 @@
-import RejectModal from "../modals/RejectModal";
-import PayModal from "../modals/PayModal";
-import InvPayModal from "../modals/InvPayModal";
-import ExpenseApproveModal from "../modals/ExpenseApproveModal";
-import AdvanceApproveModal from "../modals/AdvanceApproveModal";
-import BillApproveModal from "../modals/BillApproveModal";
-import BillEditModal from "../modals/BillEditModal";
-import AdvanceDisburseModal from "../modals/AdvanceDisburseModal";
-import VendorEditModal from "../modals/VendorEditModal";
-import ClientEditModal from "../modals/ClientEditModal";
-import TaxConfigEditModal from "../modals/TaxConfigEditModal";
-import CancelRequestConfirmModal from "../modals/CancelRequestConfirmModal";
-import ExpenseDetailModal from "./modals/ExpenseDetailModal";
-import AdvanceDetailModal from "./modals/AdvanceDetailModal";
-import BillDetailModal from "./modals/BillDetailModal";
-import InvoiceDetailModal from "./modals/InvoiceDetailModal";
-import VendorDetailModal from "./modals/VendorDetailModal";
-import ClientDetailModal from "./modals/ClientDetailModal";
-import TaxConfigDetailModal from "./modals/TaxConfigDetailModal";
+import RejectModal from "./requests/RejectModal";
+import PayModal from "./payments/PayModal";
+import InvPayModal from "./invoices/InvPayModal";
+import ExpenseApproveModal from "./expenses/ExpenseApproveModal";
+import AdvanceApproveModal from "./advances/AdvanceApproveModal";
+import RequestAdvanceModal from "./advances/RequestAdvanceModal";
+import BillApproveModal from "./bills/BillApproveModal";
+import BillEditModal from "./bills/BillEditModal";
+import AdvanceDisburseModal from "./advances/AdvanceDisburseModal";
+import VendorEditModal from "./vendors/VendorEditModal";
+import ClientEditModal from "./clients/ClientEditModal";
+import TaxConfigAddModal from "./admin/tax/TaxConfigAddModal";
+import TaxConfigEditModal from "./admin/tax/TaxConfigEditModal";
+import CancelRequestConfirmModal from "./requests/CancelRequestConfirmModal";
+import ExpenseDetailModal from "./expenses/ExpenseDetailModal";
+import AdvanceDetailModal from "./advances/AdvanceDetailModal";
+import BillDetailModal from "./bills/BillDetailModal";
+import InvoiceDetailModal from "./invoices/InvoiceDetailModal";
+import VendorDetailModal from "./vendors/VendorDetailModal";
+import ClientDetailModal from "./clients/ClientDetailModal";
+import TaxConfigDetailModal from "./admin/tax/TaxConfigDetailModal";
 import { useAppContext } from "../context/AppContext";
 import type { Expense, Advance, Bill, Invoice, Vendor, Client, TaxConfig } from "../types";
 
@@ -32,12 +34,14 @@ export default function Modals() {
   if (mdl.t === "pay") return <PayModal />;
   if (mdl.t === "inv-pay") return <InvPayModal />;
   if (mdl.t === "exp-approve") return <ExpenseApproveModal />;
+  if (mdl.t === "adv-request") return <RequestAdvanceModal />;
   if (mdl.t === "adv-approve") return <AdvanceApproveModal />;
   if (mdl.t === "bill-approve") return <BillApproveModal />;
   if (mdl.t === "bill-edit") return <BillEditModal />;
   if (mdl.t === "adv-disburse") return <AdvanceDisburseModal />;
   if (mdl.t === "vendor-edit") return <VendorEditModal />;
   if (mdl.t === "client-edit") return <ClientEditModal />;
+  if (mdl.t === "tax-config-add") return <TaxConfigAddModal />;
   if (mdl.t === "tax-config-edit") return <TaxConfigEditModal />;
 
   if (mdl.t === "exp-detail" && mdl.d && "empName" in mdl.d && "reqBy" in mdl.d) {

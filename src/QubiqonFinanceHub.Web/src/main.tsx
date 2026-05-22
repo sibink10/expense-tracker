@@ -33,7 +33,7 @@ msalInstance.initialize().then(() => {
       <MsalProvider instance={msalInstance}>
         <App />
         <Toaster position="bottom-right" toastOptions={{
-          style: { fontFamily: "'DM Sans', sans-serif", fontSize: '13px', fontWeight: 600, borderRadius: '10px' },
+          style: { fontFamily: "'Inter', 'Manrope', sans-serif", fontSize: '13px', fontWeight: 600, borderRadius: '10px' },
           success: { style: { background: '#0F6E56', color: '#fff' } },
           error: { style: { background: '#A32D2D', color: '#fff' } },
         }} />

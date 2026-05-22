@@ -409,7 +409,7 @@ public class ZohoService : IZohoService
 
     public Task<byte[]> DownloadSignRequestPdfAsync(
         string requestId,
-        bool withCoc = true,
+        bool withCoc = false,
         bool merge = true,
         CancellationToken cancellationToken = default)
     {

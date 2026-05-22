@@ -196,7 +196,7 @@ public class ZohoController : ControllerBase
     [HttpGet("sign/requests/{requestId}/pdf")]
     public async Task<IActionResult> DownloadSignRequestPdf(
         string requestId,
-        [FromQuery] bool withCoc = true,
+        [FromQuery] bool withCoc = false,
         [FromQuery] bool merge = true,
         CancellationToken cancellationToken = default)
     {

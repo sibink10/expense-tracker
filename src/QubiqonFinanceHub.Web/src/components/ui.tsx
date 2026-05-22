@@ -1,9 +1,11 @@
 import { useRef, type CSSProperties, type ReactNode } from "react";
+import { FileText, Paperclip, UploadCloud, X } from "lucide-react";
 import Select from "react-select";
-import { C } from "../shared/theme";
+import { C, R } from "../shared/theme";
 import { EXP_S, BILL_S, ADV_S, INV_S } from "../shared/constants";
 import { activityCommentStatusFallback } from "../shared/activityCommentStatus";
 import type { ActivityComment } from "../types";
+import { EditIcon, TrashIcon } from "./icons";
 
 function activityStatusPillColors(t: ActivityComment["t"]): { color: string; background: string } {
   switch (t) {
@@ -39,6 +41,7 @@ export interface InpProps {
   opts?: InpOpt[];
   hint?: string;
   style?: CSSProperties;
+  controlSx?: CSSProperties;
   endAdornment?: ReactNode;
 }
 
@@ -56,7 +59,9 @@ export const Inp: React.FC<InpProps> = ({
   opts,
   hint,
   endAdornment,
-  style: sx,max
+  style: sx,
+  controlSx,
+  max
 }) => (
   <div style={{ marginBottom: "14px", ...sx }}>
     {label && (
@@ -99,7 +104,8 @@ export const Inp: React.FC<InpProps> = ({
             boxShadow: "none",
             "&:hover": { borderColor: C.border },
             fontSize: 13,
-            fontFamily: "'DM Sans'",
+            fontFamily: "'Inter', 'Manrope', sans-serif",
+            ...controlSx,
           }),
           valueContainer: (base) => ({
             ...base,
@@ -144,10 +150,11 @@ export const Inp: React.FC<InpProps> = ({
           border: `1.5px solid ${C.border}`,
           borderRadius: "8px",
           fontSize: "13px",
-          fontFamily: "'DM Sans'",
+          fontFamily: "'Inter', 'Manrope', sans-serif",
           resize: "vertical",
           outline: "none",
           boxSizing: "border-box",
+          ...controlSx,
         }}
       />
     ) : (
@@ -177,10 +184,11 @@ export const Inp: React.FC<InpProps> = ({
             border: `1.5px solid ${C.border}`,
             borderRadius: "8px",
             fontSize: "13px",
-            fontFamily: "'DM Sans'",
+            fontFamily: "'Inter', 'Manrope', sans-serif",
             outline: "none",
             boxSizing: "border-box",
             background: disabled ? C.surface : "#fff",
+            ...controlSx,
           }}
         />
         {endAdornment && (
@@ -300,20 +308,20 @@ export const Btn: React.FC<{
     success: { background: C.success, color: "#fff" },
     danger: { background: C.danger, color: "#fff" },
     ghost: { background: "transparent", color: C.muted },
-    vendor: { background: C.vendor, color: "#fff" },
-    advance: { background: C.advance, color: "#fff" },
-    info: { background: C.info, color: "#fff" },
-    invoice: { background: C.invoice, color: "#fff" },
+    vendor: { background: C.accent, color: "#fff" },
+    advance: { background: C.accent, color: "#fff" },
+    info: { background: C.accent, color: "#fff" },
+    invoice: { background: C.accent, color: "#fff" },
   };
   const buttonStyle: CSSProperties = {
     padding: sm ? "6px 12px" : "8px 18px",
-    borderRadius: "8px",
+    borderRadius: R.control,
     fontSize: sm ? "11px" : "12px",
     fontWeight: 600,
     cursor: disabled ? "not-allowed" : "pointer",
     border: "none",
     transition: "all 0.2s",
-    fontFamily: "'DM Sans'",
+    fontFamily: "'Inter', 'Manrope', sans-serif",
     opacity: disabled ? 0.5 : 1,
     display: "inline-flex",
     alignItems: "center",
@@ -354,7 +362,66 @@ export const ListRefreshButton: React.FC<{
   </span>
 );
 
-export const Av: React.FC<{ n?: string; sz?: number; v?: boolean }> = ({ n, sz = 32, v }) => {
+export const IconActionButton: React.FC<{
+  label: string;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  disabled?: boolean;
+  children: ReactNode;
+  sx?: CSSProperties;
+}> = ({ label, onClick, disabled, children, sx }) => (
+  <button
+    type="button"
+    aria-label={label}
+    title={label}
+    onClick={onClick}
+    disabled={disabled}
+    style={{
+      width: 24,
+      height: 24,
+      border: "none",
+      borderRadius: "4px",
+      background: "transparent",
+      color: C.muted,
+      cursor: disabled ? "not-allowed" : "pointer",
+      opacity: disabled ? 0.45 : 1,
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 0,
+      ...sx,
+    }}
+  >
+    {children}
+  </button>
+);
+
+export const EditActionButton: React.FC<{
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  disabled?: boolean;
+  sx?: CSSProperties;
+}> = ({ onClick, disabled, sx }) => (
+  <IconActionButton label="Edit" onClick={onClick} disabled={disabled} sx={sx}>
+    <EditIcon size={19} color={C.actionEditIcon} />
+  </IconActionButton>
+);
+
+export const DeleteActionButton: React.FC<{
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  disabled?: boolean;
+  sx?: CSSProperties;
+}> = ({ onClick, disabled, sx }) => (
+  <IconActionButton label="Delete" onClick={onClick} disabled={disabled} sx={sx}>
+    <TrashIcon size={17} color={C.actionDangerIcon} />
+  </IconActionButton>
+);
+
+export const Av: React.FC<{ n?: string; sz?: number; v?: boolean; bg?: string; color?: string }> = ({
+  n,
+  sz = 32,
+  v,
+  bg,
+  color,
+}) => {
   const i = n?.split(" ").map((x) => x[0]).join("").slice(0, 2) || "?";
   return (
     <div
@@ -362,10 +429,10 @@ export const Av: React.FC<{ n?: string; sz?: number; v?: boolean }> = ({ n, sz =
         width: sz,
         height: sz,
         borderRadius: v ? "8px" : "50%",
-        background: v
+        background: bg ?? (v
           ? `linear-gradient(135deg,${C.vendor},${C.vendorL})`
-          : `linear-gradient(135deg,${C.primary},${C.accent})`,
-        color: "#fff",
+          : `linear-gradient(135deg,${C.primary},${C.accent})`),
+        color: color ?? C.white,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -498,11 +565,12 @@ export const Stat: React.FC<{ label: string; value: ReactNode }> = ({ label, val
   <div
     style={{
       background: "#fff",
-      borderRadius: "12px",
+      borderRadius: "4px",
       padding: "14px 16px",
-      border: `1px solid ${C.border}`,
       flex: "1",
       minWidth: "120px",
+      boxShadow: "0px 2px 3px 0px #253EA70A",
+
     }}
   >
     <div
@@ -521,12 +589,30 @@ export const Stat: React.FC<{ label: string; value: ReactNode }> = ({ label, val
   </div>
 );
 
-export const Empty: React.FC<{ icon: string; title: string; sub: string }> = ({ icon, title, sub }) => (
+export const Empty: React.FC<{ icon: ReactNode; title: string; sub: string }> = ({ icon, title, sub }) => (
   <div style={{ textAlign: "center", padding: "40px 16px", color: C.muted }}>
-    <div style={{ fontSize: "36px", marginBottom: "8px", opacity: 0.35 }}>{icon}</div>
+    <div style={{ fontSize: "36px", marginBottom: "8px", opacity: 0.35, display: "inline-flex" }}>{icon}</div>
     <div style={{ fontSize: "14px", fontWeight: 600, color: C.primary, marginBottom: "3px" }}>{title}</div>
     <div style={{ fontSize: "12px" }}>{sub}</div>
   </div>
+);
+
+export const Spinner: React.FC<{ size?: number; color?: string }> = ({ size = 24, color = C.primary }) => (
+  <>
+    <style>{`@keyframes qubiqon-spin { to { transform: rotate(360deg); } }`}</style>
+    <span
+      aria-hidden="true"
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        border: `2px solid ${color}24`,
+        borderTopColor: color,
+        display: "inline-block",
+        animation: "qubiqon-spin 0.75s linear infinite",
+      }}
+    />
+  </>
 );
 
 export const FileUp: React.FC<{
@@ -577,12 +663,14 @@ export const FileUp: React.FC<{
             border: `1px solid ${C.vendor}25`,
           }}
         >
-          <span>📎</span>
+          <Paperclip size={16} color={C.vendor} />
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: "12px", fontWeight: 600 }}>{file.n}</div>
             <div style={{ fontSize: "10px", color: C.muted }}>{file.s}</div>
           </div>
-          <button type="button" onClick={handleClear} style={{ background: "none", border: "none", cursor: "pointer", color: C.danger, fontSize: "13px" }}>✕</button>
+          <button type="button" onClick={handleClear} style={{ background: "none", border: "none", cursor: "pointer", color: C.danger, display: "inline-flex", padding: 0 }}>
+            <X size={14} />
+          </button>
         </div>
       ) : (
         <div
@@ -596,7 +684,7 @@ export const FileUp: React.FC<{
             background: C.surface,
           }}
         >
-          <div style={{ fontSize: "24px", opacity: 0.3, marginBottom: "4px" }}>📄</div>
+          <FileText size={24} color={C.primary} opacity={0.3} style={{ marginBottom: "4px" }} />
           <div style={{ fontSize: "12px", fontWeight: 600 }}>
             Drop file or <span style={{ color: C.vendor }}>browse</span>
           </div>
@@ -621,7 +709,8 @@ export const MultiFileUp: React.FC<{
   title?: string;
   accept?: string;
   hint?: string;
-}> = ({ files, onChange, req, accept = ".pdf,.jpg,.jpeg,.png", hint, title = "Attachments" }) => {
+  radius?: string;
+}> = ({ files, onChange, req, accept = ".pdf,.jpg,.jpeg,.png", hint, title = "Attachments", radius = "8px" }) => {
   const ref = useRef<HTMLInputElement>(null);
   const hintText = hint ?? (accept === ".pdf" ? "PDF only" : "PDF, JPG, PNG up to 10 MB");
 
@@ -658,14 +747,14 @@ export const MultiFileUp: React.FC<{
         style={{
           padding: "20px",
           border: `2px dashed ${C.border}`,
-          borderRadius: "8px",
+          borderRadius: radius,
           textAlign: "center",
           cursor: "pointer",
           background: C.surface,
           marginBottom: files.length > 0 ? "10px" : 0,
         }}
       >
-        <div style={{ fontSize: "24px", opacity: 0.3, marginBottom: "4px" }}>📄</div>
+        <UploadCloud size={24} color={C.primary} opacity={0.3} style={{ marginBottom: "4px" }} />
         <div style={{ fontSize: "12px", fontWeight: 600 }}>
           Drop files or <span style={{ color: C.vendor }}>browse</span>
         </div>
@@ -690,16 +779,18 @@ export const MultiFileUp: React.FC<{
                 gap: "10px",
                 padding: "10px 14px",
                 background: C.vendorBg,
-                borderRadius: "8px",
+                borderRadius: radius,
                 border: `1px solid ${C.vendor}25`,
               }}
             >
-              <span>📎</span>
+              <Paperclip size={16} color={C.vendor} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: "12px", fontWeight: 600 }}>{file.name}</div>
                 <div style={{ fontSize: "10px", color: C.muted }}>{(file.size / 1024).toFixed(0)} KB</div>
               </div>
-              <button type="button" onClick={() => handleRemove(index)} style={{ background: "none", border: "none", cursor: "pointer", color: C.danger, fontSize: "13px" }}>✕</button>
+              <button type="button" onClick={() => handleRemove(index)} style={{ background: "none", border: "none", cursor: "pointer", color: C.danger, display: "inline-flex", padding: 0 }}>
+                <X size={14} />
+              </button>
             </div>
           ))}
         </div>
@@ -735,7 +826,7 @@ export const Toggle: React.FC<{
         width: 34,
         height: 18,
         borderRadius: 999,
-        background: checked ? C.invoice : C.border,
+        background: checked ? C.accent : C.border,
         position: "relative",
         transition: "background 0.15s",
       }}
@@ -762,19 +853,22 @@ interface TableRow {
 }
 
 /** Column header: plain string, or `{ label, sortKey }` for API sort (`SortBy`). */
-export type TblCol = string | false | { label: string; sortKey?: string };
+export type TblCol = string | false | { label: string; sortKey?: string; sx?: CSSProperties };
 
 export const Tbl: React.FC<{
   cols: TblCol[];
   rows: TableRow[];
   onRow?: (row: TableRow) => void;
+  headerSx?: CSSProperties;
+  cellSx?: CSSProperties;
+  bodyFallback?: ReactNode;
   /** Active sort field (PascalCase, e.g. `CreatedAt`, `Total`). */
   sortBy?: string;
   sortDesc?: boolean;
   onSortChange?: (sortKey: string) => void;
-}> = ({ cols, rows, onRow, sortBy, sortDesc, onSortChange }) => (
+}> = ({ cols, rows, onRow, headerSx, cellSx, bodyFallback, sortBy, sortDesc, onSortChange }) => (
   <div style={{ overflowX: "auto" }}>
-    <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: "12px" }}>
+    <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: "12px", color: C.muted }}>
       <thead>
         <tr>
           {cols
@@ -782,20 +876,21 @@ export const Tbl: React.FC<{
             .map((c, idx) => {
               const label = typeof c === "string" ? c : c.label;
               const sk = typeof c === "string" ? undefined : c.sortKey;
+              const colSx = typeof c === "string" ? undefined : c.sx;
               const active =
                 sk &&
                 sortBy &&
                 sk.replace(/\s/g, "").toLowerCase() === sortBy.replace(/\s/g, "").toLowerCase();
               const thStyle: CSSProperties = {
-                padding: "8px 12px",
+                padding: "10px 12px",
                 textAlign: "left",
-                fontSize: "10px",
+                fontSize: "11px",
                 fontWeight: 600,
-                color: C.muted,
-                textTransform: "uppercase",
-                letterSpacing: "0.06em",
-                borderBottom: `2px solid ${C.border}`,
+                color: C.primary,
+                borderBottom: `1px solid ${C.border}`,
                 whiteSpace: "nowrap",
+                ...headerSx,
+                ...colSx,
               };
               if (sk && onSortChange) {
                 return (
@@ -813,8 +908,8 @@ export const Tbl: React.FC<{
                         margin: 0,
                         cursor: "pointer",
                         font: "inherit",
-                        color: active ? C.primary : C.muted,
-                        fontWeight: 700,
+                        color: active ? C.accent : C.primary,
+                        fontWeight: "inherit",
                         display: "inline-flex",
                         alignItems: "center",
                         gap: "4px",
@@ -841,21 +936,29 @@ export const Tbl: React.FC<{
         </tr>
       </thead>
       <tbody>
-        {rows.map((row, i) => (
-          <tr
-            key={i}
-            onClick={() => onRow?.(row)}
-            style={{ cursor: onRow ? "pointer" : "default", transition: "background 0.15s" }}
-            onMouseOver={(e) => (e.currentTarget.style.background = C.surface)}
-            onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
-          >
-            {row._cells.map((c, j) => (
-              <td key={j} style={{ padding: "10px 12px", borderBottom: `1px solid ${C.border}`, ...c.sx }}>
-                {c.v}
-              </td>
-            ))}
+        {bodyFallback && rows.length === 0 ? (
+          <tr>
+            <td colSpan={cols.filter((c) => c !== false).length} style={{ borderBottom: `1px solid ${C.border}` }}>
+              {bodyFallback}
+            </td>
           </tr>
-        ))}
+        ) : (
+          rows.map((row, i) => (
+            <tr
+              key={i}
+              onClick={() => onRow?.(row)}
+              style={{ cursor: onRow ? "pointer" : "default", transition: "background 0.15s", color: C.muted }}
+              onMouseOver={(e) => (e.currentTarget.style.background = C.surface)}
+              onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
+            >
+              {row._cells.map((c, j) => (
+                <td key={j} style={{ padding: "10px 12px", borderBottom: `1px solid ${C.border}`, color: C.muted, ...cellSx, ...c.sx }}>
+                  {c.v}
+                </td>
+              ))}
+            </tr>
+          ))
+        )}
       </tbody>
     </table>
   </div>
@@ -876,14 +979,12 @@ export const SortTh: React.FC<{
     return (
       <th
         style={{
-          padding: "12px 14px",
+          padding: "10px 12px",
           textAlign: "left",
           fontSize: "11px",
           fontWeight: 600,
-          color: C.muted,
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-          borderBottom: `2px solid ${C.border}`,
+          color: C.primary,
+          borderBottom: `1px solid ${C.border}`,
         }}
       >
         {children}
@@ -893,14 +994,12 @@ export const SortTh: React.FC<{
   return (
     <th
       style={{
-        padding: "12px 14px",
+        padding: "10px 12px",
         textAlign: "left",
         fontSize: "11px",
         fontWeight: 600,
-        color: C.muted,
-        textTransform: "uppercase",
-        letterSpacing: "0.05em",
-        borderBottom: `2px solid ${C.border}`,
+        color: C.primary,
+        borderBottom: `1px solid ${C.border}`,
       }}
     >
       <button
@@ -916,8 +1015,8 @@ export const SortTh: React.FC<{
           margin: 0,
           cursor: "pointer",
           font: "inherit",
-          color: active ? C.primary : C.muted,
-          fontWeight: 700,
+          color: active ? C.accent : C.primary,
+          fontWeight: 600,
           display: "inline-flex",
           alignItems: "center",
           gap: "4px",
@@ -971,7 +1070,7 @@ export const Filter: React.FC<{
           border: `1.5px solid ${C.border}`,
           borderRadius: "8px",
           fontSize: "12px",
-          fontFamily: "'DM Sans'",
+          fontFamily: "'Inter', 'Manrope', sans-serif",
           outline: "none",
           boxSizing: "border-box",
         }}
@@ -1003,7 +1102,7 @@ export const Filter: React.FC<{
             fontSize: "11px",
             fontWeight: 600,
             cursor: "pointer",
-            fontFamily: "'DM Sans'",
+            fontFamily: "'Inter', 'Manrope', sans-serif",
             background: status === s ? "#fff" : "transparent",
             color: status === s ? C.primary : C.muted,
             boxShadow: status === s ? "0 1px 3px rgba(0,0,0,0.06)" : "none",

@@ -22,7 +22,7 @@ function NoAccessScreen({ onSignOut }: { onSignOut: () => void }) {
         justifyContent: "center",
         gap: "24px",
         background: `linear-gradient(160deg, ${C.primary} 0%, #2C3E6A 50%, ${C.accent} 100%)`,
-        fontFamily: "'DM Sans'",
+        fontFamily: "'Inter', 'Manrope', sans-serif",
         padding: "16px",
       }}
     >
@@ -55,7 +55,7 @@ function NoAccessScreen({ onSignOut }: { onSignOut: () => void }) {
           color: "#fff",
           fontSize: "14px",
           fontWeight: 600,
-          fontFamily: "'DM Sans'",
+          fontFamily: "'Inter', 'Manrope', sans-serif",
           cursor: "pointer",
         }}
       >
@@ -76,7 +76,7 @@ export function LoadingScreen({ message = "Checking login…" }: { message?: str
         justifyContent: "center",
         gap: "20px",
         background: `linear-gradient(160deg, ${C.primary} 0%, #2C3E6A 50%, ${C.accent} 100%)`,
-        fontFamily: "'DM Sans'",
+        fontFamily: "'Inter', 'Manrope', sans-serif",
       }}
     >
       <div
