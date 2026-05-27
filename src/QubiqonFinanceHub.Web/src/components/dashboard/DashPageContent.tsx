@@ -84,18 +84,6 @@ const dashboardCurrencySelectStyles: StylesConfig<CurrencyOption, false> = {
   }),
 };
 
-/** Compact amount for INR-style legends (matches prior "60k" donut parsing). */
-function abbrevAmount(amount: number): string {
-  const abs = Math.abs(amount);
-  const sign = amount < 0 ? "-" : "";
-  const fmt = (n: number, suffix: string) =>
-    `${sign}${(Math.round(n * 10) / 10).toString().replace(/\.0$/, "")}${suffix}`;
-  if (abs >= 10000000) return fmt(amount / 10000000, "Cr");
-  if (abs >= 100000) return fmt(amount / 100000, "L");
-  if (abs >= 1000) return fmt(amount / 1000, "k");
-  return `${sign}${Math.round(amount)}`;
-}
-
 function formatCurrencySummary(amount: number, currency = "INR"): string {
   try {
     return new Intl.NumberFormat("en-IN", {
@@ -210,7 +198,7 @@ function OverviewCard({ title, icon: Icon, segments, to }: OverviewCard) {
       <div style={{ display: "grid", gap: 5, marginTop: "auto", paddingTop: 20 }}>
         {segments.map((segment) => {
           const shown = segmentDisplay(segment);
-          const showLegendValue = typeof shown === "number" ? shown !== 0 : shown !== "";
+          const showLegendValue = typeof shown === "number" ? true : shown !== "";
           return (
             <div key={segment.label} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: C.muted }}>
               <span
@@ -278,8 +266,11 @@ const dashboardCss = `
 
 const pageStyle: CSSProperties = {
   background: C.surface,
+  /** Match layout main height so flex children (loading) can fill space below the greeting */
   minHeight: "100%",
   boxSizing: "border-box",
+  display: "flex",
+  flexDirection: "column",
 };
 
 function getTimeGreeting(date: Date) {
@@ -291,11 +282,25 @@ function getTimeGreeting(date: Date) {
 
 const emptyInvoiceCounts = { draft: 0, sent: 0, partiallyPaid: 0, paid: 0, overdue: 0 };
 
+/** API dashboard slices carry row counts for expense / advances / vendor bills donuts. */
+function slicesToCountSegments(slices: { label: string; value: number }[] | undefined, emptyLabel: string): DashboardSegment[] {
+  const list = slices ?? [];
+  if (list.length === 0) {
+    return [{ label: emptyLabel, numericValue: 0, displayValue: "", color: CHART_EMPTY }];
+  }
+  return list.map((s, i) => {
+    const v = Number(s.value ?? 0);
+    return {
+      label: s.label,
+      numericValue: v,
+      displayValue: v,
+      color: SLICE_PALETTE[i % SLICE_PALETTE.length],
+    };
+  });
+}
+
 function buildOverviewCards(d: DashboardData, reportCurrency: string): OverviewCard[] {
   const ic = d.invoiceCounts ?? emptyInvoiceCounts;
-  const expPending = Number(d.pendingExpenses ?? 0);
-  const expApproved = Number(d.approvedExpenses ?? 0);
-  const expDone = Number(d.completedExpenses ?? 0);
   const displayCur = d.displayCurrency?.trim() || reportCurrency;
 
   const receivables = d.receivablesByClient ?? [];
@@ -312,45 +317,23 @@ function buildOverviewCards(d: DashboardData, reportCurrency: string): OverviewC
           };
         });
 
-  const billSlices = d.billsToPayByAccount ?? [];
-  const billSegments: DashboardSegment[] =
-    billSlices.length === 0 && (d.billsToPayCount ?? 0) === 0
-      ? [{ label: "No approved bills", numericValue: 0, displayValue: "", color: CHART_EMPTY }]
-      : billSlices.length === 0
-        ? [
-            {
-              label: "Total payable",
-              numericValue: Number(d.billsToPayAmount ?? 0),
-              displayValue: abbrevAmount(Number(d.billsToPayAmount ?? 0)),
-              color: ORANGE,
-            },
-          ]
-        : billSlices.map((s, i) => ({
-            label: s.label,
-            numericValue: Number(s.value ?? 0),
-            displayValue: abbrevAmount(Number(s.value ?? 0)),
-            color: SLICE_PALETTE[i % SLICE_PALETTE.length],
-          }));
+  const billSegments = slicesToCountSegments(d.billsPayableSlices, "No bills to pay");
+
+  const expenseSegments = slicesToCountSegments(d.expenseSlices, "No expenses");
+  const advanceSegments = slicesToCountSegments(d.advanceSlices, "No advances");
 
   return [
     {
       title: "Expense overview",
       icon: ReceiptText,
       to: "/expenses",
-      segments: [
-        { label: "Pending", numericValue: expPending, color: ORANGE },
-        { label: "Approved", numericValue: expApproved, color: GREEN },
-        { label: "Completed", numericValue: expDone, color: YELLOW },
-      ],
+      segments: expenseSegments,
     },
     {
       title: "Advances",
       icon: HandCoins,
       to: "/advances",
-      segments: [
-        { label: "Pending", numericValue: Number(d.pendingAdvances ?? 0), color: ORANGE },
-        { label: "Disbursed", numericValue: Number(d.disbursedAdvances ?? 0), color: GREEN },
-      ],
+      segments: advanceSegments,
     },
     {
       title: "Invoices overview",
@@ -469,16 +452,12 @@ export default function DashPage() {
       <div
         className="dashboard-header"
         style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 20,
           display: "flex",
           alignItems: "flex-start",
           justifyContent: "space-between",
           gap: 20,
           paddingBottom: 20,
           marginBottom: 0,
-          background: C.surface,
         }}
       >
         <div>
@@ -508,7 +487,17 @@ export default function DashPage() {
       </div>
 
       {loading && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, color: C.muted }}>
+        <div
+          style={{
+            flex: 1,
+            minHeight: "min(60vh, 520px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 10,
+            color: C.muted,
+          }}
+        >
           <Spinner size={22} />
           <span style={{ fontSize: 13 }}>Loading dashboard…</span>
         </div>

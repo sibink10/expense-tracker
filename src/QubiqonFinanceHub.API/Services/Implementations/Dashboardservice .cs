@@ -3,6 +3,7 @@ using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Entities;
 using QubiqonFinanceHub.API.Models.Enums;
+using QubiqonFinanceHub.API.Services.Helpers;
 using QubiqonFinanceHub.API.Services.Interfaces;
 
 namespace QubiqonFinanceHub.API.Services.Implementations;
@@ -10,7 +11,6 @@ namespace QubiqonFinanceHub.API.Services.Implementations;
 public class DashboardService : IDashboardService
 {
     private const int TopReceivableClients = 8;
-    private const int TopBillAccounts = 12;
 
     private readonly FinanceHubDbContext _db;
     private readonly ITenantService _tenant;
@@ -33,6 +33,7 @@ public class DashboardService : IDashboardService
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
         var empId = _tenant.GetCurrentEmployeeId();
+        var todayUtc = DateTime.UtcNow.Date;
 
         var expenses = _db.ExpenseRequests.Where(e => e.OrganizationId == orgId);
         if (myOnly) expenses = expenses.Where(e => e.EmployeeId == empId);
@@ -40,28 +41,24 @@ public class DashboardService : IDashboardService
         var advances = _db.AdvancePayments.Where(a => a.OrganizationId == orgId);
         if (myOnly) advances = advances.Where(a => a.EmployeeId == empId);
 
-        var bills = _db.VendorBills.Where(b => b.OrganizationId == orgId);
+        var bills = _db.VendorBills.Where(b => b.OrganizationId == orgId).AsNoTracking();
         var invoices = _db.Invoices.Where(i => i.OrganizationId == orgId).AsNoTracking();
 
-        var pendingExpenses = await expenses.CountAsync(e => e.Status == ExpenseStatus.PendingApproval);
-        var approvedExpenses = await expenses.CountAsync(e =>
-            e.Status == ExpenseStatus.Approved || e.Status == ExpenseStatus.AwaitingPayment);
-        var completedExpenses = await expenses.CountAsync(e => e.Status == ExpenseStatus.Completed);
+        var pendingSubmittedBills = await bills.CountAsync(b => b.Status == BillStatus.Submitted);
 
-        var pendingBills = await bills.CountAsync(b => b.Status == BillStatus.Submitted);
+        // Pending approvals: expense + advance only (not vendor bills).
+        var pendingExpenseApprovals =
+            await expenses.CountAsync(e =>
+                e.Status == ExpenseStatus.PendingApproval ||
+                e.Status == ExpenseStatus.AwaitingBill ||
+                e.Status == ExpenseStatus.PendingBillApproval);
+        var pendingAdvanceOnly = await advances.CountAsync(a => a.Status == AdvanceStatus.Pending);
+        var pendingApprovals = pendingExpenseApprovals + pendingAdvanceOnly;
 
-        var billsToPayQuery = bills.AsNoTracking().Where(b => b.Status == BillStatus.Approved);
-        var billsToPay = await billsToPayQuery.ToListAsync();
-        var billsToPayCount = billsToPay.Count;
-        var billsToPayAmount = billsToPay.Sum(b => b.TotalPayable);
+        var expenseSlices = await BuildExpenseSlicesAsync(expenses);
+        var advanceSlices = await BuildAdvanceSlicesAsync(advances);
 
-        var pendingAdvances = await advances.CountAsync(a => a.Status == AdvanceStatus.Pending);
-        var disbursedAdvances = await advances.CountAsync(a =>
-            a.Status == AdvanceStatus.Disbursed
-            || a.Status == AdvanceStatus.PartiallyDisbursed
-            || a.Status == AdvanceStatus.Settled);
-
-        var pendingApprovals = pendingExpenses + pendingBills + pendingAdvances;
+        var (billsPayableSlices, billsToPayCount, billsToPayAmount) = BuildBillsPayableAggregates(await bills.ToListAsync(), todayUtc);
 
         var invoiceCounts = await _invoices.GetStatusCountsAsync();
 
@@ -69,9 +66,16 @@ public class DashboardService : IDashboardService
 
         var invoiceRowsRaw = await invoices
             .Where(i =>
-                i.Status != InvoiceStatus.Paid
+                i.paidAmound < i.Total
                 && i.Status != InvoiceStatus.Draft
-                && i.paidAmound < i.Total)
+                && i.Status != InvoiceStatus.Paid
+                && i.Status != InvoiceStatus.PendingSignature
+                && i.Status != InvoiceStatus.SignatureFailed
+                && i.Status != InvoiceStatus.Signed
+                && (i.Status == InvoiceStatus.Sent
+                    || i.Status == InvoiceStatus.Viewed
+                    || i.Status == InvoiceStatus.PartiallyPaid
+                    || i.Status == InvoiceStatus.Overdue))
             .Select(i => new { i.ClientId, ClientName = i.Client.Name, i.Currency, Outstanding = i.Total - i.paidAmound })
             .ToListAsync();
 
@@ -80,7 +84,6 @@ public class DashboardService : IDashboardService
             .ToList();
 
         var reportCode = NormalizeReportCurrency(reportCurrency);
-        var displayCurrency = reportCode;
 
         IReadOnlyList<DashboardSliceDto> receivablesByClient;
         decimal receivableOutstanding;
@@ -101,27 +104,126 @@ public class DashboardService : IDashboardService
                 .ToList();
         }
 
-        var approvedBillIds = billsToPay.Select(b => b.Id).ToList();
-        var billsToPayByAccount = await BuildBillsToPayByAccountAsync(approvedBillIds, billsToPay);
-
         return new DashboardDto(
-            pendingExpenses,
-            approvedExpenses,
-            completedExpenses,
-            pendingBills,
+            pendingSubmittedBills,
             billsToPayCount,
             billsToPayAmount,
-            pendingAdvances,
-            disbursedAdvances,
-            pendingApprovals,
             receivableOutstanding,
             receivableOutstanding,
             invoiceCounts,
+            pendingApprovals,
+            expenseSlices,
+            advanceSlices,
+            billsPayableSlices,
             receivablesByClient,
-            billsToPayByAccount,
             availableCurrencies,
-            displayCurrency);
+            reportCode);
     }
+
+    /// <summary>
+    /// Payable rows with open balance (excludes draft/rejected/paid), same basis as /api/bills display.
+    /// </summary>
+    private static bool VendorBillEligibleForBillsToPay(VendorBill b) =>
+        b.Status != BillStatus.Paid
+        && b.Status != BillStatus.Rejected
+        && b.Status != BillStatus.Draft
+        && b.PaidAmount < b.TotalPayable;
+
+    /// <summary>
+    /// Buckets: Approved, Partially paid, and Overdue. Overdue follows <see cref="VendorBillStatusRules.IsComputationallyOverdue"/>
+    /// (same rule as <c>VendorBillService.ListAsync</c> Overdue filter + BillDto status).
+    /// </summary>
+    private static (
+        List<DashboardSliceDto> slices,
+        int count,
+        decimal amountSum) BuildBillsPayableAggregates(IReadOnlyList<VendorBill> billsList, DateTime utcTodayDate)
+    {
+        var approved = 0;
+        var partial = 0;
+        var overdue = 0;
+        decimal balSum = 0;
+
+        foreach (var b in billsList)
+        {
+            if (!VendorBillEligibleForBillsToPay(b)) continue;
+
+            var bal = b.TotalPayable - b.PaidAmount;
+
+            if (VendorBillStatusRules.IsComputationallyOverdue(b, utcTodayDate))
+            {
+                overdue++;
+                balSum += bal;
+                continue;
+            }
+
+            if (b.Status != BillStatus.Approved && b.Status != BillStatus.PartiallyPaid) continue;
+
+            balSum += bal;
+            if (b.Status == BillStatus.PartiallyPaid) partial++;
+            else approved++;
+        }
+
+        var slices = new List<DashboardSliceDto>
+        {
+            new("Approved", approved, null),
+            new("Partially paid", partial, null),
+            new("Overdue", overdue, null),
+        };
+        var countSum = approved + partial + overdue;
+        return (slices, countSum, balSum);
+    }
+
+    private static async Task<List<DashboardSliceDto>> BuildExpenseSlicesAsync(IQueryable<ExpenseRequest> expenses)
+    {
+        async Task<int> C(ExpenseStatus st) =>
+            await expenses.CountAsync(e => e.Status == st);
+
+        async Task<int> Cs(params ExpenseStatus[] sts) =>
+            await expenses.CountAsync(e => sts.Contains(e.Status));
+
+        var pending = await Cs(
+            ExpenseStatus.PendingApproval,
+            ExpenseStatus.AwaitingBill,
+            ExpenseStatus.PendingBillApproval);
+
+        var approved = await C(ExpenseStatus.Approved);
+        var awaitingPayment = await C(ExpenseStatus.AwaitingPayment);
+        var completed = await C(ExpenseStatus.Completed);
+        var rejected = await C(ExpenseStatus.Rejected);
+        var partiallyPaid = await C(ExpenseStatus.PartiallyPaid);
+        var cancelled = await C(ExpenseStatus.Cancelled);
+
+        return
+        [
+            new("Pending", pending, null),
+            new("Approved", approved, null),
+            new("Awaiting payment", awaitingPayment, null),
+            new("Partially paid", partiallyPaid, null),
+            new("Completed", completed, null),
+            new("Cancelled", cancelled, null),
+            new("Rejected", rejected, null),
+        ];
+    }
+
+    private static async Task<List<DashboardSliceDto>> BuildAdvanceSlicesAsync(IQueryable<AdvancePayment> advances)
+    {
+        var pending = await advances.CountAsync(a => a.Status == AdvanceStatus.Pending);
+        var approved = await advances.CountAsync(a => a.Status == AdvanceStatus.Approved);
+        var rejected = await advances.CountAsync(a => a.Status == AdvanceStatus.Rejected);
+        var partiallyDisbursed = await advances.CountAsync(a => a.Status == AdvanceStatus.PartiallyDisbursed);
+        var disbursed = await advances.CountAsync(a => a.Status == AdvanceStatus.Disbursed);
+
+        return
+        [
+            new("Pending", pending, null),
+            new("Approved", approved, null),
+            new("Disbursed", disbursed, null),
+            new("Rejected", rejected, null),
+            new("Partially paid", partiallyDisbursed, null),
+        ];
+    }
+
+
 
     private List<DashboardSliceDto> BuildReceivablesInReportCurrency(
         List<ReceivableRow> invoiceRows,
@@ -157,40 +259,6 @@ public class DashboardService : IDashboardService
         if (string.IsNullOrWhiteSpace(code)) return null;
         var n = code.Trim().ToUpperInvariant();
         return n.Length == 3 ? n : null;
-    }
-
-    private async Task<IReadOnlyList<DashboardSliceDto>> BuildBillsToPayByAccountAsync(
-        IReadOnlyList<Guid> approvedBillIds,
-        IReadOnlyList<VendorBill> billsToPay)
-    {
-        if (approvedBillIds.Count == 0)
-            return Array.Empty<DashboardSliceDto>();
-
-        var lines = await _db.VendorBillLineItems
-            .AsNoTracking()
-            .Where(li => approvedBillIds.Contains(li.VendorBillId))
-            .Select(li => new { li.VendorBillId, li.Account, li.Amount })
-            .ToListAsync();
-
-        var buckets = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var group in lines.GroupBy(x => string.IsNullOrWhiteSpace(x.Account) ? "Other" : x.Account!.Trim()))
-            buckets[group.Key] = group.Sum(x => x.Amount);
-
-        var billsWithLines = lines.Select(l => l.VendorBillId).Distinct().ToHashSet();
-        foreach (var b in billsToPay)
-        {
-            if (billsWithLines.Contains(b.Id)) continue;
-            const string uncategorized = "Uncategorized";
-            buckets.TryGetValue(uncategorized, out var v);
-            buckets[uncategorized] = v + b.TotalPayable;
-        }
-
-        return buckets
-            .OrderByDescending(kv => kv.Value)
-            .Take(TopBillAccounts)
-            .Select(kv => new DashboardSliceDto(kv.Key, kv.Value, null))
-            .ToList();
     }
 
     private sealed record ReceivableRow(Guid ClientId, string ClientName, string Currency, decimal Outstanding);

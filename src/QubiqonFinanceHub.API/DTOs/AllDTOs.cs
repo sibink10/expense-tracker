@@ -457,21 +457,31 @@ public record DashboardSliceDto(string Label, decimal Value, string? Currency = 
 /// Organization dashboard aggregates. Invoice status counts match <see cref="InvoiceStatusCountsDto"/> from the invoices API.
 /// Bills and invoice figures are org-wide; expenses and advances respect <c>myOnly</c>.
 /// </summary>
+/// <remarks>
+/// <see cref="PendingApprovals"/> = expense awaiting approval + advance Pending only (vendor bill submissions use <see cref="PendingSubmittedBills"/>).
+/// Bills-to-pay aggregates include approved, partially paid, and overdue open balances.
+/// ExpenseSlices / AdvanceSlices / BillsPayableSlices carry counts (stored in <see cref="DashboardSliceDto.Value"/>).
+/// </remarks>
 public record DashboardDto(
-    int PendingExpenses,
-    int ApprovedExpenses,
-    int CompletedExpenses,
-    int PendingBills,
+    /// <summary>Vendor bills submitted, awaiting finance/approver action.</summary>
+    int PendingSubmittedBills,
     int BillsToPayCount,
     decimal BillsToPayAmount,
-    int PendingAdvances,
-    int DisbursedAdvances,
-    int PendingApprovals,
     decimal ReceivableOutstanding,
     decimal TotalReceivable,
     InvoiceStatusCountsDto InvoiceCounts,
+    int PendingApprovals,
+    /// <summary>
+    /// ExpenseRequests donut counts: Pending (pre-decision workflow), Approved, Awaiting payment, Partially paid, Completed, Cancelled, Rejected.
+    /// </summary>
+    IReadOnlyList<DashboardSliceDto> ExpenseSlices,
+    /// <summary>
+    /// AdvancePayments donut counts: Pending, Approved, Disbursed, Rejected, Partially paid. (Disbursed is treated as paid.)
+    /// </summary>
+    IReadOnlyList<DashboardSliceDto> AdvanceSlices,
+    /// <summary>Bills donut: Approved, Partially paid, Overdue (open balance).</summary>
+    IReadOnlyList<DashboardSliceDto> BillsPayableSlices,
     IReadOnlyList<DashboardSliceDto> ReceivablesByClient,
-    IReadOnlyList<DashboardSliceDto> BillsToPayByAccount,
     IReadOnlyList<string> AvailableReportCurrencies,
     string? DisplayCurrency)
 {

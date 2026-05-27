@@ -17,20 +17,17 @@ export interface InvoiceStatusCounts {
 }
 
 export interface DashboardData {
-  pendingExpenses: number;
-  approvedExpenses: number;
-  completedExpenses: number;
-  pendingBills: number;
+  pendingSubmittedBills: number;
   billsToPayCount: number;
   billsToPayAmount: number;
-  pendingAdvances: number;
-  disbursedAdvances: number;
-  pendingApprovals: number;
   receivableOutstanding: number;
   totalReceivable: number;
   invoiceCounts: InvoiceStatusCounts;
+  pendingApprovals: number;
+  expenseSlices: DashboardSlice[];
+  advanceSlices: DashboardSlice[];
+  billsPayableSlices: DashboardSlice[];
   receivablesByClient: DashboardSlice[];
-  billsToPayByAccount: DashboardSlice[];
   availableReportCurrencies: string[];
   displayCurrency?: string | null;
   draftInvoices?: number;

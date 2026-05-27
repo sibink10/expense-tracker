@@ -175,6 +175,11 @@ export default function VendorsPage() {
       <div
         className="vendors-page-header"
         style={{
+          position: "sticky",
+          top: "-17px",
+          background: "#f1f2f6",
+          padding: "10px 2px",
+          zIndex: 1,
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",

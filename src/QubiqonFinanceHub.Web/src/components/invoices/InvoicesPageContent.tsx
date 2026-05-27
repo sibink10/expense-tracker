@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type KeyboardEvent, type MouseEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import Select from "react-select";
+import type { StylesConfig } from "react-select";
 import {
   ChevronLeft,
   ChevronRight,
@@ -30,9 +32,90 @@ import {
   type TblCol,
 } from "../ui";
 import { useAppContext } from "../../context/AppContext";
-import { getInvoiceCounts, getInvoices, markInvoiceSent } from "../../shared/api/invoice";
+import {
+  getInvoiceCounts,
+  getInvoices,
+  markInvoiceSent,
+  invoiceStatusForApi,
+} from "../../shared/api/invoice";
 import { downloadInvoicePdf } from "../../shared/invoicePdf";
 import { sendZohoDocument } from "../../shared/api/zoho";
+
+type InvoiceStatusFilterOption = { label: string; value: string };
+
+const INVOICE_STATUS_FILTER_OPTIONS: InvoiceStatusFilterOption[] = [
+  { label: "All invoices", value: "all" },
+  { label: "Draft", value: INV_S.DRAFT },
+  { label: "Sent", value: INV_S.SENT },
+  { label: "Viewed", value: INV_S.VIEWED },
+  { label: "Partially paid", value: INV_S.PARTIALLY_PAID },
+  { label: "Paid", value: INV_S.PAID },
+  { label: "Overdue", value: INV_S.OVERDUE },
+  { label: "Pending signature", value: INV_S.PENDING_SIGNATURE },
+  { label: "Signed", value: INV_S.SIGNED },
+  { label: "Signature failed", value: INV_S.SIGNATURE_FAILED },
+];
+
+const invoiceFilterSelectStyles: StylesConfig<InvoiceStatusFilterOption, false> = {
+  control: (base) => ({
+    ...base,
+    minHeight: "34px",
+    borderRadius: 8,
+    backgroundColor: C.white,
+    borderColor: C.border,
+    boxShadow: "none",
+    fontSize: 12,
+    fontFamily: "'Inter', 'Manrope', sans-serif",
+    cursor: "pointer",
+  }),
+  singleValue: (base) => ({
+    ...base,
+    color: C.primary,
+    fontWeight: 500,
+  }),
+  input: (base) => ({
+    ...base,
+    color: C.primary,
+  }),
+  placeholder: (base) => ({
+    ...base,
+    color: C.muted,
+  }),
+  valueContainer: (base) => ({
+    ...base,
+    padding: "0 10px",
+  }),
+  indicatorSeparator: () => ({ display: "none" }),
+  dropdownIndicator: (base, state) => ({
+    ...base,
+    color: C.muted,
+    opacity: state.isDisabled ? 0.35 : 1,
+  }),
+  menu: (base) => ({
+    ...base,
+    borderRadius: 8,
+    boxShadow: C.cardShadow,
+    overflow: "hidden",
+    zIndex: 20,
+    backgroundColor: C.white,
+    border: `1px solid ${C.border}`,
+  }),
+  menuList: (base) => ({
+    ...base,
+    backgroundColor: C.white,
+    paddingTop: 4,
+    paddingBottom: 4,
+  }),
+  option: (base, state) => ({
+    ...base,
+    fontSize: 12,
+    fontFamily: "'Inter', 'Manrope', sans-serif",
+    color: C.invoice,
+    fontWeight: state.isSelected ? 600 : 400,
+    backgroundColor: state.isSelected ? C.successBg : state.isFocused ? C.surface : "transparent",
+    cursor: "pointer",
+  }),
+};
 
 const DownloadSpinner = () => (
   <span
@@ -58,8 +141,8 @@ const workflowActionStyle = (fg: string, bg: string) => ({
 
 export default function InvoicesPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const { search, setSearch, sf, setSf, fil, is, setMdl, activeOrg, t } = useAppContext();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { search, setSearch, sf, setSf, is, setMdl, activeOrg, t } = useAppContext();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [sendConfirm, setSendConfirm] = useState<Invoice | null>(null);
   const [sendLoading, setSendLoading] = useState(false);
@@ -81,9 +164,23 @@ export default function InvoicesPage() {
     partiallyPaidInvoices: 0,
     overdueInvoices: 0,
   });
-  const validStatusValues = new Set(["all", INV_S.DRAFT, INV_S.SENT, INV_S.PAID, INV_S.OVERDUE]);
+  const validStatusValues = new Set(INVOICE_STATUS_FILTER_OPTIONS.map((o) => o.value));
   const statusParam = searchParams.get("status") ?? "all";
   const normalizedStatus = validStatusValues.has(statusParam) ? statusParam : "all";
+
+  const statusForApi =
+    normalizedStatus !== "all" ? invoiceStatusForApi(normalizedStatus) : undefined;
+
+  const setInvoiceStatusFilter = (next: string) => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (next === "all") nextParams.delete("status");
+    else nextParams.set("status", next);
+    setSearchParams(nextParams, { replace: true });
+    setPage(1);
+  };
+
+  const selectedInvoiceStatusFilter =
+    INVOICE_STATUS_FILTER_OPTIONS.find((o) => o.value === normalizedStatus) ?? INVOICE_STATUS_FILTER_OPTIONS[0];
 
   useEffect(() => {
     const handler = () => setRefreshKey((k) => k + 1);
@@ -104,7 +201,7 @@ export default function InvoicesPage() {
       page,
       pageSize,
       search: search || undefined,
-      status: sf && sf !== "all" ? sf : undefined,
+      status: statusForApi,
       sortBy,
       desc: sortDesc,
     })
@@ -119,7 +216,7 @@ export default function InvoicesPage() {
         setTotalPages(0);
       })
       .finally(() => setLoading(false));
-  }, [page, pageSize, search, sf, refreshKey, sortBy, sortDesc]);
+  }, [page, pageSize, search, statusForApi, refreshKey, sortBy, sortDesc]);
 
   const handleSort = (key: string) => {
     const n = nextListSort(key, sortBy, sortDesc);
@@ -149,8 +246,6 @@ export default function InvoicesPage() {
         });
       });
   }, [refreshKey]);
-
-  const f = fil(invoices);
 
   const canSendInvoice = is("finance") || is("admin");
 
@@ -200,7 +295,7 @@ export default function InvoicesPage() {
     }
   };
 
-  const handleListDownload = async (inv: Invoice, e: React.MouseEvent) => {
+  const handleListDownload = async (inv: Invoice, e: MouseEvent) => {
     e.stopPropagation();
     setDownloadingId(inv.id);
     try {
@@ -321,7 +416,7 @@ export default function InvoicesPage() {
     "",
   ];
 
-  const rows = f.map((inv) => ({
+  const rows = invoices.map((inv) => ({
     invoice: inv,
     _cells: [
       { v: <span style={{ fontWeight: 600, color: C.invoice }}>{inv.id}</span> },
@@ -439,19 +534,34 @@ export default function InvoicesPage() {
 
           .invoices-table-controls {
             justify-content: center;
-            flex-wrap: nowrap;
+            flex-wrap: wrap;
           }
 
           .invoices-table-search {
-            flex: 0 1 260px;
+            flex: 1 1 145px !important;
             min-width: 0;
             max-width: 100% !important;
+          }
+
+          .invoices-table-filter {
+            flex: 1 0 100% !important;
+            min-width: 100% !important;
+            order: 3;
+          }
+
+          .invoices-table-refresh {
+            order: 2;
           }
         }
       `}</style>
       <div
         className="invoices-page-header"
         style={{
+          position: "sticky",
+          top: "-17px",
+          background: "#f1f2f6",
+          padding: "10px 2px",
+          zIndex: 1,
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -489,11 +599,44 @@ export default function InvoicesPage() {
         )}
       </div>
       <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>
-        <Stat label="Draft" value={counts.draftInvoices} />
-        <Stat label="Sent" value={counts.sentInvoices} />
-        <Stat label="Paid" value={counts.paidInvoices} />
-        <Stat label="Partially paid" value={counts.partiallyPaidInvoices} />
-        <Stat label="Overdue" value={counts.overdueInvoices} />
+        {(
+          [
+            { label: "Draft", value: counts.draftInvoices, filter: INV_S.DRAFT },
+            { label: "Sent", value: counts.sentInvoices, filter: INV_S.SENT },
+            { label: "Paid", value: counts.paidInvoices, filter: INV_S.PAID },
+            { label: "Partially paid", value: counts.partiallyPaidInvoices, filter: INV_S.PARTIALLY_PAID },
+            { label: "Overdue", value: counts.overdueInvoices, filter: INV_S.OVERDUE },
+          ] as const
+        ).map(({ label, value, filter }) => {
+          const active = normalizedStatus === filter;
+          return (
+            <div
+              key={filter}
+              role="button"
+              tabIndex={0}
+              aria-pressed={active}
+              aria-label={`Filter by ${label}`}
+              onClick={() => setInvoiceStatusFilter(filter)}
+              onKeyDown={(e: KeyboardEvent) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setInvoiceStatusFilter(filter);
+                }
+              }}
+              style={{
+                flex: "1",
+                minWidth: "120px",
+                cursor: "pointer",
+                borderRadius: "4px",
+                border: active ? `2px solid ${C.invoice}` : "2px solid transparent",
+                boxSizing: "border-box",
+                transition: "border-color 0.15s ease",
+              }}
+            >
+              <Stat label={label} value={value} />
+            </div>
+          );
+        })}
       </div>
       <div
         className="invoices-table-card"
@@ -549,7 +692,18 @@ export default function InvoicesPage() {
               <Search size={16} strokeWidth={2} />
             </span>
           </div>
+          <div className="invoices-table-filter" style={{ flex: "0 1 240px", minWidth: "180px" }}>
+            <Select<InvoiceStatusFilterOption, false>
+              aria-label="Filter invoices by status"
+              value={selectedInvoiceStatusFilter}
+              onChange={(option) => setInvoiceStatusFilter((option ?? INVOICE_STATUS_FILTER_OPTIONS[0]).value)}
+              options={INVOICE_STATUS_FILTER_OPTIONS}
+              isSearchable={false}
+              styles={invoiceFilterSelectStyles}
+            />
+          </div>
           <button
+            className="invoices-table-refresh"
             type="button"
             aria-label="Refresh invoices"
             title="Refresh invoices"
@@ -568,6 +722,7 @@ export default function InvoicesPage() {
               alignItems: "center",
               justifyContent: "center",
               padding: 0,
+              flexShrink: 0,
             }}
           >
             <RefreshCw size={20} strokeWidth={1.9} />
@@ -602,8 +757,20 @@ export default function InvoicesPage() {
             ) : rows.length === 0 ? (
               <Empty
                 icon={<ReceiptText size={38} strokeWidth={1.6} />}
-                title={search ? "No invoices found" : "No invoices"}
-                sub={search ? "Try a different search term." : "Create your first invoice to get started."}
+                title={
+                  search.trim()
+                    ? "No invoices found"
+                    : normalizedStatus !== "all"
+                      ? "No invoices in this status"
+                      : "No invoices"
+                }
+                sub={
+                  search.trim()
+                    ? "Try a different search term or status filter."
+                    : normalizedStatus !== "all"
+                      ? "Pick another status or clear the filter."
+                      : "Create your first invoice to get started."
+                }
               />
             ) : null
           }

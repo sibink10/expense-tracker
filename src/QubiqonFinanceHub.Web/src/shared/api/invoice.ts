@@ -206,6 +206,12 @@ export interface GetInvoicesParams {
   desc?: boolean;
 }
 
+/** Maps UI badge/status (`INV_S`) to ASP.NET `InvoiceStatus` enum name. */
+export function invoiceStatusForApi(uiStatus: string): string {
+  if (uiStatus === INV_S.PARTIALLY_PAID) return "PartiallyPaid";
+  return uiStatus;
+}
+
 export interface InvoiceCounts {
   draft?: number;
   sent?: number;
@@ -219,7 +225,7 @@ export async function getInvoicesRaw(params: GetInvoicesParams = {}): Promise<Ap
     Page: params.page,
     PageSize: params.pageSize,
     Search: params.search,
-    Status: params.status,
+    Status: params.status ? invoiceStatusForApi(params.status) : undefined,
     SortBy: params.sortBy,
     Desc: params.desc,
   };

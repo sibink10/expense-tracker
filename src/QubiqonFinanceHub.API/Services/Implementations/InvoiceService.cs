@@ -275,7 +275,12 @@ public class InvoiceService : IInvoiceService
             .Where(x => x.OrganizationId == orgId)
             .AsNoTracking();
 
-        if (f.Status != null && Enum.TryParse<InvoiceStatus>(f.Status, true, out var status))
+        var statusRaw = string.IsNullOrWhiteSpace(f.Status) ? null : f.Status.Trim();
+        if (statusRaw != null &&
+            string.Equals(statusRaw, "Partial", StringComparison.OrdinalIgnoreCase))
+            statusRaw = nameof(InvoiceStatus.PartiallyPaid);
+
+        if (statusRaw != null && Enum.TryParse<InvoiceStatus>(statusRaw, true, out var status))
         {
             if (status == InvoiceStatus.Overdue)
             {

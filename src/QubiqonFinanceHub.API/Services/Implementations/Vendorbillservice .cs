@@ -682,12 +682,11 @@ public class VendorBillService : IVendorBillService
             """;
     }
 
-    /// <summary>Same rule as invoice display: past due, still unpaid, and not fully paid.</summary>
+    /// <summary>Past due, still unpaid, not fully paid — mirrors <see cref="VendorBillStatusRules.IsComputationallyOverdue"/>.</summary>
     private static string GetDisplayBillStatus(VendorBill b)
     {
         var today = DateTime.UtcNow.Date;
-        var isOverdue = b.DueDate < today && b.PaidAmount < b.TotalPayable && b.Status != BillStatus.Paid;
-        return isOverdue ? BillStatus.Overdue.ToString() : b.Status.ToString();
+        return VendorBillStatusRules.IsComputationallyOverdue(b, today) ? BillStatus.Overdue.ToString() : b.Status.ToString();
     }
 
     private static PaymentPriority ParsePaymentPriority(string? value)
