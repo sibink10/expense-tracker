@@ -53,6 +53,18 @@ public partial class Invoice
 
     public decimal PaidAmound { get; set; }
 
+    public string? ZohoSignRequestId { get; set; }
+
+    public string? ZohoSignStatus { get; set; }
+
+    public DateTime? ZohoSignStatusUpdatedAt { get; set; }
+
+    public DateTime? SignatureRequestedAt { get; set; }
+
+    public string? SignedPdfUrl { get; set; }
+
+    public DateTime? SignedAt { get; set; }
+
     public virtual ICollection<ActivityComment> ActivityComments { get; set; } = new List<ActivityComment>();
 
     public virtual Client Client { get; set; } = null!;

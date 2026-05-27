@@ -24,6 +24,12 @@ export interface Employee {
   isActive?: boolean;
 }
 
+export interface EmployeeRole {
+  id: number;
+  code: string;
+  displayName: string;
+}
+
 function mapApiEmployeeToApp(item: ApiEmployee): Employee {
   return {
     id: item.id,
@@ -95,6 +101,11 @@ export async function getEmployees(params: GetEmployeesParams = {}): Promise<{
     ...res,
     items: res.items.map(mapApiEmployeeToApp),
   };
+}
+
+export async function getEmployeeRoles(): Promise<EmployeeRole[]> {
+  const { data } = await apiClient.get<EmployeeRole[]>("/employees/roles");
+  return data;
 }
 
 export interface SaveEmployeePayload {

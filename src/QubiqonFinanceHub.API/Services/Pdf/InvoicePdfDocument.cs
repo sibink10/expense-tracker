@@ -293,7 +293,7 @@ public sealed class InvoicePdfDocument : IDocument
                     left.Item().Table(t =>
                     {
                         t.ColumnsDefinition(c => { c.RelativeColumn(1); c.RelativeColumn(1.4f); });
-                        BankRow(t, "Account Name",   _m.BankAccountName);
+                        BankRow(t, "Account Holder Name", _m.BankAccountName);
                         BankRow(t, "Account Number", _m.BankAccountNumber);
                         BankRow(t, "IFSC Code",      _m.IfscCode);
                         BankRow(t, "Bank Name",      _m.BankName);
@@ -321,7 +321,10 @@ public sealed class InvoicePdfDocument : IDocument
 
     private bool HasBankDetails() =>
         !string.IsNullOrWhiteSpace(_m.BankName)          ||
+        !string.IsNullOrWhiteSpace(_m.BankAccountName)   ||
         !string.IsNullOrWhiteSpace(_m.IfscCode)          ||
+        !string.IsNullOrWhiteSpace(_m.SwiftCode)         ||
+        !string.IsNullOrWhiteSpace(_m.BankAddress)       ||
         !string.IsNullOrWhiteSpace(_m.BankAccountNumber);
 
     private static void BankRow(TableDescriptor t, string label, string? value)

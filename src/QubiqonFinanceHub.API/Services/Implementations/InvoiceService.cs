@@ -259,7 +259,8 @@ public class InvoiceService : IInvoiceService
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId);
 
         if (inv == null) return null;
-        return MapToDto(inv);
+        var orgBankDetails = await GetOrganizationBankDetailsAsync(orgId);
+        return MapToDto(inv, orgBankDetails);
     }
 
     public async Task<PaginatedResult<InvoiceDto>> ListAsync(FilterParams f)
@@ -297,7 +298,8 @@ public class InvoiceService : IInvoiceService
         q = q.ApplyInvoiceSorting(f);
         var items = await q.Skip((f.Page - 1) * f.PageSize).Take(f.PageSize).ToListAsync();
 
-        return new PaginatedResult<InvoiceDto>(items.Select(MapToDto).ToList(), total, f.Page, f.PageSize);
+        var orgBankDetails = await GetOrganizationBankDetailsAsync(orgId);
+        return new PaginatedResult<InvoiceDto>(items.Select(inv => MapToDto(inv, orgBankDetails)).ToList(), total, f.Page, f.PageSize);
     }
 
     public async Task<InvoiceStatusCountsDto> GetStatusCountsAsync()
@@ -702,15 +704,43 @@ public class InvoiceService : IInvoiceService
             _ => $"₹{amount:N2}"
         };
 
-    private static InvoiceDto MapToDto(Invoice inv) => new(
+    private static string? NormalizeAddress(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string? GetBillTo(Client client) =>
+        NormalizeAddress(client.BillingAddress) ?? NormalizeAddress(client.Address);
+
+    private static string? GetShipTo(Client client) =>
+        NormalizeAddress(client.ShippingAddress) ?? NormalizeAddress(client.BillingAddress) ?? NormalizeAddress(client.Address);
+
+    private async Task<InvoiceOrganizationBankDetailsDto> GetOrganizationBankDetailsAsync(Guid orgId)
+    {
+        var org = await _db.Organizations
+            .AsNoTracking()
+            .FirstAsync(o => o.Id == orgId);
+
+        return new InvoiceOrganizationBankDetailsDto(
+            org.OrgName,
+            org.AccountHolderName,
+            org.BankName,
+            org.IfscCode,
+            org.SwiftCode,
+            org.AccountNumber,
+            org.BankAddress
+        );
+    }
+
+    private static InvoiceDto MapToDto(Invoice inv, InvoiceOrganizationBankDetailsDto orgBankDetails) => new(
      inv.Id, inv.InvoiceCode,
      inv.ClientId, inv.Client.Name, inv.Client.Email,
+     GetBillTo(inv.Client), GetShipTo(inv.Client),
      inv.Client.ContactPerson, inv.Client.Country, inv.Currency,
      inv.SubTotal, inv.TotalGST, inv.TaxConfig?.Name, inv.TaxConfigId, inv.TaxAmount, inv.Total, inv.paidAmound,
      inv.InvoiceDate, inv.DueDate, inv.PaymentTerms, inv.PurchaseOrder,
      GetDisplayStatus(inv), inv.Notes, inv.TotalInWords,
      inv.PaymentReference, inv.PaidAt, inv.CreatedAt,
      inv.ZohoSignRequestId, inv.ZohoSignStatus, inv.SignatureRequestedAt, inv.SignedPdfUrl, inv.SignedAt,
+     orgBankDetails,
      inv.LineItems.Select(l => new InvoiceLineItemDto(
          l.LineNumber, l.Description, l.HSNCode, l.Quantity, l.Rate, l.Amount,
          l.GSTConfig?.Name, l.GSTConfig?.Rate ?? 0, l.GSTAmount, l.TotalAmount, l.GSTConfigId

@@ -141,12 +141,13 @@ public interface IEmailService
 
 public interface IDashboardService
 {
-    Task<DashboardDto> GetStatsAsync(bool myOnly = false);
+    Task<DashboardDto> GetStatsAsync(bool myOnly = false, string? reportCurrency = null);
 }
 
 public interface IEmployeeService
 {
     Task<PaginatedResult<EmployeeDto>> ListAsync(FilterParams f);
+    Task<List<RoleDto>> ListRolesAsync();
     Task<EmployeeDto?> GetByIdAsync(Guid id);
     Task<EmployeeDto> CreateAsync(CreateEmployeeRequest dto);
     Task<EmployeeDto> UpdateAsync(Guid id, UpdateEmployeeRequest dto);

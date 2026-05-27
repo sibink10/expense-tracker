@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using QubiqonFinanceHub.API.Data;
+using QubiqonFinanceHub.API.Models.Entities;
 using QubiqonFinanceHub.API.Models.Enums;
 using QubiqonFinanceHub.API.Models.Zoho;
 using QubiqonFinanceHub.API.Services.Interfaces;
@@ -28,61 +29,86 @@ public class ZohoService : IZohoService
     private readonly ZohoOptions _options;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IServiceScopeFactory _serviceScopeFactory;
+    private readonly ITenantService _tenantService;
     private readonly ILogger<ZohoService> _logger;
 
     private readonly SemaphoreSlim _tokenGate = new(1, 1);
     private string? _cachedAccessToken;
+    private string? _cachedAccessTokenKey;
     private DateTime _accessTokenExpiryUtc = DateTime.MinValue;
 
     public ZohoService(
         IOptions<ZohoOptions> options,
         IHttpClientFactory httpClientFactory,
         IServiceScopeFactory serviceScopeFactory,
+        ITenantService tenantService,
         ILogger<ZohoService> logger)
     {
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
+        _tenantService = tenantService ?? throw new ArgumentNullException(nameof(tenantService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public string GetAuthorizationUrl()
     {
-        if (string.IsNullOrWhiteSpace(_options.ClientId) || string.IsNullOrWhiteSpace(_options.RedirectUri))
+        var options = GetOptionsForCurrentOrganizationAsync(CancellationToken.None).GetAwaiter().GetResult();
+        return BuildAuthorizationUrl(options);
+    }
+
+    public async Task<string> GetAuthorizationUrlAsync(Guid? organizationId = null, CancellationToken cancellationToken = default)
+    {
+        var options = organizationId.HasValue
+            ? await GetOptionsForOrganizationAsync(organizationId.Value, cancellationToken)
+            : await GetOptionsForCurrentOrganizationAsync(cancellationToken);
+
+        return BuildAuthorizationUrl(options, organizationId ?? await GetConfiguredOrganizationIdAsync(cancellationToken));
+    }
+
+    private string BuildAuthorizationUrl(ZohoOptions options, Guid? organizationId = null)
+    {
+        if (string.IsNullOrWhiteSpace(options.ClientId) || string.IsNullOrWhiteSpace(options.RedirectUri))
             throw new InvalidOperationException("Zoho ClientId and RedirectUri must be configured.");
 
-        var scope = string.IsNullOrWhiteSpace(_options.Scope) ? ZohoOptions.DefaultScope : _options.Scope.Trim();
+        var scope = string.IsNullOrWhiteSpace(options.Scope) ? ZohoOptions.DefaultScope : options.Scope.Trim();
         var query = new List<KeyValuePair<string, string?>>
         {
             new("response_type", "code"),
-            new("client_id", _options.ClientId.Trim()),
+            new("client_id", options.ClientId.Trim()),
             new("scope", scope),
-            new("redirect_uri", _options.RedirectUri.Trim()),
+            new("redirect_uri", options.RedirectUri.Trim()),
             new("access_type", "offline"),
             new("prompt", "consent")
         };
 
-        if (!string.IsNullOrWhiteSpace(_options.OAuthState))
-            query.Add(new KeyValuePair<string, string?>("state", _options.OAuthState.Trim()));
+        var state = organizationId?.ToString("D") ?? options.OAuthState;
+        if (!string.IsNullOrWhiteSpace(state))
+            query.Add(new KeyValuePair<string, string?>("state", state.Trim()));
 
-        return QueryHelpers.AddQueryString(_options.AuthorizationEndpoint.Trim(), query);
+        return QueryHelpers.AddQueryString(options.AuthorizationEndpoint.Trim(), query);
     }
 
     public bool IsValidOAuthState(string? stateFromCallback)
     {
-        if (string.IsNullOrWhiteSpace(_options.OAuthState))
+        if (Guid.TryParse(stateFromCallback, out _))
             return true;
-        return string.Equals(stateFromCallback?.Trim(), _options.OAuthState.Trim(), StringComparison.Ordinal);
+
+        var options = GetOptionsForCurrentOrganizationAsync(CancellationToken.None).GetAwaiter().GetResult();
+        if (string.IsNullOrWhiteSpace(options.OAuthState))
+            return true;
+        return string.Equals(stateFromCallback?.Trim(), options.OAuthState.Trim(), StringComparison.Ordinal);
     }
 
     public async Task<ZohoIntegrationSetupDto> GetIntegrationSetupAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var refreshToken = RefreshTokenFromConfig();
+        var options = await GetOptionsForCurrentOrganizationAsync(cancellationToken);
+        var refreshToken = RefreshTokenFromConfig(options);
         var isConfigured =
-            !string.IsNullOrWhiteSpace(_options.ClientId) &&
-            !string.IsNullOrWhiteSpace(_options.ClientSecret) &&
+            !string.IsNullOrWhiteSpace(options.ClientId) &&
+            !string.IsNullOrWhiteSpace(options.ClientSecret) &&
             refreshToken != null;
 
         string? accessToken = null;
@@ -101,22 +127,22 @@ public class ZohoService : IZohoService
         }
 
         string? authorizationUrl = null;
-        if (!string.IsNullOrWhiteSpace(_options.ClientId) && !string.IsNullOrWhiteSpace(_options.RedirectUri))
+        if (!string.IsNullOrWhiteSpace(options.ClientId) && !string.IsNullOrWhiteSpace(options.RedirectUri))
         {
-            try { authorizationUrl = GetAuthorizationUrl(); }
+            try { authorizationUrl = BuildAuthorizationUrl(options); }
             catch (InvalidOperationException ex) { _logger.LogDebug(ex, "Could not build Zoho authorization URL."); }
         }
 
         return new ZohoIntegrationSetupDto
         {
-            ClientId = TrimOrNull(_options.ClientId),
-            Scope = string.IsNullOrWhiteSpace(_options.Scope) ? ZohoOptions.DefaultScope : _options.Scope.Trim(),
+            ClientId = TrimOrNull(options.ClientId),
+            Scope = string.IsNullOrWhiteSpace(options.Scope) ? ZohoOptions.DefaultScope : options.Scope.Trim(),
             IsConfigured = isConfigured,
             AccessToken = accessToken,
             TokenError = tokenError,
             AuthorizationUrl = authorizationUrl,
-            DataCenter = string.IsNullOrWhiteSpace(_options.DataCenter) ? "IN" : _options.DataCenter.Trim(),
-            HomePage = string.IsNullOrWhiteSpace(_options.HomePage) ? null : _options.HomePage.Trim()
+            DataCenter = string.IsNullOrWhiteSpace(options.DataCenter) ? "IN" : options.DataCenter.Trim(),
+            HomePage = string.IsNullOrWhiteSpace(options.HomePage) ? null : options.HomePage.Trim()
         };
     }
 
@@ -124,30 +150,37 @@ public class ZohoService : IZohoService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var refreshToken = RefreshTokenFromConfig();
-        if (string.IsNullOrWhiteSpace(_options.ClientId) ||
-            string.IsNullOrWhiteSpace(_options.ClientSecret) ||
+        var options = await GetOptionsForCurrentOrganizationAsync(cancellationToken);
+        var refreshToken = RefreshTokenFromConfig(options);
+        if (string.IsNullOrWhiteSpace(options.ClientId) ||
+            string.IsNullOrWhiteSpace(options.ClientSecret) ||
             refreshToken == null)
         {
             throw new InvalidOperationException(
-                "Set Zoho ClientId, ClientSecret, and RefreshToken (or legacy Code) in app settings.");
+                "Set Zoho ClientId, ClientSecret, and RefreshToken (or legacy Code) under Admin → Organization profile.");
         }
 
-        if (_cachedAccessToken != null && DateTime.UtcNow < _accessTokenExpiryUtc.AddMinutes(-5))
+        var accessTokenKey = BuildAccessTokenCacheKey(options);
+        if (_cachedAccessToken != null &&
+            string.Equals(_cachedAccessTokenKey, accessTokenKey, StringComparison.Ordinal) &&
+            DateTime.UtcNow < _accessTokenExpiryUtc.AddMinutes(-5))
             return _cachedAccessToken;
 
         await _tokenGate.WaitAsync(cancellationToken);
         try
         {
-            if (_cachedAccessToken != null && DateTime.UtcNow < _accessTokenExpiryUtc.AddMinutes(-5))
+            if (_cachedAccessToken != null &&
+                string.Equals(_cachedAccessTokenKey, accessTokenKey, StringComparison.Ordinal) &&
+                DateTime.UtcNow < _accessTokenExpiryUtc.AddMinutes(-5))
                 return _cachedAccessToken;
 
-            var result = await RequestAccessTokenFromRefreshTokenAsync(cancellationToken);
+            var result = await RequestAccessTokenFromRefreshTokenAsync(options, cancellationToken);
             if (!result.Success || result.Tokens?.AccessToken == null)
                 throw new InvalidOperationException(result.RawBody ?? "Zoho token refresh failed.");
 
             var expiresSeconds = result.Tokens.ExpiresIn is > 0 ? result.Tokens.ExpiresIn.Value : 3600;
             _cachedAccessToken = result.Tokens.AccessToken;
+            _cachedAccessTokenKey = accessTokenKey;
             _accessTokenExpiryUtc = DateTime.UtcNow.AddSeconds(expiresSeconds);
             return _cachedAccessToken;
         }
@@ -158,29 +191,36 @@ public class ZohoService : IZohoService
     }
 
     public async Task<ZohoTokenResponseDto> ExchangeAuthorizationCodeAsync(string code, CancellationToken cancellationToken = default)
+        => await ExchangeAuthorizationCodeAsync(code, state: null, cancellationToken);
+
+    public async Task<ZohoTokenResponseDto> ExchangeAuthorizationCodeAsync(
+        string code,
+        string? state,
+        CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(code))
             throw new ArgumentException("Authorization code is required.", nameof(code));
 
-        if (string.IsNullOrWhiteSpace(_options.ClientId) ||
-            string.IsNullOrWhiteSpace(_options.ClientSecret) ||
-            string.IsNullOrWhiteSpace(_options.RedirectUri))
+        var options = await GetOptionsForOAuthCallbackAsync(state, cancellationToken);
+        if (string.IsNullOrWhiteSpace(options.ClientId) ||
+            string.IsNullOrWhiteSpace(options.ClientSecret) ||
+            string.IsNullOrWhiteSpace(options.RedirectUri))
         {
             throw new InvalidOperationException("ClientId, ClientSecret, and RedirectUri must be configured.");
         }
 
         var form = new Dictionary<string, string>
         {
-            ["client_id"] = _options.ClientId.Trim(),
-            ["client_secret"] = _options.ClientSecret.Trim(),
+            ["client_id"] = options.ClientId.Trim(),
+            ["client_secret"] = options.ClientSecret.Trim(),
             ["grant_type"] = "authorization_code",
             ["code"] = code.Trim(),
-            ["redirect_uri"] = _options.RedirectUri.Trim()
+            ["redirect_uri"] = options.RedirectUri.Trim()
         };
 
         using var content = new FormUrlEncodedContent(form);
         var client = _httpClientFactory.CreateClient();
-        using var response = await client.PostAsync(_options.TokenEndpoint.Trim(), content, cancellationToken);
+        using var response = await client.PostAsync(options.TokenEndpoint.Trim(), content, cancellationToken);
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
 
         if (TryReadOAuthErrorPayload(body, out _) || !response.IsSuccessStatusCode)
@@ -426,19 +466,21 @@ public class ZohoService : IZohoService
         return SendSignApiGetBytesAsync(pathAndQuery, cancellationToken);
     }
 
-    private async Task<ZohoAuthorizationCodeExchangeResult> RequestAccessTokenFromRefreshTokenAsync(CancellationToken cancellationToken)
+    private async Task<ZohoAuthorizationCodeExchangeResult> RequestAccessTokenFromRefreshTokenAsync(
+        ZohoOptions options,
+        CancellationToken cancellationToken)
     {
         var form = new Dictionary<string, string>
         {
-            ["client_id"] = _options.ClientId.Trim(),
-            ["client_secret"] = _options.ClientSecret.Trim(),
+            ["client_id"] = options.ClientId.Trim(),
+            ["client_secret"] = options.ClientSecret.Trim(),
             ["grant_type"] = "refresh_token",
-            ["refresh_token"] = RefreshTokenFromConfig()!
+            ["refresh_token"] = RefreshTokenFromConfig(options)!
         };
 
         using var content = new FormUrlEncodedContent(form);
         var client = _httpClientFactory.CreateClient();
-        using var response = await client.PostAsync(_options.TokenEndpoint.Trim(), content, cancellationToken);
+        using var response = await client.PostAsync(options.TokenEndpoint.Trim(), content, cancellationToken);
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
 
         if (!response.IsSuccessStatusCode)
@@ -462,8 +504,9 @@ public class ZohoService : IZohoService
 
     private async Task<JsonNode> SendSignApiGetJsonAsync(string path, CancellationToken cancellationToken)
     {
+        var options = await GetOptionsForCurrentOrganizationAsync(cancellationToken);
         var accessToken = await GetAccessTokenAsync(cancellationToken);
-        var url = $"{_options.SignApiBaseUrl.Trim().TrimEnd('/')}{path}";
+        var url = $"{options.SignApiBaseUrl.Trim().TrimEnd('/')}{path}";
 
         var client = _httpClientFactory.CreateClient();
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
@@ -488,8 +531,9 @@ public class ZohoService : IZohoService
 
     private async Task<byte[]> SendSignApiGetBytesAsync(string path, CancellationToken cancellationToken)
     {
+        var options = await GetOptionsForCurrentOrganizationAsync(cancellationToken);
         var accessToken = await GetAccessTokenAsync(cancellationToken);
-        var url = $"{_options.SignApiBaseUrl.Trim().TrimEnd('/')}{path}";
+        var url = $"{options.SignApiBaseUrl.Trim().TrimEnd('/')}{path}";
 
         var client = _httpClientFactory.CreateClient();
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
@@ -625,8 +669,9 @@ public class ZohoService : IZohoService
 
     private async Task<string> PostSignCreatedocumentAsync(string templateId, string dataJson, CancellationToken cancellationToken)
     {
+        var options = await GetOptionsForCurrentOrganizationAsync(cancellationToken);
         var accessToken = await GetAccessTokenAsync(cancellationToken);
-        var url = $"{_options.SignApiBaseUrl.Trim().TrimEnd('/')}/api/v1/templates/{Uri.EscapeDataString(templateId)}/createdocument?is_quicksend=true";
+        var url = $"{options.SignApiBaseUrl.Trim().TrimEnd('/')}/api/v1/templates/{Uri.EscapeDataString(templateId)}/createdocument?is_quicksend=true";
 
         using var form = new MultipartFormDataContent();
         form.Add(new StringContent(dataJson, System.Text.Encoding.UTF8), "data");
@@ -713,14 +758,100 @@ public class ZohoService : IZohoService
         return new ZohoOAuthException(message, code, desc, statusCode, body);
     }
 
-    private string? RefreshTokenFromConfig()
+    private string? RefreshTokenFromConfig(ZohoOptions options)
     {
-        if (!string.IsNullOrWhiteSpace(_options.RefreshToken)) return _options.RefreshToken.Trim();
-        if (!string.IsNullOrWhiteSpace(_options.Code)) return _options.Code.Trim();
+        if (!string.IsNullOrWhiteSpace(options.RefreshToken)) return options.RefreshToken.Trim();
+        if (!string.IsNullOrWhiteSpace(options.Code)) return options.Code.Trim();
         return null;
     }
 
     private static string? TrimOrNull(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    private static string BuildAccessTokenCacheKey(ZohoOptions options) =>
+        string.Join("|", options.ClientId.Trim(), options.TokenEndpoint.Trim(), RefreshTokenFromOptions(options));
+
+    private static string RefreshTokenFromOptions(ZohoOptions options) =>
+        !string.IsNullOrWhiteSpace(options.RefreshToken) ? options.RefreshToken.Trim() : options.Code.Trim();
+
+    private async Task<ZohoOptions> GetOptionsForCurrentOrganizationAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var orgId = await _tenantService.GetEffectiveOrganizationIdAsync();
+            return await GetOptionsForOrganizationAsync(orgId, cancellationToken);
+        }
+        catch
+        {
+            return await GetOptionsForConfiguredOrganizationAsync(cancellationToken);
+        }
+    }
+
+    private async Task<ZohoOptions> GetOptionsForOAuthCallbackAsync(string? state, CancellationToken cancellationToken)
+    {
+        if (Guid.TryParse(state, out var organizationId))
+            return await GetOptionsForOrganizationAsync(organizationId, cancellationToken);
+
+        return await GetOptionsForConfiguredOrganizationAsync(cancellationToken);
+    }
+
+    private async Task<Guid?> GetConfiguredOrganizationIdAsync(CancellationToken cancellationToken)
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<FinanceHubDbContext>();
+        return await db.Organizations.AsNoTracking()
+            .Where(o => o.IsActive &&
+                !string.IsNullOrWhiteSpace(o.ZohoClientId) &&
+                !string.IsNullOrWhiteSpace(o.ZohoRedirectUri))
+            .OrderBy(o => o.OrgName)
+            .Select(o => (Guid?)o.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task<ZohoOptions> GetOptionsForConfiguredOrganizationAsync(CancellationToken cancellationToken)
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<FinanceHubDbContext>();
+        var org = await db.Organizations.AsNoTracking()
+            .Where(o => o.IsActive &&
+                !string.IsNullOrWhiteSpace(o.ZohoClientId) &&
+                !string.IsNullOrWhiteSpace(o.ZohoRedirectUri))
+            .OrderBy(o => o.OrgName)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return org == null ? _options : MapOptions(org);
+    }
+
+    private async Task<ZohoOptions> GetOptionsForOrganizationAsync(Guid organizationId, CancellationToken cancellationToken)
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<FinanceHubDbContext>();
+        var org = await db.Organizations.AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == organizationId, cancellationToken);
+
+        if (org == null) return _options;
+
+        return MapOptions(org);
+    }
+
+    private ZohoOptions MapOptions(Organization org) =>
+        new()
+        {
+            ClientId = TrimOrFallback(org.ZohoClientId, _options.ClientId),
+            ClientSecret = TrimOrFallback(org.ZohoClientSecret, _options.ClientSecret),
+            RefreshToken = TrimOrFallback(org.ZohoRefreshToken, _options.RefreshToken),
+            Code = TrimOrFallback(org.ZohoCode, _options.Code),
+            Scope = TrimOrFallback(org.ZohoScope, string.IsNullOrWhiteSpace(_options.Scope) ? ZohoOptions.DefaultScope : _options.Scope),
+            DataCenter = TrimOrFallback(org.ZohoDataCenter, _options.DataCenter),
+            HomePage = TrimOrFallback(org.ZohoHomePage, _options.HomePage),
+            RedirectUri = TrimOrFallback(org.ZohoRedirectUri, _options.RedirectUri),
+            OAuthState = _options.OAuthState,
+            AuthorizationEndpoint = TrimOrFallback(org.ZohoAuthorizationEndpoint, _options.AuthorizationEndpoint),
+            TokenEndpoint = TrimOrFallback(org.ZohoTokenEndpoint, _options.TokenEndpoint),
+            SignApiBaseUrl = TrimOrFallback(org.ZohoSignApiBaseUrl, _options.SignApiBaseUrl)
+        };
+
+    private static string TrimOrFallback(string? value, string fallback) =>
+        string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
 
     private async Task<string> PostSignCreateRequestAsync(
         string requestName,
@@ -756,8 +887,9 @@ public class ZohoService : IZohoService
 
         var dataJson = new JsonObject { ["requests"] = requestsObj }.ToJsonString();
 
+        var options = await GetOptionsForCurrentOrganizationAsync(cancellationToken);
         var accessToken = await GetAccessTokenAsync(cancellationToken);
-        var url = $"{_options.SignApiBaseUrl.Trim().TrimEnd('/')}/api/v1/requests";
+        var url = $"{options.SignApiBaseUrl.Trim().TrimEnd('/')}/api/v1/requests";
 
         using var form = new MultipartFormDataContent();
         form.Add(new StringContent(dataJson, System.Text.Encoding.UTF8), "data");
@@ -818,8 +950,9 @@ public class ZohoService : IZohoService
             ["requests"] = new JsonObject { ["actions"] = new JsonArray(actionObj) }
         }.ToJsonString();
 
+        var options = await GetOptionsForCurrentOrganizationAsync(cancellationToken);
         var accessToken = await GetAccessTokenAsync(cancellationToken);
-        var url = $"{_options.SignApiBaseUrl.Trim().TrimEnd('/')}/api/v1/requests/{Uri.EscapeDataString(requestId)}";
+        var url = $"{options.SignApiBaseUrl.Trim().TrimEnd('/')}/api/v1/requests/{Uri.EscapeDataString(requestId)}";
 
         using var form = new MultipartFormDataContent();
         form.Add(new StringContent(dataJson, System.Text.Encoding.UTF8), "data");
@@ -837,8 +970,9 @@ public class ZohoService : IZohoService
 
     private async Task PostSignRequestSubmitAsync(string requestId, CancellationToken cancellationToken)
     {
+        var options = await GetOptionsForCurrentOrganizationAsync(cancellationToken);
         var accessToken = await GetAccessTokenAsync(cancellationToken);
-        var url = $"{_options.SignApiBaseUrl.Trim().TrimEnd('/')}/api/v1/requests/{Uri.EscapeDataString(requestId)}/submit";
+        var url = $"{options.SignApiBaseUrl.Trim().TrimEnd('/')}/api/v1/requests/{Uri.EscapeDataString(requestId)}/submit";
 
         var client = _httpClientFactory.CreateClient();
         using var request = new HttpRequestMessage(HttpMethod.Post, url);

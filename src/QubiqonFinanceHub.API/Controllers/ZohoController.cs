@@ -18,11 +18,11 @@ public class ZohoController : ControllerBase
 
     [AllowAnonymous]
     [HttpGet("oauth/authorization-url")]
-    public IActionResult GetAuthorizationUrl()
+    public async Task<IActionResult> GetAuthorizationUrl([FromQuery] Guid? organizationId, CancellationToken cancellationToken)
     {
         try
         {
-            return Ok(new { authorization_url = _zohoService.GetAuthorizationUrl() });
+            return Ok(new { authorization_url = await _zohoService.GetAuthorizationUrlAsync(organizationId, cancellationToken) });
         }
         catch (Exception ex)
         {
@@ -70,7 +70,7 @@ public class ZohoController : ControllerBase
 
         try
         {
-            var tokens = await _zohoService.ExchangeAuthorizationCodeAsync(code.Trim(), cancellationToken);
+            var tokens = await _zohoService.ExchangeAuthorizationCodeAsync(code.Trim(), state, cancellationToken);
             return Ok(new
             {
                 message = "Store refresh_token securely (User Secrets / Key Vault). Do not commit tokens.",

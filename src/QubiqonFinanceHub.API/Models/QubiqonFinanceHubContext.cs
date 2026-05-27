@@ -611,7 +611,7 @@ public partial class QubiqonFinanceHubContext : DbContext
             entity.Property(e => e.CreatedById).HasColumnName("created_by_id");
             entity.Property(e => e.EmployeeId).HasColumnName("employee_id");
             entity.Property(e => e.Name).HasColumnName("name");
-            entity.Property(e => e.RateInr).HasColumnName("rate_inr");
+            entity.Property(e => e.Rate).HasColumnName("rate");
             entity.Property(e => e.Role).HasColumnName("role");
             entity.Property(e => e.Skills).HasColumnName("skills");
             entity.Property(e => e.UpdatedAt)
@@ -680,7 +680,6 @@ public partial class QubiqonFinanceHubContext : DbContext
                 .HasDefaultValueSql("(getutcdate())")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedById).HasColumnName("created_by_id");
-            entity.Property(e => e.Lines).HasColumnName("lines");
             entity.Property(e => e.RejectedOn).HasColumnName("rejected_on");
             entity.Property(e => e.RejectionReason)
                 .HasMaxLength(4000)

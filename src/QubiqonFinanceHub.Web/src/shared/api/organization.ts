@@ -31,10 +31,14 @@ export interface OrganizationDto {
   website?: string;
   Industry?: string;
   industry?: string;
+  AccountHolderName?: string;
+  accountHolderName?: string;
   BankName?: string;
   bankName?: string;
   IfscCode?: string;
   ifscCode?: string;
+  SwiftCode?: string;
+  swiftCode?: string;
   AccountNumber?: string;
   accountNumber?: string;
   BankAddress?: string;
@@ -47,6 +51,28 @@ export interface OrganizationDto {
   logoUrl?: string | null;
   ZohoSignEmail?: string;
   zohoSignEmail?: string;
+  ZohoClientId?: string;
+  zohoClientId?: string;
+  ZohoClientSecret?: string;
+  zohoClientSecret?: string;
+  ZohoCode?: string;
+  zohoCode?: string;
+  ZohoScope?: string;
+  zohoScope?: string;
+  ZohoDataCenter?: string;
+  zohoDataCenter?: string;
+  ZohoAuthorizationEndpoint?: string;
+  zohoAuthorizationEndpoint?: string;
+  ZohoTokenEndpoint?: string;
+  zohoTokenEndpoint?: string;
+  ZohoSignApiBaseUrl?: string;
+  zohoSignApiBaseUrl?: string;
+  ZohoRedirectUri?: string;
+  zohoRedirectUri?: string;
+  ZohoHomePage?: string;
+  zohoHomePage?: string;
+  ZohoRefreshToken?: string;
+  zohoRefreshToken?: string;
 }
 
 export interface OrganizationPayload {
@@ -64,8 +90,10 @@ export interface OrganizationPayload {
   fax?: string;
   website?: string;
   industry?: string;
+  accountHolderName?: string;
   bankName?: string;
   ifscCode?: string;
+  swiftCode?: string;
   accountNumber?: string;
   bankAddress?: string;
   tenant?: string;
@@ -73,6 +101,17 @@ export interface OrganizationPayload {
   logoUrl?: string | null;
   logoFile?: File | null;
   zohoSignEmail?: string;
+  zohoClientId?: string;
+  zohoClientSecret?: string;
+  zohoCode?: string;
+  zohoScope?: string;
+  zohoDataCenter?: string;
+  zohoAuthorizationEndpoint?: string;
+  zohoTokenEndpoint?: string;
+  zohoSignApiBaseUrl?: string;
+  zohoRedirectUri?: string;
+  zohoHomePage?: string;
+  zohoRefreshToken?: string;
 }
 
 // Normalized shape used by the UI
@@ -94,14 +133,27 @@ function mapDtoToPayload(dto: OrganizationDto): OrganizationPayload {
     fax: (anyDto.Fax as string) ?? (anyDto.fax as string),
     website: (anyDto.Website as string) ?? (anyDto.website as string),
     industry: (anyDto.Industry as string) ?? (anyDto.industry as string),
+    accountHolderName: (anyDto.AccountHolderName as string) ?? (anyDto.accountHolderName as string),
     bankName: (anyDto.BankName as string) ?? (anyDto.bankName as string),
     ifscCode: (anyDto.IfscCode as string) ?? (anyDto.ifscCode as string),
+    swiftCode: (anyDto.SwiftCode as string) ?? (anyDto.swiftCode as string),
     accountNumber: (anyDto.AccountNumber as string) ?? (anyDto.accountNumber as string),
     bankAddress: (anyDto.BankAddress as string) ?? (anyDto.bankAddress as string),
     tenant: (anyDto.Tenant as string) ?? (anyDto.tenant as string),
     isCurrent: (anyDto.IsCurrent as boolean) ?? (anyDto.isCurrent as boolean) ?? false,
     logoUrl: (anyDto.LogoUrl as string) ?? (anyDto.logoUrl as string) ?? null,
     zohoSignEmail: (anyDto.ZohoSignEmail as string) ?? (anyDto.zohoSignEmail as string),
+    zohoClientId: (anyDto.ZohoClientId as string) ?? (anyDto.zohoClientId as string),
+    zohoClientSecret: (anyDto.ZohoClientSecret as string) ?? (anyDto.zohoClientSecret as string),
+    zohoCode: (anyDto.ZohoCode as string) ?? (anyDto.zohoCode as string),
+    zohoScope: (anyDto.ZohoScope as string) ?? (anyDto.zohoScope as string),
+    zohoDataCenter: (anyDto.ZohoDataCenter as string) ?? (anyDto.zohoDataCenter as string),
+    zohoAuthorizationEndpoint: (anyDto.ZohoAuthorizationEndpoint as string) ?? (anyDto.zohoAuthorizationEndpoint as string),
+    zohoTokenEndpoint: (anyDto.ZohoTokenEndpoint as string) ?? (anyDto.zohoTokenEndpoint as string),
+    zohoSignApiBaseUrl: (anyDto.ZohoSignApiBaseUrl as string) ?? (anyDto.zohoSignApiBaseUrl as string),
+    zohoRedirectUri: (anyDto.ZohoRedirectUri as string) ?? (anyDto.zohoRedirectUri as string),
+    zohoHomePage: (anyDto.ZohoHomePage as string) ?? (anyDto.zohoHomePage as string),
+    zohoRefreshToken: (anyDto.ZohoRefreshToken as string) ?? (anyDto.zohoRefreshToken as string),
   };
 }
 
@@ -143,11 +195,24 @@ export async function saveOrganization(payload: OrganizationPayload): Promise<Or
   if (payload.fax) form.append("Fax", payload.fax);
   if (payload.website) form.append("Website", payload.website);
   if (payload.industry) form.append("Industry", payload.industry);
+  if (payload.accountHolderName) form.append("AccountHolderName", payload.accountHolderName);
   if (payload.bankName) form.append("BankName", payload.bankName);
   if (payload.ifscCode) form.append("IfscCode", payload.ifscCode);
+  if (payload.swiftCode) form.append("SwiftCode", payload.swiftCode);
   if (payload.accountNumber) form.append("AccountNumber", payload.accountNumber);
   if (payload.bankAddress) form.append("BankAddress", payload.bankAddress);
   if (payload.zohoSignEmail) form.append("ZohoSignEmail", payload.zohoSignEmail);
+  if (payload.zohoClientId) form.append("ZohoClientId", payload.zohoClientId);
+  if (payload.zohoClientSecret) form.append("ZohoClientSecret", payload.zohoClientSecret);
+  if (payload.zohoCode) form.append("ZohoCode", payload.zohoCode);
+  if (payload.zohoScope) form.append("ZohoScope", payload.zohoScope);
+  if (payload.zohoDataCenter) form.append("ZohoDataCenter", payload.zohoDataCenter);
+  if (payload.zohoAuthorizationEndpoint) form.append("ZohoAuthorizationEndpoint", payload.zohoAuthorizationEndpoint);
+  if (payload.zohoTokenEndpoint) form.append("ZohoTokenEndpoint", payload.zohoTokenEndpoint);
+  if (payload.zohoSignApiBaseUrl) form.append("ZohoSignApiBaseUrl", payload.zohoSignApiBaseUrl);
+  if (payload.zohoRedirectUri) form.append("ZohoRedirectUri", payload.zohoRedirectUri);
+  if (payload.zohoHomePage) form.append("ZohoHomePage", payload.zohoHomePage);
+  if (payload.zohoRefreshToken) form.append("ZohoRefreshToken", payload.zohoRefreshToken);
   if (payload.tenant) form.append("Tenant", payload.tenant);
   if (payload.logoFile) form.append("LogoFile", payload.logoFile);
   if (payload.id) {

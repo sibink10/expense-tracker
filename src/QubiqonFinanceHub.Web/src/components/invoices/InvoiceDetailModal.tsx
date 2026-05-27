@@ -17,6 +17,7 @@ import { sendZohoDocument } from "../../shared/api/zoho";
 import InvoiceDocument from "../InvoiceDocument";
 import { EditIcon } from "../icons";
 import { INV_S } from "../../shared/constants";
+import { IndianRupee, Send, Signature, X } from "lucide-react";
 
 interface Props {
   invoice: Invoice;
@@ -35,6 +36,14 @@ const LoaderSpinner = () => (
     }}
   />
 );
+
+const workflowActionStyle = (fg: string, bg: string) => ({
+  borderRadius: "4px",
+  background: bg,
+  color: fg,
+  padding: "6px 8px",
+  minHeight: 26,
+});
 
 export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
   const { setMdl, activeOrg, is, t } = useAppContext();
@@ -60,12 +69,12 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
   const balanceDue = Math.max(inv.total - (inv.paidAmound ?? 0), 0);
   const canFinance = is("finance") || is("admin");
   const showMarkPaid = canFinance && balanceDue > 0.005 && inv.status === INV_S.SENT;
-  const canMarkSent = canFinance && inv.status === INV_S.DRAFT && !!inv.apiId;
+  const canMarkSent = canFinance && inv.status === INV_S.SIGNED && !!inv.apiId;
   const canEdit = inv.status === INV_S.DRAFT && !!inv.apiId;
   const canSendForSigning =
     canFinance &&
     !!inv.apiId &&
-    (inv.status === INV_S.DRAFT || inv.status === INV_S.SIGNATURE_FAILED);
+    inv.status === INV_S.DRAFT;
 
   const signingRelated =
     !!inv.zohoSignRequestId ||
@@ -202,6 +211,65 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
     }
   };
 
+  const renderWorkflowAction = () => {
+    if (!canFinance) return null;
+
+    if (canSendForSigning) {
+      return (
+        <Btn
+          v="ghost"
+          sx={workflowActionStyle(C.invoiceActionSign, C.invoiceActionSignBg)}
+          onClick={() => setZohoSignConfirmOpen(true)}
+          disabled={zohoSignLoading}
+        >
+          <Signature size={14} strokeWidth={1.9} />
+          {canResend && inv.status === INV_S.SIGNATURE_FAILED ? "Resend for signing" : "Send for signature"}
+        </Btn>
+      );
+    }
+
+    if (inv.status === INV_S.PENDING_SIGNATURE) {
+      return (
+        <Btn v="ghost" sx={workflowActionStyle(C.invoiceActionSign, C.invoiceActionSignBg)} disabled>
+          <Signature size={14} strokeWidth={1.9} />
+          Sign
+        </Btn>
+      );
+    }
+
+    if (canMarkSent) {
+      return (
+        <Btn
+          v="ghost"
+          sx={workflowActionStyle(C.invoiceActionSent, C.invoiceActionSentBg)}
+          onClick={() => setSendConfirmOpen(true)}
+          disabled={sendLoading}
+        >
+          <Send size={14} strokeWidth={1.9} />
+          Mark sent
+        </Btn>
+      );
+    }
+
+    if (showMarkPaid) {
+      return (
+        <Btn
+          v="ghost"
+          sx={workflowActionStyle(C.invoiceActionPaid, C.invoiceActionPaidBg)}
+          onClick={() => {
+            setMdl(null);
+            setTimeout(() => setMdl({ t: "inv-pay", d: inv }), 50);
+          }}
+        >
+          <IndianRupee size={14} strokeWidth={1.9} />
+          Mark paid
+        </Btn>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <Mdl open close={() => setMdl(null)} title={inv.id} w zIndex={INVOICE_MODAL_Z_INDEX}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -287,11 +355,7 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
           )}
         </div>
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "flex-end" }}>
-          {canSendForSigning && (
-            <Btn v="secondary" onClick={() => setZohoSignConfirmOpen(true)} disabled={zohoSignLoading}>
-              {canResend && inv.status === INV_S.SIGNATURE_FAILED ? "Resend for signing" : "Send for signing"}
-            </Btn>
-          )}
+          {renderWorkflowAction()}
           {canSync && (
             <Btn v="invoice" onClick={() => void handleSyncSignedPdf()} disabled={syncLoading}>
               {syncLoading ? (
@@ -301,11 +365,6 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
               ) : (
                 "Sync to storage"
               )}
-            </Btn>
-          )}
-          {canMarkSent && (
-            <Btn v="info" onClick={() => setSendConfirmOpen(true)} disabled={sendLoading}>
-              Mark as sent
             </Btn>
           )}
           <Btn v="invoice" onClick={handleDownload} disabled={downloading}>
@@ -318,12 +377,10 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
               "Download"
             )}
           </Btn>
-          {showMarkPaid && (
-            <Btn v="success" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "inv-pay", d: inv }), 50); }}>Mark paid</Btn>
-          )}
-          {!showMarkPaid && inv.status === INV_S.PAID && (
-            <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>
-          )}
+          <Btn v="secondary" onClick={() => setMdl(null)}>
+            <X size={14} strokeWidth={1.9} />
+            Close
+          </Btn>
         </div>
       </div>
 
@@ -340,10 +397,11 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
         </p>
         <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", flexWrap: "wrap" }}>
           <Btn v="secondary" onClick={() => setSendConfirmOpen(false)} disabled={sendLoading}>
+            <X size={14} strokeWidth={1.9} />
             Cancel
           </Btn>
           <Btn v="invoice" onClick={handleConfirmSend} disabled={sendLoading}>
-            {sendLoading ? "Updating…" : "Mark as sent"}
+            {sendLoading ? "Updating…" : <><Send size={14} strokeWidth={1.9} /> Mark as sent</>}
           </Btn>
         </div>
       </Mdl>
@@ -367,10 +425,11 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
         )}
         <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", flexWrap: "wrap" }}>
           <Btn v="secondary" onClick={() => setZohoSignConfirmOpen(false)} disabled={zohoSignLoading}>
+            <X size={14} strokeWidth={1.9} />
             Cancel
           </Btn>
           <Btn v="invoice" onClick={() => void handleConfirmZohoSign()} disabled={zohoSignLoading || !activeOrg?.zohoSignEmail}>
-            {zohoSignLoading ? "Sending…" : "Send for signing"}
+            {zohoSignLoading ? "Sending…" : <><Signature size={14} strokeWidth={1.9} /> Send for signing</>}
           </Btn>
         </div>
       </Mdl>

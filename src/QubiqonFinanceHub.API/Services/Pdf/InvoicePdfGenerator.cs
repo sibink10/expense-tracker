@@ -99,11 +99,12 @@ public sealed class InvoicePdfGenerator : IInvoicePdfGenerator
             BalanceDue = balance,
             Notes = inv.Notes,
             TotalInWords = inv.TotalInWords,
-            BankAccountName = org.OrgName,
+            BankAccountName = string.IsNullOrWhiteSpace(org.AccountHolderName) ? org.OrgName : org.AccountHolderName,
             BankAccountNumber = org.AccountNumber,
             IfscCode = org.IfscCode,
             BankName = org.BankName,
-            BankAddress = org.BankAddress
+            BankAddress = org.BankAddress,
+            SwiftCode = org.SwiftCode
         };
     }
 

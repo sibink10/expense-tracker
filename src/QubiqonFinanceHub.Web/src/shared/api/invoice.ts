@@ -46,6 +46,8 @@ export interface ApiInvoice {
   clientId: string;
   clientName?: string;
   clientEmail?: string;
+  billTo?: string | null;
+  shipTo?: string | null;
   currency: string;
   lineItems?: ApiInvoiceLineItem[];
   subTotal?: number;
@@ -67,6 +69,15 @@ export interface ApiInvoice {
   signatureRequestedAt?: string | null;
   signedPdfUrl?: string | null;
   signedAt?: string | null;
+  organizationBankDetails?: {
+    orgName: string;
+    accountHolderName?: string | null;
+    bankName?: string | null;
+    ifscCode?: string | null;
+    swiftCode?: string | null;
+    accountNumber?: string | null;
+    bankAddress?: string | null;
+  } | null;
 }
 
 const STATUS_MAP: Record<string, string> = {
@@ -110,6 +121,8 @@ function mapApiInvoiceToApp(item: ApiInvoice): Invoice {
     cId: item.clientId,
     cName: item.clientName ?? "",
     cEmail: item.clientEmail ?? "",
+    billTo: item.billTo ?? undefined,
+    shipTo: item.shipTo ?? undefined,
     currency: item.currency ?? "INR",
     items,
     subTotal,
@@ -141,6 +154,7 @@ function mapApiInvoiceToApp(item: ApiInvoice): Invoice {
     signatureRequestedAt: item.signatureRequestedAt ?? null,
     signedPdfUrl: item.signedPdfUrl ?? null,
     signedAt: item.signedAt ?? null,
+    organizationBankDetails: item.organizationBankDetails ?? null,
   };
 }
 

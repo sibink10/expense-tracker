@@ -108,7 +108,8 @@ public class AuthController(FinanceHubDbContext db, IAzureRoleService azureRoleS
 public class DashboardController(IDashboardService dashboard) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> Get([FromQuery] bool myOnly = false) => Ok(await dashboard.GetStatsAsync(myOnly));
+    public async Task<IActionResult> Get([FromQuery] bool myOnly = false, [FromQuery] string? reportCurrency = null) =>
+        Ok(await dashboard.GetStatsAsync(myOnly, reportCurrency));
 }
 
 // ═══════════════════════════════════════════════════
@@ -389,6 +390,7 @@ public class OrganizationSettingsController(IOrganizationSettingsService svc) : 
 public class EmployeesController(IEmployeeService svc) : ControllerBase
 {
     [HttpGet] public async Task<IActionResult> List([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
+    [HttpGet("roles")] public async Task<IActionResult> ListRoles() => Ok(await svc.ListRolesAsync());
     [HttpGet("{id:guid}")] public async Task<IActionResult> GetById(Guid id) { var r = await svc.GetByIdAsync(id); return r != null ? Ok(r) : NotFound(); }
     [HttpPost] public async Task<IActionResult> Create([FromBody] CreateEmployeeRequest dto) => Ok(await svc.CreateAsync(dto));
     [HttpPut("{id:guid}")] public async Task<IActionResult> Update(Guid id, [FromBody] UpdateEmployeeRequest dto) => Ok(await svc.UpdateAsync(id, dto));

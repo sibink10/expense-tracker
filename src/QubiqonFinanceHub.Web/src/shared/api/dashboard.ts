@@ -1,24 +1,57 @@
 import { apiClient } from "./client";
 
-export interface DashboardData {
-  pendingExpenses?: number;
-  approvedExpenses?: number;
-  completedExpenses?: number;
-  pendingBills?: number;
-  billsToPayCount?: number;
-  billsToPayAmount?: number;
-  pendingAdvances?: number;
-  draftInvoices?: number;
-  sentInvoices?: number;
-  paidInvoices?: number;
-  overdueInvoices?: number;
-  totalReceivable?: number;
-  [key: string]: unknown;
+/** Matches API `DashboardSliceDto` (camelCase JSON). */
+export interface DashboardSlice {
+  label: string;
+  value: number;
+  currency?: string | null;
 }
 
-export async function getDashboard(myOnly = true): Promise<DashboardData> {
+/** Matches API `InvoiceStatusCountsDto`. */
+export interface InvoiceStatusCounts {
+  draft: number;
+  sent: number;
+  partiallyPaid: number;
+  paid: number;
+  overdue: number;
+}
+
+export interface DashboardData {
+  pendingExpenses: number;
+  approvedExpenses: number;
+  completedExpenses: number;
+  pendingBills: number;
+  billsToPayCount: number;
+  billsToPayAmount: number;
+  pendingAdvances: number;
+  disbursedAdvances: number;
+  pendingApprovals: number;
+  receivableOutstanding: number;
+  totalReceivable: number;
+  invoiceCounts: InvoiceStatusCounts;
+  receivablesByClient: DashboardSlice[];
+  billsToPayByAccount: DashboardSlice[];
+  availableReportCurrencies: string[];
+  displayCurrency?: string | null;
+  draftInvoices?: number;
+  sentInvoices?: number;
+  partiallyPaidInvoices?: number;
+  paidInvoices?: number;
+  overdueInvoices?: number;
+}
+
+export interface GetDashboardParams {
+  myOnly?: boolean;
+  reportCurrency?: string;
+}
+
+export async function getDashboard(params: GetDashboardParams = {}): Promise<DashboardData> {
+  const { myOnly = false, reportCurrency } = params;
   const { data } = await apiClient.get<DashboardData>("/dashboard", {
-    params: { myOnly },
+    params: {
+      myOnly,
+      ...(reportCurrency ? { reportCurrency } : {}),
+    },
   });
-  return data ?? {};
+  return data ?? ({} as DashboardData);
 }

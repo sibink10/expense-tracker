@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, CirclePlus, RefreshCw, Search, UserRoundX, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw, Search, UserRoundX, Users } from "lucide-react";
 import { C } from "../../shared/theme";
-import { Btn, DeleteActionButton, EditActionButton, Empty, Inp, Spinner, Tbl, Toggle, type TblCol } from "../ui";
+import { DeleteActionButton, EditActionButton, Empty, Spinner, Tbl, Toggle, type TblCol } from "../ui";
 import EmployeeDeleteConfirmModal from "./EmployeeDeleteConfirmModal";
 import EmployeeFormModal from "./EmployeeFormModal";
 import { useAppContext } from "../../context/AppContext";
-import { getEmployees, saveEmployee, toggleEmployee, deleteEmployee, type Employee } from "../../shared/api/employees";
-import { getGraphUsers, type GraphUser } from "../../shared/api/graph";
+import { getEmployeeRoles, getEmployees, saveEmployee, toggleEmployee, deleteEmployee, type Employee, type EmployeeRole } from "../../shared/api/employees";
 import { nextListSort } from "../../shared/utils";
 
 export default function EmployeesPage() {
@@ -25,8 +24,8 @@ export default function EmployeesPage() {
   const [mdlOpen, setMdlOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
   const [editing, setEditing] = useState<Employee | null>(null);
-  const [graphUsers, setGraphUsers] = useState<GraphUser[]>([]);
-  const [graphUsersLoading, setGraphUsersLoading] = useState(false);
+  const [roles, setRoles] = useState<EmployeeRole[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
   const [form, setForm] = useState({
     entraObjectId: "",
     name: "",
@@ -39,6 +38,15 @@ export default function EmployeesPage() {
 
   const isEmailValid = (email: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+  const formatRoleLabel = (role: string) =>
+    role
+      .trim()
+      .replace(/[_-]+/g, " ")
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join(" ");
 
   const isFormValid =
     form.name.trim().length > 0 &&
@@ -70,6 +78,11 @@ export default function EmployeesPage() {
 
   useEffect(() => {
     load(1, "");
+    setRolesLoading(true);
+    void getEmployeeRoles()
+      .then(setRoles)
+      .catch(() => t("Failed to load roles"))
+      .finally(() => setRolesLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -85,27 +98,6 @@ export default function EmployeesPage() {
 
   const rowsSource = employees;
 
-  const openAdd = () => {
-    setEditing(null);
-    setForm({
-      entraObjectId: "",
-      name: "",
-      email: "",
-      dept: "",
-      role: "",
-      designation: "",
-      employeeCode: "",
-    });
-    setMdlOpen(true);
-    if (graphUsers.length === 0 && !graphUsersLoading) {
-      setGraphUsersLoading(true);
-      void getGraphUsers()
-        .then(setGraphUsers)
-        .catch(() => t("Failed to load Entra users", "no"))
-        .finally(() => setGraphUsersLoading(false));
-    }
-  };
-
   const openEdit = (emp: Employee) => {
     setEditing(emp);
     setForm({
@@ -113,7 +105,7 @@ export default function EmployeesPage() {
       name: emp.name,
       email: emp.email,
       dept: emp.dept,
-      role: (emp.role || "").toLowerCase(),
+      role: emp.role || "",
       designation: emp.designation ?? "",
       employeeCode: emp.employeeCode ?? "",
     });
@@ -137,27 +129,12 @@ export default function EmployeesPage() {
       await saveEmployee(payload);
       setMdlOpen(false);
       load();
-      t(editing ? "Employee updated" : "Employee added");
+      t("Employee updated");
     } catch {
       t("Failed to save employee");
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleEntraUserChange = (entraObjectId: string) => {
-    const selected = graphUsers.find((item) => item.id === entraObjectId);
-    const email = selected?.mail || selected?.userPrincipalName || "";
-
-    setForm((f) => ({
-      ...f,
-      entraObjectId,
-      name: selected?.displayName || f.name,
-      email: email || f.email,
-      dept: selected?.department || f.dept,
-      designation: selected?.jobTitle || f.designation,
-      employeeCode: selected?.employeeId || f.employeeCode,
-    }));
   };
 
   const cols: TblCol[] = [
@@ -173,7 +150,7 @@ export default function EmployeesPage() {
       { v: e.name || "NA" },
       { v: e.email || "NA" },
       { v: e.dept || "NA" },
-      { v: e.role || "NA" },
+      { v: e.role ? formatRoleLabel(e.role) : "NA" },
       {
         v: (
           <Toggle
@@ -268,14 +245,6 @@ export default function EmployeesPage() {
             Employees
           </h1>
         </div>
-        <Btn
-          v="primary"
-          onClick={openAdd}
-          sx={{ borderRadius: "4px", boxShadow: "0 -2px 108.5px 0 #00024914" }}
-        >
-          <CirclePlus size={15} strokeWidth={1.8} />
-          <span className="employees-add-label">Add employee</span>
-        </Btn>
       </div>
 
       <div
@@ -480,13 +449,12 @@ export default function EmployeesPage() {
         editing={editing}
         form={form}
         setForm={setForm}
-        graphUsers={graphUsers}
-        graphUsersLoading={graphUsersLoading}
+        roles={roles}
+        rolesLoading={rolesLoading}
         saving={saving}
         isFormValid={isFormValid}
         onClose={() => setMdlOpen(false)}
         onSave={handleSave}
-        onEntraUserChange={handleEntraUserChange}
       />
 
       <EmployeeDeleteConfirmModal

@@ -43,7 +43,11 @@ public partial class Engagement
 
     public string Currency { get; set; } = null!;
 
+    public string? PurchaseOrder { get; set; }
+
     public virtual Employee? CreatedBy { get; set; }
 
     public virtual ICollection<Invoice1> Invoice1s { get; set; } = new List<Invoice1>();
+
+    public virtual ICollection<TimesheetMonthDocument> TimesheetMonthDocuments { get; set; } = new List<TimesheetMonthDocument>();
 }

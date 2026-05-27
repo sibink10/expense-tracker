@@ -22,6 +22,42 @@ namespace QubiqonFinanceHub.API.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("QubiqonFinanceHub.API.Models.CurrencyRatesCache", b =>
+                {
+                    b.Property<string>("Base")
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
+
+                    b.Property<string>("Currency")
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
+
+                    b.Property<long>("ApiUpdated")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("IsSelected")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("SyncedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("(sysutcdatetime())");
+
+                    b.Property<bool>("Valid")
+                        .HasColumnType("bit");
+
+                    b.Property<double>("Value")
+                        .HasColumnType("float");
+
+                    b.HasKey("Base", "Currency");
+
+                    b.HasIndex(new[] { "IsSelected" }, "UX_CurrencyRatesCache_IsSelected")
+                        .IsUnique()
+                        .HasFilter("([IsSelected]=(1))");
+
+                    b.ToTable("CurrencyRatesCache", (string)null);
+                });
+
             modelBuilder.Entity("QubiqonFinanceHub.API.Models.Entities.Account", b =>
                 {
                     b.Property<Guid>("Id")
@@ -494,6 +530,43 @@ namespace QubiqonFinanceHub.API.Migrations
                     b.ToTable("ExpenseRequests", "finance");
                 });
 
+            modelBuilder.Entity("QubiqonFinanceHub.API.Models.Entities.FinanceEmployeeRole", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("(sysutcdatetime())");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("(sysutcdatetime())");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId")
+                        .IsUnique();
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("EmployeeRoles", "finance");
+                });
+
             modelBuilder.Entity("QubiqonFinanceHub.API.Models.Entities.Invoice", b =>
                 {
                     b.Property<Guid>("Id")
@@ -670,6 +743,10 @@ namespace QubiqonFinanceHub.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AccountHolderName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<string>("AccountNumber")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
@@ -738,6 +815,10 @@ namespace QubiqonFinanceHub.API.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("SwiftCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("Tenant")
                         .HasColumnType("nvarchar(max)");
 
@@ -751,9 +832,53 @@ namespace QubiqonFinanceHub.API.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+                    b.Property<string>("ZohoAuthorizationEndpoint")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<string>("ZohoClientId")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("ZohoClientSecret")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<string>("ZohoCode")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<string>("ZohoDataCenter")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("ZohoHomePage")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<string>("ZohoRedirectUri")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<string>("ZohoRefreshToken")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<string>("ZohoScope")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("ZohoSignApiBaseUrl")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
                     b.Property<string>("ZohoSignEmail")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("ZohoTokenEndpoint")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
 
                     b.HasKey("Id");
 
@@ -890,6 +1015,39 @@ namespace QubiqonFinanceHub.API.Migrations
                     b.HasIndex("OrganizationId", "CreatedAt");
 
                     b.ToTable("RequestDocuments", "finance");
+                });
+
+            modelBuilder.Entity("QubiqonFinanceHub.API.Models.Entities.Role", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("Roles", "dbo");
                 });
 
             modelBuilder.Entity("QubiqonFinanceHub.API.Models.Entities.TaxConfiguration", b =>
@@ -1243,6 +1401,25 @@ namespace QubiqonFinanceHub.API.Migrations
                     b.Navigation("Employee");
                 });
 
+            modelBuilder.Entity("QubiqonFinanceHub.API.Models.Entities.FinanceEmployeeRole", b =>
+                {
+                    b.HasOne("QubiqonFinanceHub.API.Models.Entities.Employee", "Employee")
+                        .WithOne("FinanceRole")
+                        .HasForeignKey("QubiqonFinanceHub.API.Models.Entities.FinanceEmployeeRole", "EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("QubiqonFinanceHub.API.Models.Entities.Role", "Role")
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("Role");
+                });
+
             modelBuilder.Entity("QubiqonFinanceHub.API.Models.Entities.Invoice", b =>
                 {
                     b.HasOne("QubiqonFinanceHub.API.Models.Entities.Client", "Client")
@@ -1370,6 +1547,8 @@ namespace QubiqonFinanceHub.API.Migrations
 
             modelBuilder.Entity("QubiqonFinanceHub.API.Models.Entities.Employee", b =>
                 {
+                    b.Navigation("FinanceRole");
+
                     b.Navigation("OrganizationContext");
                 });
 

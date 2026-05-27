@@ -267,14 +267,19 @@ const _b: Record<string, [string, string]> = {};
   [INV_S.SIGNATURE_FAILED, "#FEE2E2", "#991B1B"],
 ].forEach(([k, bg, fg]) => { _b[k as string] = [bg as string, fg as string]; });
 const BADGE_MAP = _b;
+const BADGE_LABELS: Record<string, string> = {
+  [INV_S.PENDING_SIGNATURE]: "Pending Signature",
+  [INV_S.SIGNATURE_FAILED]: "Signature Failed",
+};
 
 export const Badge: React.FC<{ s: string; overdueDays?: number | null }> = ({ s, overdueDays }) => {
   const [bg, fg] = BADGE_MAP[s] || ["#eee", "#666"];
+  const displayStatus = BADGE_LABELS[s] ?? s;
   const showOverdueDays =
     (s === INV_S.OVERDUE || s === BILL_S.OVERDUE) && overdueDays != null && overdueDays >= 1;
   const label = showOverdueDays
-    ? `${s} · ${overdueDays} ${overdueDays === 1 ? "day" : "days"}`
-    : s;
+    ? `${displayStatus} · ${overdueDays} ${overdueDays === 1 ? "day" : "days"}`
+    : displayStatus;
   return (
     <span
       style={{

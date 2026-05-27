@@ -168,6 +168,8 @@ export interface Invoice {
   cId: string;
   cName: string;
   cEmail: string;
+  billTo?: string;
+  shipTo?: string;
   currency: string;
   items: InvoiceItem[];
   subTotal: number;
@@ -190,6 +192,15 @@ export interface Invoice {
   signatureRequestedAt?: string | null;
   signedPdfUrl?: string | null;
   signedAt?: string | null;
+  organizationBankDetails?: {
+    orgName: string;
+    accountHolderName?: string | null;
+    bankName?: string | null;
+    ifscCode?: string | null;
+    swiftCode?: string | null;
+    accountNumber?: string | null;
+    bankAddress?: string | null;
+  } | null;
 }
 
 export interface Vendor {

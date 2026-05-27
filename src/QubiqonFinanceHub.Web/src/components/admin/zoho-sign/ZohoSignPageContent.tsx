@@ -376,13 +376,7 @@ export default function ZohoSignPage() {
               </strong>
             </div>
             {setup.tokenError && <div style={{ color: C.danger, marginTop: 4 }}>{setup.tokenError}</div>}
-            {setup.authorizationUrl && (
-              <div style={{ marginTop: 8 }}>
-                <a href={setup.authorizationUrl} target="_blank" rel="noreferrer" style={{ color: C.info }}>
-                  Open OAuth authorization URL
-                </a>
-              </div>
-            )}
+            <div style={{ marginTop: 4 }}>OAuth authorization is managed under Admin → Organization.</div>
           </div>
         ) : null}
       </section>

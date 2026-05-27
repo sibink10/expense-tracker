@@ -46,6 +46,39 @@ public class Organization
     [MaxLength(256)]
     public string? ZohoSignEmail { get; set; }
 
+    [MaxLength(256)]
+    public string? ZohoClientId { get; set; }
+
+    [MaxLength(512)]
+    public string? ZohoClientSecret { get; set; }
+
+    [MaxLength(512)]
+    public string? ZohoCode { get; set; }
+
+    [MaxLength(1000)]
+    public string? ZohoScope { get; set; }
+
+    [MaxLength(20)]
+    public string? ZohoDataCenter { get; set; }
+
+    [MaxLength(512)]
+    public string? ZohoAuthorizationEndpoint { get; set; }
+
+    [MaxLength(512)]
+    public string? ZohoTokenEndpoint { get; set; }
+
+    [MaxLength(512)]
+    public string? ZohoSignApiBaseUrl { get; set; }
+
+    [MaxLength(512)]
+    public string? ZohoRedirectUri { get; set; }
+
+    [MaxLength(512)]
+    public string? ZohoHomePage { get; set; }
+
+    [MaxLength(512)]
+    public string? ZohoRefreshToken { get; set; }
+
     [MaxLength(300)]
     public string? PaymentAddress { get; set; }
 
@@ -57,8 +90,14 @@ public class Organization
     [MaxLength(100)]
     public string? BankName { get; set; }
 
+    [MaxLength(200)]
+    public string? AccountHolderName { get; set; }
+
     [MaxLength(20)]
     public string? IfscCode { get; set; }
+
+    [MaxLength(20)]
+    public string? SwiftCode { get; set; }
 
     [MaxLength(50)]
     public string? AccountNumber { get; set; }
@@ -116,6 +155,28 @@ public class Employee
     public DateTime? UpdatedAt { get; set; }
 
     public EmployeeOrganizationContext? OrganizationContext { get; set; }
+    public FinanceEmployeeRole? FinanceRole { get; set; }
+}
+
+public class Role
+{
+    public int Id { get; set; }
+    [Required, MaxLength(100)] public string DisplayName { get; set; } = "";
+    [Required, MaxLength(50)] public string Code { get; set; } = "";
+    public bool IsActive { get; set; } = true;
+}
+
+public class FinanceEmployeeRole
+{
+    [Key] public Guid Id { get; set; }
+    public Guid EmployeeId { get; set; }
+    public int RoleId { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
+
+    [ForeignKey(nameof(EmployeeId))] public Employee Employee { get; set; } = null!;
+    [ForeignKey(nameof(RoleId))] public Role Role { get; set; } = null!;
 }
 
 // ═══════════════════════════════════════════════════

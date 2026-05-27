@@ -21,6 +21,8 @@ public class EmployeeService : IEmployeeService
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
         var q = _db.Employees
+            .Include(e => e.FinanceRole!)
+                .ThenInclude(fr => fr.Role)
             .Where(e => e.OrganizationId == orgId && !e.IsDelete)
             .AsNoTracking();
 
@@ -37,10 +39,22 @@ public class EmployeeService : IEmployeeService
         return new PaginatedResult<EmployeeDto>(items.Select(MapToDto).ToList(), total, f.Page, f.PageSize);
     }
 
+    public async Task<List<RoleDto>> ListRolesAsync()
+    {
+        return await _db.Roles
+            .Where(r => r.IsActive)
+            .OrderBy(r => r.DisplayName)
+            .Select(r => new RoleDto(r.Id, r.Code, r.DisplayName))
+            .AsNoTracking()
+            .ToListAsync();
+    }
+
     public async Task<EmployeeDto?> GetByIdAsync(Guid id)
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _db.Employees.AsNoTracking()
+            .Include(e => e.FinanceRole!)
+                .ThenInclude(fr => fr.Role)
             .FirstOrDefaultAsync(e => e.Id == id && e.OrganizationId == orgId);
         return emp == null ? null : MapToDto(emp);
     }
@@ -59,6 +73,11 @@ public class EmployeeService : IEmployeeService
 
         if (string.IsNullOrWhiteSpace(email))
             throw new ArgumentException("Email is required", nameof(dto));
+
+        var financeRole = await GetActiveRoleAsync(dto.Role);
+        var employeeRole = Enum.TryParse<UserRole>(financeRole.Code, true, out var parsedRole)
+            ? parsedRole
+            : UserRole.Employee;
 
         // Uniqueness should ignore soft-deleted employees (IsDelete == true).
         // If a soft-deleted employee exists for a unique field, re-activate it instead of inserting a new row.
@@ -85,11 +104,12 @@ public class EmployeeService : IEmployeeService
             deletedByEmail.Department = dto.Department;
             deletedByEmail.Designation = dto.Designation;
             deletedByEmail.EmployeeCode = dto.EmployeeCode;
-            deletedByEmail.Role = Enum.Parse<UserRole>(dto.Role, true);
+            deletedByEmail.Role = employeeRole;
             deletedByEmail.Email = email;
             deletedByEmail.IsActive = true;
             deletedByEmail.IsDelete = false;
             deletedByEmail.UpdatedAt = DateTime.UtcNow;
+            await UpsertFinanceRoleAsync(deletedByEmail.Id, financeRole.Id);
 
             await _db.SaveChangesAsync();
             return MapToDto(deletedByEmail);
@@ -112,11 +132,12 @@ public class EmployeeService : IEmployeeService
                 deletedByEntra.Department = dto.Department;
                 deletedByEntra.Designation = dto.Designation;
                 deletedByEntra.EmployeeCode = dto.EmployeeCode;
-                deletedByEntra.Role = Enum.Parse<UserRole>(dto.Role, true);
+                deletedByEntra.Role = employeeRole;
                 deletedByEntra.Email = email;
                 deletedByEntra.IsActive = true;
                 deletedByEntra.IsDelete = false;
                 deletedByEntra.UpdatedAt = DateTime.UtcNow;
+                await UpsertFinanceRoleAsync(deletedByEntra.Id, financeRole.Id);
 
                 if (!string.IsNullOrWhiteSpace(deletedByEntra.EntraObjectId))
                     await _azureRoleService.AssignRoleAsync(deletedByEntra.EntraObjectId, deletedByEntra.Role);
@@ -135,12 +156,13 @@ public class EmployeeService : IEmployeeService
             Department = dto.Department,
             Designation = dto.Designation,
             EmployeeCode = dto.EmployeeCode,
-            Role = Enum.Parse<UserRole>(dto.Role, true),
+            Role = employeeRole,
             IsActive = true,
             IsDelete = false,
             CreatedAt = DateTime.UtcNow
         };
         _db.Employees.Add(emp);
+        await UpsertFinanceRoleAsync(emp.Id, financeRole.Id);
         await _db.SaveChangesAsync();
         return MapToDto(emp);
     }
@@ -164,11 +186,15 @@ public class EmployeeService : IEmployeeService
 
             if (dto.Role != null)
             {
-                var newRole = Enum.Parse<UserRole>(dto.Role, true);
-                emp.Role = newRole;
+                var role = await GetActiveRoleAsync(dto.Role);
+                await UpsertFinanceRoleAsync(emp.Id, role.Id);
 
-                // Sync role to Azure AD
-                await _azureRoleService.AssignRoleAsync(emp.EntraObjectId ?? "", newRole);
+                if (Enum.TryParse<UserRole>(role.Code, true, out var newRole))
+                {
+                    emp.Role = newRole;
+                    if (!string.IsNullOrWhiteSpace(emp.EntraObjectId))
+                        await _azureRoleService.AssignRoleAsync(emp.EntraObjectId, newRole);
+                }
             }
 
             emp.UpdatedAt = DateTime.UtcNow;
@@ -206,8 +232,42 @@ public class EmployeeService : IEmployeeService
         return MapToDto(emp);
     }
 
+    private async Task<Role> GetActiveRoleAsync(string roleCode)
+    {
+        var normalizedCode = roleCode.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedCode))
+            throw new ArgumentException("Role is required", nameof(roleCode));
+
+        return await _db.Roles
+            .FirstOrDefaultAsync(r => r.IsActive && r.Code == normalizedCode)
+            ?? throw new InvalidOperationException("Selected role is not available");
+    }
+
+    private async Task UpsertFinanceRoleAsync(Guid employeeId, int roleId)
+    {
+        var existing = await _db.FinanceEmployeeRoles
+            .FirstOrDefaultAsync(r => r.EmployeeId == employeeId);
+
+        if (existing == null)
+        {
+            _db.FinanceEmployeeRoles.Add(new FinanceEmployeeRole
+            {
+                Id = Guid.NewGuid(),
+                EmployeeId = employeeId,
+                RoleId = roleId,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            });
+            return;
+        }
+
+        existing.RoleId = roleId;
+        existing.IsActive = true;
+        existing.UpdatedAt = DateTime.UtcNow;
+    }
+
     private static EmployeeDto MapToDto(Employee e) => new(
         e.Id, e.FullName, e.Email, e.Department,
-        e.Designation, e.EmployeeCode, e.Role.ToString(), e.IsActive
+        e.Designation, e.EmployeeCode, e.FinanceRole?.Role?.Code ?? e.Role.ToString(), e.IsActive
     );
 }

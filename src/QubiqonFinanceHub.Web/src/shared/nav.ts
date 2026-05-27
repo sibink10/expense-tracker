@@ -65,11 +65,11 @@ export function buildNav(_cfg?: { advEnabled?: boolean }): NavSection[] {
       i: "organization",
       items: [
         { path: "/admin/org", l: "Organization", i: "", r: ["admin"] as UserRole[], end: true },
-        { path: "/admin", l: "Setting", i: "", r: ["admin"] as UserRole[], end: true },
+        { path: "/admin", l: "Organization Settings", i: "", r: ["admin"] as UserRole[], end: true },
       ],
     },
     {
-      s: "Workspace",
+      s: "Settings",
       i: "workspace",
       items: [
         { path: "/admin/tax", l: "Tax Config", i: "", r: ["admin"] as UserRole[] },

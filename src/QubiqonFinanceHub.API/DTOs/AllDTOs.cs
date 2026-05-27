@@ -50,11 +50,24 @@ public record CreateOrganizationRequest(
     string? Fax,
     string? Website,
     string? Industry,
+    string? AccountHolderName,
     string? BankName,
     string? IfscCode,
+    string? SwiftCode,
     string? AccountNumber,
     string? BankAddress,
     string? ZohoSignEmail,
+    string? ZohoClientId,
+    string? ZohoClientSecret,
+    string? ZohoCode,
+    string? ZohoScope,
+    string? ZohoDataCenter,
+    string? ZohoAuthorizationEndpoint,
+    string? ZohoTokenEndpoint,
+    string? ZohoSignApiBaseUrl,
+    string? ZohoRedirectUri,
+    string? ZohoHomePage,
+    string? ZohoRefreshToken,
     string? Tenant,
     IFormFile? LogoFile
 );
@@ -73,11 +86,24 @@ public record UpdateOrganizationRequest(
     string? Fax,
     string? Website,
     string? Industry,
+    string? AccountHolderName,
     string? BankName,
     string? IfscCode,
+    string? SwiftCode,
     string? AccountNumber,
     string? BankAddress,
     string? ZohoSignEmail,
+    string? ZohoClientId,
+    string? ZohoClientSecret,
+    string? ZohoCode,
+    string? ZohoScope,
+    string? ZohoDataCenter,
+    string? ZohoAuthorizationEndpoint,
+    string? ZohoTokenEndpoint,
+    string? ZohoSignApiBaseUrl,
+    string? ZohoRedirectUri,
+    string? ZohoHomePage,
+    string? ZohoRefreshToken,
     string? Tenant,
     IFormFile? LogoFile
 );
@@ -100,11 +126,24 @@ public record OrganizationDto(
     string? Fax,
     string? Website,
     string? Industry,
+    string? AccountHolderName,
     string? BankName,
     string? IfscCode,
+    string? SwiftCode,
     string? AccountNumber,
     string? BankAddress,
-    string? ZohoSignEmail
+    string? ZohoSignEmail,
+    string? ZohoClientId,
+    string? ZohoClientSecret,
+    string? ZohoCode,
+    string? ZohoScope,
+    string? ZohoDataCenter,
+    string? ZohoAuthorizationEndpoint,
+    string? ZohoTokenEndpoint,
+    string? ZohoSignApiBaseUrl,
+    string? ZohoRedirectUri,
+    string? ZohoHomePage,
+    string? ZohoRefreshToken
 );
 
 // ═══════════════════════════════════════════════════
@@ -323,12 +362,23 @@ public record CreateInvoiceRequest(Guid ClientId, string Currency, List<CreateIn
 public record UpdateInvoiceRequest(string Currency, List<CreateInvoiceLineItemRequest> LineItems, Guid? TaxConfigId, DateTime InvoiceDate, DateTime DueDate, string PaymentTerms, string? PurchaseOrder, string? Notes);
 
 public record InvoiceLineItemDto(int LineNumber, string Description, string? HSNCode, decimal Quantity, decimal Rate, decimal Amount, string? GSTName, decimal GSTRate, decimal GSTAmount, decimal TotalAmount, Guid? GSTConfigId);
+public record InvoiceOrganizationBankDetailsDto(
+    string OrgName,
+    string? AccountHolderName,
+    string? BankName,
+    string? IfscCode,
+    string? SwiftCode,
+    string? AccountNumber,
+    string? BankAddress
+);
 public record InvoiceDto(
     Guid Id,
     string InvoiceCode,
     Guid ClientId,
     string ClientName,
     string ClientEmail,
+    string? BillTo,
+    string? ShipTo,
     string? ClientContact,
     string ClientCountry,
     string Currency,
@@ -354,6 +404,7 @@ public record InvoiceDto(
     DateTime? SignatureRequestedAt,
     string? SignedPdfUrl,
     DateTime? SignedAt,
+    InvoiceOrganizationBankDetailsDto? OrganizationBankDetails,
     List<InvoiceLineItemDto> LineItems,
     List<CommentDto> Comments
 );
@@ -400,7 +451,36 @@ public record ProcessPaymentRequest(string? PaymentReference, PaymentMethod? Met
 // ═══════════════════════════════════════════════════
 //  DASHBOARD
 // ═══════════════════════════════════════════════════
-public record DashboardDto(int PendingExpenses, int ApprovedExpenses, int CompletedExpenses, int PendingBills, int BillsToPayCount, decimal BillsToPayAmount, int PendingAdvances, int DraftInvoices, int SentInvoices, int PaidInvoices, int OverdueInvoices, decimal TotalReceivable);
+public record DashboardSliceDto(string Label, decimal Value, string? Currency = null);
+
+/// <summary>
+/// Organization dashboard aggregates. Invoice status counts match <see cref="InvoiceStatusCountsDto"/> from the invoices API.
+/// Bills and invoice figures are org-wide; expenses and advances respect <c>myOnly</c>.
+/// </summary>
+public record DashboardDto(
+    int PendingExpenses,
+    int ApprovedExpenses,
+    int CompletedExpenses,
+    int PendingBills,
+    int BillsToPayCount,
+    decimal BillsToPayAmount,
+    int PendingAdvances,
+    int DisbursedAdvances,
+    int PendingApprovals,
+    decimal ReceivableOutstanding,
+    decimal TotalReceivable,
+    InvoiceStatusCountsDto InvoiceCounts,
+    IReadOnlyList<DashboardSliceDto> ReceivablesByClient,
+    IReadOnlyList<DashboardSliceDto> BillsToPayByAccount,
+    IReadOnlyList<string> AvailableReportCurrencies,
+    string? DisplayCurrency)
+{
+    public int DraftInvoices => InvoiceCounts.Draft;
+    public int SentInvoices => InvoiceCounts.Sent;
+    public int PartiallyPaidInvoices => InvoiceCounts.PartiallyPaid;
+    public int PaidInvoices => InvoiceCounts.Paid;
+    public int OverdueInvoices => InvoiceCounts.Overdue;
+}
 
 // ═══════════════════════════════════════════════════
 //  EMPLOYEE
@@ -408,6 +488,7 @@ public record DashboardDto(int PendingExpenses, int ApprovedExpenses, int Comple
 public record EmployeeDto(Guid Id, string FullName, string Email, string? Department, string? Designation, string? EmployeeCode, string Role, bool IsActive);
 public record CreateEmployeeRequest(string? EntraObjectId, string FullName, string Email, string? Department, string? Designation, string? EmployeeCode, string Role);
 public record UpdateEmployeeRequest(string? FullName, string? Department, string? Designation, string? EmployeeCode, string? Role);
+public record RoleDto(int Id, string Code, string DisplayName);
 
 
 // ═══════════════════════════════════════════════════

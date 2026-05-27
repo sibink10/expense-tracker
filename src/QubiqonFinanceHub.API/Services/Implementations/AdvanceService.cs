@@ -124,7 +124,10 @@ public class AdvanceService : IAdvanceService
         if (!string.IsNullOrWhiteSpace(f.Search))
         {
             var s = f.Search.ToLower();
-            q = q.Where(x => x.AdvanceCode.ToLower().Contains(s) || x.Purpose.ToLower().Contains(s));
+            q = q.Where(x =>
+                x.AdvanceCode.ToLower().Contains(s)
+                || x.Purpose.ToLower().Contains(s)
+                || x.Employee.FullName.ToLower().Contains(s));
         }
 
         var total = await q.CountAsync();

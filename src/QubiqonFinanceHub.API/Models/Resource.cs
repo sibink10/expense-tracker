@@ -13,7 +13,7 @@ public partial class Resource
 
     public string Skills { get; set; } = null!;
 
-    public double RateInr { get; set; }
+    public double Rate { get; set; }
 
     public string Allocations { get; set; } = null!;
 

@@ -1,7 +1,6 @@
 import type React from "react";
 import { Btn, Inp, Mdl } from "../ui";
-import type { Employee } from "../../shared/api/employees";
-import type { GraphUser } from "../../shared/api/graph";
+import type { Employee, EmployeeRole } from "../../shared/api/employees";
 
 export type EmployeeFormState = {
   entraObjectId: string;
@@ -18,13 +17,12 @@ type EmployeeFormModalProps = {
   editing: Employee | null;
   form: EmployeeFormState;
   setForm: React.Dispatch<React.SetStateAction<EmployeeFormState>>;
-  graphUsers: GraphUser[];
-  graphUsersLoading: boolean;
+  roles: EmployeeRole[];
+  rolesLoading: boolean;
   saving: boolean;
   isFormValid: boolean;
   onClose: () => void;
   onSave: () => void;
-  onEntraUserChange: (entraObjectId: string) => void;
 };
 
 export default function EmployeeFormModal({
@@ -32,55 +30,30 @@ export default function EmployeeFormModal({
   editing,
   form,
   setForm,
-  graphUsers,
-  graphUsersLoading,
+  roles,
+  rolesLoading,
   saving,
   isFormValid,
   onClose,
   onSave,
-  onEntraUserChange,
 }: EmployeeFormModalProps) {
   return (
-    <Mdl open={open} close={onClose} title={editing ? "Edit employee" : "Add employee"}>
+    <Mdl open={open} close={onClose} title="Edit employee">
       <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "16px" }}>
         <div>
-          {editing ? (
-            <Inp
-              label="Entra employee"
-              type="select"
-              value={form.email}
-              opts={[
-                {
-                  v: form.email,
-                  l: `${form.name || form.email || "Selected employee"}${form.email ? ` (${form.email})` : ""}`,
-                },
-              ]}
-              disabled
-              req
-            />
-          ) : (
-            <Inp
-              label="Entra employee"
-              type="select"
-              value={form.entraObjectId}
-              onChange={(e) => onEntraUserChange(e.target.value)}
-              opts={[
-                {
-                  v: "",
-                  l: graphUsersLoading ? "Loading Entra users..." : "Select employee from Entra...",
-                },
-                ...graphUsers.map((item) => {
-                  const email = item.mail || item.userPrincipalName || "No email";
-                  return {
-                    v: item.id,
-                    l: `${item.displayName || email} (${email})`,
-                  };
-                }),
-              ]}
-              disabled={graphUsersLoading}
-              req
-            />
-          )}
+          <Inp
+            label="Entra employee"
+            type="select"
+            value={form.email}
+            opts={[
+              {
+                v: form.email,
+                l: `${form.name || form.email || "Selected employee"}${form.email ? ` (${form.email})` : ""}`,
+              },
+            ]}
+            disabled
+            req
+          />
           <Inp
             label="Full name"
             value={form.name}
@@ -108,13 +81,10 @@ export default function EmployeeFormModal({
             value={form.role}
             onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
             opts={[
-              { v: "", l: "Select role..." },
-              { v: "employee", l: "Employee" },
-              { v: "approver", l: "Approver" },
-              { v: "finance", l: "Finance" },
-              { v: "PROJECT_MANAGER", l: "Project Manager" },
-              { v: "admin", l: "Admin" },
+              { v: "", l: rolesLoading ? "Loading roles..." : "Select role..." },
+              ...roles.map((role) => ({ v: role.code, l: role.displayName })),
             ]}
+            disabled={rolesLoading}
             req
           />
           <Inp

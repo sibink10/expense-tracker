@@ -38,11 +38,24 @@ public class OrganizationService(
             Fax = dto.Fax?.Trim(),
             Website = dto.Website?.Trim(),
             Industry = dto.Industry?.Trim(),
+            AccountHolderName = dto.AccountHolderName?.Trim(),
             BankName = dto.BankName?.Trim(),
             IfscCode = dto.IfscCode?.Trim(),
+            SwiftCode = dto.SwiftCode?.Trim(),
             AccountNumber = dto.AccountNumber?.Trim(),
             BankAddress = dto.BankAddress?.Trim(),
             ZohoSignEmail = dto.ZohoSignEmail?.Trim(),
+            ZohoClientId = dto.ZohoClientId?.Trim(),
+            ZohoClientSecret = dto.ZohoClientSecret?.Trim(),
+            ZohoCode = dto.ZohoCode?.Trim(),
+            ZohoScope = dto.ZohoScope?.Trim(),
+            ZohoDataCenter = dto.ZohoDataCenter?.Trim(),
+            ZohoAuthorizationEndpoint = dto.ZohoAuthorizationEndpoint?.Trim(),
+            ZohoTokenEndpoint = dto.ZohoTokenEndpoint?.Trim(),
+            ZohoSignApiBaseUrl = dto.ZohoSignApiBaseUrl?.Trim(),
+            ZohoRedirectUri = dto.ZohoRedirectUri?.Trim(),
+            ZohoHomePage = dto.ZohoHomePage?.Trim(),
+            ZohoRefreshToken = dto.ZohoRefreshToken?.Trim(),
             IsActive = true,
             UpdatedAt = DateTime.UtcNow
         };
@@ -95,11 +108,24 @@ public class OrganizationService(
         if (dto.Fax != null) org.Fax = dto.Fax.Trim();
         if (dto.Website != null) org.Website = dto.Website.Trim();
         if (dto.Industry != null) org.Industry = dto.Industry.Trim();
+        if (dto.AccountHolderName != null) org.AccountHolderName = dto.AccountHolderName.Trim();
         if (dto.BankName != null) org.BankName = dto.BankName.Trim();
         if (dto.IfscCode != null) org.IfscCode = dto.IfscCode.Trim();
+        if (dto.SwiftCode != null) org.SwiftCode = dto.SwiftCode.Trim();
         if (dto.AccountNumber != null) org.AccountNumber = dto.AccountNumber.Trim();
         if (dto.BankAddress != null) org.BankAddress = dto.BankAddress.Trim();
         if (dto.ZohoSignEmail != null) org.ZohoSignEmail = string.IsNullOrWhiteSpace(dto.ZohoSignEmail) ? null : dto.ZohoSignEmail.Trim();
+        if (dto.ZohoClientId != null) org.ZohoClientId = TrimOrNull(dto.ZohoClientId);
+        if (dto.ZohoClientSecret != null) org.ZohoClientSecret = TrimOrNull(dto.ZohoClientSecret);
+        if (dto.ZohoCode != null) org.ZohoCode = TrimOrNull(dto.ZohoCode);
+        if (dto.ZohoScope != null) org.ZohoScope = TrimOrNull(dto.ZohoScope);
+        if (dto.ZohoDataCenter != null) org.ZohoDataCenter = TrimOrNull(dto.ZohoDataCenter);
+        if (dto.ZohoAuthorizationEndpoint != null) org.ZohoAuthorizationEndpoint = TrimOrNull(dto.ZohoAuthorizationEndpoint);
+        if (dto.ZohoTokenEndpoint != null) org.ZohoTokenEndpoint = TrimOrNull(dto.ZohoTokenEndpoint);
+        if (dto.ZohoSignApiBaseUrl != null) org.ZohoSignApiBaseUrl = TrimOrNull(dto.ZohoSignApiBaseUrl);
+        if (dto.ZohoRedirectUri != null) org.ZohoRedirectUri = TrimOrNull(dto.ZohoRedirectUri);
+        if (dto.ZohoHomePage != null) org.ZohoHomePage = TrimOrNull(dto.ZohoHomePage);
+        if (dto.ZohoRefreshToken != null) org.ZohoRefreshToken = TrimOrNull(dto.ZohoRefreshToken);
         if (dto.Tenant != null) org.Tenant = dto.Tenant;
 
         if (dto.LogoFile != null)
@@ -202,10 +228,26 @@ public class OrganizationService(
         o.Fax,
         o.Website,
         o.Industry,
+        o.AccountHolderName,
         o.BankName,
         o.IfscCode,
+        o.SwiftCode,
         o.AccountNumber,
         o.BankAddress,
-        o.ZohoSignEmail
+        o.ZohoSignEmail,
+        o.ZohoClientId,
+        o.ZohoClientSecret,
+        o.ZohoCode,
+        o.ZohoScope,
+        o.ZohoDataCenter,
+        o.ZohoAuthorizationEndpoint,
+        o.ZohoTokenEndpoint,
+        o.ZohoSignApiBaseUrl,
+        o.ZohoRedirectUri,
+        o.ZohoHomePage,
+        o.ZohoRefreshToken
     );
+
+    private static string? TrimOrNull(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

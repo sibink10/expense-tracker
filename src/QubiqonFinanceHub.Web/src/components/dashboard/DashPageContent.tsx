@@ -1,12 +1,18 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { ClipboardList, FileText, HandCoins, ReceiptText, Search, WalletCards, type LucideIcon } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { ClipboardList, FileText, HandCoins, ReceiptText, WalletCards, type LucideIcon } from "lucide-react";
+import Select, { type StylesConfig } from "react-select";
 import { useNavigate } from "react-router-dom";
 import { C, R } from "../../shared/theme";
 import { useAppContext } from "../../context/AppContext";
+import { getDashboard, type DashboardData } from "../../shared/api/dashboard";
+import { Spinner } from "../ui";
 
 type DashboardSegment = {
   label: string;
-  value: number | string;
+  /** Used for donut slice proportions */
+  numericValue: number;
+  /** Shown in legend */
+  displayValue?: number | string;
   color: string;
 };
 
@@ -23,81 +29,99 @@ const GREEN = "#61CDA6";
 const ORANGE = "#FF914D";
 const YELLOW = "#E4C54A";
 const DARK = "#242424";
+const BLUE = "#6366F1";
+const SLICE_PALETTE = [ORANGE, GREEN, YELLOW, DARK, BLUE, "#A855F7", "#14B8A6", "#EC4899"];
 
-const summaryStats = [
-  { label: "Pending approvals", value: 0 },
-  { label: "Bills to pay", value: 0 },
-  { label: "Receivable", value: 0 },
-];
+type CurrencyOption = { value: string; label: string };
 
-const overviewCards: OverviewCard[] = [
-  {
-    title: "Expense overview",
-    icon: ReceiptText,
-    to: "/expenses",
-    segments: [
-      { label: "Pending", value: 0, color: ORANGE },
-      { label: "Approved", value: 5, color: GREEN },
-      { label: "Completed", value: 3, color: YELLOW },
-    ],
-  },
-  {
-    title: "Advances",
-    icon: HandCoins,
-    to: "/advances",
-    segments: [
-      { label: "Pending", value: 0, color: ORANGE },
-      { label: "Disbursed", value: 0, color: GREEN },
-    ],
-  },
-  {
-    title: "Invoices overview",
-    icon: ClipboardList,
-    to: "/invoices",
-    segments: [
-      { label: "Sent", value: 0, color: ORANGE },
-      { label: "Draft", value: 5, color: GREEN },
-      { label: "Overdue", value: 0, color: YELLOW },
-      { label: "Paid", value: 0, color: DARK },
-    ],
-  },
-  {
-    title: "Receivables",
-    icon: WalletCards,
-    to: "/invoices",
-    segments: [
-      { label: "Client 1", value: "60k", color: ORANGE },
-      { label: "Client 2", value: "40k", color: GREEN },
-    ],
-  },
-  {
-    title: "Bills to pay",
-    icon: FileText,
-    to: "/bills",
-    segments: [
-      { label: "Internet", value: "", color: ORANGE },
-      { label: "Salary and wages", value: "", color: GREEN },
-      { label: "Other", value: "", color: YELLOW },
-    ],
-  },
-];
+const dashboardCurrencySelectStyles: StylesConfig<CurrencyOption, false> = {
+  control: (base) => ({
+    ...base,
+    minHeight: 36,
+    height: 36,
+    borderRadius: 999,
+    border: "none",
+    boxShadow: "0px 2px 3px 0px #253EA70A",
+    backgroundColor: "#fff",
+    fontSize: 12,
+    fontFamily: "'Inter', 'Manrope', sans-serif",
+    cursor: "pointer",
+  }),
+  valueContainer: (base) => ({
+    ...base,
+    padding: "0 12px",
+    height: 34,
+  }),
+  indicatorsContainer: (base) => ({
+    ...base,
+    height: 34,
+    paddingRight: 8,
+  }),
+  dropdownIndicator: (base) => ({
+    ...base,
+    padding: 4,
+    color: C.muted,
+  }),
+  indicatorSeparator: () => ({ display: "none" }),
+  singleValue: (base) => ({
+    ...base,
+    color: C.primary,
+    fontSize: 12,
+  }),
+  menu: (base) => ({
+    ...base,
+    borderRadius: R.control,
+    boxShadow: C.cardShadow,
+    overflow: "hidden",
+    zIndex: 30,
+  }),
+  option: (base, state) => ({
+    ...base,
+    fontSize: 12,
+    fontFamily: "'Inter', 'Manrope', sans-serif",
+    background: state.isSelected ? C.successBg : state.isFocused ? C.surface : "#fff",
+    color: state.isSelected ? C.success : C.primary,
+  }),
+};
 
-function numericValue(value: number | string) {
-  if (typeof value === "number") return value;
-  const match = value.match(/\d+(\.\d+)?/);
-  return match ? Number(match[0]) : 0;
+/** Compact amount for INR-style legends (matches prior "60k" donut parsing). */
+function abbrevAmount(amount: number): string {
+  const abs = Math.abs(amount);
+  const sign = amount < 0 ? "-" : "";
+  const fmt = (n: number, suffix: string) =>
+    `${sign}${(Math.round(n * 10) / 10).toString().replace(/\.0$/, "")}${suffix}`;
+  if (abs >= 10000000) return fmt(amount / 10000000, "Cr");
+  if (abs >= 100000) return fmt(amount / 100000, "L");
+  if (abs >= 1000) return fmt(amount / 1000, "k");
+  return `${sign}${Math.round(amount)}`;
+}
+
+function formatCurrencySummary(amount: number, currency = "INR"): string {
+  try {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  } catch {
+    return `${currency} ${amount.toFixed(0)}`;
+  }
+}
+
+function segmentDisplay(seg: DashboardSegment): number | string {
+  return seg.displayValue !== undefined ? seg.displayValue : seg.numericValue;
 }
 
 function DonutChart({ segments }: { segments: DashboardSegment[] }) {
-  const total = segments.reduce((sum, segment) => sum + numericValue(segment.value), 0);
+  const total = segments.reduce((sum, segment) => sum + segment.numericValue, 0);
   let cursor = 0;
   const gradient =
     total > 0
       ? segments
-          .filter((segment) => numericValue(segment.value) > 0)
+          .filter((segment) => segment.numericValue > 0)
           .map((segment) => {
             const start = cursor;
-            const end = cursor + (numericValue(segment.value) / total) * 100;
+            const end = cursor + (segment.numericValue / total) * 100;
             cursor = end;
             return `${segment.color} ${start}% ${end}%`;
           })
@@ -184,21 +208,25 @@ function OverviewCard({ title, icon: Icon, segments, to }: OverviewCard) {
       </div>
 
       <div style={{ display: "grid", gap: 5, marginTop: "auto", paddingTop: 20 }}>
-        {segments.map((segment) => (
-          <div key={segment.label} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: C.muted }}>
-            <span
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: "50%",
-                background: segment.color,
-                flexShrink: 0,
-              }}
-            />
-            <span>{segment.label}</span>
-            {segment.value !== "" && <span style={{ color: C.primary, marginLeft: 4 }}>{segment.value}</span>}
-          </div>
-        ))}
+        {segments.map((segment) => {
+          const shown = segmentDisplay(segment);
+          const showLegendValue = typeof shown === "number" ? shown !== 0 : shown !== "";
+          return (
+            <div key={segment.label} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: C.muted }}>
+              <span
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  background: segment.color,
+                  flexShrink: 0,
+                }}
+              />
+              <span>{segment.label}</span>
+              {showLegendValue && <span style={{ color: C.primary, marginLeft: 4 }}>{shown}</span>}
+            </div>
+          );
+        })}
       </div>
 
       <button
@@ -230,7 +258,7 @@ const dashboardCss = `
       align-items: flex-start !important;
       flex-direction: column !important;
     }
-    .dashboard-search {
+    .dashboard-currency {
       max-width: none !important;
       width: 100% !important;
     }
@@ -261,17 +289,179 @@ function getTimeGreeting(date: Date) {
   return "Good evening";
 }
 
+const emptyInvoiceCounts = { draft: 0, sent: 0, partiallyPaid: 0, paid: 0, overdue: 0 };
+
+function buildOverviewCards(d: DashboardData, reportCurrency: string): OverviewCard[] {
+  const ic = d.invoiceCounts ?? emptyInvoiceCounts;
+  const expPending = Number(d.pendingExpenses ?? 0);
+  const expApproved = Number(d.approvedExpenses ?? 0);
+  const expDone = Number(d.completedExpenses ?? 0);
+  const displayCur = d.displayCurrency?.trim() || reportCurrency;
+
+  const receivables = d.receivablesByClient ?? [];
+  const receivableSegments: DashboardSegment[] =
+    receivables.length === 0
+      ? [{ label: "No outstanding", numericValue: 0, displayValue: "", color: CHART_EMPTY }]
+      : receivables.map((s, i) => {
+          const v = Number(s.value ?? 0);
+          return {
+            label: s.label,
+            numericValue: v,
+            displayValue: formatCurrencySummary(v, displayCur),
+            color: SLICE_PALETTE[i % SLICE_PALETTE.length],
+          };
+        });
+
+  const billSlices = d.billsToPayByAccount ?? [];
+  const billSegments: DashboardSegment[] =
+    billSlices.length === 0 && (d.billsToPayCount ?? 0) === 0
+      ? [{ label: "No approved bills", numericValue: 0, displayValue: "", color: CHART_EMPTY }]
+      : billSlices.length === 0
+        ? [
+            {
+              label: "Total payable",
+              numericValue: Number(d.billsToPayAmount ?? 0),
+              displayValue: abbrevAmount(Number(d.billsToPayAmount ?? 0)),
+              color: ORANGE,
+            },
+          ]
+        : billSlices.map((s, i) => ({
+            label: s.label,
+            numericValue: Number(s.value ?? 0),
+            displayValue: abbrevAmount(Number(s.value ?? 0)),
+            color: SLICE_PALETTE[i % SLICE_PALETTE.length],
+          }));
+
+  return [
+    {
+      title: "Expense overview",
+      icon: ReceiptText,
+      to: "/expenses",
+      segments: [
+        { label: "Pending", numericValue: expPending, color: ORANGE },
+        { label: "Approved", numericValue: expApproved, color: GREEN },
+        { label: "Completed", numericValue: expDone, color: YELLOW },
+      ],
+    },
+    {
+      title: "Advances",
+      icon: HandCoins,
+      to: "/advances",
+      segments: [
+        { label: "Pending", numericValue: Number(d.pendingAdvances ?? 0), color: ORANGE },
+        { label: "Disbursed", numericValue: Number(d.disbursedAdvances ?? 0), color: GREEN },
+      ],
+    },
+    {
+      title: "Invoices overview",
+      icon: ClipboardList,
+      to: "/invoices",
+      segments: [
+        { label: "Draft", numericValue: ic.draft, color: GREEN },
+        { label: "Sent", numericValue: ic.sent, color: ORANGE },
+        { label: "Partially paid", numericValue: ic.partiallyPaid, color: BLUE },
+        { label: "Overdue", numericValue: ic.overdue, color: YELLOW },
+        { label: "Paid", numericValue: ic.paid, color: DARK },
+      ],
+    },
+    {
+      title: "Receivables",
+      icon: WalletCards,
+      to: "/invoices",
+      segments: receivableSegments,
+    },
+    {
+      title: "Bills to pay",
+      icon: FileText,
+      to: "/bills",
+      segments: billSegments,
+    },
+  ];
+}
+
+const DEFAULT_REPORT_CURRENCY = "INR";
+
 export default function DashPage() {
   const { user } = useAppContext();
-  const [search, setSearch] = useState("");
+  const [reportCurrency, setReportCurrency] = useState(DEFAULT_REPORT_CURRENCY);
+  const [currencyOptions, setCurrencyOptions] = useState<string[]>([DEFAULT_REPORT_CURRENCY]);
   const [now, setNow] = useState(() => new Date());
-  const firstName = useMemo(() => user.name?.split(" ")[0] || "Aishwariya", [user.name]);
+  const [dash, setDash] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const firstName = useMemo(() => user.name?.split(" ")[0] || "there", [user.name]);
   const greeting = getTimeGreeting(now);
+
+  const myOnly = user.role !== "finance" && user.role !== "admin";
+
+  const load = useCallback(
+    (currency: string) => {
+      setLoading(true);
+      setError(null);
+      void getDashboard({ myOnly, reportCurrency: currency })
+        .then((data) => {
+          setDash(data);
+          const fromApi = data.availableReportCurrencies ?? [];
+          if (fromApi.length > 0) {
+            setCurrencyOptions(fromApi);
+            if (!fromApi.includes(currency)) {
+              const fallback = fromApi.includes(DEFAULT_REPORT_CURRENCY)
+                ? DEFAULT_REPORT_CURRENCY
+                : fromApi[0];
+              setReportCurrency(fallback);
+            }
+          }
+        })
+        .catch(() => {
+          setError("Could not load dashboard.");
+          setDash(null);
+        })
+        .finally(() => setLoading(false));
+    },
+    [myOnly],
+  );
+
+  useEffect(() => {
+    load(reportCurrency);
+  }, [load, reportCurrency]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
+
+  const displayCurrency =
+    dash?.displayCurrency?.trim() || reportCurrency || DEFAULT_REPORT_CURRENCY;
+
+  const summaryStats = useMemo(() => {
+    if (!dash) return [];
+    const recv = Number(dash.receivableOutstanding ?? dash.totalReceivable ?? 0);
+    return [
+      { label: "Pending approvals", value: Number(dash.pendingApprovals ?? 0) },
+      { label: "Bills to pay", value: Number(dash.billsToPayCount ?? 0) },
+      { label: "Receivable", value: formatCurrencySummary(recv, displayCurrency) },
+    ];
+  }, [dash, displayCurrency]);
+
+  const overviewCards = useMemo(
+    () => (dash ? buildOverviewCards(dash, displayCurrency) : []),
+    [dash, displayCurrency],
+  );
+
+  const currencySelectOptions = useMemo<CurrencyOption[]>(
+    () => currencyOptions.map((code) => ({ value: code, label: code })),
+    [currencyOptions],
+  );
+
+  const selectedCurrencyOption = useMemo(
+    () =>
+      currencySelectOptions.find((o) => o.value === reportCurrency) ?? {
+        value: reportCurrency,
+        label: reportCurrency,
+      },
+    [currencySelectOptions, reportCurrency],
+  );
 
   return (
     <div style={pageStyle}>
@@ -279,11 +469,16 @@ export default function DashPage() {
       <div
         className="dashboard-header"
         style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 20,
           display: "flex",
           alignItems: "flex-start",
           justifyContent: "space-between",
           gap: 20,
-          marginBottom: 20,
+          paddingBottom: 20,
+          marginBottom: 0,
+          background: C.surface,
         }}
       >
         <div>
@@ -295,62 +490,96 @@ export default function DashPage() {
           </p>
         </div>
 
-        <div className="dashboard-search" style={{ position: "relative", width: "100%", maxWidth: 385 }}>
-          <Search
-            size={16}
-            strokeWidth={1.8}
-            color={C.muted}
-            style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)" }}
-          />
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search employees by name, email, dep..."
-            aria-label="Search employees"
-            style={{
-              width: "100%",
-              height: 36,
-              border: "none",
-              borderRadius: 999,
-              background: "#fff",
-              boxShadow: "0px 2px 3px 0px #253EA70A",
-              color: C.primary,
-              fontSize: 12,
-              outline: "none",
-              padding: "0 16px 0 42px",
-              boxSizing: "border-box",
+        <div className="dashboard-currency" style={{ width: "100%", maxWidth: 200 }}>
+          <Select<CurrencyOption, false>
+            inputId="dashboard-report-currency"
+            aria-label="Report currency"
+            value={selectedCurrencyOption}
+            onChange={(option) => {
+              if (option?.value) setReportCurrency(option.value);
             }}
+            options={currencySelectOptions}
+            isSearchable
+            isClearable={false}
+            styles={dashboardCurrencySelectStyles}
+            classNamePrefix="dashboard-currency-select"
           />
         </div>
       </div>
 
-      <div
-        className="dashboard-summary-grid"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-          gap: 20,
-          marginBottom: 22,
-        }}
-      >
-        {summaryStats.map((stat) => (
-          <SummaryCard key={stat.label} {...stat} />
-        ))}
-      </div>
+      {loading && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, color: C.muted }}>
+          <Spinner size={22} />
+          <span style={{ fontSize: 13 }}>Loading dashboard…</span>
+        </div>
+      )}
 
-      <div
-        className="dashboard-overview-grid"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-          gap: 20,
-          alignItems: "stretch",
-        }}
-      >
-        {overviewCards.map((card) => (
-          <OverviewCard key={card.title} {...card} />
-        ))}
-      </div>
+      {error && !loading && (
+        <div
+          style={{
+            marginBottom: 20,
+            padding: "12px 16px",
+            borderRadius: R.control,
+            background: "#fff",
+            boxShadow: CARD_SHADOW,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          <span style={{ color: C.primary, fontSize: 13 }}>{error}</span>
+          <button
+            type="button"
+            onClick={() => load(reportCurrency)}
+            style={{
+              border: `1px solid ${C.border}`,
+              borderRadius: R.control,
+              background: "#fff",
+              color: C.accent,
+              fontSize: 12,
+              fontWeight: 600,
+              padding: "6px 14px",
+              cursor: "pointer",
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {!loading && dash && (
+        <>
+          <div
+            className="dashboard-summary-grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gap: 20,
+              marginBottom: 22,
+            }}
+          >
+            {summaryStats.map((stat) => (
+              <SummaryCard key={stat.label} {...stat} />
+            ))}
+          </div>
+
+          <div
+            className="dashboard-overview-grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gap: 20,
+              alignItems: "stretch",
+            }}
+          >
+            {overviewCards.map((card) => (
+              <OverviewCard key={card.title} {...card} />
+            ))}
+          </div>
+        </>
+      )}
 
       <div
         aria-hidden="true"

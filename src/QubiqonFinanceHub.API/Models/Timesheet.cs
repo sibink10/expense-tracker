@@ -29,8 +29,6 @@ public partial class Timesheet
 
     public string? RejectionReason { get; set; }
 
-    public string Lines { get; set; } = null!;
-
     public Guid? CreatedById { get; set; }
 
     public DateTime CreatedAt { get; set; }
@@ -40,4 +38,6 @@ public partial class Timesheet
     public virtual Employee? CreatedBy { get; set; }
 
     public virtual Resource Resource { get; set; } = null!;
+
+    public virtual ICollection<TimesheetLine> TimesheetLines { get; set; } = new List<TimesheetLine>();
 }

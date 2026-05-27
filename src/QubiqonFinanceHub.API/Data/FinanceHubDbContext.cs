@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using QubiqonFinanceHub.API.Models.Entities;
+using CurrencyRatesCache = QubiqonFinanceHub.API.Models.CurrencyRatesCache;
 using QubiqonFinanceHub.API.Models.Enums;
 
 namespace QubiqonFinanceHub.API.Data;
@@ -11,6 +12,8 @@ public class FinanceHubDbContext : DbContext
     public DbSet<Organization> Organizations => Set<Organization>();
     public DbSet<OrganizationSetting> OrganizationSettings => Set<OrganizationSetting>();
     public DbSet<Employee> Employees => Set<Employee>();
+    public DbSet<Role> Roles => Set<Role>();
+    public DbSet<FinanceEmployeeRole> FinanceEmployeeRoles => Set<FinanceEmployeeRole>();
     public DbSet<EmployeeOrganizationContext> EmployeeOrganizationContexts => Set<EmployeeOrganizationContext>();
     public DbSet<ExpenseRequest> ExpenseRequests => Set<ExpenseRequest>();
     public DbSet<AdvancePayment> AdvancePayments => Set<AdvancePayment>();
@@ -28,6 +31,7 @@ public class FinanceHubDbContext : DbContext
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<PaymentTerm> PaymentTerms => Set<PaymentTerm>();
     public DbSet<Account> Accounts => Set<Account>();
+    public DbSet<CurrencyRatesCache> CurrencyRatesCaches => Set<CurrencyRatesCache>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -63,6 +67,31 @@ public class FinanceHubDbContext : DbContext
             e.Property(x => x.Role).HasConversion<string>().HasMaxLength(20);
         });
 
+        b.Entity<Role>(e => {
+            e.ToTable("Roles", DbSchemas.Dbo);
+            e.HasIndex(x => x.Code).IsUnique();
+            e.Property(x => x.Code).HasMaxLength(50).IsUnicode(false);
+            e.Property(x => x.DisplayName).HasMaxLength(100).IsUnicode(false);
+            e.Property(x => x.IsActive).HasDefaultValue(true);
+        });
+
+        b.Entity<FinanceEmployeeRole>(e => {
+            e.ToTable("EmployeeRoles", DbSchemas.Finance);
+            e.HasIndex(x => x.EmployeeId).IsUnique();
+            e.Property(x => x.Id).ValueGeneratedOnAdd();
+            e.Property(x => x.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
+            e.Property(x => x.UpdatedAt).HasDefaultValueSql("(sysutcdatetime())");
+            e.Property(x => x.IsActive).HasDefaultValue(true);
+            e.HasOne(x => x.Employee)
+                .WithOne(x => x.FinanceRole)
+                .HasForeignKey<FinanceEmployeeRole>(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Role)
+                .WithMany()
+                .HasForeignKey(x => x.RoleId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         b.Entity<EmployeeOrganizationContext>(e => {
             e.ToTable("employee_organization_context", DbSchemas.Dbo);
             e.HasKey(x => x.EmployeeId);
@@ -79,6 +108,17 @@ public class FinanceHubDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(x => x.ActiveOrganizationId)
                 .HasConstraintName("FK_employee_org_ctx_organization");
+        });
+
+        b.Entity<CurrencyRatesCache>(e => {
+            e.HasKey(x => new { x.Base, x.Currency });
+            e.ToTable("CurrencyRatesCache");
+            e.HasIndex(x => x.IsSelected, "UX_CurrencyRatesCache_IsSelected")
+                .IsUnique()
+                .HasFilter("([IsSelected]=(1))");
+            e.Property(x => x.Base).HasMaxLength(3);
+            e.Property(x => x.Currency).HasMaxLength(3);
+            e.Property(x => x.SyncedAt).HasDefaultValueSql("(sysutcdatetime())");
         });
 
         // ─── finance (domain tables) ─────────────────

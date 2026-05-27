@@ -218,7 +218,96 @@ export default function InvoicesPage() {
 
   const invoiceBalanceDue = (inv: Invoice) => Math.max(inv.total - (inv.paidAmound ?? 0), 0);
   const showMarkPaidOnRow = (inv: Invoice) =>
-    invoiceBalanceDue(inv) > 0.005 && inv.status !== INV_S.DRAFT;
+    invoiceBalanceDue(inv) > 0.005 &&
+    inv.status !== INV_S.DRAFT &&
+    inv.status !== INV_S.PENDING_SIGNATURE &&
+    inv.status !== INV_S.SIGNATURE_FAILED &&
+    inv.status !== INV_S.SIGNED;
+
+  const renderWorkflowAction = (inv: Invoice) => {
+    if (!canSendInvoice) return null;
+
+    if (canSendForSigning(inv)) {
+      return (
+        <Btn
+          sm
+          v="ghost"
+          sx={workflowActionStyle(C.invoiceActionSign, C.invoiceActionSignBg)}
+          onClick={(e) => {
+            e.stopPropagation();
+            openZohoSignModal(inv);
+          }}
+        >
+          <Signature size={13} strokeWidth={1.9} />
+          Sign
+        </Btn>
+      );
+    }
+
+    if (inv.status === INV_S.PENDING_SIGNATURE) {
+      return (
+        <Btn
+          sm
+          v="ghost"
+          sx={workflowActionStyle(C.invoiceActionSign, C.invoiceActionSignBg)}
+          disabled
+        >
+          <Signature size={13} strokeWidth={1.9} />
+          Sign
+        </Btn>
+      );
+    }
+
+    if ((inv.status === INV_S.SIGNED || inv.status === INV_S.DRAFT) && inv.apiId) {
+      return (
+        <Btn
+          sm
+          v="ghost"
+          sx={workflowActionStyle(C.invoiceActionSent, C.invoiceActionSentBg)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setSendConfirm(inv);
+          }}
+        >
+          <Send size={13} strokeWidth={1.9} />
+          Mark sent
+        </Btn>
+      );
+    }
+
+    if (showMarkPaidOnRow(inv)) {
+      return (
+        <Btn
+          sm
+          v="ghost"
+          sx={workflowActionStyle(C.invoiceActionPaid, C.invoiceActionPaidBg)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setMdl({ t: "inv-pay", d: inv });
+          }}
+        >
+          <IndianRupee size={13} strokeWidth={1.9} />
+          Mark paid
+        </Btn>
+      );
+    }
+
+    if (inv.status === INV_S.PAID) {
+      return (
+        <Btn
+          sm
+          v="ghost"
+          sx={workflowActionStyle(C.muted, C.surface)}
+          disabled
+        >
+          <IndianRupee size={13} strokeWidth={1.9} />
+          Mark paid
+        </Btn>
+      );
+    }
+
+    return null;
+  };
 
   const cols: TblCol[] = [
     { label: "Invoice #", sortKey: "InvoiceCode" },
@@ -268,48 +357,7 @@ export default function InvoicesPage() {
               verticalAlign: "middle",
             }}
           >
-            {canSendInvoice && inv.status === INV_S.DRAFT && inv.apiId && (
-              <Btn
-                sm
-                v="ghost"
-                sx={workflowActionStyle(C.invoiceActionSent, C.invoiceActionSentBg)}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSendConfirm(inv);
-                }}
-              >
-                <Send size={13} strokeWidth={1.9} />
-                Mark sent
-              </Btn>
-            )}
-            {canSendForSigning(inv) && (
-              <Btn
-                sm
-                v="ghost"
-                sx={workflowActionStyle(C.invoiceActionSign, C.invoiceActionSignBg)}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openZohoSignModal(inv);
-                }}
-              >
-                <Signature size={13} strokeWidth={1.9} />
-                Sign
-              </Btn>
-            )}
-            {canSendInvoice && showMarkPaidOnRow(inv) && (
-              <Btn
-                sm
-                v="ghost"
-                sx={workflowActionStyle(C.invoiceActionPaid, C.invoiceActionPaidBg)}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMdl({ t: "inv-pay", d: inv });
-                }}
-              >
-                <IndianRupee size={13} strokeWidth={1.9} />
-                Mark paid
-              </Btn>
-            )}
+            {renderWorkflowAction(inv)}
           </span>
         ),
         sx: {

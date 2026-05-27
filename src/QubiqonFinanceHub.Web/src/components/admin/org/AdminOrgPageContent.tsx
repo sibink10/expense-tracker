@@ -9,6 +9,11 @@ import { normalizeStoredPhone } from "../../../shared/phoneUtils";
 import { COUNTRY_OPTS, normalizeCountry } from "../../../shared/countries";
 
 const GRID_BREAKPOINT = 720;
+const DEFAULT_ZOHO_SCOPE =
+  "ZohoSign.templates.CREATE,ZohoSign.templates.READ,ZohoSign.templates.UPDATE,ZohoSign.documents.CREATE,ZohoSign.documents.READ,ZohoSign.documents.UPDATE";
+const DEFAULT_ZOHO_AUTHORIZATION_ENDPOINT = "https://accounts.zoho.in/oauth/v2/auth";
+const DEFAULT_ZOHO_TOKEN_ENDPOINT = "https://accounts.zoho.in/oauth/v2/token";
+const DEFAULT_ZOHO_SIGN_API_BASE_URL = "https://sign.zoho.in";
 
 export default function AdminOrgPage() {
   const navigate = useNavigate();
@@ -27,10 +32,23 @@ export default function AdminOrgPage() {
   const [fax, setFax] = useState("");
   const [website, setWebsite] = useState("");
   const [zohoSignEmail, setZohoSignEmail] = useState("");
+  const [zohoClientId, setZohoClientId] = useState("");
+  const [zohoClientSecret, setZohoClientSecret] = useState("");
+  const [zohoCode, setZohoCode] = useState("");
+  const [zohoScope, setZohoScope] = useState(DEFAULT_ZOHO_SCOPE);
+  const [zohoDataCenter, setZohoDataCenter] = useState("IN");
+  const [zohoAuthorizationEndpoint, setZohoAuthorizationEndpoint] = useState(DEFAULT_ZOHO_AUTHORIZATION_ENDPOINT);
+  const [zohoTokenEndpoint, setZohoTokenEndpoint] = useState(DEFAULT_ZOHO_TOKEN_ENDPOINT);
+  const [zohoSignApiBaseUrl, setZohoSignApiBaseUrl] = useState(DEFAULT_ZOHO_SIGN_API_BASE_URL);
+  const [zohoRedirectUri, setZohoRedirectUri] = useState("");
+  const [zohoHomePage, setZohoHomePage] = useState("");
+  const [zohoRefreshToken, setZohoRefreshToken] = useState("");
   const [useSeparatePaymentAddress, setUseSeparatePaymentAddress] = useState(false);
   const [paymentAddress, setPaymentAddress] = useState("");
+  const [accountHolderName, setAccountHolderName] = useState("");
   const [bankName, setBankName] = useState("");
   const [ifscCode, setIfscCode] = useState("");
+  const [swiftCode, setSwiftCode] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [accountNumberRe, setAccountNumberRe] = useState("");
   const [bankAddress, setBankAddress] = useState("");
@@ -39,6 +57,7 @@ export default function AdminOrgPage() {
   const [logoRawFile, setLogoRawFile] = useState<File | null>(null);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(!!id);
+  const [saving, setSaving] = useState(false);
 
   const narrow = typeof window !== "undefined" && window.innerWidth < GRID_BREAKPOINT;
 
@@ -47,6 +66,18 @@ export default function AdminOrgPage() {
     gridTemplateColumns: narrow ? "1fr" : "1.2fr 1fr",
     gap: "16px",
   };
+
+  const authorizationUrl =
+    zohoClientId.trim() && zohoRedirectUri.trim() && zohoAuthorizationEndpoint.trim()
+      ? `${zohoAuthorizationEndpoint.trim()}?${new URLSearchParams({
+          response_type: "code",
+          client_id: zohoClientId.trim(),
+          scope: zohoScope.trim() || DEFAULT_ZOHO_SCOPE,
+          redirect_uri: zohoRedirectUri.trim(),
+          access_type: "offline",
+          prompt: "consent",
+        }).toString()}`
+      : "";
 
   useEffect(() => {
     if (!id) return;
@@ -67,10 +98,23 @@ export default function AdminOrgPage() {
         setFax(org.fax ?? "");
         setWebsite(org.website ?? "");
         setZohoSignEmail(org.zohoSignEmail ?? "");
+        setZohoClientId(org.zohoClientId ?? "");
+        setZohoClientSecret(org.zohoClientSecret ?? "");
+        setZohoCode(org.zohoCode ?? "");
+        setZohoScope(org.zohoScope ?? DEFAULT_ZOHO_SCOPE);
+        setZohoDataCenter(org.zohoDataCenter ?? "IN");
+        setZohoAuthorizationEndpoint(org.zohoAuthorizationEndpoint ?? DEFAULT_ZOHO_AUTHORIZATION_ENDPOINT);
+        setZohoTokenEndpoint(org.zohoTokenEndpoint ?? DEFAULT_ZOHO_TOKEN_ENDPOINT);
+        setZohoSignApiBaseUrl(org.zohoSignApiBaseUrl ?? DEFAULT_ZOHO_SIGN_API_BASE_URL);
+        setZohoRedirectUri(org.zohoRedirectUri ?? "");
+        setZohoHomePage(org.zohoHomePage ?? "");
+        setZohoRefreshToken(org.zohoRefreshToken ?? "");
         setUseSeparatePaymentAddress(org.useSeparatePaymentAddress ?? false);
         setPaymentAddress(org.paymentAddress ?? "");
+        setAccountHolderName(org.accountHolderName ?? "");
         setBankName(org.bankName ?? "");
         setIfscCode(org.ifscCode ?? "");
+        setSwiftCode(org.swiftCode ?? "");
         const acct = org.accountNumber ?? "";
         setAccountNumber(acct);
         setAccountNumberRe(acct);
@@ -89,6 +133,8 @@ export default function AdminOrgPage() {
   }, [id]);
 
   const handleSave = async () => {
+    if (saving) return;
+
     const p = phone?.trim();
     if (p && !isValidPhoneNumber(p)) {
       setPhoneError("Enter a valid phone number for the selected country");
@@ -96,7 +142,7 @@ export default function AdminOrgPage() {
     }
     setPhoneError(null);
 
-    if (!bankName.trim() || !ifscCode.trim() || !accountNumber.trim() || !accountNumberRe.trim() || !bankAddress.trim()) {
+    if (!accountHolderName.trim() || !bankName.trim() || !ifscCode.trim() || !swiftCode.trim() || !accountNumber.trim() || !accountNumberRe.trim() || !bankAddress.trim()) {
       setBankError("All bank detail fields are required.");
       return;
     }
@@ -106,29 +152,47 @@ export default function AdminOrgPage() {
     }
     setBankError(null);
 
-    await saveOrganization({
-      id,
-      orgName: orgName.trim(),
-      subName: orgSubName.trim() || undefined,
-      industry: industry || undefined,
-      country: country || undefined,
-      address: address || undefined,
-      city: city || undefined,
-      postalCode: postalCode || undefined,
-      state: state || undefined,
-      phone: phone?.trim() || undefined,
-      fax: fax || undefined,
-      website: website || undefined,
-      zohoSignEmail: zohoSignEmail.trim() || undefined,
-      useSeparatePaymentAddress: useSeparatePaymentAddress,
-      paymentAddress: useSeparatePaymentAddress ? paymentAddress || undefined : undefined,
-      bankName: bankName.trim(),
-      ifscCode: ifscCode.trim(),
-      accountNumber: accountNumber.trim(),
-      bankAddress: bankAddress.trim(),
-      logoFile: logoRawFile || undefined,
-    });
-    navigate("/admin/org");
+    setSaving(true);
+    try {
+      await saveOrganization({
+        id,
+        orgName: orgName.trim(),
+        subName: orgSubName.trim() || undefined,
+        industry: industry || undefined,
+        country: country || undefined,
+        address: address || undefined,
+        city: city || undefined,
+        postalCode: postalCode || undefined,
+        state: state || undefined,
+        phone: phone?.trim() || undefined,
+        fax: fax || undefined,
+        website: website || undefined,
+        zohoSignEmail: zohoSignEmail.trim() || undefined,
+        zohoClientId: zohoClientId.trim() || undefined,
+        zohoClientSecret: zohoClientSecret.trim() || undefined,
+        zohoCode: zohoCode.trim() || undefined,
+        zohoScope: zohoScope.trim() || undefined,
+        zohoDataCenter: zohoDataCenter.trim() || undefined,
+        zohoAuthorizationEndpoint: zohoAuthorizationEndpoint.trim() || undefined,
+        zohoTokenEndpoint: zohoTokenEndpoint.trim() || undefined,
+        zohoSignApiBaseUrl: zohoSignApiBaseUrl.trim() || undefined,
+        zohoRedirectUri: zohoRedirectUri.trim() || undefined,
+        zohoHomePage: zohoHomePage.trim() || undefined,
+        zohoRefreshToken: zohoRefreshToken.trim() || undefined,
+        useSeparatePaymentAddress: useSeparatePaymentAddress,
+        paymentAddress: useSeparatePaymentAddress ? paymentAddress || undefined : undefined,
+        accountHolderName: accountHolderName.trim(),
+        bankName: bankName.trim(),
+        ifscCode: ifscCode.trim(),
+        swiftCode: swiftCode.trim(),
+        accountNumber: accountNumber.trim(),
+        bankAddress: bankAddress.trim(),
+        logoFile: logoRawFile || undefined,
+      });
+      navigate("/admin/org");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -266,6 +330,30 @@ export default function AdminOrgPage() {
               onChange={(e) => setWebsite(e.target.value)}
               ph="https://example.com"
             />
+          </div>
+        </div>
+
+        {/* Zoho credentials */}
+        <div
+          style={{
+            marginTop: "20px",
+            paddingTop: "16px",
+            borderTop: `1px solid ${C.border}`,
+          }}
+        >
+          <div
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              color: C.muted,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              marginBottom: "12px",
+            }}
+          >
+            Add Zoho credentials
+          </div>
+          <div style={gridStyle}>
             <Inp
               label="Zoho Sign email"
               type="email"
@@ -274,10 +362,85 @@ export default function AdminOrgPage() {
               ph="authorized.signer@company.com"
               req
             />
-            <p style={{ margin: "-8px 0 12px", fontSize: "11px", color: C.muted, lineHeight: 1.4 }}>
-              Authorized signatory — invoice PDFs sent for Zoho Sign are delivered to this address only.
-            </p>
+            <Inp
+              label="Client ID"
+              value={zohoClientId}
+              onChange={(e) => setZohoClientId(e.target.value)}
+              ph="1000.xxxxx"
+            />
+            <Inp
+              label="Client secret"
+              type="password"
+              value={zohoClientSecret}
+              onChange={(e) => setZohoClientSecret(e.target.value)}
+              ph="Zoho OAuth client secret"
+            />
+            <Inp
+              label="Authorization code"
+              value={zohoCode}
+              onChange={(e) => setZohoCode(e.target.value)}
+              ph="Temporary authorization code"
+            />
+            <Inp
+              label="Refresh token"
+              type="password"
+              value={zohoRefreshToken}
+              onChange={(e) => setZohoRefreshToken(e.target.value)}
+              ph="Refresh token"
+            />
+            <Inp
+              label="Data center"
+              value={zohoDataCenter}
+              onChange={(e) => setZohoDataCenter(e.target.value)}
+              ph="IN"
+            />
+            <Inp
+              label="Authorization endpoint"
+              value={zohoAuthorizationEndpoint}
+              onChange={(e) => setZohoAuthorizationEndpoint(e.target.value)}
+              ph={DEFAULT_ZOHO_AUTHORIZATION_ENDPOINT}
+            />
+            <Inp
+              label="Token endpoint"
+              value={zohoTokenEndpoint}
+              onChange={(e) => setZohoTokenEndpoint(e.target.value)}
+              ph={DEFAULT_ZOHO_TOKEN_ENDPOINT}
+            />
+            <Inp
+              label="Sign API base URL"
+              value={zohoSignApiBaseUrl}
+              onChange={(e) => setZohoSignApiBaseUrl(e.target.value)}
+              ph={DEFAULT_ZOHO_SIGN_API_BASE_URL}
+            />
+            <Inp
+              label="Redirect URI"
+              value={zohoRedirectUri}
+              onChange={(e) => setZohoRedirectUri(e.target.value)}
+              ph="https://api.example.com/zoho/auth/callback"
+            />
+            <Inp
+              label="Home page"
+              value={zohoHomePage}
+              onChange={(e) => setZohoHomePage(e.target.value)}
+              ph="https://finance.example.com/"
+            />
           </div>
+          <Inp
+            label="Scope"
+            type="textarea"
+            value={zohoScope}
+            onChange={(e) => setZohoScope(e.target.value)}
+            ph={DEFAULT_ZOHO_SCOPE}
+          />
+          {authorizationUrl && (
+            <a href={authorizationUrl} target="_blank" rel="noreferrer" style={{ color: C.info, fontSize: "12px" }}>
+              Open OAuth authorization URL
+            </a>
+          )}
+          <p style={{ margin: "8px 0 0", fontSize: "11px", color: C.muted, lineHeight: 1.4 }}>
+            Invoice PDFs sent for Zoho Sign are delivered to the signatory email above. Use the OAuth link after saving
+            the client details and redirect URI.
+          </p>
         </div>
 
         {/* Organization address */}
@@ -390,6 +553,16 @@ export default function AdminOrgPage() {
           </div>
           <div style={gridStyle}>
             <Inp
+              label="Account holder name"
+              value={accountHolderName}
+              onChange={(e) => {
+                setAccountHolderName(e.target.value);
+                setBankError(null);
+              }}
+              ph="Name as per bank account"
+              req
+            />
+            <Inp
               label="Bank name"
               value={bankName}
               onChange={(e) => {
@@ -407,6 +580,16 @@ export default function AdminOrgPage() {
                 setBankError(null);
               }}
               ph="e.g. HDFC0001234"
+              req
+            />
+            <Inp
+              label="SWIFT code"
+              value={swiftCode}
+              onChange={(e) => {
+                setSwiftCode(e.target.value);
+                setBankError(null);
+              }}
+              ph="e.g. HDFCINBB"
               req
             />
             <Inp
@@ -451,11 +634,11 @@ export default function AdminOrgPage() {
         </div>
 
         <div style={{ marginTop: "22px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <Btn v="secondary" onClick={() => navigate("/admin/org")}>
+          <Btn v="secondary" onClick={() => navigate("/admin/org")} disabled={saving}>
             Cancel
           </Btn>
-          <Btn v="invoice" onClick={handleSave}>
-            Save
+          <Btn v="invoice" onClick={handleSave} disabled={saving}>
+            {saving ? "Saving…" : "Save"}
           </Btn>
         </div>
       </div>

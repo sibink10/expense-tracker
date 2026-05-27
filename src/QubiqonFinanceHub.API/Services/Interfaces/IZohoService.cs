@@ -6,10 +6,12 @@ namespace QubiqonFinanceHub.API.Services.Interfaces;
 public interface IZohoService
 {
     string GetAuthorizationUrl();
+    Task<string> GetAuthorizationUrlAsync(Guid? organizationId = null, CancellationToken cancellationToken = default);
     bool IsValidOAuthState(string? stateFromCallback);
     Task<ZohoIntegrationSetupDto> GetIntegrationSetupAsync(CancellationToken cancellationToken = default);
     Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default);
     Task<ZohoTokenResponseDto> ExchangeAuthorizationCodeAsync(string code, CancellationToken cancellationToken = default);
+    Task<ZohoTokenResponseDto> ExchangeAuthorizationCodeAsync(string code, string? state, CancellationToken cancellationToken = default);
 
     Task<ZohoSignSendDocumentResultDto> SendDocumentForSignatureAsync(
         ZohoSignDocumentType type,

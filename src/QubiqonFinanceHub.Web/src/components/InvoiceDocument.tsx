@@ -15,14 +15,77 @@ function buildAddress(parts: Array<string | undefined>): string[] {
   return parts.map((part) => (part || "").trim()).filter(Boolean);
 }
 
+const docBorder = "#D5DAE2";
+const docMuted = "#667085";
+const docBlue = "#164A83";
+const docOrange = "#D35400";
+
+function numberToWords(value: number, currency: string): string {
+  const ones = [
+    "",
+    "One",
+    "Two",
+    "Three",
+    "Four",
+    "Five",
+    "Six",
+    "Seven",
+    "Eight",
+    "Nine",
+    "Ten",
+    "Eleven",
+    "Twelve",
+    "Thirteen",
+    "Fourteen",
+    "Fifteen",
+    "Sixteen",
+    "Seventeen",
+    "Eighteen",
+    "Nineteen",
+  ];
+  const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+  const underThousand = (n: number): string => {
+    const parts: string[] = [];
+    if (n >= 100) {
+      parts.push(`${ones[Math.floor(n / 100)]} Hundred`);
+      n %= 100;
+    }
+    if (n >= 20) {
+      parts.push(`${tens[Math.floor(n / 10)]}${n % 10 ? ` ${ones[n % 10]}` : ""}`);
+    } else if (n > 0) {
+      parts.push(ones[n]);
+    }
+    return parts.join(" ");
+  };
+
+  const whole = Math.max(0, Math.floor(value));
+  if (whole === 0) return `${currency} Zero`;
+  const scales = ["", "Thousand", "Million", "Billion"];
+  const parts: string[] = [];
+  let remaining = whole;
+  let scale = 0;
+  while (remaining > 0) {
+    const chunk = remaining % 1000;
+    if (chunk) parts.unshift(`${underThousand(chunk)} ${scales[scale]}`.trim());
+    remaining = Math.floor(remaining / 1000);
+    scale += 1;
+  }
+  return `${currency} ${parts.join(" ")}`;
+}
+
 export default function InvoiceDocument({ invoice: inv, organization: org, hideStatusRibbon = false }: Props) {
+  const bankDetails = inv.organizationBankDetails;
+  const bankOrgName = bankDetails?.orgName ?? org?.orgName;
+  const accountHolderName = bankDetails?.accountHolderName ?? org?.accountHolderName;
+  const bankName = bankDetails?.bankName ?? org?.bankName;
+  const ifscCode = bankDetails?.ifscCode ?? org?.ifscCode;
+  const swiftCode = bankDetails?.swiftCode ?? org?.swiftCode;
+  const accountNumber = bankDetails?.accountNumber ?? org?.accountNumber;
+  const bankAddress = bankDetails?.bankAddress ?? org?.bankAddress;
+
   const orgAddressLines = buildAddress([
     org?.address,
-    [org?.city, org?.state].filter(Boolean).join(", "),
-    [org?.country, org?.postalCode].filter(Boolean).join(" "),
-  ]);
-  const paymentAddressLines = buildAddress([
-    org?.useSeparatePaymentAddress ? org?.paymentAddress : org?.address,
     [org?.city, org?.state].filter(Boolean).join(", "),
     [org?.country, org?.postalCode].filter(Boolean).join(" "),
   ]);
@@ -53,21 +116,36 @@ export default function InvoiceDocument({ invoice: inv, organization: org, hideS
     inv.status === INV_S.OVERDUE ? daysOverdueFromDueYmd(inv.due) : null;
 
   const hasBankDetails = Boolean(
-    org?.bankName?.trim() ||
-      org?.ifscCode?.trim() ||
-      org?.accountNumber?.trim() ||
-      org?.bankAddress?.trim(),
+    accountHolderName?.trim() ||
+      bankName?.trim() ||
+      ifscCode?.trim() ||
+      swiftCode?.trim() ||
+      accountNumber?.trim() ||
+      bankAddress?.trim(),
   );
+  const billToLines = buildAddress([inv.billTo, inv.cEmail]);
+  const shipToLines = buildAddress([inv.shipTo ?? inv.billTo, inv.cEmail]);
+  const bankRows = [
+    ["Account Holder Name", accountHolderName || bankOrgName],
+    ["Account Number", accountNumber],
+    ["IFSC Code", ifscCode],
+    ["Bank Name", bankName],
+    ["Bank Address", bankAddress],
+    ["SWIFT Code", swiftCode],
+  ].filter(([, value]) => value?.trim());
 
   return (
     <div
       style={{
         position: "relative",
-        border: `1px solid ${C.border}`,
-        borderRadius: "10px",
+        border: `1px solid ${docBorder}`,
+        borderRadius: 0,
         overflow: "hidden",
         background: "#fff",
         width: "100%",
+        color: "#111827",
+        fontFamily: "Arial, Helvetica, sans-serif",
+        fontSize: "10px",
       }}
     >
       {!hideStatusRibbon && (
@@ -104,21 +182,19 @@ export default function InvoiceDocument({ invoice: inv, organization: org, hideS
       <div
         style={{
           display: "flex",
-          justifyContent: "flex-start",
-          alignItems: "stretch",
-          gap: "16px",
-          padding: "20px 24px",
-          borderBottom: `1px solid ${C.border}`,
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: "18px",
+          padding: "22px 24px 18px",
         }}
       >
-        <div style={{ display: "flex", gap: "14px", flex: 1 }}>
+        <div style={{ display: "flex", gap: "16px", flex: 1, minWidth: 0 }}>
           <div
             style={{
-              width: 64,
-              height: 64,
-              borderRadius: "12px",
-              background: C.surface,
-              border: `1px solid ${C.border}`,
+              width: 76,
+              height: 76,
+              borderRadius: "50%",
+              background: "#E7F7F0",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -128,21 +204,21 @@ export default function InvoiceDocument({ invoice: inv, organization: org, hideS
           >
             {org?.logoUrl ? (
               // eslint-disable-next-line jsx-a11y/alt-text
-              <img src={org.logoUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img src={org.logoUrl} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
             ) : (
-              <span style={{ fontSize: "28px", fontWeight: 700, color: C.invoice }}>
+              <span style={{ fontSize: "34px", fontWeight: 700, color: C.invoice }}>
                 {(org?.orgName || "Q").trim()[0]}
               </span>
             )}
           </div>
-          <div>
-            <div style={{ fontSize: "20px", fontWeight: 700, lineHeight: 1.1, color: C.primary }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: "18px", fontWeight: 700, lineHeight: 1.15, color: docBlue }}>
               {org?.orgName || "Qubiqon Finance Hub"}
             </div>
             {org?.subName && (
-              <div style={{ fontSize: "13px", color: C.muted, marginTop: "2px" }}>{org.subName}</div>
+              <div style={{ fontSize: "11px", color: docMuted, marginTop: "4px" }}>{org.subName}</div>
             )}
-            <div style={{ marginTop: "8px", fontSize: "12px", color: C.primary }}>
+            <div style={{ marginTop: "4px", fontSize: "10px", color: docMuted, lineHeight: 1.25 }}>
               {orgAddressLines.length > 0 ? (
                 orgAddressLines.map((line) => (
                   <div key={line}>{line}</div>
@@ -155,16 +231,25 @@ export default function InvoiceDocument({ invoice: inv, organization: org, hideS
             </div>
           </div>
         </div>
+        <div style={{ textAlign: "right", flexShrink: 0 }}>
+          <div style={{ fontSize: "32px", lineHeight: 1, fontWeight: 700, letterSpacing: "0.04em", color: "#D1D5DB" }}>
+            INVOICE
+          </div>
+        </div>
       </div>
 
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "1.1fr 0.9fr",
-          borderBottom: `1px solid ${C.border}`,
+          margin: "0 24px 12px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: "16px",
+          border: `1px solid ${docBorder}`,
+          padding: "12px 14px",
         }}
       >
-        <div style={{ padding: "14px 24px", borderRight: `1px solid ${C.border}` }}>
+        <div>
           {[
             ["Invoice #", inv.id],
             ["Invoice date", inv.invDate],
@@ -176,26 +261,19 @@ export default function InvoiceDocument({ invoice: inv, organization: org, hideS
               key={label}
               style={{
                 display: "grid",
-                gridTemplateColumns: "100px 1fr",
-                gap: "8px",
-                fontSize: "12px",
+                gridTemplateColumns: "110px 1fr",
+                gap: "10px",
+                fontSize: "10px",
                 marginBottom: "4px",
               }}
             >
-              <span style={{ color: C.muted }}>{label}</span>
-              <span style={{ fontWeight: 600, color: C.primary }}>{value}</span>
+              <span style={{ color: docMuted }}>{label}</span>
+              <span style={{ fontWeight: 700, color: docBlue }}>{value}</span>
             </div>
           ))}
         </div>
-        <div
-          style={{
-            padding: "14px 24px",
-            display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "flex-end",
-          }}
-        >
-          <div style={{ fontSize: "13px", fontWeight: 600, color: C.muted }}>{inv.currency} invoice</div>
+        <div style={{ fontSize: "12px", fontWeight: 700, color: docOrange, whiteSpace: "nowrap" }}>
+          {inv.currency} Invoice
         </div>
       </div>
 
@@ -203,63 +281,59 @@ export default function InvoiceDocument({ invoice: inv, organization: org, hideS
         style={{
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
-          borderBottom: `1px solid ${C.border}`,
+          gap: 0,
+          margin: "0 24px 12px",
+          border: `1px solid ${docBorder}`,
         }}
       >
-        <div style={{ padding: "14px 24px", borderRight: `1px solid ${C.border}` }}>
+        <div style={{ padding: "12px 14px", borderRight: `1px solid ${docBorder}` }}>
           <div
             style={{
-              fontSize: "11px",
+              fontSize: "10px",
               fontWeight: 700,
-              color: C.muted,
-              textTransform: "uppercase",
+              color: docMuted,
               marginBottom: "6px",
             }}
           >
             Bill To
           </div>
-          <div style={{ fontSize: "15px", fontWeight: 700, color: C.invoice }}>{inv.cName}</div>
-          {inv.cEmail && <div style={{ fontSize: "12px", marginTop: "4px" }}>{inv.cEmail}</div>}
+          <div style={{ fontSize: "11px", fontWeight: 700, color: docBlue }}>{inv.cName}</div>
+          {billToLines.map((line) => (
+            <div key={line} style={{ color: docMuted, marginTop: "3px" }}>{line}</div>
+          ))}
         </div>
-        <div style={{ padding: "14px 24px" }}>
+        <div style={{ padding: "12px 14px" }}>
           <div
             style={{
-              fontSize: "11px",
+              fontSize: "10px",
               fontWeight: 700,
-              color: C.muted,
-              textTransform: "uppercase",
+              color: docMuted,
               marginBottom: "6px",
             }}
           >
-            Payment Address
+            Ship To
           </div>
-          <div style={{ fontSize: "12px", color: C.primary }}>
-            {paymentAddressLines.length > 0 ? (
-              paymentAddressLines.map((line) => (
-                <div key={line}>{line}</div>
-              ))
-            ) : (
-              <div>Not configured</div>
-            )}
-          </div>
+          <div style={{ fontSize: "11px", fontWeight: 700, color: docBlue }}>{inv.cName}</div>
+          {shipToLines.map((line) => (
+            <div key={line} style={{ color: docMuted, marginTop: "3px" }}>{line}</div>
+          ))}
         </div>
       </div>
 
-      <div>
+      <div style={{ margin: "0 24px" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
           <thead>
-            <tr style={{ background: C.surface }}>
+            <tr style={{ background: "#F1F3F5" }}>
               {["#", "Item & Description", "HSN/SAC", "Qty", "Rate", "GST", "Total"].map((h) => (
                 <th
                   key={h}
                   style={{
-                    padding: "10px 12px",
+                    padding: "8px 10px",
                     textAlign:
                       h === "Qty" || h === "Rate" || h === "GST" || h === "Total" ? "right" : "left",
-                    borderBottom: `1px solid ${C.border}`,
-                    fontSize: "11px",
-                    color: C.muted,
-                    textTransform: "uppercase",
+                    borderBottom: `1px solid ${docBorder}`,
+                    fontSize: "9px",
+                    color: "#374151",
                   }}
                 >
                   {h}
@@ -272,26 +346,26 @@ export default function InvoiceDocument({ invoice: inv, organization: org, hideS
               const lineTotal = it.qty * it.rate + it.gstAmt;
               return (
                 <tr key={i}>
-                  <td style={{ padding: "10px 12px", borderBottom: `1px solid ${C.border}` }}>{i + 1}</td>
-                  <td style={{ padding: "10px 12px", borderBottom: `1px solid ${C.border}`, fontWeight: 500 }}>
+                  <td style={{ padding: "10px", borderBottom: `1px solid ${docBorder}` }}>{i + 1}</td>
+                  <td style={{ padding: "10px", borderBottom: `1px solid ${docBorder}`, fontWeight: 700 }}>
                     {it.desc}
                   </td>
-                  <td style={{ padding: "10px 12px", borderBottom: `1px solid ${C.border}` }}>{it.hsn || "—"}</td>
-                  <td style={{ padding: "10px 12px", borderBottom: `1px solid ${C.border}`, textAlign: "right" }}>
+                  <td style={{ padding: "10px", borderBottom: `1px solid ${docBorder}` }}>{it.hsn || "—"}</td>
+                  <td style={{ padding: "10px", borderBottom: `1px solid ${docBorder}`, textAlign: "right" }}>
                     {fmtQty(it.qty)}
                   </td>
-                  <td style={{ padding: "10px 12px", borderBottom: `1px solid ${C.border}`, textAlign: "right" }}>
+                  <td style={{ padding: "10px", borderBottom: `1px solid ${docBorder}`, textAlign: "right" }}>
                     {fmtCur(it.rate, inv.currency)}
                   </td>
-                  <td style={{ padding: "10px 12px", borderBottom: `1px solid ${C.border}`, textAlign: "right" }}>
+                  <td style={{ padding: "10px", borderBottom: `1px solid ${docBorder}`, textAlign: "right" }}>
                     {fmtCur(it.gstAmt, inv.currency)}
                   </td>
                   <td
                     style={{
-                      padding: "10px 12px",
-                      borderBottom: `1px solid ${C.border}`,
+                      padding: "10px",
+                      borderBottom: `1px solid ${docBorder}`,
                       textAlign: "right",
-                      fontWeight: 600,
+                      fontWeight: 700,
                     }}
                   >
                     {fmtCur(lineTotal, inv.currency)}
@@ -306,80 +380,44 @@ export default function InvoiceDocument({ invoice: inv, organization: org, hideS
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "1.2fr 0.8fr",
+          gridTemplateColumns: "1.15fr 0.85fr",
+          margin: "10px 24px 0",
         }}
       >
         <div
           style={{
-            padding: "16px 24px",
-            borderRight: `1px solid ${C.border}`,
+            padding: "0 18px 12px 0",
             display: "flex",
             flexDirection: "column",
+            justifyContent: "space-between",
+            minHeight: "120px",
           }}
         >
           <div>
             <div
               style={{
-                fontSize: "11px",
-                fontWeight: 700,
-                color: C.muted,
-                textTransform: "uppercase",
-                marginBottom: "6px",
+                fontSize: "10px",
+                color: docMuted,
+                marginBottom: "4px",
               }}
             >
-              Notes
+              TOTAL IN WORDS
             </div>
-            <div style={{ fontSize: "12px", color: C.primary, minHeight: "48px" }}>{inv.notes || "—"}</div>
+            <div style={{ fontSize: "10px", fontStyle: "italic", fontWeight: 700, color: "#111827" }}>
+              {numberToWords(inv.total, inv.currency)}
+            </div>
           </div>
-          {hasBankDetails && (
-            <div>
-              <div
-                style={{
-                  fontSize: "11px",
-                  fontWeight: 700,
-                  color: C.muted,
-                  textTransform: "uppercase",
-                  marginBottom: "6px",
-                }}
-              >
-                Bank details
-              </div>
-              <div style={{ fontSize: "12px", color: C.primary, lineHeight: 1.5 }}>
-                {org?.bankName && (
-                  <div>
-                    <span style={{ color: C.muted }}>Bank: </span>
-                    {org.bankName}
-                  </div>
-                )}
-                {org?.ifscCode && (
-                  <div>
-                    <span style={{ color: C.muted }}>IFSC: </span>
-                    {org.ifscCode}
-                  </div>
-                )}
-                {org?.accountNumber && (
-                  <div>
-                    <span style={{ color: C.muted }}>Account: </span>
-                    {org.accountNumber}
-                  </div>
-                )}
-                {org?.bankAddress && (
-                  <div>
-                    <span style={{ color: C.muted }}>Address: </span>
-                    {org.bankAddress}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          <div>
+            <div style={{ fontSize: "10px", color: docMuted, marginBottom: "5px" }}>Notes</div>
+            <div style={{ fontSize: "10px", color: "#111827" }}>{inv.notes || "—"}</div>
+          </div>
         </div>
         <div
           style={{
-            padding: "16px 24px",
+            padding: "0 0 12px 18px",
             display: "flex",
             flexDirection: "column",
-            justifyContent: "space-between",
-            gap: "20px",
+            gap: "6px",
           }}
         >
           <div>
@@ -396,10 +434,10 @@ export default function InvoiceDocument({ invoice: inv, organization: org, hideS
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  fontSize: "12px",
-                  fontWeight: idx >= 2 ? 600 : 500,
-                  color: idx === 3 ? C.danger : idx >= 2 ? C.primary : C.muted,
-                  marginBottom: "6px",
+                  fontSize: "10px",
+                  fontWeight: idx >= 2 ? 700 : 600,
+                  color: idx === 3 ? C.danger : "#111827",
+                  marginBottom: "7px",
                 }}
               >
                 <span>{label}</span>
@@ -412,21 +450,27 @@ export default function InvoiceDocument({ invoice: inv, organization: org, hideS
               </div>
             )}
           </div>
-          <div
-            style={{
-              marginTop: "50px",
-              paddingTop: "40px",
-              borderTop: `1px solid ${C.border}`,
-              textAlign: "center",
-            }}
-          >
-            {/* Blank area for handwritten / stamped signature when printed */}
-            <div style={{ minHeight: "120px" }} aria-hidden />
-            <div style={{ borderTop: `1px solid ${C.primary}`, width: "200px", margin: "0 auto 10px" }} />
-            <div style={{ fontSize: "11px", fontWeight: 600, color: C.primary }}>Authorized Signature</div>
-          </div>
         </div>
       </div>
+      {hasBankDetails && (
+        <div style={{ margin: "22px 24px 28px" }}>
+          <div style={{ fontSize: "10px", color: docMuted, marginBottom: "6px" }}>Bank Account Details</div>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px" }}>
+            <tbody>
+              {bankRows.map(([label, value]) => (
+                <tr key={label}>
+                  <td style={{ width: "42%", padding: "7px 8px", border: `1px solid ${docBorder}`, color: docMuted }}>
+                    {label}
+                  </td>
+                  <td style={{ padding: "7px 8px", border: `1px solid ${docBorder}`, color: "#111827" }}>
+                    {value}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

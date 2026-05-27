@@ -19,7 +19,7 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient("GraphClient");
         services.AddHttpClient("ZohoSignClient");
         services.Configure<ZohoOptions>(config.GetSection(ZohoOptions.SectionName));
-        services.AddSingleton<IZohoService, ZohoService>();
+        services.AddScoped<IZohoService, ZohoService>();
         services.AddScoped<ITenantService, TenantService>();
         services.AddScoped<ICodeGeneratorService, CodeGeneratorService>();
         services.AddScoped<IEmailService, EmailService>();
@@ -33,6 +33,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IClientService, ClientService>();
         services.AddScoped<ITaxConfigService, TaxConfigService>();
         services.AddScoped<IOrganizationService, OrganizationService>();
+        services.AddScoped<ICurrencyRateService, CurrencyRateService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<ITenantService, TenantService>();
         services.AddScoped<ICodeGeneratorService, CodeGeneratorService>();
