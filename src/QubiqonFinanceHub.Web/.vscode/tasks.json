@@ -1,0 +1,34 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build & Deploy",
+      "type": "shell",
+      "command": "npm run build && npx @azure/static-web-apps-cli deploy ./dist --deployment-token 35666756c66a597848c7059b2a10b36a2b2792e71d64ab1987776bccfb428a5707-c64b0896-9867-4d48-b701-5adba95eeece00000120d0a25e00 --env production",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Build & Deploy (dev branch)",
+      "type": "shell",
+      "command": "npm run build:dev && npx @azure/static-web-apps-cli deploy ./dist --deployment-token f1832a9931ed001a91ec7e76ea2d8d5f584c490f6c9ac44521f995a43093d52301-25a770ea-d734-4368-bea4-9764bb73106500002210b267d000 --env production",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    }
+  ]
+}
