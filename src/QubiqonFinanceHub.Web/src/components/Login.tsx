@@ -65,6 +65,43 @@ export default function Login({ onLogin }: LoginProps) {
           background: "#003a31",
         }}
       >
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(90deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.15) 55%, rgba(0,0,0,0) 100%)",
+            zIndex: 1,
+            pointerEvents: "none",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            top: "56px",
+            left: "56px",
+            zIndex: 2,
+            color: "#fff",
+            maxWidth: "460px",
+            paddingRight: "12px",
+          }}
+        >
+          <div style={{ fontSize: "44px", fontWeight: 800, lineHeight: 1.05, letterSpacing: "-0.02em" }}>
+            Your finances.
+            <br />
+            All in one place.
+          </div>
+          <div style={{ width: "38px", height: "3px", background: "#18c08b", borderRadius: "999px", margin: "18px 0 16px" }} />
+          <div style={{ fontSize: "13px", lineHeight: 1.55, color: "rgba(255,255,255,0.82)" }}>
+            Track accounts, budgets, investments,
+            <br />
+            and spending — in real time.
+            <br />
+            Make smarter financial decisions
+            <br />
+            with clarity and confidence.
+          </div>
+        </div>
         <img
           src={loginImage}
           alt="Finance dashboard preview"
@@ -75,6 +112,8 @@ export default function Login({ onLogin }: LoginProps) {
             display: "block",
             objectFit: "cover",
             objectPosition: "center",
+            position: "relative",
+            zIndex: 0,
           }}
         />
       </section>
