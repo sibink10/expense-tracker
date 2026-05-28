@@ -64,6 +64,7 @@ namespace QubiqonFinanceHub.API.Services.Implementations
         public async Task BulkSetSettingsAsync(List<BulkSettingItemDto> settings)
         {
             var orgId = await _tenant.GetCurrentOrganizationId();
+            var now = DateTime.UtcNow;
 
             // Load all existing settings once (IMPORTANT: avoid N queries)
             var existingSettings = await _db.OrganizationSettings
@@ -72,17 +73,55 @@ namespace QubiqonFinanceHub.API.Services.Implementations
 
             var settingsDict = existingSettings.ToDictionary(s => s.Key, s => s);
 
+            OrganizationSetting UpsertSetting(string key, string value, Guid? id = null)
+            {
+                if (settingsDict.TryGetValue(key, out var existingByKey))
+                {
+                    existingByKey.Value = value;
+                    existingByKey.UpdatedAt = now;
+                    return existingByKey;
+                }
+
+                var existingById = id.HasValue
+                    ? existingSettings.FirstOrDefault(s => s.Id == id && s.OrganizationId == orgId)
+                    : null;
+
+                if (existingById != null)
+                {
+                    settingsDict.Remove(existingById.Key);
+                    existingById.Key = key;
+                    existingById.Value = value;
+                    existingById.UpdatedAt = now;
+                    settingsDict[key] = existingById;
+                    return existingById;
+                }
+
+                var setting = new OrganizationSetting
+                {
+                    Id = Guid.NewGuid(),
+                    OrganizationId = orgId,
+                    Key = key,
+                    Value = value,
+                    UpdatedAt = now
+                };
+
+                _db.OrganizationSettings.Add(setting);
+                existingSettings.Add(setting);
+                settingsDict[key] = setting;
+                return setting;
+            }
+
             foreach (var item in settings)
             {
                 if (item.Key == "advCap")
                 {
-                    var newAdvCap = decimal.Parse(item.Value);
+                    var newAdvCap = decimal.Parse(item.Value, CultureInfo.InvariantCulture);
 
                     settingsDict.TryGetValue("advCap", out var advCapSetting);
                     settingsDict.TryGetValue("balanceCap", out var balanceSetting);
 
-                    decimal oldAdvCap = advCapSetting != null ? decimal.Parse(advCapSetting.Value) : 0;
-                    decimal oldBalance = balanceSetting != null ? decimal.Parse(balanceSetting.Value) : 0;
+                    decimal oldAdvCap = advCapSetting != null ? decimal.Parse(advCapSetting.Value, CultureInfo.InvariantCulture) : 0;
+                    decimal oldBalance = balanceSetting != null ? decimal.Parse(balanceSetting.Value, CultureInfo.InvariantCulture) : 0;
 
                     // Calculate used amount
                     decimal usedAmount = oldAdvCap - oldBalance;
@@ -94,67 +133,15 @@ namespace QubiqonFinanceHub.API.Services.Implementations
                         newBalance = 0; // safeguard
 
                     // 🔹 Update advCap
-                    if (advCapSetting != null)
-                    {
-                        advCapSetting.Value = newAdvCap.ToString();
-                        advCapSetting.UpdatedAt = DateTime.UtcNow;
-                    }
-                    else
-                    {
-                        _db.OrganizationSettings.Add(new OrganizationSetting
-                        {
-                            Id = Guid.NewGuid(),
-                            OrganizationId = orgId,
-                            Key = "advCap",
-                            Value = newAdvCap.ToString(),
-                            UpdatedAt = DateTime.UtcNow
-                        });
-                    }
+                    UpsertSetting("advCap", newAdvCap.ToString(CultureInfo.InvariantCulture), item.Id);
 
                     // 🔹 Update balanceCap
-                    if (balanceSetting != null)
-                    {
-                        balanceSetting.Value = newBalance.ToString();
-                        balanceSetting.UpdatedAt = DateTime.UtcNow;
-                    }
-                    else
-                    {
-                        _db.OrganizationSettings.Add(new OrganizationSetting
-                        {
-                            Id = Guid.NewGuid(),
-                            OrganizationId = orgId,
-                            Key = "balanceCap",
-                            Value = newBalance.ToString(),
-                            UpdatedAt = DateTime.UtcNow
-                        });
-                    }
+                    UpsertSetting("balanceCap", newBalance.ToString(CultureInfo.InvariantCulture));
                 }
                 else
                 {
                     // Normal logic for other settings
-                    if (item.Id.HasValue)
-                    {
-                        var existing = existingSettings
-                            .FirstOrDefault(s => s.Id == item.Id && s.OrganizationId == orgId);
-
-                        if (existing != null)
-                        {
-                            existing.Key = item.Key;
-                            existing.Value = item.Value;
-                            existing.UpdatedAt = DateTime.UtcNow;
-                        }
-                    }
-                    else
-                    {
-                        _db.OrganizationSettings.Add(new OrganizationSetting
-                        {
-                            Id = Guid.NewGuid(),
-                            OrganizationId = orgId,
-                            Key = item.Key,
-                            Value = item.Value,
-                            UpdatedAt = DateTime.UtcNow
-                        });
-                    }
+                    UpsertSetting(item.Key, item.Value, item.Id);
                 }
             }
 
