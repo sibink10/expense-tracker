@@ -193,16 +193,7 @@ export default function AdminSettingsPage() {
 
   return (
     <div style={{ width: "100%", maxWidth: "100%" }}>
-      <div
-        style={{
-          position: "sticky",
-          top: "-17px",
-          background: "#f1f2f6",
-          padding: "10px 2px",
-          zIndex: 1,
-          marginBottom: "20px",
-        }}
-      >
+      <div style={{ marginBottom: "20px" }}>
         <h1
           style={{
             margin: 0,

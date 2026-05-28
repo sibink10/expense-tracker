@@ -297,32 +297,40 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
           )}
         </div>
       )}
-      <div style={{ marginBottom: "16px" }}>
-        {hasSignedPdf ? (
-          <div
-            style={{
-              border: `1px solid ${C.border}`,
-              borderRadius: "10px",
-              overflow: "hidden",
-              background: "#fff",
-              minHeight: 480,
-            }}
-          >
-            {signedPdfLoading || !signedPdfViewerUrl ? (
-              <div style={{ padding: 24, textAlign: "center", color: C.muted, fontSize: 13 }}>
-                {signedPdfLoading ? "Loading signed PDF…" : "Could not load signed PDF"}
-              </div>
-            ) : (
-              <iframe
-                title="Signed invoice"
-                src={signedPdfViewerUrl}
-                style={{ width: "100%", height: "min(70vh, 640px)", border: "none", display: "block" }}
-              />
-            )}
-          </div>
-        ) : (
-          <InvoiceDocument invoice={inv} organization={activeOrg} />
-        )}
+      <div
+        style={{
+          marginBottom: "16px",
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
+        <div style={{ minWidth: 760 }}>
+          {hasSignedPdf ? (
+            <div
+              style={{
+                border: `1px solid ${C.border}`,
+                borderRadius: "10px",
+                overflow: "hidden",
+                background: "#fff",
+                minHeight: 480,
+              }}
+            >
+              {signedPdfLoading || !signedPdfViewerUrl ? (
+                <div style={{ padding: 24, textAlign: "center", color: C.muted, fontSize: 13 }}>
+                  {signedPdfLoading ? "Loading signed PDF…" : "Could not load signed PDF"}
+                </div>
+              ) : (
+                <iframe
+                  title="Signed invoice"
+                  src={signedPdfViewerUrl}
+                  style={{ width: "100%", height: "min(70vh, 640px)", border: "none", display: "block" }}
+                />
+              )}
+            </div>
+          ) : (
+            <InvoiceDocument invoice={inv} organization={activeOrg} />
+          )}
+        </div>
       </div>
 
       <CLog comments={inv.comments} />
