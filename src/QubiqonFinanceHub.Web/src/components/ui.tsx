@@ -272,16 +272,63 @@ const BADGE_LABELS: Record<string, string> = {
   [INV_S.SIGNATURE_FAILED]: "Signature Failed",
 };
 
-export const Badge: React.FC<{ s: string; overdueDays?: number | null }> = ({ s, overdueDays }) => {
-  const [bg, fg] = BADGE_MAP[s] || ["#eee", "#666"];
+const OVERDUE_BADGE_STYLE: [string, string] = ["#FEE2E2", "#991B1B"];
+
+function formatOverdueDaysPhrase(days: number): string {
+  return `${days} ${days === 1 ? "day" : "days"}`;
+}
+
+function buildBadgeTooltip(
+  s: string,
+  displayStatus: string,
+  forceDanger: boolean,
+  overdueDays: number | null | undefined,
+  titleOverride?: string,
+): string | undefined {
+  if (titleOverride) return titleOverride;
+
+  if (forceDanger) {
+    const daysPart =
+      overdueDays != null && overdueDays >= 1
+        ? ` by ${formatOverdueDaysPhrase(overdueDays)}`
+        : "";
+    return `Past due${daysPart}. Invoice has not been sent to the client — status remains ${displayStatus}.`;
+  }
+
+  if (
+    (s === INV_S.OVERDUE || s === BILL_S.OVERDUE) &&
+    overdueDays != null &&
+    overdueDays >= 1
+  ) {
+    return `Overdue by ${formatOverdueDaysPhrase(overdueDays)}.`;
+  }
+
+  return undefined;
+}
+
+export const Badge: React.FC<{
+  s: string;
+  overdueDays?: number | null;
+  /** Light-danger background + danger text while keeping status label (e.g. Draft past due). */
+  forceDanger?: boolean;
+  /** Native hover tooltip; auto-generated for overdue / past-due-not-sent when omitted. */
+  title?: string;
+}> = ({ s, overdueDays, forceDanger = false, title: titleOverride }) => {
+  const [bg, fg] = forceDanger ? OVERDUE_BADGE_STYLE : BADGE_MAP[s] || ["#eee", "#666"];
   const displayStatus = BADGE_LABELS[s] ?? s;
   const showOverdueDays =
-    (s === INV_S.OVERDUE || s === BILL_S.OVERDUE) && overdueDays != null && overdueDays >= 1;
+    !forceDanger &&
+    (s === INV_S.OVERDUE || s === BILL_S.OVERDUE) &&
+    overdueDays != null &&
+    overdueDays >= 1;
   const label = showOverdueDays
     ? `${displayStatus} · ${overdueDays} ${overdueDays === 1 ? "day" : "days"}`
     : displayStatus;
+  const tooltip = buildBadgeTooltip(s, displayStatus, forceDanger, overdueDays, titleOverride);
+
   return (
     <span
+      title={tooltip}
       style={{
         padding: "3px 10px",
         borderRadius: "20px",
@@ -290,6 +337,7 @@ export const Badge: React.FC<{ s: string; overdueDays?: number | null }> = ({ s,
         background: bg,
         color: fg,
         whiteSpace: "nowrap",
+        cursor: tooltip ? "help" : undefined,
       }}
     >
       {label}

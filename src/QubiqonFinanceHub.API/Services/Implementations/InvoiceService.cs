@@ -284,13 +284,18 @@ public class InvoiceService : IInvoiceService
         {
             if (status == InvoiceStatus.Overdue)
             {
-                q = q.Where(x => x.DueDate < today && x.paidAmound < x.Total && x.Status != InvoiceStatus.Paid);
+                q = q.Where(x =>
+                    x.paidAmound < x.Total
+                    && x.DueDate < today
+                    && (x.Status == InvoiceStatus.Sent || x.Status == InvoiceStatus.PartiallyPaid));
             }
             else
             {
                 q = q.Where(x =>
-                    x.Status == status &&
-                    !(x.DueDate < today && x.paidAmound < x.Total && x.Status != InvoiceStatus.Paid));
+                    x.Status == status
+                    && !(x.paidAmound < x.Total
+                         && x.DueDate < today
+                         && (x.Status == InvoiceStatus.Sent || x.Status == InvoiceStatus.PartiallyPaid)));
             }
         }
         if (!string.IsNullOrWhiteSpace(f.Search))
@@ -316,20 +321,18 @@ public class InvoiceService : IInvoiceService
             .Where(x => x.OrganizationId == orgId)
             .AsNoTracking();
 
-        var draft = await invoices.CountAsync(x =>
-            x.Status == InvoiceStatus.Draft &&
-            !(x.DueDate < today && x.paidAmound < x.Total));
+        var draft = await invoices.CountAsync(x => x.Status == InvoiceStatus.Draft);
         var sent = await invoices.CountAsync(x =>
-            x.Status == InvoiceStatus.Sent &&
-            !(x.DueDate < today && x.paidAmound < x.Total));
+            x.Status == InvoiceStatus.Sent
+            && !(x.paidAmound < x.Total && x.DueDate < today));
         var partiallyPaid = await invoices.CountAsync(x =>
-            x.Status == InvoiceStatus.PartiallyPaid &&
-            !(x.DueDate < today && x.paidAmound < x.Total));
+            x.Status == InvoiceStatus.PartiallyPaid
+            && !(x.paidAmound < x.Total && x.DueDate < today));
         var paid = await invoices.CountAsync(x => x.Status == InvoiceStatus.Paid);
         var overdue = await invoices.CountAsync(x =>
-            x.DueDate < today &&
-            x.paidAmound < x.Total &&
-            x.Status != InvoiceStatus.Paid);
+            x.paidAmound < x.Total
+            && x.DueDate < today
+            && (x.Status == InvoiceStatus.Sent || x.Status == InvoiceStatus.PartiallyPaid));
 
         return new InvoiceStatusCountsDto(draft, sent, partiallyPaid, paid, overdue);
     }
@@ -755,13 +758,6 @@ public class InvoiceService : IInvoiceService
      )).ToList()
  );
 
-    private static string GetDisplayStatus(Invoice inv)
-    {
-        if (inv.Status is InvoiceStatus.PendingSignature or InvoiceStatus.Signed or InvoiceStatus.SignatureFailed)
-            return inv.Status.ToString();
-
-        var today = DateTime.UtcNow.Date;
-        var isOverdue = inv.DueDate < today && inv.paidAmound < inv.Total && inv.Status != InvoiceStatus.Paid;
-        return isOverdue ? InvoiceStatus.Overdue.ToString() : inv.Status.ToString();
-    }
+    private static string GetDisplayStatus(Invoice inv) =>
+        InvoiceStatusRules.GetDisplayStatus(inv, DateTime.UtcNow.Date);
 }

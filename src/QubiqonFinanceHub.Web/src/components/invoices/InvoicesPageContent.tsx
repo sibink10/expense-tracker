@@ -312,6 +312,18 @@ export default function InvoicesPage() {
   const displayTotalPages = Math.max(totalPages, 1);
 
   const invoiceBalanceDue = (inv: Invoice) => Math.max(inv.total - (inv.paidAmound ?? 0), 0);
+
+  const isPastDueUnpaid = (inv: Invoice) => {
+    if (invoiceBalanceDue(inv) <= 0.005 || inv.status === INV_S.PAID) return false;
+    const days = daysOverdueFromDueYmd(inv.due);
+    return days != null && days >= 1;
+  };
+
+  const showOverdueDangerBadge = (inv: Invoice) =>
+    isPastDueUnpaid(inv) &&
+    (inv.status === INV_S.DRAFT ||
+      inv.status === INV_S.PENDING_SIGNATURE ||
+      inv.status === INV_S.SIGNED);
   const showMarkPaidOnRow = (inv: Invoice) =>
     invoiceBalanceDue(inv) > 0.005 &&
     inv.status !== INV_S.DRAFT &&
@@ -435,7 +447,12 @@ export default function InvoicesPage() {
         v: (
           <Badge
             s={inv.status}
-            overdueDays={inv.status === INV_S.OVERDUE ? daysOverdueFromDueYmd(inv.due) : undefined}
+            forceDanger={showOverdueDangerBadge(inv)}
+            overdueDays={
+              inv.status === INV_S.OVERDUE || showOverdueDangerBadge(inv)
+                ? daysOverdueFromDueYmd(inv.due)
+                : undefined
+            }
           />
         ),
       },

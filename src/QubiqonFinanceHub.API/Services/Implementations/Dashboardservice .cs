@@ -11,6 +11,7 @@ namespace QubiqonFinanceHub.API.Services.Implementations;
 public class DashboardService : IDashboardService
 {
     private const int TopReceivableClients = 8;
+    private const string DefaultReportCurrency = "INR";
 
     private readonly FinanceHubDbContext _db;
     private readonly ITenantService _tenant;
@@ -63,46 +64,12 @@ public class DashboardService : IDashboardService
         var invoiceCounts = await _invoices.GetStatusCountsAsync();
 
         var (usdRates, availableCurrencies) = await _currencyRates.LoadUsdReportingRatesAsync();
+        var reportCode = ResolveReportCurrency(reportCurrency, availableCurrencies);
 
-        var invoiceRowsRaw = await invoices
-            .Where(i =>
-                i.paidAmound < i.Total
-                && i.Status != InvoiceStatus.Draft
-                && i.Status != InvoiceStatus.Paid
-                && i.Status != InvoiceStatus.PendingSignature
-                && i.Status != InvoiceStatus.SignatureFailed
-                && i.Status != InvoiceStatus.Signed
-                && (i.Status == InvoiceStatus.Sent
-                    || i.Status == InvoiceStatus.Viewed
-                    || i.Status == InvoiceStatus.PartiallyPaid
-                    || i.Status == InvoiceStatus.Overdue))
-            .Select(i => new { i.ClientId, ClientName = i.Client.Name, i.Currency, Outstanding = i.Total - i.paidAmound })
-            .ToListAsync();
+        var receivableBuckets = await LoadReceivableCurrencyBucketsAsync(invoices);
 
-        var invoiceRows = invoiceRowsRaw
-            .Select(r => new ReceivableRow(r.ClientId, r.ClientName, r.Currency, r.Outstanding))
-            .ToList();
-
-        var reportCode = NormalizeReportCurrency(reportCurrency);
-
-        IReadOnlyList<DashboardSliceDto> receivablesByClient;
-        decimal receivableOutstanding;
-
-        if (!string.IsNullOrEmpty(reportCode))
-        {
-            receivablesByClient = BuildReceivablesInReportCurrency(invoiceRows, reportCode, usdRates);
-            receivableOutstanding = receivablesByClient.Sum(s => s.Value);
-        }
-        else
-        {
-            receivableOutstanding = invoiceRows.Sum(r => r.Outstanding);
-            receivablesByClient = invoiceRows
-                .GroupBy(r => (r.ClientId, r.ClientName, r.Currency))
-                .Select(g => new DashboardSliceDto(g.Key.ClientName, g.Sum(x => x.Outstanding), g.Key.Currency))
-                .OrderByDescending(x => x.Value)
-                .Take(TopReceivableClients)
-                .ToList();
-        }
+        var (receivableOutstanding, receivablesByClient) =
+            BuildReceivablesInReportCurrency(receivableBuckets, reportCode, usdRates);
 
         return new DashboardDto(
             pendingSubmittedBills,
@@ -225,33 +192,55 @@ public class DashboardService : IDashboardService
 
 
 
-    private List<DashboardSliceDto> BuildReceivablesInReportCurrency(
-        List<ReceivableRow> invoiceRows,
+    /// <summary>
+    /// One row per (client, native currency) with summed open balance — minimizes rows and FX calls for large invoice sets.
+    /// </summary>
+    private static async Task<List<ReceivableCurrencyBucket>> LoadReceivableCurrencyBucketsAsync(
+        IQueryable<Invoice> invoices) =>
+        await invoices
+            .Where(i =>
+                i.paidAmound < i.Total
+                && (i.Status == InvoiceStatus.Sent || i.Status == InvoiceStatus.PartiallyPaid))
+            .GroupBy(i => new { i.ClientId, i.Currency })
+            .Select(g => new ReceivableCurrencyBucket(
+                g.Key.ClientId,
+                g.Max(i => i.Client.Name) ?? "Unknown",
+                g.Key.Currency ?? "",
+                g.Sum(i => i.Total - i.paidAmound)))
+            .ToListAsync();
+
+    private (decimal TotalOutstanding, List<DashboardSliceDto> TopClients) BuildReceivablesInReportCurrency(
+        IReadOnlyList<ReceivableCurrencyBucket> buckets,
         string reportCode,
         IReadOnlyDictionary<string, decimal> usdRates)
     {
         var byClient = new Dictionary<Guid, (string Name, decimal Total)>();
+        decimal totalOutstanding = 0;
 
-        foreach (var row in invoiceRows)
+        foreach (var bucket in buckets)
         {
-            var source = (row.Currency ?? "").Trim().ToUpperInvariant();
+            var source = (bucket.Currency ?? "").Trim().ToUpperInvariant();
             if (source.Length != 3) source = reportCode;
 
-            var converted = _currencyRates.TryConvert(row.Outstanding, source, reportCode, usdRates);
+            var converted = _currencyRates.TryConvert(bucket.Outstanding, source, reportCode, usdRates);
             if (converted == null) continue;
 
-            if (byClient.TryGetValue(row.ClientId, out var existing))
-                byClient[row.ClientId] = (existing.Name, existing.Total + converted.Value);
+            totalOutstanding += converted.Value;
+
+            if (byClient.TryGetValue(bucket.ClientId, out var existing))
+                byClient[bucket.ClientId] = (existing.Name, existing.Total + converted.Value);
             else
-                byClient[row.ClientId] = (row.ClientName, converted.Value);
+                byClient[bucket.ClientId] = (bucket.ClientName, converted.Value);
         }
 
-        return byClient
+        var topClients = byClient
             .Select(kv => new DashboardSliceDto(kv.Value.Name, kv.Value.Total, reportCode))
             .Where(s => s.Value > 0)
             .OrderByDescending(s => s.Value)
             .Take(TopReceivableClients)
             .ToList();
+
+        return (totalOutstanding, topClients);
     }
 
     private static string? NormalizeReportCurrency(string? code)
@@ -261,5 +250,23 @@ public class DashboardService : IDashboardService
         return n.Length == 3 ? n : null;
     }
 
-    private sealed record ReceivableRow(Guid ClientId, string ClientName, string Currency, decimal Outstanding);
+    private static string ResolveReportCurrency(string? reportCurrency, IReadOnlyList<string> availableCurrencies)
+    {
+        var normalized = NormalizeReportCurrency(reportCurrency);
+        if (!string.IsNullOrEmpty(normalized))
+            return normalized;
+
+        if (availableCurrencies.Any(c => string.Equals(c, DefaultReportCurrency, StringComparison.OrdinalIgnoreCase)))
+            return DefaultReportCurrency;
+
+        return availableCurrencies.Count > 0
+            ? availableCurrencies[0].Trim().ToUpperInvariant()
+            : DefaultReportCurrency;
+    }
+
+    private sealed record ReceivableCurrencyBucket(
+        Guid ClientId,
+        string ClientName,
+        string Currency,
+        decimal Outstanding);
 }
