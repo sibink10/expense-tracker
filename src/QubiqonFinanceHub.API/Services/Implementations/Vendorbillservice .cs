@@ -686,7 +686,7 @@ public class VendorBillService : IVendorBillService
     private static string GetDisplayBillStatus(VendorBill b)
     {
         var today = DateTime.UtcNow.Date;
-        return VendorBillStatusRules.IsComputationallyOverdue(b, today) ? BillStatus.Overdue.ToString() : b.Status.ToString();
+        return b.Status == BillStatus.Approved && VendorBillStatusRules.IsComputationallyOverdue(b, today) ? BillStatus.Overdue.ToString() : b.Status.ToString();
     }
 
     private static PaymentPriority ParsePaymentPriority(string? value)
