@@ -332,13 +332,18 @@ public class VendorBillService : IVendorBillService
         {
             if (status == BillStatus.Overdue)
             {
-                q = q.Where(x => x.DueDate < today && x.PaidAmount < x.TotalPayable && x.Status != BillStatus.Paid);
+                q = q.Where(x =>
+                    (x.Status == BillStatus.Approved || x.Status == BillStatus.PartiallyPaid)
+                    && x.DueDate < today
+                    && x.PaidAmount < x.TotalPayable);
             }
             else
             {
                 q = q.Where(x =>
-                    x.Status == status &&
-                    !(x.DueDate < today && x.PaidAmount < x.TotalPayable && x.Status != BillStatus.Paid));
+                    x.Status == status
+                    && !((x.Status == BillStatus.Approved || x.Status == BillStatus.PartiallyPaid)
+                         && x.DueDate < today
+                         && x.PaidAmount < x.TotalPayable));
             }
         }
         if (!string.IsNullOrWhiteSpace(f.Search))
@@ -682,11 +687,13 @@ public class VendorBillService : IVendorBillService
             """;
     }
 
-    /// <summary>Past due, still unpaid, not fully paid — mirrors <see cref="VendorBillStatusRules.IsComputationallyOverdue"/>.</summary>
+    /// <summary>Past due approved/partially paid with open balance — mirrors <see cref="VendorBillStatusRules.IsComputationallyOverdue"/>.</summary>
     private static string GetDisplayBillStatus(VendorBill b)
     {
         var today = DateTime.UtcNow.Date;
-        return b.Status == BillStatus.Approved && VendorBillStatusRules.IsComputationallyOverdue(b, today) ? BillStatus.Overdue.ToString() : b.Status.ToString();
+        return VendorBillStatusRules.IsComputationallyOverdue(b, today)
+            ? BillStatus.Overdue.ToString()
+            : b.Status.ToString();
     }
 
     private static PaymentPriority ParsePaymentPriority(string? value)

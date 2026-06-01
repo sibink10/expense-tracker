@@ -97,8 +97,8 @@ public class DashboardService : IDashboardService
         && b.PaidAmount < b.TotalPayable;
 
     /// <summary>
-    /// Buckets: Approved, Partially paid, and Overdue. Overdue follows <see cref="VendorBillStatusRules.IsComputationallyOverdue"/>
-    /// (same rule as <c>VendorBillService.ListAsync</c> Overdue filter + BillDto status).
+    /// Buckets: Approved, Partially paid, and Overdue. Overdue = <see cref="VendorBillStatusRules.IsComputationallyOverdue"/>
+    /// (Approved or PartiallyPaid + past due + open balance; same as bills list Overdue filter and BillDto display).
     /// </summary>
     private static (
         List<DashboardSliceDto> slices,

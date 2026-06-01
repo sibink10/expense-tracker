@@ -17,7 +17,7 @@ import { sendZohoDocument } from "../../shared/api/zoho";
 import InvoiceDocument from "../InvoiceDocument";
 import { EditIcon } from "../icons";
 import { INV_S } from "../../shared/constants";
-import { IndianRupee, Send, Signature, X } from "lucide-react";
+import { IndianRupee, RefreshCw, Send, Signature, X } from "lucide-react";
 
 interface Props {
   invoice: Invoice;
@@ -69,7 +69,9 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
   const balanceDue = Math.max(inv.total - (inv.paidAmound ?? 0), 0);
   const canFinance = is("finance") || is("admin");
   const showMarkPaid = canFinance && balanceDue > 0.005 && inv.status === INV_S.SENT;
-  const canMarkSent = canFinance && inv.status === INV_S.SIGNED && !!inv.apiId;
+  const canMarkSent = canFinance && inv.status === INV_S.SIGNED && !!inv.apiId && hasSignedPdf;
+  const needsSignedPdfSync = canFinance && inv.status === INV_S.SIGNED && !!inv.apiId && !hasSignedPdf;
+
   const canEdit = inv.status === INV_S.DRAFT && !!inv.apiId;
   const canSendForSigning =
     canFinance &&
@@ -237,6 +239,20 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
       );
     }
 
+    if (needsSignedPdfSync) {
+      return (
+        <Btn
+          v="ghost"
+          sx={workflowActionStyle(C.invoiceActionSign, C.invoiceActionSignBg)}
+          onClick={() => void handleSyncSignedPdf()}
+          disabled={syncLoading}
+        >
+          <RefreshCw size={14} strokeWidth={1.9} />
+          {syncLoading ? "Syncing…" : "Sync to storage"}
+        </Btn>
+      );
+    }
+
     if (canMarkSent) {
       return (
         <Btn
@@ -305,6 +321,23 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
         }}
       >
         <div style={{ minWidth: 760 }}>
+          {needsSignedPdfSync && (
+            <div
+              style={{
+                marginBottom: 12,
+                padding: "10px 12px",
+                borderRadius: 8,
+                background: "rgba(214, 158, 46, 0.1)",
+                border: `1px solid ${C.invoice}`,
+                fontSize: 12,
+                color: C.primary,
+                lineHeight: 1.5,
+              }}
+            >
+              This invoice is signed in Zoho, but the signed PDF is not in storage yet. Use{" "}
+              <strong>Sync to storage</strong> before marking it as sent.
+            </div>
+          )}
           {hasSignedPdf ? (
             <div
               style={{
@@ -364,7 +397,7 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
         </div>
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "flex-end" }}>
           {renderWorkflowAction()}
-          {canSync && (
+          {canSync && !needsSignedPdfSync && (
             <Btn v="invoice" onClick={() => void handleSyncSignedPdf()} disabled={syncLoading}>
               {syncLoading ? (
                 <>

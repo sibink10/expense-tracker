@@ -36,6 +36,7 @@ import {
   getInvoiceCounts,
   getInvoices,
   markInvoiceSent,
+  syncInvoiceSignedPdf,
   invoiceStatusForApi,
 } from "../../shared/api/invoice";
 import { downloadInvoicePdf } from "../../shared/invoicePdf";
@@ -146,6 +147,7 @@ export default function InvoicesPage() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [sendConfirm, setSendConfirm] = useState<Invoice | null>(null);
   const [sendLoading, setSendLoading] = useState(false);
+  const [syncLoadingId, setSyncLoadingId] = useState<string | null>(null);
   const [zohoSignConfirm, setZohoSignConfirm] = useState<Invoice | null>(null);
   const [zohoSignLoading, setZohoSignLoading] = useState(false);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -248,6 +250,24 @@ export default function InvoicesPage() {
   }, [refreshKey]);
 
   const canSendInvoice = is("finance") || is("admin");
+
+  const hasSignedPdfUrl = (inv: Invoice) => !!inv.signedPdfUrl?.trim();
+
+  const handleSyncSignedPdf = async (inv: Invoice, e: MouseEvent) => {
+    e.stopPropagation();
+    if (!inv.apiId) return;
+    setSyncLoadingId(inv.id);
+    try {
+      await syncInvoiceSignedPdf(inv.apiId);
+      t("Signed PDF synced to storage");
+      setRefreshKey((k) => k + 1);
+      window.dispatchEvent(new CustomEvent("invoices-refresh"));
+    } catch (err: unknown) {
+      t(err instanceof Error ? err.message : "Sync failed", "error");
+    } finally {
+      setSyncLoadingId(null);
+    }
+  };
 
   const handleConfirmSend = async () => {
     const inv = sendConfirm;
@@ -367,7 +387,22 @@ export default function InvoicesPage() {
       );
     }
 
-    if ((inv.status === INV_S.SIGNED || inv.status === INV_S.DRAFT) && inv.apiId) {
+    if (inv.status === INV_S.SIGNED && inv.apiId) {
+      if (!hasSignedPdfUrl(inv)) {
+        const syncing = syncLoadingId === inv.id;
+        return (
+          <Btn
+            sm
+            v="ghost"
+            sx={workflowActionStyle(C.invoiceActionSign, C.invoiceActionSignBg)}
+            onClick={(e) => void handleSyncSignedPdf(inv, e)}
+            disabled={syncing}
+          >
+            <RefreshCw size={13} strokeWidth={1.9} />
+            {syncing ? "Syncing…" : "Sync to storage"}
+          </Btn>
+        );
+      }
       return (
         <Btn
           sm
