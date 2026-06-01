@@ -331,6 +331,8 @@ export default function InvoicesPage() {
     inv.status !== INV_S.SIGNATURE_FAILED &&
     inv.status !== INV_S.SIGNED;
 
+  const canEditInvoice = (inv: Invoice) => inv.status === INV_S.DRAFT && !!inv.apiId;
+
   const renderWorkflowAction = (inv: Invoice) => {
     if (!canSendInvoice) return null;
 
@@ -492,6 +494,7 @@ export default function InvoicesPage() {
           >
             {inv.apiId && (
               <EditActionButton
+                disabled={!canEditInvoice(inv)}
                 sx={{ width: 30, height: 30, background: C.actionEditBg, borderRadius: "4px" }}
                 onClick={(e) => {
                   e.stopPropagation();

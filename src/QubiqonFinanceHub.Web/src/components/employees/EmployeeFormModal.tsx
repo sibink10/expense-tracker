@@ -37,6 +37,8 @@ export default function EmployeeFormModal({
   onClose,
   onSave,
 }: EmployeeFormModalProps) {
+  const fieldsLocked = !!editing;
+
   return (
     <Mdl open={open} close={onClose} title="Edit employee">
       <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "16px" }}>
@@ -58,6 +60,7 @@ export default function EmployeeFormModal({
             label="Full name"
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            disabled={fieldsLocked}
             req
           />
           <Inp
@@ -65,13 +68,14 @@ export default function EmployeeFormModal({
             type="email"
             value={form.email}
             onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-            disabled={!!editing}
+            disabled={fieldsLocked}
             req
           />
           <Inp
             label="Department"
             value={form.dept}
             onChange={(e) => setForm((f) => ({ ...f, dept: e.target.value }))}
+            disabled={fieldsLocked}
           />
         </div>
         <div>
@@ -91,11 +95,13 @@ export default function EmployeeFormModal({
             label="Designation"
             value={form.designation}
             onChange={(e) => setForm((f) => ({ ...f, designation: e.target.value }))}
+            disabled={fieldsLocked}
           />
           <Inp
             label="Employee code"
             value={form.employeeCode}
             onChange={(e) => setForm((f) => ({ ...f, employeeCode: e.target.value }))}
+            disabled={fieldsLocked}
           />
         </div>
       </div>
