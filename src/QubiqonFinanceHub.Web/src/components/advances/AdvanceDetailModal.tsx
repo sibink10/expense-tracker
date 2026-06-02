@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { C } from "../../shared/theme";
-import { ADV_S } from "../../shared/constants";
+import { ADV_S, EVENTS, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur } from "../../shared/utils";
 import { advanceRaisedByCurrentUser, canCancelAdvanceRequest } from "../../shared/expensePermissions";
 import { Btn, Badge, Mdl, CLog } from "../ui";
@@ -37,7 +37,7 @@ export default function AdvanceDetailModal({ advance: a, previousAdvances: hist 
       </div>
       <div style={{ padding: "10px 14px", background: C.surface, borderRadius: "8px", marginBottom: "12px", fontSize: "12px" }}>{a.purpose}</div>
       <CLog comments={a.comments} />
-      {(is("approver") || is("finance") || is("admin")) && hist.length > 0 && (
+      {(is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN)) && hist.length > 0 && (
         <div style={{ marginBottom: "12px" }}>
           <div style={{ fontSize: "10px", color: C.muted, fontWeight: 600, textTransform: "uppercase", marginBottom: "6px" }}>Previous advances</div>
           {hist.map((h) => (
@@ -61,7 +61,7 @@ export default function AdvanceDetailModal({ advance: a, previousAdvances: hist 
                 await cancelAdvance(id);
                 t("Advance request cancelled");
                 setMdl(null);
-                window.dispatchEvent(new CustomEvent("advances-refresh"));
+                window.dispatchEvent(new CustomEvent(EVENTS.ADVANCES_REFRESH));
               } catch (err) {
                 t(getApiErrorMessage(err, "Could not cancel advance"));
               } finally {
@@ -72,20 +72,20 @@ export default function AdvanceDetailModal({ advance: a, previousAdvances: hist 
             {cancelLoading ? "Cancelling…" : "Cancel request"}
           </Btn>
         )}
-        {(is("approver") || is("admin")) &&
+        {(is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN)) &&
           !advanceRaisedByCurrentUser(a, user) &&
           !isCancelled && a.status === ADV_S.PENDING && (
           <>
-            <Btn v="success" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "adv-approve", d: a }), 50); }}>Approve</Btn>
-            <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "reject", d: a, it: "advance" }), 50); }}>Reject</Btn>
+            <Btn v="success" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: MODAL_T.ADV_APPROVE, d: a }), 50); }}>Approve</Btn>
+            <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: MODAL_T.REJECT, d: a, it: ITEM_T.ADVANCE }), 50); }}>Reject</Btn>
           </>
         )}
-        {(is("finance") || is("admin")) &&
+        {(is(ROLES.FINANCE) || is(ROLES.ADMIN)) &&
           !isCancelled &&
           (a.status === ADV_S.APPROVED || a.status === ADV_S.PARTIALLY_DISBURSED) && (
           <>
-            <Btn v="advance" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "adv-disburse", d: a }), 50); }}>Disburse</Btn>
-            <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "reject", d: a, it: "advance" }), 50); }}>Reject</Btn>
+            <Btn v="advance" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: MODAL_T.ADV_DISBURSE, d: a }), 50); }}>Disburse</Btn>
+            <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: MODAL_T.REJECT, d: a, it: ITEM_T.ADVANCE }), 50); }}>Reject</Btn>
           </>
         )}
         <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>

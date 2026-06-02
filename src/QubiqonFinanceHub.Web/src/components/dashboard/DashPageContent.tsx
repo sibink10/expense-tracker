@@ -5,7 +5,15 @@ import { useNavigate } from "react-router-dom";
 import { C, R } from "../../shared/theme";
 import { useAppContext } from "../../context/AppContext";
 import { getDashboard, type DashboardData } from "../../shared/api/dashboard";
+import {
+  dashboardSectionsForRole,
+  dashboardSubtitleForRole,
+  isDashboardSectionVisible,
+  type DashboardSection,
+} from "../../shared/dashboardVisibility";
+import type { UserRole } from "../../types";
 import { Spinner } from "../ui";
+import { ROLES } from "../../shared/constants";
 
 type DashboardSegment = {
   label: string;
@@ -17,6 +25,7 @@ type DashboardSegment = {
 };
 
 type OverviewCard = {
+  section: DashboardSection;
   title: string;
   icon: LucideIcon;
   to: string;
@@ -324,18 +333,21 @@ function buildOverviewCards(d: DashboardData, reportCurrency: string): OverviewC
 
   return [
     {
+      section: "expenses",
       title: "Expense overview",
       icon: ReceiptText,
       to: "/expenses",
       segments: expenseSegments,
     },
     {
+      section: "advances",
       title: "Advances",
       icon: HandCoins,
       to: "/advances",
       segments: advanceSegments,
     },
     {
+      section: "invoices",
       title: "Invoices overview",
       icon: ClipboardList,
       to: "/invoices",
@@ -348,18 +360,25 @@ function buildOverviewCards(d: DashboardData, reportCurrency: string): OverviewC
       ],
     },
     {
+      section: "receivablesChart",
       title: "Receivables",
       icon: WalletCards,
       to: "/invoices",
       segments: receivableSegments,
     },
     {
+      section: "bills",
       title: "Bills to pay",
       icon: FileText,
       to: "/bills",
       segments: billSegments,
     },
   ];
+}
+
+function filterOverviewCards(cards: OverviewCard[], role: UserRole): OverviewCard[] {
+  const visible = dashboardSectionsForRole(role);
+  return cards.filter((c) => visible.has(c.section));
 }
 
 const DEFAULT_REPORT_CURRENCY = "INR";
@@ -376,7 +395,9 @@ export default function DashPage() {
   const firstName = useMemo(() => user.name?.split(" ")[0] || "there", [user.name]);
   const greeting = getTimeGreeting(now);
 
-  const myOnly = user.role !== "finance" && user.role !== "admin";
+  const myOnly = user.role === ROLES.EMPLOYEE;
+  const showReceivableCurrency = isDashboardSectionVisible(user.role, "receivable");
+  const subtitle = dashboardSubtitleForRole(user.role);
 
   const load = useCallback(
     (currency: string) => {
@@ -420,17 +441,33 @@ export default function DashPage() {
   const summaryStats = useMemo(() => {
     if (!dash) return [];
     const recv = Number(dash.receivableOutstanding ?? dash.totalReceivable ?? 0);
-    return [
-      { label: "Pending approvals", value: Number(dash.pendingApprovals ?? 0) },
-      { label: "Bills to pay", value: Number(dash.billsToPayCount ?? 0) },
-      { label: "Receivable", value: formatCurrencySummary(recv, displayCurrency) },
+    const visible = dashboardSectionsForRole(user.role);
+    const all = [
+      {
+        section: "pendingApprovals" as const,
+        label: "Pending approvals",
+        value: Number(dash.pendingApprovals ?? 0),
+      },
+      {
+        section: "billsToPay" as const,
+        label: "Bills to pay",
+        value: Number(dash.billsToPayCount ?? 0),
+      },
+      {
+        section: "receivable" as const,
+        label: "Receivable",
+        value: formatCurrencySummary(recv, displayCurrency),
+      },
     ];
-  }, [dash, displayCurrency]);
+    return all.filter((s) => visible.has(s.section));
+  }, [dash, displayCurrency, user.role]);
 
   const overviewCards = useMemo(
-    () => (dash ? buildOverviewCards(dash, displayCurrency) : []),
-    [dash, displayCurrency],
+    () => (dash ? filterOverviewCards(buildOverviewCards(dash, displayCurrency), user.role) : []),
+    [dash, displayCurrency, user.role],
   );
+
+  const summaryColumnCount = Math.min(Math.max(summaryStats.length, 1), 3);
 
   const currencySelectOptions = useMemo<CurrencyOption[]>(
     () => currencyOptions.map((code) => ({ value: code, label: code })),
@@ -465,25 +502,27 @@ export default function DashPage() {
             {greeting} {firstName}!
           </h1>
           <p style={{ margin: 0, color: C.primary, fontSize: 12, fontWeight: 400, lineHeight: "18px" }}>
-            Track your current workload, approvals, invoices and payments at a glance.
+            {subtitle}
           </p>
         </div>
 
-        <div className="dashboard-currency" style={{ width: "100%", maxWidth: 200 }}>
-          <Select<CurrencyOption, false>
-            inputId="dashboard-report-currency"
-            aria-label="Report currency"
-            value={selectedCurrencyOption}
-            onChange={(option) => {
-              if (option?.value) setReportCurrency(option.value);
-            }}
-            options={currencySelectOptions}
-            isSearchable
-            isClearable={false}
-            styles={dashboardCurrencySelectStyles}
-            classNamePrefix="dashboard-currency-select"
-          />
-        </div>
+        {showReceivableCurrency && (
+          <div className="dashboard-currency" style={{ width: "100%", maxWidth: 200 }}>
+            <Select<CurrencyOption, false>
+              inputId="dashboard-report-currency"
+              aria-label="Report currency"
+              value={selectedCurrencyOption}
+              onChange={(option) => {
+                if (option?.value) setReportCurrency(option.value);
+              }}
+              options={currencySelectOptions}
+              isSearchable
+              isClearable={false}
+              styles={dashboardCurrencySelectStyles}
+              classNamePrefix="dashboard-currency-select"
+            />
+          </div>
+        )}
       </div>
 
       {loading && (
@@ -544,13 +583,13 @@ export default function DashPage() {
             className="dashboard-summary-grid"
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gridTemplateColumns: `repeat(${summaryColumnCount}, minmax(0, 1fr))`,
               gap: 20,
               marginBottom: 22,
             }}
           >
             {summaryStats.map((stat) => (
-              <SummaryCard key={stat.label} {...stat} />
+              <SummaryCard key={stat.section} label={stat.label} value={stat.value} />
             ))}
           </div>
 

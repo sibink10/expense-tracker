@@ -8,6 +8,7 @@ import { updateVendor } from "../../shared/api/vendor";
 import { getCategories, type Category } from "../../shared/api";
 import { isEmailValid } from "../../shared/utils";
 import type { Vendor } from "../../types";
+import { EVENTS, MODAL_T } from "../../shared/constants";
 
 export default function VendorEditModal() {
   const { mdl, setMdl } = useAppContext();
@@ -28,7 +29,7 @@ export default function VendorEditModal() {
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
 
-  const v = mdl?.d && mdl.t === "vendor-edit" ? (mdl.d as Vendor) : null;
+  const v = mdl?.d && mdl.t === MODAL_T.VENDOR_EDIT ? (mdl.d as Vendor) : null;
 
   useEffect(() => {
     if (v) {
@@ -95,7 +96,7 @@ export default function VendorEditModal() {
         ifscCode: ifscCode.trim(),
       });
       setMdl(null);
-      window.dispatchEvent(new CustomEvent("vendors-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.VENDORS_REFRESH));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to update vendor");
     } finally {

@@ -6,6 +6,7 @@ import { cancelAdvance } from "../../shared/api/advance";
 import { getApiErrorMessage } from "../../shared/api/client";
 import { canCancelAdvanceRequest, canCancelExpenseRequest } from "../../shared/expensePermissions";
 import type { Expense, Advance } from "../../types";
+import { EVENTS, MODAL_T } from "../../shared/constants";
 
 export default function CancelRequestConfirmModal() {
   const { mdl, setMdl, t, user } = useAppContext();
@@ -13,9 +14,9 @@ export default function CancelRequestConfirmModal() {
   const [error, setError] = useState<string | null>(null);
 
   if (!mdl?.d) return null;
-  if (mdl.t !== "exp-cancel-confirm" && mdl.t !== "adv-cancel-confirm") return null;
+  if (mdl.t !== MODAL_T.EXP_CANCEL_CONFIRM && mdl.t !== MODAL_T.ADV_CANCEL_CONFIRM) return null;
 
-  const isExpense = mdl.t === "exp-cancel-confirm";
+  const isExpense = mdl.t === MODAL_T.EXP_CANCEL_CONFIRM;
   const item = mdl.d as Expense | Advance;
   const allowed = isExpense
     ? canCancelExpenseRequest(item as Expense, user)
@@ -35,7 +36,7 @@ export default function CancelRequestConfirmModal() {
       else await cancelAdvance(id);
       t(isExpense ? "Expense request cancelled" : "Advance request cancelled");
       setMdl(null);
-      window.dispatchEvent(new CustomEvent(isExpense ? "expenses-refresh" : "advances-refresh"));
+      window.dispatchEvent(new CustomEvent(isExpense ? EVENTS.EXPENSES_REFRESH : EVENTS.ADVANCES_REFRESH));
     } catch (err) {
       setError(getApiErrorMessage(err, "Could not cancel"));
     } finally {

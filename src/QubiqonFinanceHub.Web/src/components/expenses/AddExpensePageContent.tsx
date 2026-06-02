@@ -7,6 +7,7 @@ import { AsyncSelectInput } from "../AsyncSelectInput";
 import { useAppContext } from "../../context/AppContext";
 import { createExpenseForm } from "../../shared/api/expense";
 import { getEmployees } from "../../shared/api/employees";
+import { ROLES } from "../../shared/constants";
 
 const GRID_BREAKPOINT = 600;
 
@@ -38,7 +39,7 @@ export default function AddExpensePage() {
   };
 
   const submit = async () => {
-    const employeeId = is("finance") ? ob.trim() || null : null;
+    const employeeId = is(ROLES.FINANCE) ? ob.trim() || null : null;
     const displayName = user.name;
     const amount = parseFloat(amt);
     if (isNaN(amount) || amount <= 0 || !pur.trim() || !billDate) return;
@@ -104,7 +105,7 @@ export default function AddExpensePage() {
           boxSizing: "border-box",
         }}
       >
-        {!is("finance") && (
+        {!is(ROLES.FINANCE) && (
           <div
             style={{
               display: "flex",
@@ -125,7 +126,7 @@ export default function AddExpensePage() {
         )}
 
         <div style={gridStyle}>
-          {is("finance") && (
+          {is(ROLES.FINANCE) && (
             <AsyncSelectInput
               label="On behalf of"
               value={ob}

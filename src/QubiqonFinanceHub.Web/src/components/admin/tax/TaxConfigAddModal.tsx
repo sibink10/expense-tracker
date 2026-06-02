@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Inp, Btn, Mdl, Alert } from "../../ui";
 import { useAppContext } from "../../../context/AppContext";
 import { createTaxConfig } from "../../../shared/api/taxConfig";
+import { EVENTS } from "../../../shared/constants";
 
 const CLIENT_TAX_TYPE = "ClientTax";
 
@@ -35,7 +36,7 @@ export default function TaxConfigAddModal() {
         section: section.trim(),
         subType: subType.trim(),
       });
-      window.dispatchEvent(new CustomEvent("tax-config-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.TAX_CONFIG_REFRESH));
       t("Tax config added");
       setMdl(null);
     } catch (err: unknown) {

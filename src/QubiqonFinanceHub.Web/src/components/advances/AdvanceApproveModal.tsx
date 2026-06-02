@@ -5,6 +5,7 @@ import { useAppContext } from "../../context/AppContext";
 import { approveAdvance, rejectAdvance } from "../../shared/api/advance";
 import { advanceRaisedByCurrentUser } from "../../shared/expensePermissions";
 import type { Advance } from "../../types";
+import { EVENTS, MODAL_T } from "../../shared/constants";
 
 function isInsufficientBalanceError(message: string): boolean {
   const m = message.toLowerCase();
@@ -18,7 +19,7 @@ export default function AdvanceApproveModal() {
   const [rejectReason, setRejectReason] = useState("");
   const [rejectReasonError, setRejectReasonError] = useState<string | null>(null);
 
-  if (!mdl?.d || mdl.t !== "adv-approve") return null;
+  if (!mdl?.d || mdl.t !== MODAL_T.ADV_APPROVE) return null;
   const a = mdl.d as Advance;
   const id = a.apiId ?? a.id;
   const selfRaised = advanceRaisedByCurrentUser(a, user);
@@ -42,7 +43,7 @@ export default function AdvanceApproveModal() {
       const comments = `${trimmed}\n\n[Approval blocked — ${error}]`;
       await rejectAdvance(id, comments);
       setMdl(null);
-      window.dispatchEvent(new CustomEvent("advances-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.ADVANCES_REFRESH));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to reject");
     } finally {
@@ -57,7 +58,7 @@ export default function AdvanceApproveModal() {
     try {
       await approveAdvance(id);
       setMdl(null);
-      window.dispatchEvent(new CustomEvent("advances-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.ADVANCES_REFRESH));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to approve");
     } finally {

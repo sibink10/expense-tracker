@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { C } from "../../shared/theme";
-import { BILL_ACCOUNTS, PAY_TERMS, BILL_PAYMENT_PRIORITY, BILL_PAYMENT_PRIORITY_OPTIONS } from "../../shared/constants";
+import { BILL_ACCOUNTS, BILL_PAYMENT_PRIORITY, BILL_PAYMENT_PRIORITY_OPTIONS, EVENTS, MODAL_T, PAY_TERMS } from "../../shared/constants";
 import { addDays, fmtCur, round2, aggregateLineGstRows, formatTdsOptionLabel, formatTdsSummarySnippet, downloadFromSasUrl, buildDownloadFilename } from "../../shared/utils";
 import { Inp, Btn, Alert, Mdl, MultiFileUp } from "../ui";
 import DecimalLineInput from "../DecimalLineInput";
@@ -56,7 +56,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function BillEditModal() {
   const { mdl, setMdl, t } = useAppContext();
-  const bill = mdl?.t === "bill-edit" && mdl.d && "vName" in mdl.d ? (mdl.d as Bill) : null;
+  const bill = mdl?.t === MODAL_T.BILL_EDIT && mdl.d && "vName" in mdl.d ? (mdl.d as Bill) : null;
 
   const [vendorBillNumber, setVendorBillNumber] = useState("");
   const [bd, setBd] = useState("");
@@ -203,7 +203,7 @@ export default function BillEditModal() {
         uploadFiles.forEach((f) => formData.append("Attachments", f));
         await uploadVendorBill(bill.apiId, formData);
       }
-      window.dispatchEvent(new CustomEvent("bills-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.BILLS_REFRESH));
       t("Bill updated");
       setMdl(null);
     } catch (err: unknown) {

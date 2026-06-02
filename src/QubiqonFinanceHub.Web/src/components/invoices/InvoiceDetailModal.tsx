@@ -16,7 +16,7 @@ import {
 import { sendZohoDocument } from "../../shared/api/zoho";
 import InvoiceDocument from "../InvoiceDocument";
 import { EditIcon } from "../icons";
-import { INV_S } from "../../shared/constants";
+import { EVENTS, INV_S, MODAL_T, ROLES } from "../../shared/constants";
 import { IndianRupee, RefreshCw, Send, Signature, X } from "lucide-react";
 
 interface Props {
@@ -67,7 +67,7 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
     : null;
 
   const balanceDue = Math.max(inv.total - (inv.paidAmound ?? 0), 0);
-  const canFinance = is("finance") || is("admin");
+  const canFinance = is(ROLES.FINANCE) || is(ROLES.ADMIN);
   const showMarkPaid = canFinance && balanceDue > 0.005 && inv.status === INV_S.SENT;
   const canMarkSent = canFinance && inv.status === INV_S.SIGNED && !!inv.apiId && hasSignedPdf;
   const needsSignedPdfSync = canFinance && inv.status === INV_S.SIGNED && !!inv.apiId && !hasSignedPdf;
@@ -138,9 +138,9 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
     const mapped = await getInvoice(inv.apiId);
     if (mapped) {
       setInv(mapped);
-      setMdl({ t: "inv-detail", d: mapped });
+      setMdl({ t: MODAL_T.INV_DETAIL, d: mapped });
     }
-    window.dispatchEvent(new CustomEvent("invoices-refresh"));
+    window.dispatchEvent(new CustomEvent(EVENTS.INVOICES_REFRESH));
   };
 
   const handleConfirmSend = async () => {
@@ -151,8 +151,8 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
       t("Invoice sent to client");
       setSendConfirmOpen(false);
       setInv(updated);
-      setMdl({ t: "inv-detail", d: updated });
-      window.dispatchEvent(new CustomEvent("invoices-refresh"));
+      setMdl({ t: MODAL_T.INV_DETAIL, d: updated });
+      window.dispatchEvent(new CustomEvent(EVENTS.INVOICES_REFRESH));
     } catch (err: unknown) {
       t(err instanceof Error ? err.message : "Could not mark invoice as sent", "error");
     } finally {
@@ -274,7 +274,7 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
           sx={workflowActionStyle(C.invoiceActionPaid, C.invoiceActionPaidBg)}
           onClick={() => {
             setMdl(null);
-            setTimeout(() => setMdl({ t: "inv-pay", d: inv }), 50);
+            setTimeout(() => setMdl({ t: MODAL_T.INV_PAY, d: inv }), 50);
           }}
         >
           <IndianRupee size={14} strokeWidth={1.9} />

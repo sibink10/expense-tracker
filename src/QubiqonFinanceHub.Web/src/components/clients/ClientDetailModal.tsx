@@ -2,6 +2,7 @@ import { C } from "../../shared/theme";
 import { Btn, Mdl } from "../ui";
 import { useAppContext } from "../../context/AppContext";
 import type { Client } from "../../types";
+import { MODAL_T } from "../../shared/constants";
 
 interface Props {
   client: Client;
@@ -70,7 +71,7 @@ export default function ClientDetailModal({ client: c }: Props) {
         </div>
       </div>
       <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "flex-end" }}>
-        <Btn v="invoice" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "client-edit", d: c }), 50); }}>
+        <Btn v="invoice" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: MODAL_T.CLIENT_EDIT, d: c }), 50); }}>
           Edit
         </Btn>
       </div>

@@ -6,6 +6,7 @@ import { useAppContext } from "../../../context/AppContext";
 import { getOrganization } from "../../../shared/api";
 import { isEmailListValid, fmtCur } from "../../../shared/utils";
 import { bulkUpsertOrganizationSettings } from "../../../shared/api/organizationSettings";
+import { ROLES } from "../../../shared/constants";
 
 const GRID_COLS = { sm: 1, md: 2, lg: 3 };
 
@@ -332,11 +333,11 @@ export default function AdminSettingsPage() {
                 const raw = Number.isFinite(n) ? Math.max(0, n) : 0;
                 setC({ ...c, balanceCap: Math.min(raw, adv) });
               }}
-              disabled={!is("admin")}
+              disabled={!is(ROLES.ADMIN)}
               min="0"
               max={String(Math.max(0, Number(c.advCap) || 0))}
               hint={
-                is("admin")
+                is(ROLES.ADMIN)
                   ? `Remaining advance pool for approvals (cannot exceed advance cap ${fmtCur(Number(c.advCap) || 0)}). Save with other settings, or use Reset to match the cap above.`
                   : "Remaining advance pool. Only an administrator can adjust this value."
               }

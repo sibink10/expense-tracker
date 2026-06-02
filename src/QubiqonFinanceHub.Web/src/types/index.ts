@@ -1,4 +1,7 @@
-export type UserRole = "employee" | "approver" | "finance" | "admin";
+import { ITEM_T, MODAL_T, ROLES } from "../shared/constants";
+
+export type UserRole = typeof ROLES[keyof typeof ROLES];
+export type ItemType = typeof ITEM_T[keyof typeof ITEM_T];
 
 export interface AppUser {
   /** Logged-in employee id: API returns employee `Guid` as string; dev mock uses numeric id. */
@@ -312,7 +315,7 @@ export interface EmailData {
 }
 
 export interface ModalData {
-  t?: string;
+  t?: typeof MODAL_T[keyof typeof MODAL_T] | null;
   d?: Expense | Bill | Advance | Invoice | Vendor | Client | TaxConfig;
-  it?: "expense" | "bill" | "advance";
+  it?: ItemType;
 }

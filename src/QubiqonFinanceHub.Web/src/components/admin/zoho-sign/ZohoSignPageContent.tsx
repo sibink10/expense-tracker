@@ -14,6 +14,7 @@ import {
 import { C } from "../../../shared/theme";
 import { Btn, Empty, Inp, Mdl, Spinner, Tbl, type TblCol } from "../../ui";
 import { useAppContext } from "../../../context/AppContext";
+import { ROLES } from "../../../shared/constants";
 import { getInvoices } from "../../../shared/api/invoice";
 import {
   downloadZohoSignPdf,
@@ -73,7 +74,7 @@ export default function ZohoSignPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
 
-  const canAccess = is("admin") || is("finance");
+  const canAccess = is(ROLES.ADMIN) || is(ROLES.FINANCE);
 
   const loadSetup = useCallback(async () => {
     setSetupLoading(true);

@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import { ROLES } from "../constants";
 
 export interface ApiEmployee {
   id: string;
@@ -151,5 +152,5 @@ export async function deleteEmployee(id: string): Promise<void> {
 /** Employees with role "employee" only (for on-behalf dropdowns). */
 export async function getEmployeeRoleEmployees(): Promise<Employee[]> {
   const all = await getEmployees();
-  return all.items.filter((e) => (e.role || "").toLowerCase() === "employee");
+  return all.items.filter((e) => (e.role || "").toLowerCase() === ROLES.EMPLOYEE);
 }

@@ -86,3 +86,55 @@ export const BILL_ACCOUNTS = [
   { v: "maintenance", l: "Maintenance and Repairs" },
   { v: "other", l: "Other Expenses" },
 ];
+
+export const ROLES = {
+  EMPLOYEE: "employee",
+  APPROVER: "approver",
+  FINANCE: "finance",
+  ADMIN: "admin",
+} as const;
+
+export const MODAL_T = {
+  VENDOR_EDIT: "vendor-edit",
+  VENDOR_DETAIL: "vendor-detail",
+  INV_PAY: "inv-pay",
+  INV_DETAIL: "inv-detail",
+  EXP_APPROVE: "exp-approve",
+  REJECT: "reject",
+  PAY: "pay",
+  EXP_CANCEL_CONFIRM: "exp-cancel-confirm",
+  EXP_DETAIL: "exp-detail",
+  CLIENT_EDIT: "client-edit",
+  CLIENT_DETAIL: "client-detail",
+  BILL_APPROVE: "bill-approve",
+  BILL_DETAIL: "bill-detail",
+  BILL_EDIT: "bill-edit",
+  TAX_CONFIG_DETAIL: "tax-config-detail",
+  TAX_CONFIG_EDIT: "tax-config-edit",
+  TAX_CONFIG_ADD: "tax-config-add",
+  ADV_APPROVE: "adv-approve",
+  ADV_DISBURSE: "adv-disburse",
+  ADV_CANCEL_CONFIRM: "adv-cancel-confirm",
+  ADV_REQUEST: "adv-request",
+  ADV_DETAIL: "adv-detail",
+} as const;
+
+export const ITEM_T = {
+  EXPENSE: "expense",
+  BILL: "bill",
+  ADVANCE: "advance",
+} as const;
+
+export const EVENTS = {
+  VENDORS_REFRESH: "vendors-refresh",
+  EXPENSES_REFRESH: "expenses-refresh",
+  ADVANCES_REFRESH: "advances-refresh",
+  BILLS_REFRESH: "bills-refresh",
+  INVOICES_REFRESH: "invoices-refresh",
+  CLIENTS_REFRESH: "clients-refresh",
+  TAX_CONFIG_REFRESH: "tax-config-refresh",
+  CATEGORIES_REFRESH: "categories-refresh",
+  PAYMENT_TERMS_REFRESH: "payment-terms-refresh",
+  ACCOUNTS_REFRESH: "accounts-refresh",
+  EMPLOYEES_REFRESH: "employees-refresh",
+} as const;

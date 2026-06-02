@@ -455,9 +455,13 @@ public record DashboardSliceDto(string Label, decimal Value, string? Currency = 
 
 /// <summary>
 /// Organization dashboard aggregates. Invoice status counts match <see cref="InvoiceStatusCountsDto"/> from the invoices API.
-/// Bills and invoice figures are org-wide; expenses and advances respect <c>myOnly</c>.
+/// Expenses and advances are always returned; employees are scoped to their own rows regardless of the <c>myOnly</c> query flag.
 /// </summary>
 /// <remarks>
+/// Role-based visibility (hidden sections return zeros / empty lists):
+/// Employee — expense and advance slices only;
+/// Approver — expenses, advances, vendor bills;
+/// Finance / Admin — all fields including invoices and receivables.
 /// <see cref="PendingApprovals"/> = expense awaiting approval + advance Pending only (vendor bill submissions use <see cref="PendingSubmittedBills"/>).
 /// Bills-to-pay aggregates include approved, partially paid, and overdue open balances.
 /// ExpenseSlices / AdvanceSlices / BillsPayableSlices carry counts (stored in <see cref="DashboardSliceDto.Value"/>).

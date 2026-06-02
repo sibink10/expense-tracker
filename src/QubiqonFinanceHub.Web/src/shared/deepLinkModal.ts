@@ -1,13 +1,13 @@
 import type { ModalData, AppUser, Expense, Advance, Bill, Invoice } from "../types";
-import { EXP_S, BILL_S, ADV_S, INV_S } from "./constants";
+import { EXP_S, BILL_S, ADV_S, INV_S, ROLES, MODAL_T, ITEM_T } from "./constants";
 
 /** Finance and admin may record payments / disburse / mark invoice paid. */
 function isFinanceOrAdmin(user: AppUser): boolean {
-  return user.role === "finance" || user.role === "admin";
+  return user.role === ROLES.FINANCE || user.role === ROLES.ADMIN;
 }
 
 function isApproverOrAdmin(user: AppUser): boolean {
-  return user.role === "approver" || user.role === "admin";
+  return user.role === ROLES.APPROVER || user.role === ROLES.ADMIN || user.role === ROLES.FINANCE;
 }
 
 /** Normalize `type` query param (handles accidental quotes). */
@@ -35,23 +35,23 @@ export function resolveExpenseDeepLink(e: Expense, user: AppUser, typeHint?: str
   const type = normalizeLinkType(typeHint ?? null);
 
   if (type === "approve") {
-    if (isApproverOrAdmin(user) && pendingApproval) return { t: "exp-approve", d: e };
-    return { t: "exp-detail", d: e };
+    if (isApproverOrAdmin(user) && pendingApproval) return { t: MODAL_T.EXP_APPROVE, d: e };
+    return { t: MODAL_T.EXP_DETAIL, d: e };
   }
-  if (type === "reject") {
-    if (isApproverOrAdmin(user) && pendingApproval) return { t: "reject", d: e, it: "expense" };
-    return { t: "exp-detail", d: e };
+  if (type === MODAL_T.REJECT) {
+    if (isApproverOrAdmin(user) && pendingApproval) return { t: MODAL_T.REJECT, d: e, it: ITEM_T.EXPENSE };
+    return { t: MODAL_T.EXP_DETAIL, d: e };
   }
-  if (type === "pay") {
-    if (isFinanceOrAdmin(user) && statusAllowsPay && hasBill) return { t: "pay", d: e, it: "expense" };
-    return { t: "exp-detail", d: e };
+  if (type === MODAL_T.PAY) {
+    if (isFinanceOrAdmin(user) && statusAllowsPay && hasBill) return { t: MODAL_T.PAY, d: e, it: ITEM_T.EXPENSE };
+    return { t: MODAL_T.EXP_DETAIL, d: e };
   }
-  if (type === "detail") return { t: "exp-detail", d: e };
+  if (type === "detail") return { t: MODAL_T.EXP_DETAIL, d: e };
 
   if (isFinanceOrAdmin(user) && statusAllowsPay && hasBill) {
-    return { t: "pay", d: e, it: "expense" };
+    return { t: MODAL_T.PAY, d: e, it: ITEM_T.EXPENSE };
   }
-  return { t: "exp-detail", d: e };
+  return { t: MODAL_T.EXP_DETAIL, d: e };
 }
 
 export function resolveAdvanceDeepLink(a: Advance, user: AppUser, typeHint?: string | null): ModalData {
@@ -60,23 +60,23 @@ export function resolveAdvanceDeepLink(a: Advance, user: AppUser, typeHint?: str
   const type = normalizeLinkType(typeHint ?? null);
 
   if (type === "approve") {
-    if (isApproverOrAdmin(user) && pending) return { t: "adv-approve", d: a };
-    return { t: "adv-detail", d: a };
+    if (isApproverOrAdmin(user) && pending) return { t: MODAL_T.ADV_APPROVE, d: a };
+    return { t: MODAL_T.ADV_DETAIL, d: a };
   }
-  if (type === "reject") {
-    if (isApproverOrAdmin(user) && pending) return { t: "reject", d: a, it: "advance" };
-    return { t: "adv-detail", d: a };
+  if (type === MODAL_T.REJECT) {
+    if (isApproverOrAdmin(user) && pending) return { t: MODAL_T.REJECT, d: a, it: ITEM_T.ADVANCE };
+    return { t: MODAL_T.ADV_DETAIL, d: a };
   }
   if (type === "disburse") {
-    if (isFinanceOrAdmin(user) && statusAllowsDisburse) return { t: "adv-disburse", d: a };
-    return { t: "adv-detail", d: a };
+    if (isFinanceOrAdmin(user) && statusAllowsDisburse) return { t: MODAL_T.ADV_DISBURSE, d: a };
+    return { t: MODAL_T.ADV_DETAIL, d: a };
   }
-  if (type === "detail") return { t: "adv-detail", d: a };
+  if (type === "detail") return { t: MODAL_T.ADV_DETAIL, d: a };
 
   if (isFinanceOrAdmin(user) && statusAllowsDisburse) {
-    return { t: "adv-disburse", d: a };
+    return { t: MODAL_T.ADV_DISBURSE, d: a };
   }
-  return { t: "adv-detail", d: a };
+  return { t: MODAL_T.ADV_DETAIL, d: a };
 }
 
 export function resolveBillDeepLink(b: Bill, user: AppUser, typeHint?: string | null): ModalData {
@@ -86,23 +86,23 @@ export function resolveBillDeepLink(b: Bill, user: AppUser, typeHint?: string | 
   const type = normalizeLinkType(typeHint ?? null);
 
   if (type === "approve") {
-    if (isApproverOrAdmin(user) && submitted) return { t: "bill-approve", d: b, it: "bill" };
-    return { t: "bill-detail", d: b };
+    if (isApproverOrAdmin(user) && submitted) return { t: MODAL_T.BILL_APPROVE, d: b, it: ITEM_T.BILL };
+    return { t: MODAL_T.BILL_DETAIL, d: b };
   }
-  if (type === "reject") {
-    if (isApproverOrAdmin(user) && submitted) return { t: "reject", d: b, it: "bill" };
-    return { t: "bill-detail", d: b };
+  if (type === MODAL_T.REJECT) {
+    if (isApproverOrAdmin(user) && submitted) return { t: MODAL_T.REJECT, d: b, it: ITEM_T.BILL };
+    return { t: MODAL_T.BILL_DETAIL, d: b };
   }
-  if (type === "pay") {
-    if (isFinanceOrAdmin(user) && statusAllowsPay) return { t: "pay", d: b, it: "bill" };
-    return { t: "bill-detail", d: b };
+  if (type === MODAL_T.PAY) {
+    if (isFinanceOrAdmin(user) && statusAllowsPay) return { t: MODAL_T.PAY, d: b, it: ITEM_T.BILL };
+    return { t: MODAL_T.BILL_DETAIL, d: b };
   }
-  if (type === "detail") return { t: "bill-detail", d: b };
+  if (type === "detail") return { t: MODAL_T.BILL_DETAIL, d: b };
 
   if (isFinanceOrAdmin(user) && statusAllowsPay) {
-    return { t: "pay", d: b, it: "bill" };
+    return { t: MODAL_T.PAY, d: b, it: ITEM_T.BILL };
   }
-  return { t: "bill-detail", d: b };
+  return { t: MODAL_T.BILL_DETAIL, d: b };
 }
 
 export function resolveInvoiceDeepLink(inv: Invoice, user: AppUser, typeHint?: string | null): ModalData {
@@ -115,14 +115,14 @@ export function resolveInvoiceDeepLink(inv: Invoice, user: AppUser, typeHint?: s
 
   const type = normalizeLinkType(typeHint ?? null);
 
-  if (type === "inv-pay" || type === "pay") {
-    if (canMarkPaid) return { t: "inv-pay", d: inv };
-    return { t: "inv-detail", d: inv };
+  if (type === MODAL_T.INV_PAY || type === MODAL_T.PAY) {
+    if (canMarkPaid) return { t: MODAL_T.INV_PAY, d: inv };
+    return { t: MODAL_T.INV_DETAIL, d: inv };
   }
-  if (type === "detail") return { t: "inv-detail", d: inv };
+  if (type === "detail") return { t: MODAL_T.INV_DETAIL, d: inv };
 
   if (canMarkPaid) {
-    return { t: "inv-pay", d: inv };
+    return { t: MODAL_T.INV_PAY, d: inv };
   }
-  return { t: "inv-detail", d: inv };
+  return { t: MODAL_T.INV_DETAIL, d: inv };
 }

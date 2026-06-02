@@ -3,6 +3,7 @@ import { C } from "../../../shared/theme";
 import { Btn, Empty, Toggle } from "../../ui";
 import { getTaxConfigs, toggleTaxConfig } from "../../../shared/api/taxConfig";
 import type { TaxConfig } from "../../../types";
+import { EVENTS } from "../../../shared/constants";
 
 export default function AdminGstPage() {
   const [items, setItems] = useState<TaxConfig[]>([]);
@@ -12,8 +13,8 @@ export default function AdminGstPage() {
 
   useEffect(() => {
     const handler = () => setRefreshKey((k) => k + 1);
-    window.addEventListener("tax-config-refresh", handler);
-    return () => window.removeEventListener("tax-config-refresh", handler);
+    window.addEventListener(EVENTS.TAX_CONFIG_REFRESH, handler);
+    return () => window.removeEventListener(EVENTS.TAX_CONFIG_REFRESH, handler);
   }, []);
 
   useEffect(() => {
@@ -28,7 +29,7 @@ export default function AdminGstPage() {
     setTogglingId(id);
     try {
       await toggleTaxConfig(id);
-      window.dispatchEvent(new CustomEvent("tax-config-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.TAX_CONFIG_REFRESH));
     } catch {
       // ignore
     } finally {

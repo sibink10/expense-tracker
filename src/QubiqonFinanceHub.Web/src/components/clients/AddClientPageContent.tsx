@@ -12,6 +12,7 @@ import { isEmailValid } from "../../shared/utils";
 import { useAppContext } from "../../context/AppContext";
 import { COUNTRY_OPTS, CURRENCY_OPTS, getCurrencyByCountry } from "../../shared/countries";
 import type { TaxConfig } from "../../types";
+import { ROLES } from "../../shared/constants";
 
 const GRID_BREAKPOINT = 600;
 const CLIENT_TAX_TYPE = "ClientTax";
@@ -48,7 +49,7 @@ export default function AddClientPage() {
   }, []);
 
   useEffect(() => {
-    if (!is("admin")) navigate("/clients", { replace: true });
+    if (!is(ROLES.ADMIN)) navigate("/clients", { replace: true });
   }, [is, navigate]);
 
   useEffect(() => {

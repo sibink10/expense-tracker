@@ -3,6 +3,7 @@ import { useMsal } from "@azure/msal-react";
 import { C } from "../shared/theme";
 import { Av } from "./ui";
 import { MicrosoftIcon } from "./icons";
+import { ROLES } from "../shared/constants";
 import { USERS } from "../shared/mockData";
 import type { AppUser } from "../types";
 import loginImage from "../assets/login_image.png";
@@ -262,7 +263,7 @@ export default function Login({ onLogin }: LoginProps) {
                               textTransform: "capitalize",
                               fontWeight: 500,
                               color:
-                                u.role === "approver" ? C.info : u.role === "finance" ? C.success : u.role === "admin" ? C.vendor : C.muted,
+                                u.role === ROLES.APPROVER ? C.info : u.role === ROLES.FINANCE ? C.success : u.role === ROLES.ADMIN ? C.vendor : C.muted,
                             }}
                           >
                             {u.role}

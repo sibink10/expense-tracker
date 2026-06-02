@@ -17,10 +17,12 @@ export interface ApiAuthMe {
   [key: string]: unknown;
 }
 
+import { ROLES } from "../constants";
+
 function toAppUserRole(r: string | undefined): AppUser["role"] {
   const v = (r ?? "").toLowerCase();
-  if (v === "employee" || v === "approver" || v === "finance" || v === "admin") return v;
-  return "employee";
+  if (v === ROLES.EMPLOYEE || v === ROLES.APPROVER || v === ROLES.FINANCE || v === ROLES.ADMIN) return v;
+  return ROLES.EMPLOYEE;
 }
 
 function pickString(data: ApiAuthMe, ...keys: string[]): string | undefined {

@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import type { Advance } from "../../types";
 import { C } from "../../shared/theme";
-import { ADV_S } from "../../shared/constants";
+import { ADV_S, EVENTS, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur, nextListSort } from "../../shared/utils";
 import { Btn, Badge, Tbl, Empty, Spinner, type TblCol } from "../ui";
 import { useAppContext } from "../../context/AppContext";
@@ -44,9 +44,9 @@ const workflowActionStyle = (fg: string, bg: string) => ({
 export default function AdvanceListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { is, setMdl, user } = useAppContext();
-  const myOnly = is("employee");
+  const myOnly = is(ROLES.EMPLOYEE);
   const showActionCol =
-    is("approver") || is("finance") || is("admin") || is("employee");
+    is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN) || is(ROLES.EMPLOYEE);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(12);
   const [search, setSearch] = useState("");
@@ -63,8 +63,8 @@ export default function AdvanceListPage() {
 
   useEffect(() => {
     const handler = () => setRefreshKey((k) => k + 1);
-    window.addEventListener("advances-refresh", handler);
-    return () => window.removeEventListener("advances-refresh", handler);
+    window.addEventListener(EVENTS.ADVANCES_REFRESH, handler);
+    return () => window.removeEventListener(EVENTS.ADVANCES_REFRESH, handler);
   }, []);
 
   useEffect(() => {
@@ -115,7 +115,7 @@ export default function AdvanceListPage() {
 
   const cols: TblCol[] = [
     { label: "ID", sortKey: "AdvanceCode", sx: { textAlign: "left", verticalAlign: "middle" } },
-    ...(!is("employee")
+    ...(!is(ROLES.EMPLOYEE)
       ? [{ label: "Employee", sortKey: "Employee", sx: { textAlign: "left", verticalAlign: "middle" } } as TblCol]
       : []),
     { label: "Purpose", sortKey: "Purpose", sx: { textAlign: "left", verticalAlign: "middle" } },
@@ -137,7 +137,7 @@ export default function AdvanceListPage() {
           v: <span style={{ fontWeight: 600, color: C.advance, whiteSpace: "nowrap" }}>{a.id}</span>,
           sx: { textAlign: "left" as const, verticalAlign: "middle" as const },
         },
-        ...(!is("employee")
+        ...(!is(ROLES.EMPLOYEE)
           ? [
               {
                 v: <span style={{ fontWeight: 600, color: C.primary, whiteSpace: "nowrap" }}>{a.empName || "NA"}</span>,
@@ -186,7 +186,7 @@ export default function AdvanceListPage() {
                       verticalAlign: "middle",
                     }}
                   >
-                    {(is("approver") || is("admin")) &&
+                    {(is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN)) &&
                       !canSelfApprove &&
                       a.status !== ADV_S.CANCELLED &&
                       a.status === ADV_S.PENDING && (
@@ -197,7 +197,7 @@ export default function AdvanceListPage() {
                             sx={workflowActionStyle(C.success, C.successBg)}
                             onClick={(e) => {
                               e.stopPropagation();
-                              setMdl({ t: "adv-approve", d: a });
+                              setMdl({ t: MODAL_T.ADV_APPROVE, d: a });
                             }}
                           >
                             <Check size={13} strokeWidth={1.9} />
@@ -209,7 +209,7 @@ export default function AdvanceListPage() {
                             sx={workflowActionStyle(C.danger, C.dangerBg)}
                             onClick={(e) => {
                               e.stopPropagation();
-                              setMdl({ t: "reject", d: a, it: "advance" });
+                              setMdl({ t: MODAL_T.REJECT, d: a, it: ITEM_T.ADVANCE });
                             }}
                           >
                             <X size={13} strokeWidth={1.9} />
@@ -217,7 +217,7 @@ export default function AdvanceListPage() {
                           </Btn>
                         </>
                       )}
-                    {(is("finance") || is("admin")) &&
+                    {(is(ROLES.FINANCE) || is(ROLES.ADMIN)) &&
                       a.status !== ADV_S.CANCELLED &&
                       (a.status === ADV_S.APPROVED || a.status === ADV_S.PARTIALLY_DISBURSED) && (
                         <>
@@ -227,7 +227,7 @@ export default function AdvanceListPage() {
                             sx={workflowActionStyle(C.invoiceActionPaid, C.invoiceActionPaidBg)}
                             onClick={(e) => {
                               e.stopPropagation();
-                              setMdl({ t: "adv-disburse", d: a });
+                              setMdl({ t: MODAL_T.ADV_DISBURSE, d: a });
                             }}
                           >
                             <IndianRupee size={13} strokeWidth={1.9} />
@@ -239,7 +239,7 @@ export default function AdvanceListPage() {
                             sx={workflowActionStyle(C.danger, C.dangerBg)}
                             onClick={(e) => {
                               e.stopPropagation();
-                              setMdl({ t: "reject", d: a, it: "advance" });
+                              setMdl({ t: MODAL_T.REJECT, d: a, it: ITEM_T.ADVANCE });
                             }}
                           >
                             <X size={13} strokeWidth={1.9} />
@@ -254,7 +254,7 @@ export default function AdvanceListPage() {
                         sx={workflowActionStyle(C.danger, C.dangerBg)}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setMdl({ t: "adv-cancel-confirm", d: a });
+                          setMdl({ t: MODAL_T.ADV_CANCEL_CONFIRM, d: a });
                         }}
                       >
                         <X size={13} strokeWidth={1.9} />
@@ -345,7 +345,7 @@ export default function AdvanceListPage() {
         </h1>
         <Btn
           v="primary"
-          onClick={() => setMdl({ t: "adv-request" })}
+          onClick={() => setMdl({ t: MODAL_T.ADV_REQUEST })}
           sx={{ borderRadius: "4px", boxShadow: C.cardShadow }}
         >
           <CirclePlus size={15} strokeWidth={1.8} />
@@ -521,7 +521,7 @@ export default function AdvanceListPage() {
         <Tbl
           cols={cols}
           rows={loading ? [] : rows}
-          onRow={(row) => setMdl({ t: "adv-detail", d: (row as (typeof rows)[number]).advance })}
+          onRow={(row) => setMdl({ t: MODAL_T.ADV_DETAIL, d: (row as (typeof rows)[number]).advance })}
           bodyFallback={
             loading ? (
               <div

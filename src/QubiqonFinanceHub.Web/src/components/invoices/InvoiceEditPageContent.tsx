@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { C } from "../../shared/theme";
-import { PAY_TERMS, CURRENCIES } from "../../shared/constants";
+import { CURRENCIES, EVENTS, PAY_TERMS } from "../../shared/constants";
 import { addDays, fmtCur, round2, aggregateLineGstRows } from "../../shared/utils";
 import { Inp, Btn, Alert } from "../ui";
 import DecimalLineInput from "../DecimalLineInput";
@@ -165,7 +165,7 @@ export default function InvoiceEditPage() {
         purchaseOrder: purchaseOrder.trim() || "",
         notes: notes.trim(),
       });
-      window.dispatchEvent(new CustomEvent("invoices-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.INVOICES_REFRESH));
       t("Invoice updated");
       navigate("/invoices");
     } catch (err: unknown) {

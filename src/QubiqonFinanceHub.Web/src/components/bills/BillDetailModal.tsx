@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { C } from "../../shared/theme";
-import { BILL_S } from "../../shared/constants";
+import { BILL_S, EVENTS, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur, fmtQty, formatTdsDetailParen, downloadFromSasUrl, buildDownloadFilename, daysOverdueFromDueYmd } from "../../shared/utils";
 import { Av, Btn, Badge, Mdl, CLog, MODAL_Z_INDEX } from "../ui";
 import { EditIcon } from "../icons";
@@ -16,7 +16,7 @@ export default function BillDetailModal({ bill: b }: Props) {
   const { setMdl, is, cfg, t, user } = useAppContext();
   const tx = cfg.taxes.find((x) => x.id === b.tds);
   const hasAttachment = b.documents.length > 0 || !!b.file;
-  const canRemoveDoc = b.status === BILL_S.SUBMITTED && b.documents.length > 0 && (is("admin") || is("finance") || user?.name === b.byName);
+  const canRemoveDoc = b.status === BILL_S.SUBMITTED && b.documents.length > 0 && (is(ROLES.ADMIN) || is(ROLES.FINANCE) || user?.name === b.byName);
   const disableRemoveDoc = b.documents.length <= 1;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewUrl, setViewUrl] = useState<string | null>(null);
@@ -33,7 +33,7 @@ export default function BillDetailModal({ bill: b }: Props) {
       await approveBill(id);
       t("Approved");
       setMdl(null);
-      window.dispatchEvent(new CustomEvent("bills-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.BILLS_REFRESH));
     } catch (err) {
       t(err instanceof Error ? err.message : "Failed to approve");
     } finally {
@@ -104,7 +104,7 @@ export default function BillDetailModal({ bill: b }: Props) {
       const id = b.apiId ?? b.id;
       await removeBillDocument(id, documentId);
       t("Document removed");
-      window.dispatchEvent(new CustomEvent("bills-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.BILLS_REFRESH));
       setMdl(null);
     } catch (err) {
       t(err instanceof Error ? err.message : "Failed to remove document");
@@ -114,7 +114,7 @@ export default function BillDetailModal({ bill: b }: Props) {
   };
 
   const canEdit =
-    b.status !== BILL_S.PAID && (is("admin") || is("finance") || user?.name === b.byName);
+    b.status !== BILL_S.PAID && (is(ROLES.ADMIN) || is(ROLES.FINANCE) || user?.name === b.byName);
 
   // Derive summary values from line items (matching create form)
   const hasLineItems = b.lineItems && b.lineItems.length > 0;
@@ -353,7 +353,7 @@ export default function BillDetailModal({ bill: b }: Props) {
           {canEdit && (
             <button
               type="button"
-              onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "bill-edit", d: b }), 50); }}
+              onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: MODAL_T.BILL_EDIT, d: b }), 50); }}
               title="Edit"
               style={{
                 display: "inline-flex",
@@ -374,14 +374,14 @@ export default function BillDetailModal({ bill: b }: Props) {
           )}
         </div>
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-        {(is("approver") || is("admin")) && b.status === BILL_S.SUBMITTED && (
+        {(is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN)) && b.status === BILL_S.SUBMITTED && (
           <>
             <Btn v="success" onClick={handleApprove} disabled={approveLoading}>{approveLoading ? "Approving…" : "Approve"}</Btn>
-            <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "reject", d: b, it: "bill" }), 50); }}>Reject</Btn>
+            <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: MODAL_T.REJECT, d: b, it: ITEM_T.BILL }), 50); }}>Reject</Btn>
           </>
         )}
-        {(is("finance") || is("admin")) && (b.status === BILL_S.APPROVED || b.status === BILL_S.OVERDUE || b.status === BILL_S.PARTIALLY_PAID) && (
-          <Btn v="vendor" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "pay", d: b, it: "bill" }), 50); }}>Pay</Btn>
+        {(is(ROLES.FINANCE) || is(ROLES.ADMIN)) && (b.status === BILL_S.APPROVED || b.status === BILL_S.OVERDUE || b.status === BILL_S.PARTIALLY_PAID) && (
+          <Btn v="vendor" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: MODAL_T.PAY, d: b, it: ITEM_T.BILL }), 50); }}>Pay</Btn>
         )}
         <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>
         </div>

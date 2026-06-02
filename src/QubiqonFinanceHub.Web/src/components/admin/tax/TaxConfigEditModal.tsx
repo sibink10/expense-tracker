@@ -4,12 +4,13 @@ import { Inp, Btn, Mdl, Alert } from "../../ui";
 import { useAppContext } from "../../../context/AppContext";
 import { updateTaxConfig } from "../../../shared/api/taxConfig";
 import type { TaxConfig } from "../../../types";
+import { EVENTS, MODAL_T } from "../../../shared/constants";
 
 const CLIENT_TAX_TYPE = "ClientTax";
 
 export default function TaxConfigEditModal() {
   const { mdl, setMdl, t } = useAppContext();
-  const tax = mdl?.d && mdl.t === "tax-config-edit" && "name" in mdl.d ? (mdl.d as TaxConfig) : null;
+  const tax = mdl?.d && mdl.t === MODAL_T.TAX_CONFIG_EDIT && "name" in mdl.d ? (mdl.d as TaxConfig) : null;
 
   const [type, setType] = useState<"TDS" | "GST" | typeof CLIENT_TAX_TYPE>("TDS");
   const [name, setName] = useState("");
@@ -50,7 +51,7 @@ export default function TaxConfigEditModal() {
         section: section.trim(),
         subType: subType.trim(),
       });
-      window.dispatchEvent(new CustomEvent("tax-config-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.TAX_CONFIG_REFRESH));
       t("Tax config updated");
       setMdl(null);
     } catch (err: unknown) {

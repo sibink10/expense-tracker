@@ -5,6 +5,7 @@ import { Inp, Btn, Mdl, Alert } from "../ui";
 import { useAppContext } from "../../context/AppContext";
 import { disburseAdvance, validateAdvanceDisburse, type AdvanceDisburseValidation } from "../../shared/api/advance";
 import type { Advance } from "../../types";
+import { EVENTS, MODAL_T } from "../../shared/constants";
 
 const PAYMENT_METHODS = [
   { v: "NEFT", l: "NEFT" },
@@ -25,7 +26,7 @@ export default function AdvanceDisburseModal() {
   const [validation, setValidation] = useState<AdvanceDisburseValidation | null>(null);
   const [validating, setValidating] = useState(false);
 
-  if (!mdl?.d || mdl.t !== "adv-disburse") return null;
+  if (!mdl?.d || mdl.t !== MODAL_T.ADV_DISBURSE) return null;
   const a = mdl.d as Advance;
   const id = a.apiId ?? a.id;
 
@@ -86,7 +87,7 @@ export default function AdvanceDisburseModal() {
         paidAmount: paid,
       });
       setMdl(null);
-      window.dispatchEvent(new CustomEvent("advances-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.ADVANCES_REFRESH));
       void refreshOrgSettings().catch(() => undefined);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to disburse");

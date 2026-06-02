@@ -13,6 +13,9 @@ public class DashboardService : IDashboardService
     private const int TopReceivableClients = 8;
     private const string DefaultReportCurrency = "INR";
 
+    private static readonly InvoiceStatusCountsDto EmptyInvoiceCounts = new(0, 0, 0, 0, 0);
+    private static readonly List<DashboardSliceDto> EmptySlices = [];
+
     private readonly FinanceHubDbContext _db;
     private readonly ITenantService _tenant;
     private readonly IInvoiceService _invoices;
@@ -32,20 +35,21 @@ public class DashboardService : IDashboardService
 
     public async Task<DashboardDto> GetStatsAsync(bool myOnly = false, string? reportCurrency = null)
     {
+        var role = (await _tenant.GetCurrentEmployeeAsync()).Role;
+        var scopeMyOnly = myOnly || role == UserRole.Employee;
+        var includeBills = role is UserRole.Approver or UserRole.Finance or UserRole.Admin;
+        var includeInvoices = role is UserRole.Finance or UserRole.Admin;
+        var includeReceivables = includeInvoices;
+
         var orgId = await _tenant.GetCurrentOrganizationId();
         var empId = _tenant.GetCurrentEmployeeId();
         var todayUtc = DateTime.UtcNow.Date;
 
         var expenses = _db.ExpenseRequests.Where(e => e.OrganizationId == orgId);
-        if (myOnly) expenses = expenses.Where(e => e.EmployeeId == empId);
+        if (scopeMyOnly) expenses = expenses.Where(e => e.EmployeeId == empId);
 
         var advances = _db.AdvancePayments.Where(a => a.OrganizationId == orgId);
-        if (myOnly) advances = advances.Where(a => a.EmployeeId == empId);
-
-        var bills = _db.VendorBills.Where(b => b.OrganizationId == orgId).AsNoTracking();
-        var invoices = _db.Invoices.Where(i => i.OrganizationId == orgId).AsNoTracking();
-
-        var pendingSubmittedBills = await bills.CountAsync(b => b.Status == BillStatus.Submitted);
+        if (scopeMyOnly) advances = advances.Where(a => a.EmployeeId == empId);
 
         // Pending approvals: expense + advance only (not vendor bills).
         var pendingExpenseApprovals =
@@ -59,17 +63,47 @@ public class DashboardService : IDashboardService
         var expenseSlices = await BuildExpenseSlicesAsync(expenses);
         var advanceSlices = await BuildAdvanceSlicesAsync(advances);
 
-        var (billsPayableSlices, billsToPayCount, billsToPayAmount) = BuildBillsPayableAggregates(await bills.ToListAsync(), todayUtc);
+        var pendingSubmittedBills = 0;
+        var billsToPayCount = 0;
+        decimal billsToPayAmount = 0;
+        List<DashboardSliceDto> billsPayableSlices = EmptySlices;
 
-        var invoiceCounts = await _invoices.GetStatusCountsAsync();
+        if (includeBills)
+        {
+            var bills = await _db.VendorBills
+                .Where(b => b.OrganizationId == orgId)
+                .AsNoTracking()
+                .ToListAsync();
 
-        var (usdRates, availableCurrencies) = await _currencyRates.LoadUsdReportingRatesAsync();
-        var reportCode = ResolveReportCurrency(reportCurrency, availableCurrencies);
+            pendingSubmittedBills = bills.Count(b => b.Status == BillStatus.Submitted);
+            (billsPayableSlices, billsToPayCount, billsToPayAmount) =
+                BuildBillsPayableAggregates(bills, todayUtc);
+        }
 
-        var receivableBuckets = await LoadReceivableCurrencyBucketsAsync(invoices);
+        var invoiceCounts = EmptyInvoiceCounts;
+        if (includeInvoices)
+            invoiceCounts = await _invoices.GetStatusCountsAsync();
 
-        var (receivableOutstanding, receivablesByClient) =
-            BuildReceivablesInReportCurrency(receivableBuckets, reportCode, usdRates);
+        IReadOnlyList<string> availableCurrencies = [DefaultReportCurrency];
+        string reportCode = DefaultReportCurrency;
+        decimal receivableOutstanding = 0;
+        List<DashboardSliceDto> receivablesByClient = EmptySlices;
+
+        if (includeReceivables)
+        {
+            var (usdRates, currencies) = await _currencyRates.LoadUsdReportingRatesAsync();
+            availableCurrencies = currencies;
+            reportCode = ResolveReportCurrency(reportCurrency, availableCurrencies);
+
+            var invoices = _db.Invoices.Where(i => i.OrganizationId == orgId).AsNoTracking();
+            var receivableBuckets = await LoadReceivableCurrencyBucketsAsync(invoices);
+            (receivableOutstanding, receivablesByClient) =
+                BuildReceivablesInReportCurrency(receivableBuckets, reportCode, usdRates);
+        }
+        else
+        {
+            reportCode = ResolveReportCurrency(reportCurrency, availableCurrencies);
+        }
 
         return new DashboardDto(
             pendingSubmittedBills,

@@ -13,6 +13,8 @@ import {
   ReceiptText,
   Settings,
   Users,
+  TrendingDown,
+  TrendingUp,
 } from "lucide-react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { C, R } from "../shared/theme";
@@ -21,6 +23,8 @@ import Modals from "../components/Modals";
 import DeepLinkHandler from "../components/DeepLinkHandler";
 import { useAppContext } from "../context/AppContext";
 import { selectOrganization } from "../shared/api";
+import { MODAL_T } from "../shared/constants";
+import type { UserRole } from "../types";
 
 const navIcons = {
   dashboard: LayoutDashboard,
@@ -32,6 +36,8 @@ const navIcons = {
   organization: Network,
   workspace: FolderKanban,
   settings: Settings,
+  payable: TrendingDown,
+  receivable: TrendingUp,
 } as const;
 
 type NavIconKey = keyof typeof navIcons;
@@ -91,7 +97,7 @@ export default function Layout() {
 
   const handleAddPath = (addPath: string) => {
     if (addPath === "/advances/add") {
-      setMdl({ t: "adv-request" });
+      setMdl({ t: MODAL_T.ADV_REQUEST });
       return;
     }
     navigate(addPath);
@@ -106,13 +112,13 @@ export default function Layout() {
     .map((sec) => ({
       ...sec,
       items: sec.items.filter((n) =>
-        n.r.includes(user.role as "employee" | "approver" | "finance" | "admin")
+        n.r.includes(user.role as UserRole)
       ),
     }))
     .filter((sec) => sec.items.length > 0);
 
   const sidebarWidth = 260;
-  const role = user.role as "employee" | "approver" | "finance" | "admin";
+  const role = user.role as UserRole;
   const isPathActive = (path: string, end?: boolean) =>
     end ? location.pathname === path : location.pathname === path || location.pathname.startsWith(`${path}/`);
   const isItemActive = (item: typeof visibleNav[number]["items"][number]) =>

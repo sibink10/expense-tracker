@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { C } from "../../shared/theme";
-import { EXP_S, EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP } from "../../shared/constants";
+import { EVENTS, EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP, EXP_S, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur, downloadFromSasUrl, buildDownloadFilename } from "../../shared/utils";
 import {
   canEditExpenseFields,
@@ -25,14 +25,14 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
 
   const patchExpenseInModal = (next: Expense) => {
     setMdl((prev) =>
-      prev?.t === "exp-detail" && prev.d && "reqBy" in prev.d
+      prev?.t === MODAL_T.EXP_DETAIL && prev.d && "reqBy" in prev.d
         ? { ...prev, d: next }
         : prev
     );
   };
-  const isApprover = is("approver");
-  const isAdmin = is("admin");
-  const isFinance = is("finance");
+  const isApprover = is(ROLES.APPROVER);
+  const isAdmin = is(ROLES.ADMIN);
+  const isFinance = is(ROLES.FINANCE);
   const hasBill = e.documents.length > 0 || !!(e.file || e.attachmentUrl);
   const cancelled = isExpenseCancelled(e.status);
   /** Amount/purpose/bill date edit — not when approved or later. Bill upload when Approved+no bill is separate below. */
@@ -43,7 +43,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
   const canApproveReject =
     !cancelled &&
     (e.status === EXP_S.PENDING || e.status === EXP_S.PENDING_BILL_APPROVAL) &&
-    (isApprover || isAdmin) &&
+    (isApprover || isFinance || isAdmin) &&
     !expenseUserIsSubmitterOrBeneficiary(e, user);
   const canCancelExpense = canCancelExpenseRequest(e, user);
   const canShowPay =
@@ -144,7 +144,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
       const id = e.apiId ?? e.id;
       await removeExpenseDocument(id, documentId);
       t("Document removed");
-      window.dispatchEvent(new CustomEvent("expenses-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.EXPENSES_REFRESH));
       patchExpenseInModal({
         ...e,
         documents: e.documents.filter((d) => d.id !== documentId),
@@ -173,7 +173,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
       billFilesRaw.forEach((file) => formData.append("BillImages", file));
       await updateExpenseForm(id, formData);
       t("Expense updated");
-      window.dispatchEvent(new CustomEvent("expenses-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.EXPENSES_REFRESH));
       setEditing(false);
       setMdl(null);
     } catch (err: unknown) {
@@ -193,7 +193,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
       billFilesRaw.forEach((file) => formData.append("BillImages", file));
       await uploadExpenseBill(id, formData);
       t("Bill uploaded");
-      window.dispatchEvent(new CustomEvent("expenses-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.EXPENSES_REFRESH));
       setMdl(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to upload bill");
@@ -455,7 +455,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
                   await cancelExpense(id);
                   t("Expense request cancelled");
                   setMdl(null);
-                  window.dispatchEvent(new CustomEvent("expenses-refresh"));
+                  window.dispatchEvent(new CustomEvent(EVENTS.EXPENSES_REFRESH));
                 } catch (err) {
                   t(getApiErrorMessage(err, "Could not cancel expense"));
                 } finally {
@@ -469,16 +469,16 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
           )}
           {canApproveReject && !editing && (
             <>
-              <Btn v="success" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "exp-approve", d: e }), 50); }}>Approve</Btn>
-              <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "reject", d: e, it: "expense" }), 50); }}>Reject</Btn>
+              <Btn v="success" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: MODAL_T.EXP_APPROVE, d: e }), 50); }}>Approve</Btn>
+              <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: MODAL_T.REJECT, d: e, it: ITEM_T.EXPENSE }), 50); }}>Reject</Btn>
             </>
           )}
           {canShowPay && !editing && (
             <>
-              <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "reject", d: e, it: "expense" }), 50); }}>Reject</Btn>
+              <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: MODAL_T.REJECT, d: e, it: ITEM_T.EXPENSE }), 50); }}>Reject</Btn>
               <Btn
                 v="info"
-                onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "pay", d: e, it: "expense" }), 50); }}
+                onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: MODAL_T.PAY, d: e, it: ITEM_T.EXPENSE }), 50); }}
                 disabled={!hasBill}
                 title={!hasBill ? EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP : undefined}
               >

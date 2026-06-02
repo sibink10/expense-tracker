@@ -4,7 +4,8 @@ import { useAppContext } from "../../context/AppContext";
 import { rejectExpense } from "../../shared/api/expense";
 import { rejectAdvance } from "../../shared/api/advance";
 import { rejectBill } from "../../shared/api/bill";
-import type { Expense, Bill, Advance } from "../../types";
+import type { Expense, Bill, Advance, ItemType } from "../../types";
+import { EVENTS, ITEM_T } from "../../shared/constants";
 
 export default function RejectModal() {
   const { mdl, setMdl, reject } = useAppContext();
@@ -14,9 +15,9 @@ export default function RejectModal() {
 
   if (!mdl?.d || !mdl.it) return null;
   const d = mdl.d as Expense | Bill | Advance;
-  const isExpense = mdl.it === "expense";
-  const isAdvance = mdl.it === "advance";
-  const isBill = mdl.it === "bill";
+  const isExpense = mdl.it === ITEM_T.EXPENSE;
+  const isAdvance = mdl.it === ITEM_T.ADVANCE;
+  const isBill = mdl.it === ITEM_T.BILL;
 
   const handleReject = async () => {
     if (isExpense) {
@@ -27,7 +28,7 @@ export default function RejectModal() {
       try {
         await rejectExpense(id, r);
         setMdl(null);
-        window.dispatchEvent(new CustomEvent("expenses-refresh"));
+        window.dispatchEvent(new CustomEvent(EVENTS.EXPENSES_REFRESH));
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Failed to reject");
       } finally {
@@ -41,7 +42,7 @@ export default function RejectModal() {
       try {
         await rejectAdvance(id, r);
         setMdl(null);
-        window.dispatchEvent(new CustomEvent("advances-refresh"));
+        window.dispatchEvent(new CustomEvent(EVENTS.ADVANCES_REFRESH));
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Failed to reject");
       } finally {
@@ -55,14 +56,14 @@ export default function RejectModal() {
       try {
         await rejectBill(id, r);
         setMdl(null);
-        window.dispatchEvent(new CustomEvent("bills-refresh"));
+        window.dispatchEvent(new CustomEvent(EVENTS.BILLS_REFRESH));
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Failed to reject");
       } finally {
         setLoading(false);
       }
     } else {
-      reject(d, mdl.it as "expense" | "bill" | "advance", r);
+      reject(d, mdl.it as ItemType, r);
     }
   };
 

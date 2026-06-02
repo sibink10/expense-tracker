@@ -8,6 +8,7 @@ import { nextListSort } from "../../shared/utils";
 import { useAppContext } from "../../context/AppContext";
 import { getVendors } from "../../shared/api/vendor";
 import type { Vendor } from "../../types";
+import { EVENTS, MODAL_T, ROLES } from "../../shared/constants";
 
 export default function VendorsPage() {
   const navigate = useNavigate();
@@ -35,8 +36,8 @@ export default function VendorsPage() {
 
   useEffect(() => {
     const handler = () => setRefreshKey((k) => k + 1);
-    window.addEventListener("vendors-refresh", handler);
-    return () => window.removeEventListener("vendors-refresh", handler);
+    window.addEventListener(EVENTS.VENDORS_REFRESH, handler);
+    return () => window.removeEventListener(EVENTS.VENDORS_REFRESH, handler);
   }, []);
 
   useEffect(() => {
@@ -81,7 +82,7 @@ export default function VendorsPage() {
     { label: "Email", sortKey: "Email" },
     { label: "Contact", sortKey: "ContactPerson" },
     { label: "Category", sortKey: "Category" },
-    is("admin") && "Actions",
+    is(ROLES.ADMIN) && "Actions",
   ];
 
   const rows = vendors.map((vendor) => ({
@@ -106,7 +107,7 @@ export default function VendorsPage() {
       { v: vendor.email || "NA", sx: centeredCellSx },
       { v: vendor.contactPerson || "NA", sx: centeredCellSx },
       { v: vendor.cat || "NA", sx: centeredCellSx },
-      ...(is("admin")
+      ...(is(ROLES.ADMIN)
         ? [
             {
               v: (
@@ -124,7 +125,7 @@ export default function VendorsPage() {
                     sx={{ width: 30, height: 30, background: C.actionEditBg, borderRadius: "4px" }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setMdl({ t: "vendor-edit", d: vendor });
+                      setMdl({ t: MODAL_T.VENDOR_EDIT, d: vendor });
                     }}
                   />
                   <DeleteActionButton
@@ -200,7 +201,7 @@ export default function VendorsPage() {
           <BriefcaseBusiness size={24} strokeWidth={1.8} color={C.primary} />
           Vendors
         </h1>
-        {is("admin") && (
+        {is(ROLES.ADMIN) && (
           <Btn
             v="primary"
             onClick={() => navigate("/vendors/add")}
@@ -293,7 +294,7 @@ export default function VendorsPage() {
         <Tbl
           cols={cols}
           rows={loading ? [] : rows}
-          onRow={(row) => setMdl({ t: "vendor-detail", d: (row as (typeof rows)[number]).vendor })}
+          onRow={(row) => setMdl({ t: MODAL_T.VENDOR_DETAIL, d: (row as (typeof rows)[number]).vendor })}
           bodyFallback={
             loading ? (
               <div

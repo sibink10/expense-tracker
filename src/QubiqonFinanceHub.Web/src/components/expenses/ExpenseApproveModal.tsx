@@ -4,13 +4,14 @@ import { useAppContext } from "../../context/AppContext";
 import { approveExpense } from "../../shared/api/expense";
 import { expenseUserIsSubmitterOrBeneficiary } from "../../shared/expensePermissions";
 import type { Expense } from "../../types";
+import { EVENTS, MODAL_T } from "../../shared/constants";
 
 export default function ExpenseApproveModal() {
   const { mdl, setMdl, user } = useAppContext();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!mdl?.d || mdl.t !== "exp-approve") return null;
+  if (!mdl?.d || mdl.t !== MODAL_T.EXP_APPROVE) return null;
   const e = mdl.d as Expense;
   const id = e.apiId ?? e.id;
   const selfRaised = expenseUserIsSubmitterOrBeneficiary(e, user);
@@ -22,7 +23,7 @@ export default function ExpenseApproveModal() {
     try {
       await approveExpense(id);
       setMdl(null);
-      window.dispatchEvent(new CustomEvent("expenses-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.EXPENSES_REFRESH));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to approve");
     } finally {

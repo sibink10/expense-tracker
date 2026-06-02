@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import type { Invoice } from "../../types";
 import { C } from "../../shared/theme";
-import { INV_S } from "../../shared/constants";
+import { EVENTS, INV_S, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur, daysOverdueFromDueYmd, nextListSort } from "../../shared/utils";
 import {
   Btn,
@@ -186,8 +186,8 @@ export default function InvoicesPage() {
 
   useEffect(() => {
     const handler = () => setRefreshKey((k) => k + 1);
-    window.addEventListener("invoices-refresh", handler);
-    return () => window.removeEventListener("invoices-refresh", handler);
+    window.addEventListener(EVENTS.INVOICES_REFRESH, handler);
+    return () => window.removeEventListener(EVENTS.INVOICES_REFRESH, handler);
   }, []);
 
   useEffect(() => {
@@ -249,7 +249,7 @@ export default function InvoicesPage() {
       });
   }, [refreshKey]);
 
-  const canSendInvoice = is("finance") || is("admin");
+  const canSendInvoice = is(ROLES.FINANCE) || is(ROLES.ADMIN);
 
   const hasSignedPdfUrl = (inv: Invoice) => !!inv.signedPdfUrl?.trim();
 
@@ -261,7 +261,7 @@ export default function InvoicesPage() {
       await syncInvoiceSignedPdf(inv.apiId);
       t("Signed PDF synced to storage");
       setRefreshKey((k) => k + 1);
-      window.dispatchEvent(new CustomEvent("invoices-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.INVOICES_REFRESH));
     } catch (err: unknown) {
       t(err instanceof Error ? err.message : "Sync failed", "error");
     } finally {
@@ -278,7 +278,7 @@ export default function InvoicesPage() {
       t("Invoice sent to client");
       setSendConfirm(null);
       setRefreshKey((k) => k + 1);
-      window.dispatchEvent(new CustomEvent("invoices-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.INVOICES_REFRESH));
     } catch (err: unknown) {
       t(err instanceof Error ? err.message : "Could not mark invoice as sent", "error");
     } finally {
@@ -307,7 +307,7 @@ export default function InvoicesPage() {
       t(result.requestId ? `Sent for signature (${result.requestId})` : "Sent for Zoho Sign");
       setZohoSignConfirm(null);
       setRefreshKey((k) => k + 1);
-      window.dispatchEvent(new CustomEvent("invoices-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.INVOICES_REFRESH));
     } catch (err: unknown) {
       t(err instanceof Error ? err.message : "Zoho Sign send failed", "error");
     } finally {
@@ -427,7 +427,7 @@ export default function InvoicesPage() {
           sx={workflowActionStyle(C.invoiceActionPaid, C.invoiceActionPaidBg)}
           onClick={(e) => {
             e.stopPropagation();
-            setMdl({ t: "inv-pay", d: inv });
+            setMdl({ t: MODAL_T.INV_PAY, d: inv });
           }}
         >
           <IndianRupee size={13} strokeWidth={1.9} />
@@ -637,7 +637,7 @@ export default function InvoicesPage() {
           <HandCoins size={24} strokeWidth={1.8} color={C.primary} />
           Client invoices
         </h1>
-        {(is("finance") || is("admin")) && (
+        {(is(ROLES.FINANCE) || is(ROLES.ADMIN)) && (
           <Btn
             v="primary"
             onClick={() => navigate("/invoices/add")}
@@ -782,7 +782,7 @@ export default function InvoicesPage() {
         <Tbl
           cols={cols}
           rows={loading ? [] : rows}
-          onRow={(row) => setMdl({ t: "inv-detail", d: (row as (typeof rows)[number]).invoice })}
+          onRow={(row) => setMdl({ t: MODAL_T.INV_DETAIL, d: (row as (typeof rows)[number]).invoice })}
           bodyFallback={
             loading ? (
               <div

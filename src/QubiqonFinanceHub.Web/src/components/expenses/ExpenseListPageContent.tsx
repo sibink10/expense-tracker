@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import type { Expense } from "../../types";
 import { C } from "../../shared/theme";
-import { EXP_S, EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP } from "../../shared/constants";
+import { EVENTS, EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP, EXP_S, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur, nextListSort } from "../../shared/utils";
 import { Btn, Badge, Tbl, Empty, Spinner, type TblCol } from "../ui";
 import { useAppContext } from "../../context/AppContext";
@@ -61,14 +61,14 @@ export default function ExpenseListPage() {
   const [sortBy, setSortBy] = useState("CreatedAt");
   const [sortDesc, setSortDesc] = useState(true);
 
-  const myOnly = is("employee");
+  const myOnly = is(ROLES.EMPLOYEE);
   const showActionCol =
-    is("approver") || is("finance") || is("admin") || is("employee");
+    is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN) || is(ROLES.EMPLOYEE);
 
   useEffect(() => {
     const handler = () => setRefreshKey((k) => k + 1);
-    window.addEventListener("expenses-refresh", handler);
-    return () => window.removeEventListener("expenses-refresh", handler);
+    window.addEventListener(EVENTS.EXPENSES_REFRESH, handler);
+    return () => window.removeEventListener(EVENTS.EXPENSES_REFRESH, handler);
   }, []);
 
   useEffect(() => {
@@ -118,7 +118,7 @@ export default function ExpenseListPage() {
 
   const cols: TblCol[] = [
     { label: "ID", sortKey: "ExpenseCode", sx: { textAlign: "left" } },
-    ...(!is("employee")
+    ...(!is(ROLES.EMPLOYEE)
       ? [{ label: "Employee", sortKey: "Employee", sx: { textAlign: "left" } } as TblCol]
       : []),
     { label: "Purpose", sortKey: "Purpose", sx: { textAlign: "left" } },
@@ -133,7 +133,7 @@ export default function ExpenseListPage() {
     const hasDocuments = e.documents.length > 0 || !!(e.file || e.attachmentUrl);
     const canShowPayAction =
       e.status !== EXP_S.CANCELLED &&
-      (is("finance") || is("admin")) &&
+      (is(ROLES.FINANCE) || is(ROLES.ADMIN)) &&
       (e.status === EXP_S.AWAITING_PAYMENT ||
         e.status === EXP_S.PARTIALLY_PAID ||
         e.status === EXP_S.APPROVED ||
@@ -148,7 +148,7 @@ export default function ExpenseListPage() {
           v: <span style={{ fontWeight: 600, color: C.accent }}>{e.id}</span>,
           sx: { textAlign: "left" as const },
         },
-        ...(!is("employee")
+        ...(!is(ROLES.EMPLOYEE)
           ? [
               {
                 v: <span style={{ fontWeight: 600, color: C.primary }}>{e.empName}</span>,
@@ -189,16 +189,16 @@ export default function ExpenseListPage() {
                       verticalAlign: "middle",
                     }}
                   >
-                    {(is("approver") || is("admin")) &&
+                    {(is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN)) &&
                       !canSelfApprove &&
                       e.status !== EXP_S.CANCELLED &&
                       (e.status === EXP_S.PENDING || e.status === EXP_S.PENDING_BILL_APPROVAL) && (
                         <>
-                          <Btn sm v="ghost" sx={workflowActionStyle(C.success, C.successBg)} onClick={() => setMdl({ t: "exp-approve", d: e })}>
+                          <Btn sm v="ghost" sx={workflowActionStyle(C.success, C.successBg)} onClick={() => setMdl({ t: MODAL_T.EXP_APPROVE, d: e })}>
                             <Check size={13} strokeWidth={1.9} />
                             Approve
                           </Btn>
-                          <Btn sm v="ghost" sx={workflowActionStyle(C.danger, C.dangerBg)} onClick={() => setMdl({ t: "reject", d: e, it: "expense" })}>
+                          <Btn sm v="ghost" sx={workflowActionStyle(C.danger, C.dangerBg)} onClick={() => setMdl({ t: MODAL_T.REJECT, d: e, it: ITEM_T.EXPENSE })}>
                             <X size={13} strokeWidth={1.9} />
                             Reject
                           </Btn>
@@ -206,7 +206,7 @@ export default function ExpenseListPage() {
                       )}
                     {canShowPayAction && (
                       <>
-                        <Btn sm v="ghost" sx={workflowActionStyle(C.danger, C.dangerBg)} onClick={() => setMdl({ t: "reject", d: e, it: "expense" })}>
+                        <Btn sm v="ghost" sx={workflowActionStyle(C.danger, C.dangerBg)} onClick={() => setMdl({ t: MODAL_T.REJECT, d: e, it: ITEM_T.EXPENSE })}>
                           <X size={13} strokeWidth={1.9} />
                           Reject
                         </Btn>
@@ -214,7 +214,7 @@ export default function ExpenseListPage() {
                           sm
                           v="ghost"
                           sx={workflowActionStyle(C.invoiceActionPaid, C.invoiceActionPaidBg)}
-                          onClick={() => setMdl({ t: "pay", d: e, it: "expense" })}
+                          onClick={() => setMdl({ t: MODAL_T.PAY, d: e, it: ITEM_T.EXPENSE })}
                           disabled={!hasDocuments}
                           title={!hasDocuments ? EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP : undefined}
                         >
@@ -224,7 +224,7 @@ export default function ExpenseListPage() {
                       </>
                     )}
                     {canCancelExpenseRow && (
-                      <Btn sm v="ghost" sx={workflowActionStyle(C.muted, C.surface)} onClick={() => setMdl({ t: "exp-cancel-confirm", d: e })}>
+                      <Btn sm v="ghost" sx={workflowActionStyle(C.muted, C.surface)} onClick={() => setMdl({ t: MODAL_T.EXP_CANCEL_CONFIRM, d: e })}>
                         <Ban size={13} strokeWidth={1.9} />
                         Cancel
                       </Btn>
@@ -308,7 +308,7 @@ export default function ExpenseListPage() {
           <ReceiptText size={24} strokeWidth={1.8} color={C.primary} />
           Expense requests
         </h1>
-        {(is("employee") || is("approver") || is("finance") || is("admin")) && (
+        {(is(ROLES.EMPLOYEE) || is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN)) && (
           <Btn
             v="primary"
             onClick={() => navigate("/expenses/add")}
@@ -488,7 +488,7 @@ export default function ExpenseListPage() {
         <Tbl
           cols={cols}
           rows={loading ? [] : rows}
-          onRow={(row) => setMdl({ t: "exp-detail", d: (row as (typeof rows)[number]).expense })}
+          onRow={(row) => setMdl({ t: MODAL_T.EXP_DETAIL, d: (row as (typeof rows)[number]).expense })}
           bodyFallback={
             loading ? (
               <div

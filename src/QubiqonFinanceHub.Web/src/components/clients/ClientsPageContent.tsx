@@ -8,6 +8,7 @@ import { useAppContext } from "../../context/AppContext";
 import { getClientsPaged } from "../../shared/api/clients";
 import type { Client } from "../../types";
 import { nextListSort } from "../../shared/utils";
+import { EVENTS, MODAL_T, ROLES } from "../../shared/constants";
 
 export default function ClientsPage() {
   const navigate = useNavigate();
@@ -29,8 +30,8 @@ export default function ClientsPage() {
 
   useEffect(() => {
     const handler = () => setRefreshKey((k) => k + 1);
-    window.addEventListener("clients-refresh", handler);
-    return () => window.removeEventListener("clients-refresh", handler);
+    window.addEventListener(EVENTS.CLIENTS_REFRESH, handler);
+    return () => window.removeEventListener(EVENTS.CLIENTS_REFRESH, handler);
   }, []);
 
   useEffect(() => {
@@ -90,7 +91,7 @@ export default function ClientsPage() {
     { label: "Country", sortKey: "Country" },
     { label: "Currency", sortKey: "Currency" },
     { label: "Type", sortKey: "CustomerType" },
-    is("admin") && "Actions",
+    is(ROLES.ADMIN) && "Actions",
   ];
 
   const rows = clients.map((client) => ({
@@ -112,7 +113,7 @@ export default function ClientsPage() {
       { v: client.country || "NA" },
       { v: client.currency || "NA" },
       { v: client.customerType || "NA" },
-      ...(is("admin")
+      ...(is(ROLES.ADMIN)
         ? [
             {
               v: (
@@ -130,7 +131,7 @@ export default function ClientsPage() {
                     sx={{ width: 30, height: 30, background: C.actionEditBg, borderRadius: "4px" }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setMdl({ t: "client-edit", d: client });
+                      setMdl({ t: MODAL_T.CLIENT_EDIT, d: client });
                     }}
                   />
                   <DeleteActionButton
@@ -209,7 +210,7 @@ export default function ClientsPage() {
           <HandCoins size={24} strokeWidth={1.8} color={C.primary} />
           Clients
         </h1>
-        {is("admin") && (
+        {is(ROLES.ADMIN) && (
           <Btn
             v="primary"
             onClick={() => navigate("/clients/add")}
@@ -298,7 +299,7 @@ export default function ClientsPage() {
         <Tbl
           cols={cols}
           rows={loading ? [] : rows}
-          onRow={(row) => setMdl({ t: "client-detail", d: (row as (typeof rows)[number]).client })}
+          onRow={(row) => setMdl({ t: MODAL_T.CLIENT_DETAIL, d: (row as (typeof rows)[number]).client })}
           bodyFallback={
             loading ? (
               <div

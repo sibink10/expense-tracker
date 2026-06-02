@@ -10,6 +10,7 @@ import { getTaxConfigs } from "../../shared/api/taxConfig";
 import { isEmailValid } from "../../shared/utils";
 import { COUNTRY_OPTS, CURRENCY_OPTS, getCurrencyByCountry, normalizeCountry } from "../../shared/countries";
 import type { Client, TaxConfig } from "../../types";
+import { EVENTS, MODAL_T } from "../../shared/constants";
 
 const CLIENT_TAX_TYPE = "ClientTax";
 const isClientTaxType = (type?: string) => (type || "").replace(/\s+/g, "").toLowerCase() === "clienttax";
@@ -35,7 +36,7 @@ export default function ClientEditModal() {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
-  const c = mdl?.d && mdl.t === "client-edit" ? (mdl.d as Client) : null;
+  const c = mdl?.d && mdl.t === MODAL_T.CLIENT_EDIT ? (mdl.d as Client) : null;
 
   useEffect(() => {
     if (c) {
@@ -120,7 +121,7 @@ export default function ClientEditModal() {
         customerType,
       });
       setMdl(null);
-      window.dispatchEvent(new CustomEvent("clients-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.CLIENTS_REFRESH));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to update client");
     } finally {

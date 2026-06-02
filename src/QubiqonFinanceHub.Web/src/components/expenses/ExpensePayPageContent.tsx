@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { C } from "../../shared/theme";
-import { EXP_S, EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP } from "../../shared/constants";
+import { EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP, EXP_S, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur } from "../../shared/utils";
 import { Av, Btn, Empty, ListRefreshButton } from "../ui";
 import { useAppContext } from "../../context/AppContext";
@@ -10,7 +10,7 @@ export default function ExpensePayPage() {
   const { payableExp, setMdl, setExps, is } = useAppContext();
   const [loading, setLoading] = useState(false);
 
-  const myOnly = is("employee");
+  const myOnly = is(ROLES.EMPLOYEE);
 
   const refreshPayable = useCallback(async () => {
     setLoading(true);
@@ -98,7 +98,7 @@ export default function ExpensePayPage() {
               <Btn
                 sm
                 v="info"
-                onClick={() => setMdl({ t: "pay", d: e, it: "expense" })}
+                onClick={() => setMdl({ t: MODAL_T.PAY, d: e, it: ITEM_T.EXPENSE })}
                 disabled={!hasBill}
                 title={!hasBill ? EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP : undefined}
               >

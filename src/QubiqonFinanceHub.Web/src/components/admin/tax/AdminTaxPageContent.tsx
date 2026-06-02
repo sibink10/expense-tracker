@@ -5,6 +5,7 @@ import { Btn, EditActionButton, Empty, Toggle, Spinner, Tbl, type TblCol } from 
 import { getTaxConfigs, toggleTaxConfig } from "../../../shared/api/taxConfig";
 import { useAppContext } from "../../../context/AppContext";
 import type { TaxConfig } from "../../../types";
+import { EVENTS, MODAL_T } from "../../../shared/constants";
 
 const CLIENT_TAX_TYPE = "ClientTax";
 const formatTaxType = (value?: string) => value === CLIENT_TAX_TYPE ? "Client Tax" : (value ?? "—");
@@ -22,8 +23,8 @@ export default function AdminTaxPage() {
 
   useEffect(() => {
     const handler = () => setRefreshKey((k) => k + 1);
-    window.addEventListener("tax-config-refresh", handler);
-    return () => window.removeEventListener("tax-config-refresh", handler);
+    window.addEventListener(EVENTS.TAX_CONFIG_REFRESH, handler);
+    return () => window.removeEventListener(EVENTS.TAX_CONFIG_REFRESH, handler);
   }, []);
 
   useEffect(() => {
@@ -46,7 +47,7 @@ export default function AdminTaxPage() {
     setTogglingId(id);
     try {
       await toggleTaxConfig(id);
-      window.dispatchEvent(new CustomEvent("tax-config-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.TAX_CONFIG_REFRESH));
     } catch {
       // ignore
     } finally {
@@ -143,7 +144,7 @@ export default function AdminTaxPage() {
               title="View"
               onClick={(e) => {
                 e.stopPropagation();
-                setMdl({ t: "tax-config-detail", d: item });
+                setMdl({ t: MODAL_T.TAX_CONFIG_DETAIL, d: item });
               }}
             >
               <Eye size={15} strokeWidth={1.9} />
@@ -152,7 +153,7 @@ export default function AdminTaxPage() {
               sx={{ width: 30, height: 30, background: C.actionEditBg, borderRadius: "4px" }}
               onClick={(e) => {
                 e.stopPropagation();
-                setMdl({ t: "tax-config-edit", d: item });
+                setMdl({ t: MODAL_T.TAX_CONFIG_EDIT, d: item });
               }}
             />
             <Toggle
@@ -226,7 +227,7 @@ export default function AdminTaxPage() {
         </h1>
         <Btn
           v="primary"
-          onClick={() => setMdl({ t: "tax-config-add" })}
+          onClick={() => setMdl({ t: MODAL_T.TAX_CONFIG_ADD })}
           sx={{ borderRadius: "4px", boxShadow: C.cardShadow }}
         >
           <CirclePlus size={15} strokeWidth={1.8} />
@@ -313,7 +314,7 @@ export default function AdminTaxPage() {
         <Tbl
           cols={cols}
           rows={loading ? [] : rows}
-          onRow={(row) => setMdl({ t: "tax-config-detail", d: (row as (typeof rows)[number]).tax })}
+          onRow={(row) => setMdl({ t: MODAL_T.TAX_CONFIG_DETAIL, d: (row as (typeof rows)[number]).tax })}
           bodyFallback={
             loading ? (
               <div

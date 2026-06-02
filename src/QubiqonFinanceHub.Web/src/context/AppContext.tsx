@@ -19,7 +19,7 @@ import {
   INIT_VENDORS,
   INIT_CLIENTS,
 } from "../shared/initData";
-import { EXP_S, BILL_S, ADV_S } from "../shared/constants";
+import { ADV_S, BILL_S, EXP_S, ITEM_T, MODAL_T, ROLES } from "../shared/constants";
 import { expenseBelongsToCurrentUser } from "../shared/expensePermissions";
 import { getOrganizations, type OrganizationPayload } from "../shared/api";
 import {
@@ -38,6 +38,7 @@ import type {
   ToastData,
   EmailData,
   ModalData,
+  ItemType,
 } from "../types";
 
 // ─── Context types ─────────────────────
@@ -73,16 +74,16 @@ export interface AppContextValue {
   rf: () => void;
   approve: (
     item: Expense | Bill | Advance,
-    type: "expense" | "bill" | "advance",
+    type: ItemType,
   ) => void;
   reject: (
     item: Expense | Bill | Advance,
-    type: "expense" | "bill" | "advance",
+    type: ItemType,
     reason?: string,
   ) => void;
   pay: (
     item: Expense | Bill | Advance,
-    type: "expense" | "bill" | "advance",
+    type: ItemType,
     ref: string,
   ) => void;
   is: (r: AppUser["role"]) => boolean;
@@ -234,7 +235,7 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
   }, [refreshOrgSettings]);
 
   const approve = useCallback(
-    (item: Expense | Bill | Advance, type: "expense" | "bill" | "advance") => {
+    (item: Expense | Bill | Advance, type: ItemType) => {
       const c = {
         by: user.name,
         text: "Approved.",
@@ -242,7 +243,7 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
         t: "ok" as const,
         status: "Approved",
       };
-      if (type === "expense") {
+      if (type === ITEM_T.EXPENSE) {
         const exp = item as Expense;
         const hasBill = exp.documents.length > 0 || exp.file != null;
         setExps((prev) =>
@@ -257,7 +258,7 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
           ),
         );
         setEmail({ to: exp.empName, subj: `Expense ${exp.id} approved` });
-      } else if (type === "bill") {
+      } else if (type === ITEM_T.BILL) {
         const bill = item as Bill;
         setBills((prev) =>
           prev.map((b) =>
@@ -266,7 +267,7 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
               : b,
           ),
         );
-      } else if (type === "advance") {
+      } else if (type === ITEM_T.ADVANCE) {
         const adv = item as Advance;
         setAdvs((prev) =>
           prev.map((a) =>
@@ -286,7 +287,7 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
   const reject = useCallback(
     (
       item: Expense | Bill | Advance,
-      type: "expense" | "bill" | "advance",
+      type: ItemType,
       reason?: string,
     ) => {
       const c = {
@@ -296,7 +297,7 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
         t: "no" as const,
         status: "Rejected",
       };
-      if (type === "expense") {
+      if (type === ITEM_T.EXPENSE) {
         const exp = item as Expense;
         setExps((prev) =>
           prev.map((e) =>
@@ -306,7 +307,7 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
           ),
         );
         setEmail({ to: exp.empName, subj: `Expense ${exp.id} rejected` });
-      } else if (type === "bill") {
+      } else if (type === ITEM_T.BILL) {
         const bill = item as Bill;
         setBills((prev) =>
           prev.map((b) =>
@@ -315,7 +316,7 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
               : b,
           ),
         );
-      } else if (type === "advance") {
+      } else if (type === ITEM_T.ADVANCE) {
         const adv = item as Advance;
         setAdvs((prev) =>
           prev.map((a) =>
@@ -335,7 +336,7 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
   const pay = useCallback(
     (
       item: Expense | Bill | Advance,
-      type: "expense" | "bill" | "advance",
+      type: ItemType,
       ref: string,
     ) => {
       const c = {
@@ -345,7 +346,7 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
         t: "pay" as const,
         status: "Payment processed",
       };
-      if (type === "expense") {
+      if (type === ITEM_T.EXPENSE) {
         const exp = item as Expense;
         setExps((prev) =>
           prev.map((e) =>
@@ -359,7 +360,7 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
           cc: cfg.ccEmails.join(", "),
           subj: `Payment for ${exp.id} — Ref: ${ref}`,
         });
-      } else if (type === "bill") {
+      } else if (type === ITEM_T.BILL) {
         const bill = item as Bill;
         setBills((prev) =>
           prev.map((b) =>
@@ -378,7 +379,7 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
           cc: [...(bill.cc || []), ...cfg.ccEmails].join(", "),
           subj: `Payment for ${bill.id} — Ref: ${ref}`,
         });
-      } else if (type === "advance") {
+      } else if (type === ITEM_T.ADVANCE) {
         const adv = item as Advance;
         setAdvs((prev) =>
           prev.map((a) =>

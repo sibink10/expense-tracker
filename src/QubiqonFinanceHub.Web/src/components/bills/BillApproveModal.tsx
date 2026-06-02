@@ -3,13 +3,14 @@ import { Btn, Mdl, Alert } from "../ui";
 import { useAppContext } from "../../context/AppContext";
 import { approveBill } from "../../shared/api/bill";
 import type { Bill } from "../../types";
+import { EVENTS, MODAL_T } from "../../shared/constants";
 
 export default function BillApproveModal() {
   const { mdl, setMdl } = useAppContext();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!mdl?.d || mdl.t !== "bill-approve") return null;
+  if (!mdl?.d || mdl.t !== MODAL_T.BILL_APPROVE) return null;
   const b = mdl.d as Bill;
   const id = b.apiId ?? b.id;
 
@@ -19,7 +20,7 @@ export default function BillApproveModal() {
     try {
       await approveBill(id);
       setMdl(null);
-      window.dispatchEvent(new CustomEvent("bills-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.BILLS_REFRESH));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to approve");
     } finally {

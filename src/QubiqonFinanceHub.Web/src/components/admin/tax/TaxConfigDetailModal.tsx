@@ -2,6 +2,7 @@ import { C } from "../../../shared/theme";
 import { Btn, Mdl } from "../../ui";
 import { useAppContext } from "../../../context/AppContext";
 import type { TaxConfig } from "../../../types";
+import { MODAL_T } from "../../../shared/constants";
 
 const CLIENT_TAX_TYPE = "ClientTax";
 const formatTaxType = (value?: string) => value === CLIENT_TAX_TYPE ? "Client Tax" : (value ?? "—");
@@ -53,7 +54,7 @@ export default function TaxConfigDetailModal({ tax }: Props) {
         </div>
       </div>
       <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-        <Btn v="primary" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "tax-config-edit", d: tax }), 50); }}>
+        <Btn v="primary" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: MODAL_T.TAX_CONFIG_EDIT, d: tax }), 50); }}>
           Edit
         </Btn>
         <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>

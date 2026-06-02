@@ -4,7 +4,7 @@ import Select, { type GroupBase, type StylesConfig } from "react-select";
 import { Check, ChevronLeft, ChevronRight, CirclePlus, IndianRupee, ReceiptText, RefreshCw, Search, X } from "lucide-react";
 import type { Bill } from "../../types";
 import { C } from "../../shared/theme";
-import { BILL_S, BILL_PAYMENT_PRIORITY } from "../../shared/constants";
+import { BILL_PAYMENT_PRIORITY, BILL_S, EVENTS, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur, daysOverdueFromDueYmd, nextListSort } from "../../shared/utils";
 import { Av, Btn, Badge, Tbl, Empty, Spinner, type TblCol } from "../ui";
 import { useAppContext } from "../../context/AppContext";
@@ -105,8 +105,8 @@ export default function BillListPage() {
 
   useEffect(() => {
     const handler = () => setRefreshKey((k) => k + 1);
-    window.addEventListener("bills-refresh", handler);
-    return () => window.removeEventListener("bills-refresh", handler);
+    window.addEventListener(EVENTS.BILLS_REFRESH, handler);
+    return () => window.removeEventListener(EVENTS.BILLS_REFRESH, handler);
   }, []);
 
   useEffect(() => {
@@ -162,7 +162,7 @@ export default function BillListPage() {
   const endIndex = totalCount === 0 ? 0 : Math.min(startIndex + pageSize, totalCount);
   const displayTotalPages = Math.max(totalPages, 1);
   const paged = f;
-  const canAct = is("approver") || is("finance") || is("admin");
+  const canAct = is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN);
 
   const centeredCellSx = {
     textAlign: "center" as const,
@@ -267,13 +267,13 @@ export default function BillListPage() {
                     verticalAlign: "middle",
                   }}
                 >
-                  {(is("approver") || is("admin")) && b.status === BILL_S.SUBMITTED && (
+                  {(is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN)) && b.status === BILL_S.SUBMITTED && (
                     <>
                       <Btn
                         sm
                         v="ghost"
                         sx={workflowActionStyle(C.success, C.successBg)}
-                        onClick={() => setMdl({ t: "bill-approve", d: b, it: "bill" })}
+                        onClick={() => setMdl({ t: MODAL_T.BILL_APPROVE, d: b, it: ITEM_T.BILL })}
                       >
                         <Check size={13} strokeWidth={1.9} />
                         Approve
@@ -282,14 +282,14 @@ export default function BillListPage() {
                         sm
                         v="ghost"
                         sx={workflowActionStyle(C.danger, C.dangerBg)}
-                        onClick={() => setMdl({ t: "reject", d: b, it: "bill" })}
+                        onClick={() => setMdl({ t: MODAL_T.REJECT, d: b, it: ITEM_T.BILL })}
                       >
                         <X size={13} strokeWidth={1.9} />
                         Reject
                       </Btn>
                     </>
                   )}
-                  {(is("finance") || is("admin")) &&
+                  {(is(ROLES.FINANCE) || is(ROLES.ADMIN)) &&
                     (b.status === BILL_S.APPROVED ||
                       b.status === BILL_S.OVERDUE ||
                       b.status === BILL_S.PARTIALLY_PAID) && (
@@ -297,7 +297,7 @@ export default function BillListPage() {
                         sm
                         v="ghost"
                         sx={workflowActionStyle(C.invoiceActionPaid, C.invoiceActionPaidBg)}
-                        onClick={() => setMdl({ t: "pay", d: b, it: "bill" })}
+                        onClick={() => setMdl({ t: MODAL_T.PAY, d: b, it: ITEM_T.BILL })}
                       >
                         <IndianRupee size={13} strokeWidth={1.9} />
                         Pay
@@ -383,7 +383,7 @@ export default function BillListPage() {
           <ReceiptText size={24} strokeWidth={1.8} color={C.primary} />
           Vendor bills
         </h1>
-        {(is("finance") || is("admin")) && (
+        {(is(ROLES.FINANCE) || is(ROLES.ADMIN)) && (
           <Btn
             v="primary"
             onClick={() => navigate("/bills/add")}
@@ -488,7 +488,7 @@ export default function BillListPage() {
         <Tbl
           cols={cols}
           rows={loading ? [] : rows}
-          onRow={(row) => setMdl({ t: "bill-detail", d: (row as (typeof rows)[number]).bill })}
+          onRow={(row) => setMdl({ t: MODAL_T.BILL_DETAIL, d: (row as (typeof rows)[number]).bill })}
           bodyFallback={
             loading ? (
               <div

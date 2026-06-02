@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { CalendarDays, FilePlus2, ReceiptText, X, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../../shared/theme";
-import { PAY_TERMS, BILL_PAYMENT_PRIORITY, BILL_PAYMENT_PRIORITY_OPTIONS } from "../../shared/constants";
+import { BILL_PAYMENT_PRIORITY, BILL_PAYMENT_PRIORITY_OPTIONS, EVENTS, PAY_TERMS } from "../../shared/constants";
 import { addDays, fmtCur, round2, aggregateLineGstRows, formatTdsOptionLabel, formatTdsSummarySnippet } from "../../shared/utils";
 import { Inp, Btn, MultiFileUp, Alert } from "../ui";
 import DecimalLineInput from "../DecimalLineInput";
@@ -233,7 +233,7 @@ export default function SubmitBillPage() {
         files
       );
       setCfg((c) => ({ ...c, billSeq: c.billSeq + 1 }));
-      window.dispatchEvent(new CustomEvent("bills-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.BILLS_REFRESH));
       t("Bill submitted");
       navigate("/bills");
     } catch (err: unknown) {

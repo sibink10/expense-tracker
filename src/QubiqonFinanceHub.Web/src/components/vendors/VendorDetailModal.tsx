@@ -2,6 +2,7 @@ import { C } from "../../shared/theme";
 import { Av, Btn, Mdl } from "../ui";
 import { useAppContext } from "../../context/AppContext";
 import type { Vendor } from "../../types";
+import { MODAL_T } from "../../shared/constants";
 
 interface Props {
   vendor: Vendor;
@@ -59,7 +60,7 @@ export default function VendorDetailModal({ vendor: v }: Props) {
         </div>
       )}
       <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "flex-end" }}>
-        <Btn v="vendor" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: "vendor-edit", d: v }), 50); }}>
+        <Btn v="vendor" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: MODAL_T.VENDOR_EDIT, d: v }), 50); }}>
           Edit
         </Btn>
       </div>

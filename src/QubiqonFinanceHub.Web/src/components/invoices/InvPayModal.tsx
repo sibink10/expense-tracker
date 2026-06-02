@@ -5,6 +5,7 @@ import { Inp, Btn, Mdl, Alert, INVOICE_MODAL_Z_INDEX } from "../ui";
 import { useAppContext } from "../../context/AppContext";
 import { markInvoicePaid } from "../../shared/api/invoice";
 import type { Invoice } from "../../types";
+import { EVENTS } from "../../shared/constants";
 
 const PAYMENT_METHODS = [
   { v: "NEFT", l: "NEFT" },
@@ -67,7 +68,7 @@ export default function InvPayModal() {
       });
       t(parsedPaidAmount >= remainingAmount ? "Invoice marked paid" : "Invoice marked partially paid");
       setMdl(null);
-      window.dispatchEvent(new CustomEvent("invoices-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.INVOICES_REFRESH));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to mark as paid");
     } finally {

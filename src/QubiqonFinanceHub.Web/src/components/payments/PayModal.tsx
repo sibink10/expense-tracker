@@ -6,6 +6,7 @@ import { useAppContext } from "../../context/AppContext";
 import { payBill } from "../../shared/api/bill";
 import { payExpense } from "../../shared/api/expense";
 import type { Expense, Bill, Advance } from "../../types";
+import { EVENTS, ITEM_T } from "../../shared/constants";
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -41,7 +42,7 @@ export default function PayModal() {
     if (paidError) return;
     const paid = round2(parseFloat(paidAmt) || defaultPaid);
     const paymentReference = r.trim();
-    if (mdl.it === "bill") {
+    if (mdl.it === ITEM_T.BILL) {
       const b = d as Bill;
       const id = b.apiId ?? b.id;
       setLoading(true);
@@ -49,13 +50,13 @@ export default function PayModal() {
       try {
         await payBill(id, { paymentReference, paidAmount: paid });
         setMdl(null);
-        window.dispatchEvent(new CustomEvent("bills-refresh"));
+        window.dispatchEvent(new CustomEvent(EVENTS.BILLS_REFRESH));
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Failed to process payment");
       } finally {
         setLoading(false);
       }
-    } else if (mdl.it === "expense") {
+    } else if (mdl.it === ITEM_T.EXPENSE) {
       const exp = d as Expense;
       const id = exp.apiId ?? exp.id;
       setLoading(true);
@@ -63,13 +64,13 @@ export default function PayModal() {
       try {
         await payExpense(id, { paymentReference, paidAmount: paid });
         setMdl(null);
-        window.dispatchEvent(new CustomEvent("expenses-refresh"));
+        window.dispatchEvent(new CustomEvent(EVENTS.EXPENSES_REFRESH));
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Failed to process payment");
       } finally {
         setLoading(false);
       }
-    } else if (mdl.it === "advance") {
+    } else if (mdl.it === ITEM_T.ADVANCE) {
       pay(d, mdl.it, paymentReference);
     }
   };
@@ -120,7 +121,7 @@ export default function PayModal() {
       {error && <Alert sx={{ marginBottom: "8px" }}>{error}</Alert>}
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <Btn
-          v={mdl.it === "bill" ? "vendor" : mdl.it === "advance" ? "advance" : "info"}
+          v={mdl.it === ITEM_T.BILL ? "vendor" : mdl.it === ITEM_T.ADVANCE ? "advance" : "info"}
           onClick={handlePay}
           disabled={!r.trim() || !!paidError || loading}
         >

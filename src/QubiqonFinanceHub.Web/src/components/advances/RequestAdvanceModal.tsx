@@ -5,6 +5,7 @@ import { fmtCur } from "../../shared/utils";
 import { Alert, Av, Btn, Inp, Mdl } from "../ui";
 import { useAppContext } from "../../context/AppContext";
 import { createAdvance } from "../../shared/api/advance";
+import { EVENTS } from "../../shared/constants";
 
 export default function RequestAdvanceModal() {
   const { cfg, user, setEmail, setMdl, t, refreshOrgSettings } = useAppContext();
@@ -36,7 +37,7 @@ export default function RequestAdvanceModal() {
       setEmail({ to: "Approvers", subj: `New advance request from ${user.name}` });
       t("Advance submitted");
       setMdl(null);
-      window.dispatchEvent(new CustomEvent("advances-refresh"));
+      window.dispatchEvent(new CustomEvent(EVENTS.ADVANCES_REFRESH));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to submit advance");
     } finally {
