@@ -209,6 +209,8 @@ public class ExpenseRequest
     public Guid EmployeeId { get; set; }
     [ForeignKey(nameof(EmployeeId))] public Employee Employee { get; set; } = null!;
     public Guid? SubmittedByEmployeeId { get; set; }
+    public Guid? ForecastId { get; set; }
+    [ForeignKey(nameof(ForecastId))] public Forecast? Forecast { get; set; }
     [Column(TypeName = "decimal(18,2)")] public decimal Amount { get; set; }
     [Required, MaxLength(500)] public string Purpose { get; set; } = "";
     public DateOnly BillDate { get; set; }
@@ -222,6 +224,29 @@ public class ExpenseRequest
     public DateTime? UpdatedAt { get; set; }
     public ICollection<ActivityComment> Comments { get; set; } = new List<ActivityComment>();
     public ICollection<RequestDocument> Documents { get; set; } = new List<RequestDocument>();
+}
+
+// ═══════════════════════════════════════════════════
+//  FORECAST
+// ═══════════════════════════════════════════════════
+public class Forecast
+{
+    [Key] public Guid Id { get; set; }
+    public Guid OrganizationId { get; set; }
+    [Required, MaxLength(200)] public string Title { get; set; } = "";
+    [Required] public string Purpose { get; set; } = "";
+    [Required] public string Description { get; set; } = "";
+    [Column(TypeName = "decimal(18,2)")] public decimal ExpectedAmount { get; set; }
+    public DateTime ExpectedExpenseDate { get; set; }
+    public string? Notes { get; set; }
+    public Guid CreatedByEmployeeId { get; set; }
+    [ForeignKey(nameof(CreatedByEmployeeId))] public Employee CreatedByEmployee { get; set; } = null!;
+    public ForecastStatus Status { get; set; } = ForecastStatus.Draft;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
+    public ICollection<ActivityComment> Comments { get; set; } = new List<ActivityComment>();
+    public ICollection<RequestDocument> Documents { get; set; } = new List<RequestDocument>();
+    public ICollection<ExpenseRequest> ExpenseRequests { get; set; } = new List<ExpenseRequest>();
 }
 
 // ═══════════════════════════════════════════════════
@@ -334,6 +359,8 @@ public class RequestDocument
     [ForeignKey(nameof(ExpenseRequestId))] public ExpenseRequest? ExpenseRequest { get; set; }
     public Guid? VendorBillId { get; set; }
     [ForeignKey(nameof(VendorBillId))] public VendorBill? VendorBill { get; set; }
+    public Guid? ForecastId { get; set; }
+    [ForeignKey(nameof(ForecastId))] public Forecast? Forecast { get; set; }
     public Guid UploadedByEmployeeId { get; set; }
     [ForeignKey(nameof(UploadedByEmployeeId))] public Employee UploadedByEmployee { get; set; } = null!;
     [Required, MaxLength(260)] public string FileName { get; set; } = "";
@@ -460,6 +487,7 @@ public class ActivityComment
     public Guid? VendorBillId { get; set; }
     public Guid? AdvancePaymentId { get; set; }
     public Guid? InvoiceId { get; set; }
+    public Guid? ForecastId { get; set; }
     public Guid CommentByEmployeeId { get; set; }
     [ForeignKey(nameof(CommentByEmployeeId))] public Employee CommentByEmployee { get; set; } = null!;
     [Required, MaxLength(2000)] public string Text { get; set; } = "";

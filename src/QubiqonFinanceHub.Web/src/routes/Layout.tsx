@@ -11,6 +11,7 @@ import {
   Menu,
   Network,
   ReceiptText,
+  Target,
   Settings,
   Users,
   TrendingDown,
@@ -29,6 +30,7 @@ import type { UserRole } from "../types";
 const navIcons = {
   dashboard: LayoutDashboard,
   expenses: ReceiptText,
+  forecasts: Target,
   advances: BanknoteArrowUp,
   vendors: BriefcaseBusiness,
   clients: HandCoins,

@@ -73,6 +73,8 @@ export interface Expense {
   employeeId?: string;
   /** Who raised/submitted the request (GUID); cancel only when this matches the logged-in user */
   submittedByEmployeeId?: string;
+  forecastId?: string | null;
+  forecast?: ForecastSummary | null;
   empId: number;
   empName: string;
   dept: string;
@@ -89,6 +91,37 @@ export interface Expense {
   billDate?: string;
   paidAmount?: number;
   comments: ActivityComment[];
+}
+
+export interface ForecastSummary {
+  id: string;
+  title: string;
+  purpose: string;
+  description: string;
+  expectedAmount: number;
+  expectedExpenseDate: string;
+  status: string;
+}
+
+export interface ForecastExpense {
+  id: string;
+  expenseCode: string;
+  amount: number;
+  billDate: string;
+  status: string;
+  submittedBy: string;
+  createdAt: string;
+}
+
+export interface Forecast extends ForecastSummary {
+  notes?: string | null;
+  createdByEmployeeId: string;
+  createdBy: string;
+  createdAt: string;
+  expensesRaised: number;
+  comments: ActivityComment[];
+  documents: UploadedDocument[];
+  relatedExpenses: ForecastExpense[];
 }
 
 export interface BillLineItem {

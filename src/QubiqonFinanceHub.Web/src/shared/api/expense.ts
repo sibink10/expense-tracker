@@ -1,6 +1,7 @@
 import { apiClient } from "./client";
 import type { Expense } from "../../types";
 import type { ActivityComment, FileRef, UploadedDocument } from "../../types";
+import type { ForecastSummary } from "../../types";
 import {
   activityCommentStatusFallback,
   formatActivityCommentAction,
@@ -31,6 +32,8 @@ export interface ApiExpenseItem {
   employeeId: string;
   /** Who submitted the request; used for cancel permission (may differ from employeeId for on-behalf). */
   submittedByEmployeeId?: string | null;
+  forecastId?: string | null;
+  forecast?: ForecastSummary | null;
   employeeName: string;
   department: string;
   amount: number;
@@ -112,6 +115,8 @@ function mapApiExpenseToApp(item: ApiExpenseItem): Expense {
     apiId: item.id,
     employeeId: item.employeeId,
     submittedByEmployeeId: item.submittedByEmployeeId ?? undefined,
+    forecastId: item.forecastId ?? undefined,
+    forecast: item.forecast ?? undefined,
     empId: 0,
     empName: item.employeeName,
     dept: item.department || "",
@@ -196,6 +201,7 @@ export interface CreateExpensePayload {
   onBehalfOfEmployeeId: string | null;
   billNumber?: string | null;
   billDate?: string | null;
+  forecastId?: string | null;
 }
 
 /** Submit expense with file attachment via FormData (multipart/form-data). */

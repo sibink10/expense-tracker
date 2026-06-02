@@ -1,0 +1,229 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Check, Plus, RefreshCw, Send, Target, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Badge, Btn, Empty, Filter, Tbl } from "../ui";
+import { C } from "../../shared/theme";
+import { approveForecast, cancelForecast, getForecastsMapped, rejectForecast, submitForecast } from "../../shared/api/forecast";
+import type { Forecast } from "../../types";
+import { useAppContext } from "../../context/AppContext";
+import { ROLES } from "../../shared/constants";
+
+const STATUS_OPTIONS = ["all", "Draft", "Submitted", "Approved", "Rejected", "Cancelled"];
+
+function formatMoney(value: number) {
+  return `₹${value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+}
+
+const workflowActionStyle = (fg: string, bg: string) => ({
+  borderRadius: "4px",
+  background: bg,
+  color: fg,
+  padding: "6px 8px",
+  minHeight: 26,
+});
+
+export default function ForecastListPageContent() {
+  const navigate = useNavigate();
+  const { t, is, user } = useAppContext();
+  const [data, setData] = useState<Forecast[]>([]);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("all");
+  const [sortBy, setSortBy] = useState("CreatedAt");
+  const [desc, setDesc] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await getForecastsMapped({
+        page: 1,
+        pageSize: 100,
+        search: search || undefined,
+        status: status === "all" ? undefined : status,
+        sortBy,
+        desc,
+      });
+      setData(res.items);
+    } finally {
+      setLoading(false);
+    }
+  }, [desc, search, sortBy, status]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const canReview = is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN);
+
+  const rows = useMemo(
+    () =>
+      data.map((forecast) => ({
+        forecast,
+        _cells: [
+          { v: <span style={{ fontWeight: 600, color: C.primary }}>{forecast.title}</span> },
+          { v: forecast.purpose },
+          { v: formatMoney(forecast.expectedAmount), sx: { whiteSpace: "nowrap" as const } },
+          { v: forecast.expectedExpenseDate, sx: { whiteSpace: "nowrap" as const } },
+          { v: <Badge s={forecast.status} /> },
+          { v: forecast.createdBy },
+          { v: forecast.createdAt, sx: { whiteSpace: "nowrap" as const } },
+          { v: forecast.expensesRaised },
+          {
+            v: (
+              <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", flexWrap: "wrap", minHeight: 36, alignItems: "center" }}>
+                {forecast.status === "Draft" && (
+                  <Btn
+                    sm
+                    v="ghost"
+                    sx={workflowActionStyle(C.success, C.successBg)}
+                    disabled={!!actionLoading}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      setActionLoading("submit");
+                      try {
+                        await submitForecast(forecast.id);
+                        t("Forecast submitted");
+                        load();
+                      } finally {
+                        setActionLoading(null);
+                      }
+                    }}
+                  >
+                    <Send size={14} />
+                    {actionLoading === "submit" ? "Submitting..." : "Submit"}
+                  </Btn>
+                )}
+                {forecast.status === "Submitted" && forecast.createdByEmployeeId === user?.id && (
+                  <Btn
+                    sm
+                    v="ghost"
+                    sx={workflowActionStyle(C.danger, C.dangerBg)}
+                    disabled={!!actionLoading}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      setActionLoading("cancel");
+                      try {
+                        await cancelForecast(forecast.id);
+                        t("Forecast cancelled");
+                        load();
+                      } finally {
+                        setActionLoading(null);
+                      }
+                    }}
+                  >
+                    <X size={14} />
+                    {actionLoading === "cancel" ? "Cancelling..." : "Cancel"}
+                  </Btn>
+                )}
+                {canReview && forecast.status === "Submitted" && forecast.createdByEmployeeId !== user?.id && (
+                  <>
+                    <Btn
+                      sm
+                      v="ghost"
+                      sx={workflowActionStyle(C.success, C.successBg)}
+                      disabled={!!actionLoading}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        setActionLoading("approve");
+                        try {
+                          await approveForecast(forecast.id);
+                          t("Forecast approved");
+                          load();
+                        } finally {
+                          setActionLoading(null);
+                        }
+                      }}
+                    >
+                      <Check size={14} />
+                      {actionLoading === "approve" ? "Approving..." : "Approve"}
+                    </Btn>
+                    <Btn
+                      sm
+                      v="ghost"
+                      sx={workflowActionStyle(C.danger, C.dangerBg)}
+                      disabled={!!actionLoading}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        const reason = window.prompt("Rejection reason");
+                        if (!reason?.trim()) return;
+                        setActionLoading("reject");
+                        try {
+                          await rejectForecast(forecast.id, reason.trim());
+                          t("Forecast rejected");
+                          load();
+                        } finally {
+                          setActionLoading(null);
+                        }
+                      }}
+                    >
+                      <X size={14} />
+                      {actionLoading === "reject" ? "Rejecting..." : "Reject"}
+                    </Btn>
+                  </>
+                )}
+              </div>
+            ),
+            sx: { textAlign: "right" as const },
+          },
+        ],
+      })),
+    [canReview, data, load, navigate, t, user],
+  );
+
+  const onSortChange = (nextSort: string) => {
+    if (sortBy === nextSort) setDesc((v) => !v);
+    else {
+      setSortBy(nextSort);
+      setDesc(true);
+    }
+  };
+
+  return (
+    <div style={{ width: "100%" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", marginBottom: "20px" }}>
+        <h1 style={{ display: "flex", alignItems: "center", gap: "8px", color: C.text, fontSize: "24px", fontWeight: 600, margin: 0 }}>
+          <Target size={22} color={C.text} strokeWidth={1.8} />
+          Forecast management
+        </h1>
+        <Btn onClick={() => navigate("/forecasts/add")} sx={{ borderRadius: "4px" }}>
+          <Plus size={14} />
+          Add forecast
+        </Btn>
+      </div>
+      <div style={{ background: "#fff", borderRadius: "4px", padding: "16px", boxShadow: "-5px -2px 108.5px 0px #00024914" }}>
+        <Filter
+          search={search}
+          onSearch={setSearch}
+          status={status}
+          onStatus={setStatus}
+          opts={STATUS_OPTIONS}
+          trailing={
+            <Btn sm v="secondary" onClick={load} disabled={loading} sx={{ borderRadius: "4px" }}>
+              <RefreshCw size={13} />
+            </Btn>
+          }
+        />
+        <Tbl
+          cols={[
+            { label: "Forecast title", sortKey: "Title" },
+            { label: "Purpose", sortKey: "Purpose" },
+            { label: "Expected amount", sortKey: "ExpectedAmount" },
+            { label: "Expected date", sortKey: "ExpectedExpenseDate" },
+            { label: "Status", sortKey: "Status" },
+            { label: "Created by", sortKey: "CreatedBy" },
+            { label: "Created date", sortKey: "CreatedAt" },
+            "Expenses raised",
+            { label: "Actions", sx: { textAlign: "right" } },
+          ]}
+          rows={rows}
+          onRow={(row) => navigate(`/forecasts/${(row as (typeof rows)[number]).forecast.id}`)}
+          sortBy={sortBy}
+          sortDesc={desc}
+          onSortChange={onSortChange}
+          bodyFallback={<Empty icon={<Target />} title={loading ? "Loading forecasts..." : "No forecasts"} sub={search ? "Try a different search term." : "Create a forecast to get started."} />}
+        />
+      </div>
+    </div>
+  );
+}

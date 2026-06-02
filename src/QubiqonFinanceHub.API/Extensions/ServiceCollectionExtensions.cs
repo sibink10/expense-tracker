@@ -25,6 +25,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IOrganizationService, OrganizationService>();
         services.AddScoped<IExpenseService, ExpenseService>();
+        services.AddScoped<IForecastService, ForecastService>();
         services.AddScoped<IInvoicePdfGenerator, InvoicePdfGenerator>();
         services.AddScoped<IInvoiceService, InvoiceService>();
         services.AddScoped<IAdvanceService, AdvanceService>();

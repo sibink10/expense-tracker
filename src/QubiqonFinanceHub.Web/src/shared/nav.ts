@@ -16,6 +16,7 @@ export function buildNav(_cfg?: { advEnabled?: boolean }): NavSection[] {
       s: "Payable",
       i: "payable",
       items: [
+        { path: "/forecasts", l: "Forecasts", i: "forecasts", r: allRoles, end: true, addPath: "/forecasts/add", addRoles: allRoles },
         { path: "/expenses", l: "Expenses", i: "expenses", r: allRoles, end: true, addPath: "/expenses/add", addRoles: allRoles },
         { path: "/advances", l: "Advance Requests", i: "advances", r: allRoles, end: true, addPath: "/advances/add", addRoles: allRoles },
         { path: "/bills", l: "Vendor Bills", i: "", r: [ROLES.FINANCE, ROLES.APPROVER, ROLES.ADMIN] as UserRole[], end: true, addPath: "/bills/add", addRoles: [ROLES.FINANCE, ROLES.ADMIN] as UserRole[] },

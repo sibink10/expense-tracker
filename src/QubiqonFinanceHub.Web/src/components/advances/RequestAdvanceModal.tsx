@@ -13,6 +13,7 @@ export default function RequestAdvanceModal() {
   const [pur, setPur] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const balanceCap = cfg.balanceCap ?? 0;
   const parsedAmount = parseFloat(amt);
   const invalidAmount = amt.trim() !== "" && (isNaN(parsedAmount) || parsedAmount <= 0);
@@ -22,13 +23,26 @@ export default function RequestAdvanceModal() {
     void refreshOrgSettings().catch(() => undefined);
   }, [refreshOrgSettings]);
 
-  const submit = async () => {
+  const validate = () => {
     const amount = parseFloat(amt);
     if (isNaN(amount) || amount <= 0) {
       setError("Amount must be greater than 0");
-      return;
+      return null;
     }
-    if (!pur.trim()) return;
+    if (!pur.trim()) return null;
+    return amount;
+  };
+
+  const openConfirm = () => {
+    setError(null);
+    const amount = validate();
+    if (amount == null) return;
+    setConfirmOpen(true);
+  };
+
+  const submit = async () => {
+    const amount = validate();
+    if (amount == null) return;
 
     setLoading(true);
     setError(null);
@@ -36,6 +50,7 @@ export default function RequestAdvanceModal() {
       await createAdvance({ amount, purpose: pur.trim() });
       setEmail({ to: "Approvers", subj: `New advance request from ${user.name}` });
       t("Advance submitted");
+      setConfirmOpen(false);
       setMdl(null);
       window.dispatchEvent(new CustomEvent(EVENTS.ADVANCES_REFRESH));
     } catch (err: unknown) {
@@ -117,7 +132,7 @@ export default function RequestAdvanceModal() {
           <Btn
             v="primary"
             sm
-            onClick={submit}
+            onClick={openConfirm}
             disabled={!amt || !pur.trim() || invalidAmount || over || loading}
             sx={{ borderRadius: "4px", boxShadow: C.cardShadow }}
           >
@@ -126,6 +141,30 @@ export default function RequestAdvanceModal() {
           </Btn>
         </div>
       </div>
+      <Mdl open={confirmOpen} close={() => !loading && setConfirmOpen(false)} title="Submit advance request">
+        <div style={{ fontSize: "13px", color: C.primary, lineHeight: 1.5 }}>
+          Submit this advance request for approval?
+        </div>
+        <div style={{ display: "grid", gap: "8px", marginTop: "14px", padding: "12px", background: C.advanceBg, borderRadius: "8px", fontSize: "12px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
+            <span style={{ color: C.muted }}>Amount</span>
+            <strong>{fmtCur(parseFloat(amt) || 0)}</strong>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
+            <span style={{ color: C.muted }}>Employee</span>
+            <strong>{user.name}</strong>
+          </div>
+        </div>
+        <div style={{ marginTop: "18px", display: "flex", justifyContent: "flex-end", gap: "8px", flexWrap: "wrap" }}>
+          <Btn v="secondary" sm onClick={() => setConfirmOpen(false)} disabled={loading} sx={{ borderRadius: "4px" }}>
+            Cancel
+          </Btn>
+          <Btn v="primary" sm onClick={submit} disabled={loading} sx={{ borderRadius: "4px" }}>
+            <CirclePlus size={15} strokeWidth={1.8} />
+            {loading ? "Submitting..." : "Confirm submit"}
+          </Btn>
+        </div>
+      </Mdl>
     </Mdl>
   );
 }

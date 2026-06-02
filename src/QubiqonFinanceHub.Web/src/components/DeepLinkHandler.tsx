@@ -5,6 +5,7 @@ import { getExpenseById } from "../shared/api/expense";
 import { getAdvanceById } from "../shared/api/advance";
 import { getBillById } from "../shared/api/bill";
 import { getInvoice } from "../shared/api/invoice";
+import { getForecastById } from "../shared/api/forecast";
 import {
   resolveExpenseDeepLink,
   resolveAdvanceDeepLink,
@@ -12,7 +13,7 @@ import {
   resolveInvoiceDeepLink,
 } from "../shared/deepLinkModal";
 
-const PATHS = new Set(["/expenses", "/advances", "/bills", "/invoices"]);
+const PATHS = new Set(["/expenses", "/advances", "/bills", "/invoices", "/forecasts"]);
 
 /**
  * Reads `?id=<api-guid>&type=<intent>` on list routes, loads the entity, opens the modal
@@ -37,6 +38,7 @@ export default function DeepLinkHandler() {
 
     const myRun = ++runId.current;
     let cancelled = false;
+    let handled = false;
 
     const stripDeepLinkParamsFromUrl = () => {
       const next = new URLSearchParams(search);
@@ -84,13 +86,24 @@ export default function DeepLinkHandler() {
             return;
           }
           setMdl(resolveInvoiceDeepLink(entity, user, typeParam));
+        } else if (pathname === "/forecasts") {
+          const entity = await getForecastById(id.trim());
+          if (cancelled || runId.current !== myRun) return;
+          if (!entity) {
+            t("Could not open forecast", "error");
+            stripDeepLinkParamsFromUrl();
+            return;
+          }
+
+          handled = true;
+          navigate(`/forecasts/${id.trim()}`, { replace: true });
         }
       } catch {
         if (!cancelled && runId.current === myRun) {
           t("Could not load item from link", "error");
         }
       } finally {
-        if (!cancelled && runId.current === myRun) stripDeepLinkParamsFromUrl();
+        if (!cancelled && runId.current === myRun && !handled) stripDeepLinkParamsFromUrl();
       }
     })();
 

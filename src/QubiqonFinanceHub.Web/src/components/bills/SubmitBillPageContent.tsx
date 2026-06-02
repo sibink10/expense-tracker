@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { C } from "../../shared/theme";
 import { BILL_PAYMENT_PRIORITY, BILL_PAYMENT_PRIORITY_OPTIONS, EVENTS, PAY_TERMS } from "../../shared/constants";
 import { addDays, fmtCur, round2, aggregateLineGstRows, formatTdsOptionLabel, formatTdsSummarySnippet } from "../../shared/utils";
-import { Inp, Btn, MultiFileUp, Alert } from "../ui";
+import { Inp, Btn, MultiFileUp, Alert, Mdl } from "../ui";
 import DecimalLineInput from "../DecimalLineInput";
 import { AsyncSelectInput } from "../AsyncSelectInput";
 import { useAppContext } from "../../context/AppContext";
@@ -94,6 +94,7 @@ export default function SubmitBillPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     const onResize = () => setNarrow(window.innerWidth < GRID_BREAKPOINT);
@@ -163,7 +164,16 @@ export default function SubmitBillPage() {
   const discountAmount = subTotal * discountVal;
   const roundingVal = parseFloat(rounding) || 0;
   const totalBeforeTds = subTotal + itemTaxAmount - discountAmount + roundingVal;
-  const hasValidItems = items.some((it) => it.description.trim() && it.quantity > 0 && it.rate >= 0);
+  const validItems = items
+    .filter((it) => it.description.trim() && it.quantity > 0 && it.rate >= 0)
+    .map((it) => ({
+      description: it.description.trim(),
+      account: it.account || undefined,
+      quantity: it.quantity,
+      rate: it.rate,
+      gstConfigId: it.gstConfigId || undefined,
+    }));
+  const hasValidItems = validItems.length > 0;
 
   const due = bd ? addDays(bd, paymentTermOptions.find((x) => x.v === trm)?.d || 30) : "";
   const tx = tdsOptions.find((x) => x.id === tds);
@@ -186,15 +196,26 @@ export default function SubmitBillPage() {
     ...gstOptions.map((g) => ({ v: g.id, l: `${g.name} [${g.rate}%]` })),
   ];
 
-  const handleSubmit = async () => {
+  const validateSubmit = () => {
     if (!hasValidItems) {
       setError("Add at least one item with description, quantity and rate");
-      return;
+      return false;
     }
     if (!vId || !vendorBillNumber.trim() || !bd || files.length === 0) {
       setError("Please fill all required fields");
-      return;
+      return false;
     }
+    return true;
+  };
+
+  const openConfirm = () => {
+    setError(null);
+    if (!validateSubmit()) return;
+    setConfirmOpen(true);
+  };
+
+  const handleSubmit = async () => {
+    if (!validateSubmit()) return;
     setLoading(true);
     setError(null);
     try {
@@ -205,15 +226,6 @@ export default function SubmitBillPage() {
         paymentTermOptions.find((x) => x.v === trm)?.l ?? PAY_TERMS.find((x) => x.v === trm)?.l ?? trm;
       const accountNameByShortName = new Map(accountOptions.map((x) => [x.v, x.l]));
 
-      const validItems = items
-        .filter((it) => it.description.trim() && it.quantity > 0 && it.rate >= 0)
-        .map((it) => ({
-          description: it.description.trim(),
-          account: it.account ? (accountNameByShortName.get(it.account) ?? it.account) : undefined,
-          quantity: it.quantity,
-          rate: it.rate,
-          gstConfigId: it.gstConfigId || undefined,
-        }));
       await createBill(
         {
           vendorId: vId,
@@ -228,13 +240,17 @@ export default function SubmitBillPage() {
           ccEmails: "",
           discountPercent: parseFloat(discountPct) || 0,
           rounding: roundingVal,
-          items: validItems,
+          items: validItems.map((item) => ({
+            ...item,
+            account: item.account ? accountNameByShortName.get(item.account) ?? item.account : undefined,
+          })),
         },
         files
       );
       setCfg((c) => ({ ...c, billSeq: c.billSeq + 1 }));
       window.dispatchEvent(new CustomEvent(EVENTS.BILLS_REFRESH));
       t("Bill submitted");
+      setConfirmOpen(false);
       navigate("/bills");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to submit bill");
@@ -279,7 +295,7 @@ export default function SubmitBillPage() {
           <ReceiptText size={narrow ? 18 : 22} color={C.text} strokeWidth={1.8} />
           Submit vendor bill
         </h1>
-        <Btn v="vendor" onClick={handleSubmit} disabled={!canSubmit} sx={{ borderRadius: "4px" }}>
+        <Btn v="vendor" onClick={openConfirm} disabled={!canSubmit} sx={{ borderRadius: "4px" }}>
           <FilePlus2 size={14} />
           {loading ? "Submitting..." : "Submit bill"}
         </Btn>
@@ -639,6 +655,34 @@ export default function SubmitBillPage() {
 
         {error && <Alert sx={{ marginBottom: "16px" }}>{error}</Alert>}
       </div>
+      <Mdl open={confirmOpen} close={() => !loading && setConfirmOpen(false)} title="Submit vendor bill">
+        <div style={{ fontSize: "13px", color: C.primary, lineHeight: 1.5 }}>
+          Submit this vendor bill for approval and payment processing?
+        </div>
+        <div style={{ display: "grid", gap: "8px", marginTop: "14px", padding: "12px", background: `${C.vendor}08`, borderRadius: "8px", fontSize: "12px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
+            <span style={{ color: C.muted }}>Bill number</span>
+            <strong>{vendorBillNumber.trim()}</strong>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
+            <span style={{ color: C.muted }}>Total</span>
+            <strong>{fmtCur(totalBeforeTds)}</strong>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
+            <span style={{ color: C.muted }}>Items</span>
+            <strong>{validItems.length}</strong>
+          </div>
+        </div>
+        <div style={{ marginTop: "18px", display: "flex", justifyContent: "flex-end", gap: "8px", flexWrap: "wrap" }}>
+          <Btn v="secondary" onClick={() => setConfirmOpen(false)} disabled={loading} sx={{ borderRadius: "4px" }}>
+            Cancel
+          </Btn>
+          <Btn v="vendor" onClick={handleSubmit} disabled={loading} sx={{ borderRadius: "4px" }}>
+            <FilePlus2 size={14} />
+            {loading ? "Submitting..." : "Confirm submit"}
+          </Btn>
+        </div>
+      </Mdl>
     </div>
   );
 }

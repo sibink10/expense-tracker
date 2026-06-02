@@ -12,6 +12,9 @@ namespace QubiqonFinanceHub.API.Models.Constants
             public const string ExpenseSubmitterUploadBills = "expense_submitter_upload_bills";
             /// <summary>Notify finance when bill documents are uploaded and expense is awaiting payment.</summary>
             public const string ExpenseBillUploadedFinance = "expense_bill_uploaded_finance";
+            public const string ForecastSubmitted = "forecast_submitted";
+            public const string ForecastApproved = "forecast_approved";
+            public const string ForecastRejected = "forecast_rejected";
             public const string PaymentConfirmation = "payment_confirmation";
             public const string AdvanceSubmitted = "advance_submitted";
             public const string AdvanceApproved = "advance_approved";

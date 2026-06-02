@@ -34,6 +34,7 @@ public class ExpenseService : IExpenseService
             : currentEmp;
 
         var code = await _codeGen.GenerateBillNumberAsync(orgId, "expense");
+        await EnsureApprovedForecastAsync(orgId, dto.ForecastId);
 
         var expenseId = Guid.NewGuid(); // Generate ID early for storage path
         var uploadedBills = ResolveUploadedFiles(dto.BillImages, dto.BillImage);
@@ -47,6 +48,7 @@ public class ExpenseService : IExpenseService
             ExpenseCode = code,
             EmployeeId = targetEmpId,
             SubmittedByEmployeeId = currentEmp.Id,
+            ForecastId = dto.ForecastId,
             Amount = dto.Amount,
             Purpose = dto.Purpose,
             BillDate = dto.BillDate,
@@ -214,6 +216,7 @@ public class ExpenseService : IExpenseService
                 "This expense cannot be edited in its current status. Only an administrator can edit expenses after approval or once payment has started.");
 
         var wasRejected = expense.Status == ExpenseStatus.Rejected;
+        await EnsureApprovedForecastAsync(orgId, dto.ForecastId);
 
         var uploadedBills = ResolveUploadedFiles(dto.BillImages, dto.BillImage);
         if (uploadedBills.Count > 0)
@@ -230,6 +233,7 @@ public class ExpenseService : IExpenseService
         expense.BillDate = dto.BillDate;
         if (wasRejected)
             expense.Status = ExpenseStatus.PendingApproval;
+        expense.ForecastId = dto.ForecastId;
         expense.UpdatedAt = DateTime.UtcNow;
 
         _db.ActivityComments.Add(new ActivityComment
@@ -290,6 +294,7 @@ public class ExpenseService : IExpenseService
         var orgId = await _tenant.GetCurrentOrganizationId();
         var e = await _db.ExpenseRequests
             .Include(x => x.Employee)
+            .Include(x => x.Forecast)
             .Include(x => x.Documents)
             .Include(x => x.Comments).ThenInclude(c => c.CommentByEmployee)
             .AsNoTracking()
@@ -304,6 +309,7 @@ public class ExpenseService : IExpenseService
         var orgId = await _tenant.GetCurrentOrganizationId();
         var q = _db.ExpenseRequests
             .Include(x => x.Employee)
+            .Include(x => x.Forecast)
             .Include(x => x.Documents)
             .Include(x => x.Comments).ThenInclude(c => c.CommentByEmployee)
             .Where(x => x.OrganizationId == orgId)
@@ -673,6 +679,18 @@ public class ExpenseService : IExpenseService
         e.Employee.FullName,
         e.Employee.Department ?? "",
         e.SubmittedByEmployeeId,
+        e.ForecastId,
+        e.Forecast == null
+            ? null
+            : new ForecastSummaryDto(
+                e.Forecast.Id,
+                e.Forecast.Title,
+                e.Forecast.Purpose,
+                e.Forecast.Description,
+                e.Forecast.ExpectedAmount,
+                e.Forecast.ExpectedExpenseDate,
+                e.Forecast.Status.ToString()
+            ),
         e.Amount,
         e.PaidAmount,
         e.Purpose, 
@@ -772,6 +790,22 @@ public class ExpenseService : IExpenseService
             expense.Status != ExpenseStatus.AwaitingPayment &&
             expense.Status != ExpenseStatus.AwaitingBill)
             throw new InvalidOperationException("Bill can only be uploaded for pending or approved expenses.");
+    }
+
+    private async Task EnsureApprovedForecastAsync(Guid orgId, Guid? forecastId)
+    {
+        if (!forecastId.HasValue) return;
+
+        var status = await _db.Forecasts
+            .Where(x => x.Id == forecastId.Value && x.OrganizationId == orgId)
+            .Select(x => (ForecastStatus?)x.Status)
+            .FirstOrDefaultAsync();
+
+        if (!status.HasValue)
+            throw new KeyNotFoundException("Forecast not found.");
+
+        if (status.Value != ForecastStatus.Approved)
+            throw new InvalidOperationException("Only approved forecasts can be linked to an expense.");
     }
 
     private static string GetFileNameFromUrl(string fileUrl)

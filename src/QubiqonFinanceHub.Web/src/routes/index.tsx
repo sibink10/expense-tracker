@@ -5,6 +5,9 @@ import DashPage from "../pages/dashboard/DashPage";
 import ExpenseListPage from "../pages/expenses/ExpenseListPage";
 import ExpensePayPage from "../pages/expenses/ExpensePayPage";
 import AddExpensePage from "../pages/expenses/AddExpensePage";
+import ForecastListPage from "../pages/forecasts/ForecastListPage";
+import AddForecastPage from "../pages/forecasts/AddForecastPage";
+import ForecastDetailPage from "../pages/forecasts/ForecastDetailPage";
 import AdvanceListPage from "../pages/advances/AdvanceListPage";
 import BillListPage from "../pages/bills/BillListPage";
 import SubmitBillPage from "../pages/bills/SubmitBillPage";
@@ -38,6 +41,10 @@ export const router = createBrowserRouter([
     element: <Layout />,
     children: [
       { index: true, element: <DashOrRedirect /> },
+      { path: "forecasts", element: <ForecastListPage /> },
+      { path: "forecasts/add", element: <AddForecastPage /> },
+      { path: "forecasts/:id", element: <ForecastDetailPage /> },
+      { path: "forecasts/:id/edit", element: <AddForecastPage /> },
       { path: "expenses", element: <ExpenseListPage /> },
       { path: "expenses/add", element: <AddExpensePage /> },
       { path: "expenses/pay", element: <ExpensePayPage /> },

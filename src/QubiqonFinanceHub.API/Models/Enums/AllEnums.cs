@@ -4,6 +4,8 @@ public enum UserRole { Employee = 0, Approver = 1, Finance = 2, Admin = 3, PROJE
 
 public enum ExpenseStatus { PendingApproval = 0, Approved = 1, Rejected = 2, Cancelled = 3, AwaitingBill = 4, Completed = 5, PendingBillApproval = 6, AwaitingPayment = 7, PartiallyPaid = 8 }
 
+public enum ForecastStatus { Draft = 0, Submitted = 1, Approved = 2, Rejected = 3, Cancelled = 4 }
+
 public enum BillStatus { Draft = 0, Submitted = 1, Approved = 2, Rejected = 3, Paid = 4, Overdue = 5, PartiallyPaid = 6 }
 
 /// <summary>When finance should pay this vendor bill (submitter preference).</summary>
@@ -30,7 +32,7 @@ public enum TaxType { TDS = 0, GST = 1, ClientTax = 2 }
 
 public enum ClientTaxType { Domestic = 0, SEZ = 1, Export = 2 }
 
-public enum CommentActionType { Submitted = 0, Approved = 1, Rejected = 2, Cancelled = 3, PaymentProcessed = 4, Sent = 5, General = 6, BillUploaded = 7 }
+public enum CommentActionType { Submitted = 0, Approved = 1, Rejected = 2, Cancelled = 3, PaymentProcessed = 4, Sent = 5, General = 6, BillUploaded = 7, Created = 8 }
 
 public enum SubscriptionPlan { Free = 0, Starter = 1, Professional = 2, Enterprise = 3 }
 

@@ -170,6 +170,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
       formData.append("Amount", String(amount));
       formData.append("Purpose", pur.trim());
       formData.append("BillDate", billDate);
+      if (e.forecastId) formData.append("ForecastId", e.forecastId);
       billFilesRaw.forEach((file) => formData.append("BillImages", file));
       await updateExpenseForm(id, formData);
       t("Expense updated");
@@ -265,6 +266,18 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
               req
               style={{ marginBottom: 0, flex: "1 1 160px" }}
             />
+          </div>
+        </div>
+      )}
+
+      {e.forecast && (
+        <div style={{ marginBottom: "12px" }}>
+          <div style={{ fontSize: "10px", color: C.muted, marginBottom: "4px" }}>Forecast</div>
+          <div style={{ padding: "10px 14px", background: C.surface, borderRadius: "8px", fontSize: "12px" }}>
+            <div style={{ fontWeight: 700, color: C.primary, marginBottom: "4px" }}>{e.forecast.title}</div>
+            <div style={{ color: C.muted }}>
+              {e.forecast.purpose} · ₹{e.forecast.expectedAmount.toLocaleString("en-IN")} · {e.forecast.expectedExpenseDate}
+            </div>
           </div>
         </div>
       )}

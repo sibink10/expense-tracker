@@ -137,6 +137,9 @@ public class EmailService : IEmailService
             Constants.EmailTemplateKeys.ExpenseSubmitterUploadBills,
             Constants.EmailTemplateKeys.ExpenseBillUploadedFinance,
             Constants.EmailTemplateKeys.ExpenseRejected,
+            Constants.EmailTemplateKeys.ForecastSubmitted,
+            Constants.EmailTemplateKeys.ForecastApproved,
+            Constants.EmailTemplateKeys.ForecastRejected,
             "payment_confirmation",
             Constants.EmailTemplateKeys.AdvanceSubmitted,
             Constants.EmailTemplateKeys.AdvanceApproved,
@@ -264,6 +267,57 @@ public class EmailService : IEmailService
                 GetVariable(variables, "rejected_by"),
                 GetVariableOrEmpty(variables, "reason"),
                 "Rejection Reason",
+                variables,
+                includePaymentReference: false),
+
+            var key when key == Constants.EmailTemplateKeys.ForecastSubmitted => BuildForecastEmailContent(
+                org,
+                logoMarkup,
+                inlineLogo,
+                "Submitted",
+                "#0f766e",
+                BuildNewSubject("Forecast", GetVariable(variables, "forecast_title")),
+                "Forecast Submitted For Review",
+                $"A new forecast <strong>{Encode(GetVariable(variables, "forecast_title"))}</strong> has been submitted for review.",
+                "Please review the request and take the appropriate action.",
+                "Submitted By",
+                GetVariable(variables, "action_by"),
+                GetVariableOrEmpty(variables, "status"),
+                "Forecast Status",
+                variables,
+                includePaymentReference: false),
+
+            var key when key == Constants.EmailTemplateKeys.ForecastApproved => BuildForecastEmailContent(
+                org,
+                logoMarkup,
+                inlineLogo,
+                "Approved",
+                "#22c55e",
+                BuildStatusSubject("Approved", "Forecast", GetVariable(variables, "forecast_title")),
+                "Forecast Approved",
+                $"Your forecast <strong>{Encode(GetVariable(variables, "forecast_title"))}</strong> has been approved.",
+                "No further action is needed from your side at this stage.",
+                "Approved By",
+                GetVariable(variables, "action_by"),
+                GetVariableOrEmpty(variables, "status"),
+                "Forecast Status",
+                variables,
+                includePaymentReference: false),
+
+            var key when key == Constants.EmailTemplateKeys.ForecastRejected => BuildForecastEmailContent(
+                org,
+                logoMarkup,
+                inlineLogo,
+                "Rejected",
+                "#ef4444",
+                BuildStatusSubject("Rejected", "Forecast", GetVariable(variables, "forecast_title")),
+                "Forecast Rejected",
+                $"Your forecast <strong>{Encode(GetVariable(variables, "forecast_title"))}</strong> has been rejected.",
+                "Please review the reason below and resubmit if required.",
+                "Rejected By",
+                GetVariable(variables, "action_by"),
+                GetVariableOrEmpty(variables, "status"),
+                "Forecast Status",
                 variables,
                 includePaymentReference: false),
 
@@ -772,7 +826,14 @@ public class EmailService : IEmailService
         if (variables.TryGetValue("entity_api_id", out var eid) && !string.IsNullOrWhiteSpace(eid)
             && variables.TryGetValue("entity_type", out var etype) && !string.IsNullOrWhiteSpace(etype))
         {
-            var path = etype.Trim().ToLowerInvariant() switch
+            var typeKey = etype.Trim().ToLowerInvariant();
+            if (typeKey == "forecast")
+            {
+                variables["view_link"] = $"{baseUrl}/forecasts/{Uri.EscapeDataString(eid.Trim())}";
+                return;
+            }
+
+            var path = typeKey switch
             {
                 "expense" => "/expenses",
                 "advance" => "/advances",
@@ -914,6 +975,130 @@ public class EmailService : IEmailService
                                 <tr>
                                     <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Bill Date</td>
                                     <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "bill_date"))}}</td>
+                                </tr>
+                                {{paidAmountRow}}
+                                {{balanceDueRow}}
+                                {{paymentReferenceRow}}
+                                <tr>
+                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">{{Encode(actorLabel)}}</td>
+                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(actorName)}}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Updated On</td>
+                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "action_date"))}}</td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        {{commentsSection}}
+                        {{viewLinkSection}}
+
+                        <div style="margin-top:24px;padding-top:20px;border-top:1px solid #e2e8f0;font-size:13px;line-height:1.7;color:#64748b;">
+                            This is an automated notification from {{Encode(org.OrgName)}}.
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """;
+
+        return new EmailContent(
+            subject,
+            htmlBody,
+            inlineLogo == null ? [] : [inlineLogo]);
+    }
+
+    private EmailContent BuildForecastEmailContent(
+        Organization org,
+        string logoMarkup,
+        EmailAttachment? inlineLogo,
+        string statusText,
+        string statusColor,
+        string subject,
+        string title,
+        string intro,
+        string nextStepMessage,
+        string actorLabel,
+        string actorName,
+        string detailsText,
+        string detailsHeading,
+        Dictionary<string, string> variables,
+        bool includePaymentReference)
+    {
+        var commentsSection = string.IsNullOrWhiteSpace(detailsText)
+            ? string.Empty
+            : $"""
+               <div style="margin-top:20px;padding:16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+                   <div style="font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#475569;margin-bottom:8px;">{Encode(detailsHeading)}</div>
+                   <div style="font-size:14px;line-height:1.6;color:#0f172a;">{EncodeMultiline(detailsText)}</div>
+               </div>
+               """;
+
+        var paymentReferenceRow = includePaymentReference
+            ? BuildOptionalTableRow("Payment Reference", GetVariableOrEmpty(variables, "payment_reference"))
+            : string.Empty;
+        var paidAmountRow = includePaymentReference
+            ? BuildOptionalTableRow("Paid Amount", GetVariableOrEmpty(variables, "paid_amount"))
+            : string.Empty;
+        var balanceDueRow = includePaymentReference
+            ? BuildOptionalTableRow("Balance Due", GetVariableOrEmpty(variables, "balance_due"))
+            : string.Empty;
+
+        var viewLinkSection = BuildViewLinkSection(variables);
+        var organizationDetails = BuildOrganizationDetails(org);
+
+        var htmlBody = $$"""
+            <!DOCTYPE html>
+            <html>
+            <body style="margin:0;padding:24px;background:#f1f5f9;font-family:Segoe UI,Arial,sans-serif;color:#0f172a;">
+                <div style="max-width:720px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+                        <tr>
+                            <td style="width:140px;background:{{statusColor}};color:#ffffff;padding:12px 16px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border-radius:18px 0 12px 0;">
+                                {{statusText}}
+                            </td>
+                            <td style="background:#ffffff;">&nbsp;</td>
+                        </tr>
+                    </table>
+
+                    <div style="padding:16px 28px 24px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">
+                        <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                            <tr>
+                                <td style="vertical-align:top;width:96px;">{{logoMarkup}}</td>
+                                <td style="vertical-align:top;">
+                                    <div style="font-size:24px;font-weight:700;color:#0f172a;">{{Encode(org.OrgName)}}</div>
+                                    <div style="margin-top:6px;font-size:14px;line-height:1.6;color:#475569;">{{organizationDetails}}</div>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div style="padding:32px 28px;">
+                        <h1 style="margin:0 0 12px;font-size:28px;line-height:1.2;">{{Encode(title)}}</h1>
+                        <p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:#334155;">{{intro}}</p>
+                        <p style="margin:0 0 24px;font-size:14px;line-height:1.7;color:#475569;">{{Encode(nextStepMessage)}}</p>
+
+                        <div style="border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;">
+                            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+                                <tr>
+                                    <td style="padding:14px 16px;background:#f8fafc;font-size:13px;font-weight:600;color:#475569;width:35%;">Employee</td>
+                                    <td style="padding:14px 16px;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "employee_name"))}}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Forecast Title</td>
+                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "forecast_title"))}}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Purpose</td>
+                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "purpose"))}}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Amount</td>
+                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "amount"))}}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;">Expected Expense Date</td>
+                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;">{{Encode(GetVariable(variables, "expected_expense_date"))}}</td>
                                 </tr>
                                 {{paidAmountRow}}
                                 {{balanceDueRow}}

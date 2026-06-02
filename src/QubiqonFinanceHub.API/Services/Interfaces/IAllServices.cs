@@ -39,6 +39,20 @@ public interface IExpenseService
     Task RemoveDocumentAsync(Guid expenseId, Guid documentId);
 }
 
+public interface IForecastService
+{
+    Task<ForecastDto> CreateAsync(CreateForecastRequest dto);
+    Task<ForecastDto> UpdateAsync(Guid id, UpdateForecastRequest dto);
+    Task<ForecastDto?> GetByIdAsync(Guid id);
+    Task<PaginatedResult<ForecastDto>> ListAsync(FilterParams filters);
+    Task<List<ForecastSummaryDto>> ListApprovedAsync();
+    Task<ForecastDto> SubmitAsync(Guid id);
+    Task<ForecastDto> ApproveAsync(Guid id, ApproveRequest dto);
+    Task<ForecastDto> RejectAsync(Guid id, RejectRequest dto);
+    Task<ForecastDto> CancelAsync(Guid id);
+    Task<string> GetDocumentUrlAsync(Guid id, Guid documentId);
+}
+
 public interface IAdvanceService
 {
     Task<AdvanceDto> CreateAsync(CreateAdvanceRequest dto);

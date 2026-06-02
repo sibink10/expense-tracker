@@ -10,6 +10,7 @@ const ACTION_LABELS: Record<string, string> = {
   Sent: "Sent",
   General: "Note",
   BillUploaded: "Bill uploaded",
+  Created: "Created",
 };
 
 export function formatActivityCommentAction(actionType: string | undefined | null): string {

@@ -16,6 +16,7 @@ public class FinanceHubDbContext : DbContext
     public DbSet<FinanceEmployeeRole> FinanceEmployeeRoles => Set<FinanceEmployeeRole>();
     public DbSet<EmployeeOrganizationContext> EmployeeOrganizationContexts => Set<EmployeeOrganizationContext>();
     public DbSet<ExpenseRequest> ExpenseRequests => Set<ExpenseRequest>();
+    public DbSet<Forecast> Forecasts => Set<Forecast>();
     public DbSet<AdvancePayment> AdvancePayments => Set<AdvancePayment>();
     public DbSet<Vendor> Vendors => Set<Vendor>();
     public DbSet<VendorBill> VendorBills => Set<VendorBill>();
@@ -126,8 +127,25 @@ public class FinanceHubDbContext : DbContext
             e.ToTable("ExpenseRequests", DbSchemas.Finance);
             e.HasIndex(x => new { x.OrganizationId, x.ExpenseCode }).IsUnique();
             e.HasIndex(x => new { x.OrganizationId, x.Status, x.CreatedAt });
+            e.HasIndex(x => x.ForecastId).HasFilter("[ForecastId] IS NOT NULL");
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
             e.HasOne(x => x.Employee).WithMany().HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Forecast)
+                .WithMany(x => x.ExpenseRequests)
+                .HasForeignKey(x => x.ForecastId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ─── Forecast ───────────────────────────────
+        b.Entity<Forecast>(e => {
+            e.ToTable("Forecasts", DbSchemas.Finance);
+            e.HasIndex(x => new { x.OrganizationId, x.Status, x.CreatedAt });
+            e.HasIndex(x => x.CreatedByEmployeeId);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.HasOne(x => x.CreatedByEmployee)
+                .WithMany()
+                .HasForeignKey(x => x.CreatedByEmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // ─── Advance ────────────────────────────────
@@ -198,8 +216,13 @@ public class FinanceHubDbContext : DbContext
             e.HasIndex(x => x.VendorBillId).HasFilter("[VendorBillId] IS NOT NULL");
             e.HasIndex(x => x.AdvancePaymentId).HasFilter("[AdvancePaymentId] IS NOT NULL");
             e.HasIndex(x => x.InvoiceId).HasFilter("[InvoiceId] IS NOT NULL");
+            e.HasIndex(x => x.ForecastId).HasFilter("[ForecastId] IS NOT NULL");
             e.Property(x => x.ActionType).HasConversion<string>().HasMaxLength(20);
             e.HasOne(x => x.CommentByEmployee).WithMany().HasForeignKey(x => x.CommentByEmployeeId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Forecast>()
+                .WithMany(x => x.Comments)
+                .HasForeignKey(x => x.ForecastId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // ─── Request Document ───────────────────────
@@ -207,6 +230,7 @@ public class FinanceHubDbContext : DbContext
             e.ToTable("RequestDocuments", DbSchemas.Finance);
             e.HasIndex(x => x.ExpenseRequestId).HasFilter("[ExpenseRequestId] IS NOT NULL");
             e.HasIndex(x => x.VendorBillId).HasFilter("[VendorBillId] IS NOT NULL");
+            e.HasIndex(x => x.ForecastId).HasFilter("[ForecastId] IS NOT NULL");
             e.HasIndex(x => new { x.OrganizationId, x.CreatedAt });
             e.HasOne(x => x.ExpenseRequest)
                 .WithMany(x => x.Documents)
@@ -215,6 +239,10 @@ public class FinanceHubDbContext : DbContext
             e.HasOne(x => x.VendorBill)
                 .WithMany(x => x.Documents)
                 .HasForeignKey(x => x.VendorBillId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Forecast)
+                .WithMany(x => x.Documents)
+                .HasForeignKey(x => x.ForecastId)
                 .OnDelete(DeleteBehavior.Cascade);
             e.HasOne(x => x.UploadedByEmployee)
                 .WithMany()

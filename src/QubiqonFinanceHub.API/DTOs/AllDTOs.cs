@@ -178,6 +178,7 @@ public class CreateExpenseRequest
     public string Purpose { get; set; } = "";
     public DateOnly BillDate { get; set; }
     public Guid? OnBehalfOfEmployeeId { get; set; }
+    public Guid? ForecastId { get; set; }
     public List<IFormFile> BillImages { get; set; } = new();
     public IFormFile? BillImage { get; set; }
 }
@@ -187,6 +188,7 @@ public class UpdateExpenseRequest
     public decimal Amount { get; set; }
     public string Purpose { get; set; } = "";
     public DateOnly BillDate { get; set; }
+    public Guid? ForecastId { get; set; }
     public List<IFormFile> BillImages { get; set; } = new();
     public IFormFile? BillImage { get; set; }  // null = keep existing
 }
@@ -197,7 +199,53 @@ public class UploadBillRequest
     public IFormFile? BillImage { get; set; }
 }
 
-public record ExpenseDto(Guid Id, string ExpenseCode, Guid EmployeeId, string EmployeeName, string Department, Guid? SubmittedByEmployeeId, decimal Amount, decimal PaidAmount, string Purpose, DateOnly BillDate, string Status, string? AttachmentUrl, string? PaymentReference, DateTime CreatedAt, List<CommentDto> Comments, List<DocumentDto> Documents);
+public record ForecastSummaryDto(Guid Id, string Title, string Purpose, string Description, decimal ExpectedAmount, DateTime ExpectedExpenseDate, string Status);
+public record ExpenseDto(Guid Id, string ExpenseCode, Guid EmployeeId, string EmployeeName, string Department, Guid? SubmittedByEmployeeId, Guid? ForecastId, ForecastSummaryDto? Forecast, decimal Amount, decimal PaidAmount, string Purpose, DateOnly BillDate, string Status, string? AttachmentUrl, string? PaymentReference, DateTime CreatedAt, List<CommentDto> Comments, List<DocumentDto> Documents);
+
+// ═══════════════════════════════════════════════════
+//  FORECAST
+// ═══════════════════════════════════════════════════
+public class CreateForecastRequest
+{
+    public string Title { get; set; } = "";
+    public string Purpose { get; set; } = "";
+    public string Description { get; set; } = "";
+    public decimal ExpectedAmount { get; set; }
+    public DateTime ExpectedExpenseDate { get; set; }
+    public string? Notes { get; set; }
+    public List<IFormFile> SupportingDocuments { get; set; } = new();
+    public IFormFile? SupportingDocument { get; set; }
+}
+
+public class UpdateForecastRequest
+{
+    public string Title { get; set; } = "";
+    public string Purpose { get; set; } = "";
+    public string Description { get; set; } = "";
+    public decimal ExpectedAmount { get; set; }
+    public DateTime ExpectedExpenseDate { get; set; }
+    public string? Notes { get; set; }
+    public List<IFormFile> SupportingDocuments { get; set; } = new();
+    public IFormFile? SupportingDocument { get; set; }
+}
+
+public record ForecastExpenseDto(Guid Id, string ExpenseCode, decimal Amount, DateOnly BillDate, string Status, string SubmittedBy, DateTime CreatedAt);
+public record ForecastDto(
+    Guid Id,
+    string Title,
+    string Purpose,
+    string Description,
+    decimal ExpectedAmount,
+    DateTime ExpectedExpenseDate,
+    string? Notes,
+    string Status,
+    Guid CreatedByEmployeeId,
+    string CreatedBy,
+    DateTime CreatedAt,
+    int ExpensesRaised,
+    List<CommentDto> Comments,
+    List<DocumentDto> Documents,
+    List<ForecastExpenseDto> RelatedExpenses);
 
 // ═══════════════════════════════════════════════════
 //  ADVANCE

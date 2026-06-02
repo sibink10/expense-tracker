@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { C } from "../../shared/theme";
 import { CURRENCIES, EVENTS, PAY_TERMS } from "../../shared/constants";
 import { addDays, fmtCur, round2, aggregateLineGstRows } from "../../shared/utils";
-import { Inp, Btn, Alert } from "../ui";
+import { Inp, Btn, Alert, Mdl } from "../ui";
 import DecimalLineInput from "../DecimalLineInput";
 import { AsyncSelectInput } from "../AsyncSelectInput";
 import { createInvoice } from "../../shared/api/invoice";
@@ -43,6 +43,7 @@ export default function InvoiceAddPage() {
   const [clientsLoading, setClientsLoading] = useState(true);
   const [taxLoading, setTaxLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [narrow, setNarrow] = useState(typeof window !== "undefined" && window.innerWidth < GRID_BREAKPOINT);
 
   const dueDate = addDays(invoiceDate, PAY_TERMS.find((x) => x.v === paymentTerms)?.d ?? 30);
@@ -131,28 +132,38 @@ export default function InvoiceAddPage() {
     !!invoiceDate &&
     hasValidLineItems;
 
-  const handleSubmit = async () => {
+  const validateSubmit = () => {
     setError(null);
     if (!clientId.trim()) {
       setError("Please select a client");
-      return;
+      return false;
     }
     if (!currency.trim()) {
       setError("Currency is required");
-      return;
+      return false;
     }
     if (!hasValidLineItems) {
       setError("Add at least one line item with description, quantity and rate");
-      return;
+      return false;
     }
     if (!invoiceDate) {
       setError("Invoice date is required");
-      return;
+      return false;
     }
     if (!purchaseOrder.trim()) {
       setError("Purchase order is required (enter NA if not applicable)");
-      return;
+      return false;
     }
+    return true;
+  };
+
+  const openConfirm = () => {
+    if (!validateSubmit()) return;
+    setConfirmOpen(true);
+  };
+
+  const handleSubmit = async () => {
+    if (!validateSubmit()) return;
 
     setLoading(true);
     setError(null);
@@ -177,6 +188,7 @@ export default function InvoiceAddPage() {
       });
       window.dispatchEvent(new CustomEvent(EVENTS.INVOICES_REFRESH));
       t("Invoice created");
+      setConfirmOpen(false);
       navigate("/invoices");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to create invoice");
@@ -227,7 +239,7 @@ export default function InvoiceAddPage() {
           <FileText size={narrow ? 18 : 22} color={C.text} strokeWidth={1.8} />
           Create invoice
         </h1>
-        <Btn v="invoice" onClick={handleSubmit} disabled={!canSubmit || loading} sx={{ borderRadius: "4px" }}>
+        <Btn v="invoice" onClick={openConfirm} disabled={!canSubmit || loading} sx={{ borderRadius: "4px" }}>
           <Send size={14} />
           {loading ? "Creating..." : "Create invoice"}
         </Btn>
@@ -566,6 +578,34 @@ export default function InvoiceAddPage() {
           </div>
         </div>
       </div>
+      <Mdl open={confirmOpen} close={() => !loading && setConfirmOpen(false)} title="Create invoice">
+        <div style={{ fontSize: "13px", color: C.primary, lineHeight: 1.5 }}>
+          Create this invoice{sendImmediately ? " and send it immediately" : ""}?
+        </div>
+        <div style={{ display: "grid", gap: "8px", marginTop: "14px", padding: "12px", background: `${C.invoice}08`, borderRadius: "8px", fontSize: "12px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
+            <span style={{ color: C.muted }}>Client</span>
+            <strong>{selectedClient?.name ?? "Selected client"}</strong>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
+            <span style={{ color: C.muted }}>Total</span>
+            <strong>{fmtCur(invoiceGrandTotal, invoiceCurrency)}</strong>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
+            <span style={{ color: C.muted }}>Line items</span>
+            <strong>{validLineItems.length}</strong>
+          </div>
+        </div>
+        <div style={{ marginTop: "18px", display: "flex", justifyContent: "flex-end", gap: "8px", flexWrap: "wrap" }}>
+          <Btn v="secondary" onClick={() => setConfirmOpen(false)} disabled={loading}>
+            Cancel
+          </Btn>
+          <Btn v="invoice" onClick={handleSubmit} disabled={loading}>
+            <Send size={14} />
+            {loading ? "Creating..." : "Confirm create"}
+          </Btn>
+        </div>
+      </Mdl>
     </div>
   );
 }
