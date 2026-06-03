@@ -8,5 +8,6 @@ public static class StorageFolders
     public const string ProfilePicture = "profiles";
     public const string OrganizationLogo = "organizations";
     public const string OrgLogo = "org-logos";
+    public const string Bill = "bills";
 }
 

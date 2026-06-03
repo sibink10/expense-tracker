@@ -44,7 +44,7 @@ public interface IForecastService
     Task<ForecastDto> CreateAsync(CreateForecastRequest dto);
     Task<ForecastDto> UpdateAsync(Guid id, UpdateForecastRequest dto);
     Task<ForecastDto?> GetByIdAsync(Guid id);
-    Task<PaginatedResult<ForecastDto>> ListAsync(FilterParams filters);
+    Task<PaginatedResult<ForecastDto>> ListAsync(FilterParams filters, bool myOnly = false);
     Task<List<ForecastSummaryDto>> ListApprovedAsync();
     Task<ForecastDto> SubmitAsync(Guid id);
     Task<ForecastDto> ApproveAsync(Guid id, ApproveRequest dto);

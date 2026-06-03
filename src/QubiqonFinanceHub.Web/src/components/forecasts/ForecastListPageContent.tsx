@@ -22,16 +22,21 @@ const workflowActionStyle = (fg: string, bg: string) => ({
   minHeight: 26,
 });
 
-export default function ForecastListPageContent() {
+export default function ForecastListPageContent({ myOnly, isRequest, pendingOnly, hideHeader }: { myOnly?: boolean; isRequest?: boolean; pendingOnly?: boolean; hideHeader?: boolean }) {
   const navigate = useNavigate();
   const { t, is, user } = useAppContext();
   const [data, setData] = useState<Forecast[]>([]);
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("all");
+  const [status, setStatus] = useState(pendingOnly ? "Submitted" : "all");
   const [sortBy, setSortBy] = useState("CreatedAt");
   const [desc, setDesc] = useState(true);
+  const myOnlyActual = myOnly ?? false;
+  const showAddAction = Boolean(isRequest) && (is(ROLES.EMPLOYEE) || is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN));
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const statusOptions = pendingOnly ? ["Submitted"] : STATUS_OPTIONS;
+  const statusForApi = pendingOnly ? "Submitted" : status === "all" ? undefined : status;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -40,7 +45,8 @@ export default function ForecastListPageContent() {
         page: 1,
         pageSize: 100,
         search: search || undefined,
-        status: status === "all" ? undefined : status,
+        status: statusForApi,
+        myOnly: myOnlyActual,
         sortBy,
         desc,
       });
@@ -48,7 +54,7 @@ export default function ForecastListPageContent() {
     } finally {
       setLoading(false);
     }
-  }, [desc, search, sortBy, status]);
+  }, [desc, myOnlyActual, search, sortBy, statusForApi]);
 
   useEffect(() => {
     load();
@@ -65,13 +71,13 @@ export default function ForecastListPageContent() {
           { v: forecast.purpose },
           { v: formatMoney(forecast.expectedAmount), sx: { whiteSpace: "nowrap" as const } },
           { v: forecast.expectedExpenseDate, sx: { whiteSpace: "nowrap" as const } },
-          { v: <Badge s={forecast.status} /> },
+          { v: <Badge s={forecast.status} />, sx: { textAlign: "center" as const, verticalAlign: "middle" as const } },
           { v: forecast.createdBy },
           { v: forecast.createdAt, sx: { whiteSpace: "nowrap" as const } },
-          { v: forecast.expensesRaised },
+          { v: forecast.expensesRaised, sx: { textAlign: "center" as const, verticalAlign: "middle" as const } },
           {
             v: (
-              <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", flexWrap: "wrap", minHeight: 36, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", flexWrap: "nowrap", minHeight: 36, alignItems: "center", overflowX: "auto" }}>
                 {forecast.status === "Draft" && (
                   <Btn
                     sm
@@ -181,23 +187,27 @@ export default function ForecastListPageContent() {
 
   return (
     <div style={{ width: "100%" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", marginBottom: "20px" }}>
-        <h1 style={{ display: "flex", alignItems: "center", gap: "8px", color: C.text, fontSize: "24px", fontWeight: 600, margin: 0 }}>
-          <Target size={22} color={C.text} strokeWidth={1.8} />
-          Forecast management
-        </h1>
-        <Btn onClick={() => navigate("/forecasts/add")} sx={{ borderRadius: "4px" }}>
-          <Plus size={14} />
-          Add forecast
-        </Btn>
-      </div>
+      {!hideHeader && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", marginBottom: "20px" }}>
+          <h1 style={{ display: "flex", alignItems: "center", gap: "8px", color: C.text, fontSize: "24px", fontWeight: 600, margin: 0 }}>
+            <Target size={22} color={C.text} strokeWidth={1.8} />
+            Forecast management
+          </h1>
+          {showAddAction && (
+            <Btn onClick={() => navigate("/forecasts/add")} sx={{ borderRadius: "4px" }}>
+              <Plus size={14} />
+              Add forecast
+            </Btn>
+          )}
+        </div>
+      )}
       <div style={{ background: "#fff", borderRadius: "4px", padding: "16px", boxShadow: "-5px -2px 108.5px 0px #00024914" }}>
         <Filter
           search={search}
           onSearch={setSearch}
           status={status}
-          onStatus={setStatus}
-          opts={STATUS_OPTIONS}
+          onStatus={pendingOnly ? () => undefined : setStatus}
+          opts={statusOptions}
           trailing={
             <Btn sm v="secondary" onClick={load} disabled={loading} sx={{ borderRadius: "4px" }}>
               <RefreshCw size={13} />
@@ -210,10 +220,10 @@ export default function ForecastListPageContent() {
             { label: "Purpose", sortKey: "Purpose" },
             { label: "Expected amount", sortKey: "ExpectedAmount" },
             { label: "Expected date", sortKey: "ExpectedExpenseDate" },
-            { label: "Status", sortKey: "Status" },
+            { label: "Status", sortKey: "Status", sx: { textAlign: "center" } },
             { label: "Created by", sortKey: "CreatedBy" },
             { label: "Created date", sortKey: "CreatedAt" },
-            "Expenses raised",
+            { label: "Expenses raised", sx: { textAlign: "center" } },
             { label: "Actions", sx: { textAlign: "right" } },
           ]}
           rows={rows}

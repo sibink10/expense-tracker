@@ -201,6 +201,8 @@ public class ForecastsController(IForecastService svc) : ControllerBase
     [HttpPost("{id:guid}/submit")]
     public async Task<IActionResult> Submit(Guid id) => Ok(await svc.SubmitAsync(id));
 
+    [HttpGet("my")] public async Task<IActionResult> ListMine([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f, true));
+
     [HttpPost("{id:guid}/approve"), Authorize(Roles = "Approver,Finance,Admin")]
     public async Task<IActionResult> Approve(Guid id, [FromBody] ApproveRequest dto) => Ok(await svc.ApproveAsync(id, dto));
 

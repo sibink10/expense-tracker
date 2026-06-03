@@ -35,6 +35,7 @@ const navIcons = {
   vendors: BriefcaseBusiness,
   clients: HandCoins,
   employees: Users,
+  requests: FolderKanban,
   organization: Network,
   workspace: FolderKanban,
   settings: Settings,

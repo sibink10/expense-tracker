@@ -7,7 +7,7 @@ import {
   formatActivityCommentAction,
   mapActionTypeToAccentT,
 } from "../activityCommentStatus";
-import { EXP_S } from "../constants";
+import { EXP_S, EXP_STATUS } from "../constants";
 
 // ─── API types ─────────────────────────────────────────────────
 export interface ApiExpenseComment {
@@ -282,8 +282,8 @@ export async function getExpenseBillBlob(id: string): Promise<string> {
 export async function getExpenseCounts(): Promise<ExpenseCounts> {
   try {
     const [pendingRes, approvedRes] = await Promise.all([
-      getExpenses({ page: 1, pageSize: 1, status: "PendingApproval" }),
-      getExpenses({ page: 1, pageSize: 1, status: "AwaitingPayment" }),
+      getExpenses({ page: 1, pageSize: 1, status: EXP_STATUS.PENDING_APPROVAL }),
+      getExpenses({ page: 1, pageSize: 1, status: EXP_STATUS.AWAITING_PAYMENT }),
     ]);
     return {
       pendExp: pendingRes.totalCount ?? 0,

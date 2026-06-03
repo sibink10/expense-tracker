@@ -64,6 +64,7 @@ export interface GetForecastsParams {
   pageSize?: number;
   search?: string;
   status?: string;
+  myOnly?: boolean;
   sortBy?: string;
   desc?: boolean;
 }
@@ -121,7 +122,8 @@ export function mapForecast(item: ApiForecastItem): Forecast {
 }
 
 export async function getForecasts(params: GetForecastsParams = {}): Promise<ApiForecastsResponse> {
-  const { data } = await apiClient.get<ApiForecastsResponse>("/forecasts", {
+  const path = params.myOnly ? "/forecasts/my" : "/forecasts";
+  const { data } = await apiClient.get<ApiForecastsResponse>(path, {
     params: {
       Page: params.page,
       PageSize: params.pageSize,

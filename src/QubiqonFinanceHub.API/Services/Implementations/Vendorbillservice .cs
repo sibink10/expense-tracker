@@ -827,7 +827,7 @@ public class VendorBillService : IVendorBillService
         var documents = new List<RequestDocument>(files.Count);
         foreach (var file in files)
         {
-            var fileUrl = await _storage.UploadAsync(StorageFolders.InvoiceDoc, billId, file);
+            var fileUrl = await _storage.UploadAsync(StorageFolders.Bill, billId, file);
             documents.Add(new RequestDocument
             {
                 Id = Guid.NewGuid(),

@@ -41,18 +41,19 @@ const workflowActionStyle = (fg: string, bg: string) => ({
   minHeight: 26,
 });
 
-export default function AdvanceListPage() {
+export default function AdvanceListPageContent({ myOnly, isRequest, pendingOnly, hideHeader }: { myOnly?: boolean; isRequest?: boolean; pendingOnly?: boolean; hideHeader?: boolean }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const { is, setMdl, user } = useAppContext();
-  const myOnly = is(ROLES.EMPLOYEE);
+  const myOnlyActual = myOnly ?? false;
   const showActionCol =
     is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN) || is(ROLES.EMPLOYEE);
+  const showAddAction = Boolean(isRequest) && (is(ROLES.EMPLOYEE) || is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN));
   const [page, setPage] = useState(1);
   const [pageSize] = useState(12);
   const [search, setSearch] = useState("");
   const validStatusValues = new Set<string>(STATUS_TABS.map((tab) => tab.value));
-  const statusParam = searchParams.get("status") ?? "";
-  const status = validStatusValues.has(statusParam) ? statusParam : "";
+  const statusParam = pendingOnly ? "Pending" : searchParams.get("status") ?? "";
+  const status = pendingOnly ? "Pending" : validStatusValues.has(statusParam) ? statusParam : "";
   const [data, setData] = useState<Advance[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -74,7 +75,7 @@ export default function AdvanceListPage() {
       pageSize,
       search: search || undefined,
       status: status || undefined,
-      myOnly,
+      myOnly: myOnlyActual,
       sortBy,
       desc: sortDesc,
     })
@@ -89,7 +90,7 @@ export default function AdvanceListPage() {
         setTotalPages(0);
       })
       .finally(() => setLoading(false));
-  }, [page, pageSize, search, status, myOnly, refreshKey, sortBy, sortDesc]);
+  }, [page, pageSize, search, status, myOnlyActual, refreshKey, sortBy, sortDesc]);
 
   const handleSort = (key: string) => {
     const n = nextListSort(key, sortBy, sortDesc);
@@ -99,6 +100,7 @@ export default function AdvanceListPage() {
   };
 
   const setStatusFilter = (nextStatus: StatusOption["value"]) => {
+    if (pendingOnly) return;
     const nextParams = new URLSearchParams(searchParams);
     if (nextStatus) nextParams.set("status", nextStatus);
     else nextParams.delete("status");
@@ -106,7 +108,10 @@ export default function AdvanceListPage() {
     setPage(1);
   };
 
-  const selectedStatus = STATUS_TABS.find((tab) => tab.value === status) ?? STATUS_TABS[0];
+  const statusTabs: readonly StatusOption[] = pendingOnly
+    ? [{ label: ADV_S.PENDING, value: "Pending" }]
+    : STATUS_TABS;
+  const selectedStatus: StatusOption = statusTabs.find((tab) => tab.value === status) ?? statusTabs[0];
 
   const startIndex = totalCount === 0 ? 0 : (page - 1) * pageSize;
   const endIndex = totalCount === 0 ? 0 : Math.min(startIndex + pageSize, totalCount);
@@ -315,18 +320,19 @@ export default function AdvanceListPage() {
           }
         }
       `}</style>
-      <div
-        className="advances-page-header"
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "12px",
-          gap: "8px",
-          flexWrap: "wrap",
-        }}
-      >
-        <h1
+      {!hideHeader && (
+        <div
+          className="advances-page-header"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "12px",
+            gap: "8px",
+            flexWrap: "wrap",
+          }}
+        >
+          <h1
           style={{
             margin: 0,
             display: "flex",
@@ -343,15 +349,18 @@ export default function AdvanceListPage() {
           <BanknoteArrowUp size={24} strokeWidth={1.8} color={C.primary} />
           Advance requests
         </h1>
-        <Btn
-          v="primary"
-          onClick={() => setMdl({ t: MODAL_T.ADV_REQUEST })}
-          sx={{ borderRadius: "4px", boxShadow: C.cardShadow }}
-        >
-          <CirclePlus size={15} strokeWidth={1.8} />
-          <span className="advances-add-label">Request advance</span>
-        </Btn>
+        {showAddAction && (
+          <Btn
+            v="primary"
+            onClick={() => setMdl({ t: MODAL_T.ADV_REQUEST })}
+            sx={{ borderRadius: "4px", boxShadow: C.cardShadow }}
+          >
+            <CirclePlus size={15} strokeWidth={1.8} />
+            <span className="advances-add-label">Request advance</span>
+          </Btn>
+        )}
       </div>
+      )}
       <div
         className="advances-table-card"
         style={{
@@ -376,7 +385,7 @@ export default function AdvanceListPage() {
           <div
             className="advances-status-tabs"
             style={{
-              display: "flex",
+              display: pendingOnly ? "none" : "flex",
               gap: "4px",
               padding: "2px",
               background: C.white,
@@ -387,7 +396,7 @@ export default function AdvanceListPage() {
               overflowX: "auto",
             }}
           >
-            {STATUS_TABS.map((tab) => (
+            {statusTabs.map((tab) => (
               <button
                 key={tab.value || "all"}
                 type="button"
@@ -480,11 +489,11 @@ export default function AdvanceListPage() {
             </button>
           </div>
         </div>
-        <div className="advances-status-select" style={{ display: "none", marginBottom: "10px" }}>
+        <div className="advances-status-select" style={{ display: pendingOnly ? "none" : "none", marginBottom: "10px" }}>
           <Select<StatusOption, false>
             value={selectedStatus}
             onChange={(option) => setStatusFilter((option ?? STATUS_TABS[0]).value)}
-            options={[...STATUS_TABS]}
+            options={[...statusTabs]}
             isSearchable={false}
             styles={{
               control: (base) => ({

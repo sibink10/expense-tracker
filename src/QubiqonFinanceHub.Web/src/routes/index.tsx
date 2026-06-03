@@ -30,6 +30,10 @@ import AdminPaymentTermsPage from "../pages/admin/payment-terms/AdminPaymentTerm
 import AdminAccountsPage from "../pages/admin/accounts/AdminAccountsPage";
 import ZohoSignPage from "../pages/admin/zoho-sign/ZohoSignPage";
 import NotFoundPage from "../pages/not-found/NotFoundPage";
+import RequestsForecastsPage from "../pages/requests/RequestsForecastsPage";
+import RequestsExpensesPage from "../pages/requests/RequestsExpensesPage";
+import RequestsAdvancesPage from "../pages/requests/RequestsAdvancesPage";
+import PayableRequestsPage from "../pages/payable/PayableRequestsPage";
 
 function DashOrRedirect() {
   return <DashPage />;
@@ -49,6 +53,10 @@ export const router = createBrowserRouter([
       { path: "expenses/add", element: <AddExpensePage /> },
       { path: "expenses/pay", element: <ExpensePayPage /> },
       { path: "advances", element: <AdvanceListPage /> },
+      { path: "payable/requests", element: <PayableRequestsPage /> },
+      { path: "requests/forecasts", element: <RequestsForecastsPage /> },
+      { path: "requests/expenses", element: <RequestsExpensesPage /> },
+      { path: "requests/advances", element: <RequestsAdvancesPage /> },
       { path: "bills", element: <BillListPage /> },
       { path: "bills/add", element: <SubmitBillPage /> },
       { path: "vendors", element: <VendorsPage /> },

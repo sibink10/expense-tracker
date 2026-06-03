@@ -55,7 +55,6 @@ export default function ForecastFormPageContent() {
   const canSave =
     title.trim() !== "" &&
     purpose.trim() !== "" &&
-    description.trim() !== "" &&
     Number(expectedAmount) > 0 &&
     expectedExpenseDate !== "" &&
     !loading;
@@ -102,7 +101,7 @@ export default function ForecastFormPageContent() {
           <Inp label="Expected expense date" type="date" value={expectedExpenseDate} onChange={(e) => setExpectedExpenseDate(e.target.value)} req controlSx={{ borderRadius: "4px" }} />
         </div>
         <Inp label="Purpose / business justification" type="textarea" value={purpose} onChange={(e) => setPurpose(e.target.value)} req controlSx={{ borderRadius: "4px", minHeight: "74px" }} />
-        <Inp label="Description" type="textarea" value={description} onChange={(e) => setDescription(e.target.value)} req controlSx={{ borderRadius: "4px", minHeight: "74px" }} />
+        <Inp label="Description (optional)" type="textarea" value={description} onChange={(e) => setDescription(e.target.value)} controlSx={{ borderRadius: "4px", minHeight: "74px" }} />
         <Inp label="Additional notes" type="textarea" value={notes} onChange={(e) => setNotes(e.target.value)} controlSx={{ borderRadius: "4px" }} />
         <MultiFileUp files={files} onChange={setFiles} title="Supporting documents" radius="4px" />
         {error && <Alert sx={{ marginBottom: "14px" }}>{error}</Alert>}
@@ -112,7 +111,7 @@ export default function ForecastFormPageContent() {
           </Btn>
           <Btn onClick={save} disabled={!canSave} sx={{ borderRadius: "4px" }}>
             <Save size={14} />
-            {loading ? "Saving..." : "Save draft"}
+            {loading ? "Saving..." : editing ? "Save" : "Submit forecast"}
           </Btn>
         </div>
       </div>

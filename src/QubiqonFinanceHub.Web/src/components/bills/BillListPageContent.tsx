@@ -80,7 +80,7 @@ const billFilterSelectStyles: StylesConfig<BillFilterOption, false, GroupBase<Bi
   }),
 };
 
-export default function BillListPage() {
+export default function BillListPage({ pendingOnly, hideHeader }: { pendingOnly?: boolean; hideHeader?: boolean } = {}) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { search, setSearch, sf, setSf, fil, is, setMdl } = useAppContext();
@@ -94,10 +94,10 @@ export default function BillListPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const validStatusValues = new Set<string>(STATUS_OPTIONS.map((option) => option.value));
-  const statusParam = searchParams.get("status") ?? "all";
-  const normalizedStatus = validStatusValues.has(statusParam) ? statusParam : "all";
+  const statusParam = pendingOnly ? BILL_S.SUBMITTED : searchParams.get("status") ?? "all";
+  const normalizedStatus = pendingOnly ? BILL_S.SUBMITTED : validStatusValues.has(statusParam) ? statusParam : "all";
 
-  const payPriorityParam = searchParams.get("payPriority");
+  const payPriorityParam = pendingOnly ? undefined : searchParams.get("payPriority");
   const payPriority =
     payPriorityParam === BILL_PAYMENT_PRIORITY.IMMEDIATE || payPriorityParam === BILL_PAYMENT_PRIORITY.LATER
       ? payPriorityParam
@@ -110,11 +110,12 @@ export default function BillListPage() {
   }, []);
 
   useEffect(() => {
+    if (pendingOnly) return;
     if (sf !== normalizedStatus) {
       setSf(normalizedStatus);
       setPage(1);
     }
-  }, [normalizedStatus, setSf, sf]);
+  }, [normalizedStatus, setSf, sf, pendingOnly]);
 
   const statusForApi =
     normalizedStatus && normalizedStatus !== "all"
@@ -124,7 +125,7 @@ export default function BillListPage() {
       : undefined;
 
   const paymentPriorityForApi =
-    payPriority === "all" ? undefined : payPriority;
+    pendingOnly || payPriority === "all" ? undefined : payPriority;
 
   useEffect(() => {
     setLoading(true);
@@ -175,6 +176,7 @@ export default function BillListPage() {
   };
 
   const setBillFilter = (nextFilter: BillFilterOption["value"]) => {
+    if (pendingOnly) return;
     const nextParams = new URLSearchParams(searchParams);
     if (nextFilter === "all") {
       nextParams.delete("status");
@@ -355,18 +357,19 @@ export default function BillListPage() {
           }
         }
       `}</style>
-      <div
-        className="bills-page-header"
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "12px",
-          gap: "8px",
-          flexWrap: "wrap",
-        }}
-      >
-        <h1
+      {!hideHeader && (
+        <div
+          className="bills-page-header"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "12px",
+            gap: "8px",
+            flexWrap: "wrap",
+          }}
+        >
+          <h1
           style={{
             margin: 0,
             display: "flex",
@@ -394,6 +397,7 @@ export default function BillListPage() {
           </Btn>
         )}
       </div>
+      )}
       <div
         className="bills-table-card"
         style={{
@@ -448,7 +452,7 @@ export default function BillListPage() {
               <Search size={16} strokeWidth={2} />
             </span>
           </div>
-          <div className="bills-table-filter" style={{ flex: "0 1 240px", minWidth: "180px" }}>
+          <div className="bills-table-filter" style={{ display: pendingOnly ? "none" : "flex", flex: "0 1 240px", minWidth: "180px" }}>
             <Select<BillFilterOption, false, GroupBase<BillFilterOption>>
               aria-label="Filter bills by status or payment priority"
               value={selectedBillFilter}

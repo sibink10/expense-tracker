@@ -13,14 +13,24 @@ export function buildNav(_cfg?: { advEnabled?: boolean }): NavSection[] {
       items: [{ path: "/", l: "Dashboard", i: "dashboard", r: allRoles, end: true }],
     },
     {
+      s: "Requests",
+      i: "requests",
+      items: [
+        { path: "/requests/forecasts", l: "Forecasts", i: "forecasts", r: allRoles, end: true },
+        { path: "/requests/expenses", l: "Expenses", i: "expenses", r: allRoles, end: true },
+        { path: "/requests/advances", l: "Advances", i: "advances", r: allRoles, end: true },
+      ],
+    },
+    {
       s: "Payable",
       i: "payable",
       items: [
-        { path: "/forecasts", l: "Forecasts", i: "forecasts", r: allRoles, end: true, addPath: "/forecasts/add", addRoles: allRoles },
-        { path: "/expenses", l: "Expenses", i: "expenses", r: allRoles, end: true, addPath: "/expenses/add", addRoles: allRoles },
-        { path: "/advances", l: "Advance Requests", i: "advances", r: allRoles, end: true, addPath: "/advances/add", addRoles: allRoles },
-        { path: "/bills", l: "Vendor Bills", i: "", r: [ROLES.FINANCE, ROLES.APPROVER, ROLES.ADMIN] as UserRole[], end: true, addPath: "/bills/add", addRoles: [ROLES.FINANCE, ROLES.ADMIN] as UserRole[] },
-        { path: "/vendors", l: "Vendors", i: "", r: [ROLES.FINANCE, ROLES.ADMIN] as UserRole[], end: true, addPath: "/vendors/add", addRoles: [ROLES.ADMIN] as UserRole[] },
+        { path: "/forecasts", l: "Forecasts", i: "forecasts", r: allRoles, end: true },
+        { path: "/expenses", l: "Expenses", i: "expenses", r: allRoles, end: true },
+        { path: "/advances", l: "Advance Requests", i: "advances", r: allRoles, end: true },
+      { path: "/payable/requests", l: "Requests", i: "requests", r: allRoles, end: true },
+      { path: "/bills", l: "Vendor Bills", i: "", r: [ROLES.FINANCE, ROLES.APPROVER, ROLES.ADMIN] as UserRole[], end: true, addPath: "/bills/add", addRoles: [ROLES.FINANCE, ROLES.ADMIN] as UserRole[] },
+      { path: "/vendors", l: "Vendors", i: "", r: [ROLES.FINANCE, ROLES.ADMIN] as UserRole[], end: true, addPath: "/vendors/add", addRoles: [ROLES.ADMIN] as UserRole[] },
       ],
     },
     {

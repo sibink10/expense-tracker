@@ -27,7 +27,7 @@ public class ForecastService : IForecastService
 
     public async Task<ForecastDto> CreateAsync(CreateForecastRequest dto)
     {
-        ValidateForecastFields(dto.Title, dto.Purpose, dto.Description, dto.ExpectedAmount, dto.ExpectedExpenseDate);
+        ValidateForecastFields(dto.Title, dto.Purpose, dto.ExpectedAmount, dto.ExpectedExpenseDate);
         var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var forecastId = Guid.NewGuid();
@@ -39,12 +39,12 @@ public class ForecastService : IForecastService
             OrganizationId = orgId,
             Title = dto.Title.Trim(),
             Purpose = dto.Purpose.Trim(),
-            Description = dto.Description.Trim(),
+            Description = string.IsNullOrWhiteSpace(dto.Description) ? string.Empty : dto.Description.Trim(),
             ExpectedAmount = dto.ExpectedAmount,
             ExpectedExpenseDate = dto.ExpectedExpenseDate,
             Notes = string.IsNullOrWhiteSpace(dto.Notes) ? null : dto.Notes.Trim(),
             CreatedByEmployeeId = emp.Id,
-            Status = ForecastStatus.Draft,
+            Status = ForecastStatus.Submitted,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -56,20 +56,27 @@ public class ForecastService : IForecastService
             Id = Guid.NewGuid(),
             ForecastId = forecast.Id,
             CommentByEmployeeId = emp.Id,
-            Text = "Forecast created.",
-            ActionType = CommentActionType.Created,
+            Text = "Forecast submitted.",
+            ActionType = CommentActionType.Submitted,
             CreatedAt = DateTime.UtcNow
         });
 
         _db.Forecasts.Add(forecast);
         await _db.SaveChangesAsync();
+
+        var reviewers = await GetReviewerEmailsAsync(orgId, UserRole.Approver);
+        if (reviewers.Count > 0)
+        {
+            await _email.SendNotificationAsync(Constants.EmailTemplateKeys.ForecastSubmitted, BuildEmailVars(forecast, emp, "approve"), string.Join(",", reviewers));
+        }
+
         _log.LogInformation("Forecast {ForecastId} created by {Employee}", forecast.Id, emp.FullName);
         return (await GetByIdAsync(forecast.Id))!;
     }
 
     public async Task<ForecastDto> UpdateAsync(Guid id, UpdateForecastRequest dto)
     {
-        ValidateForecastFields(dto.Title, dto.Purpose, dto.Description, dto.ExpectedAmount, dto.ExpectedExpenseDate);
+        ValidateForecastFields(dto.Title, dto.Purpose, dto.ExpectedAmount, dto.ExpectedExpenseDate, dto.Description);
         var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var forecast = await _db.Forecasts
@@ -114,10 +121,16 @@ public class ForecastService : IForecastService
         return forecast == null ? null : MapToDto(forecast);
     }
 
-    public async Task<PaginatedResult<ForecastDto>> ListAsync(FilterParams f)
+    public async Task<PaginatedResult<ForecastDto>> ListAsync(FilterParams f, bool myOnly = false)
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
         var q = BaseQuery(orgId).Where(x => x.OrganizationId == orgId);
+
+        if (myOnly)
+        {
+            var currentEmployeeId = _tenant.GetCurrentEmployeeId();
+            q = q.Where(x => x.CreatedByEmployeeId == currentEmployeeId);
+        }
 
         if (!string.IsNullOrWhiteSpace(f.Status) && Enum.TryParse<ForecastStatus>(f.Status, true, out var status))
             q = q.Where(x => x.Status == status);
@@ -392,11 +405,11 @@ public class ForecastService : IForecastService
         return resolved;
     }
 
-    private static void ValidateForecastFields(string title, string purpose, string description, decimal amount, DateTime expectedDate)
+    private static void ValidateForecastFields(string title, string purpose, decimal amount, DateTime expectedDate, string? description = null)
     {
         if (string.IsNullOrWhiteSpace(title)) throw new InvalidOperationException("Forecast title is required.");
         if (string.IsNullOrWhiteSpace(purpose)) throw new InvalidOperationException("Purpose is required.");
-        if (string.IsNullOrWhiteSpace(description)) throw new InvalidOperationException("Description is required.");
+        if (description != null && string.IsNullOrWhiteSpace(description)) throw new InvalidOperationException("Description is required.");
         if (amount <= 0) throw new InvalidOperationException("Expected amount must be greater than zero.");
         if (expectedDate == default) throw new InvalidOperationException("Expected expense date is required.");
     }

@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import type { Expense } from "../../types";
 import { C } from "../../shared/theme";
-import { EVENTS, EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP, EXP_S, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
+import { EVENTS, EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP, EXP_S, EXP_STATUS, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur, nextListSort } from "../../shared/utils";
 import { Btn, Badge, Tbl, Empty, Spinner, type TblCol } from "../ui";
 import { useAppContext } from "../../context/AppContext";
@@ -24,7 +24,7 @@ import { canCancelExpenseRequest, expenseUserIsSubmitterOrBeneficiary } from "..
 
 const STATUS_TABS = [
   { label: "All", value: "" },
-  { label: EXP_S.PENDING, value: "PendingApproval" },
+  { label: EXP_S.PENDING, value: EXP_STATUS.PENDING_APPROVAL },
   { label: EXP_S.APPROVED, value: "Approved" },
   { label: EXP_S.AWAITING_PAYMENT, value: "AwaitingPayment" },
   { label: EXP_S.COMPLETED, value: "Completed" },
@@ -43,7 +43,7 @@ const workflowActionStyle = (fg: string, bg: string) => ({
   minHeight: 26,
 });
 
-export default function ExpenseListPage() {
+export default function ExpenseListPageContent({ myOnly, isRequest, pendingOnly, hideHeader }: { myOnly?: boolean; isRequest?: boolean; pendingOnly?: boolean; hideHeader?: boolean }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { is, setMdl, user } = useAppContext();
@@ -51,8 +51,8 @@ export default function ExpenseListPage() {
   const [pageSize] = useState(10);
   const [search, setSearch] = useState("");
   const validStatusValues = new Set<string>(STATUS_TABS.map((tab) => tab.value));
-  const statusParam = searchParams.get("status") ?? "";
-  const status = validStatusValues.has(statusParam) ? statusParam : "";
+  const statusParam = pendingOnly ? EXP_STATUS.PENDING_APPROVAL : searchParams.get("status") ?? "";
+  const status = pendingOnly ? EXP_STATUS.PENDING_APPROVAL : validStatusValues.has(statusParam) ? statusParam : "";
   const [data, setData] = useState<Expense[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -61,9 +61,10 @@ export default function ExpenseListPage() {
   const [sortBy, setSortBy] = useState("CreatedAt");
   const [sortDesc, setSortDesc] = useState(true);
 
-  const myOnly = is(ROLES.EMPLOYEE);
+  const myOnlyActual = myOnly ?? false;
   const showActionCol =
     is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN) || is(ROLES.EMPLOYEE);
+  const showAddAction = Boolean(isRequest) && (is(ROLES.EMPLOYEE) || is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN));
 
   useEffect(() => {
     const handler = () => setRefreshKey((k) => k + 1);
@@ -78,7 +79,7 @@ export default function ExpenseListPage() {
       pageSize,
       search: search || undefined,
       status: status || undefined,
-      myOnly,
+      myOnly: myOnlyActual,
       sortBy,
       desc: sortDesc,
     })
@@ -103,6 +104,7 @@ export default function ExpenseListPage() {
   };
 
   const setStatusFilter = (nextStatus: StatusOption["value"]) => {
+    if (pendingOnly) return;
     const nextParams = new URLSearchParams(searchParams);
     if (nextStatus) nextParams.set("status", nextStatus);
     else nextParams.delete("status");
@@ -110,7 +112,10 @@ export default function ExpenseListPage() {
     setPage(1);
   };
 
-  const selectedStatus = STATUS_TABS.find((tab) => tab.value === status) ?? STATUS_TABS[0];
+  const statusTabs = pendingOnly
+    ? [{ label: EXP_S.PENDING, value: EXP_STATUS.PENDING_APPROVAL }]
+    : STATUS_TABS;
+  const selectedStatus = statusTabs.find((tab) => tab.value === status) ?? statusTabs[0];
 
   const startIndex = totalCount === 0 ? 0 : (page - 1) * pageSize;
   const endIndex = totalCount === 0 ? 0 : Math.min(startIndex + pageSize, totalCount);
@@ -280,17 +285,18 @@ export default function ExpenseListPage() {
           }
         }
       `}</style>
-      <div
-        className="expenses-page-header"
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "12px",
-          gap: "8px",
-          flexWrap: "wrap",
-        }}
-      >
+      {!hideHeader && (
+        <div
+          className="expenses-page-header"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "12px",
+            gap: "8px",
+            flexWrap: "wrap",
+          }}
+        >
         <h1
           style={{
             margin: 0,
@@ -308,7 +314,7 @@ export default function ExpenseListPage() {
           <ReceiptText size={24} strokeWidth={1.8} color={C.primary} />
           Expense requests
         </h1>
-        {(is(ROLES.EMPLOYEE) || is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN)) && (
+        {showAddAction && (
           <Btn
             v="primary"
             onClick={() => navigate("/expenses/add")}
@@ -319,6 +325,7 @@ export default function ExpenseListPage() {
           </Btn>
         )}
       </div>
+      )}
       <div
         className="expenses-table-card"
         style={{
@@ -343,7 +350,7 @@ export default function ExpenseListPage() {
           <div
             className="expenses-status-tabs"
             style={{
-              display: "flex",
+              display: pendingOnly ? "none" : "flex",
               gap: "4px",
               padding: "2px",
               background: C.white,
@@ -354,7 +361,7 @@ export default function ExpenseListPage() {
               overflowX: "auto",
             }}
           >
-            {STATUS_TABS.map((tab) => (
+            {statusTabs.map((tab) => (
               <button
                 key={tab.value || "all"}
                 type="button"
@@ -447,11 +454,11 @@ export default function ExpenseListPage() {
             </button>
           </div>
         </div>
-        <div className="expenses-status-select" style={{ display: "none", marginBottom: "10px" }}>
+        <div className="expenses-status-select" style={{ display: pendingOnly ? "none" : "none", marginBottom: "10px" }}>
           <Select<StatusOption, false>
             value={selectedStatus}
             onChange={(option) => setStatusFilter((option ?? STATUS_TABS[0]).value)}
-            options={[...STATUS_TABS]}
+            options={[...statusTabs]}
             isSearchable={false}
             styles={{
               control: (base) => ({

@@ -10,6 +10,18 @@ export const EXP_S = {
   PARTIALLY_PAID: "Partially Paid",
 } as const;
 
+export const EXP_STATUS = {
+  PENDING_APPROVAL: "PendingApproval",
+  PENDING_BILL_APPROVAL: "PendingBillApproval",
+  APPROVED: "Approved",
+  AWAITING_PAYMENT: "AwaitingPayment",
+  REJECTED: "Rejected",
+  CANCELLED: "Cancelled",
+  AWAITING_BILL: "AwaitingBill",
+  COMPLETED: "Completed",
+  PARTIALLY_PAID: "PartiallyPaid",
+} as const;
+
 /** Shown when Pay is disabled until supporting bill documents exist */
 export const EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP =
   "Upload at least one bill document before recording payment.";

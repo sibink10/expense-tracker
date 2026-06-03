@@ -58,7 +58,7 @@ if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<FinanceHubDbContext>();
-    await db.Database.MigrateAsync();
+    //await db.Database.MigrateAsync();
 }
 
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
