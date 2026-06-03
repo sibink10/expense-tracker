@@ -921,7 +921,7 @@ export const Tbl: React.FC<{
   onSortChange?: (sortKey: string) => void;
 }> = ({ cols, rows, onRow, headerSx, cellSx, bodyFallback, sortBy, sortDesc, onSortChange }) => (
   <div style={{ overflowX: "auto" }}>
-    <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: "12px", color: C.muted }}>
+    <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: "13px", color: "rgb(36, 36, 36)" }}>
       <thead>
         <tr>
           {cols
@@ -937,10 +937,10 @@ export const Tbl: React.FC<{
               const thStyle: CSSProperties = {
                 padding: "10px 12px",
                 textAlign: "left",
-                fontSize: "11px",
+                fontSize: "13px",
                 fontWeight: 600,
-                color: C.primary,
-                borderBottom: `1px solid ${C.border}`,
+                color: "rgb(36, 36, 36)",
+                borderBottom: "1px solid rgb(226, 230, 237)",
                 whiteSpace: "nowrap",
                 ...headerSx,
                 ...colSx,
@@ -1005,7 +1005,23 @@ export const Tbl: React.FC<{
               onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
             >
               {row._cells.map((c, j) => (
-                <td key={j} style={{ padding: "10px 12px", borderBottom: `1px solid ${C.border}`, color: C.muted, ...cellSx, ...c.sx }}>
+                <td
+                  key={j}
+                  style={{
+                    padding: "10px 12px",
+                    borderBottom: "1px solid rgb(226, 230, 237)",
+                    color: "rgb(78, 78, 78)",
+                    fontFamily: "Inter, sans-serif",
+                    fontSize: "13px",
+                    fontWeight: 400,
+                    lineHeight: "100%",
+                    letterSpacing: "0px",
+                    whiteSpace: "nowrap",
+                    textAlign: "left",
+                    ...cellSx,
+                    ...c.sx,
+                  }}
+                >
                   {c.v}
                 </td>
               ))}
@@ -1034,10 +1050,11 @@ export const SortTh: React.FC<{
         style={{
           padding: "10px 12px",
           textAlign: "left",
-          fontSize: "11px",
+          fontSize: "13px",
           fontWeight: 600,
-          color: C.primary,
-          borderBottom: `1px solid ${C.border}`,
+          color: "rgb(36, 36, 36)",
+          borderBottom: "1px solid rgb(226, 230, 237)",
+          whiteSpace: "nowrap",
         }}
       >
         {children}
@@ -1049,10 +1066,11 @@ export const SortTh: React.FC<{
       style={{
         padding: "10px 12px",
         textAlign: "left",
-        fontSize: "11px",
+        fontSize: "13px",
         fontWeight: 600,
-        color: C.primary,
-        borderBottom: `1px solid ${C.border}`,
+        color: "rgb(36, 36, 36)",
+        borderBottom: "1px solid rgb(226, 230, 237)",
+        whiteSpace: "nowrap",
       }}
     >
       <button

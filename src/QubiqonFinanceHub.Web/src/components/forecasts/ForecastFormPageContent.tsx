@@ -52,6 +52,8 @@ export default function ForecastFormPageContent() {
     };
   }, [id]);
 
+  const today = new Date().toISOString().split("T")[0];
+
   const canSave =
     title.trim() !== "" &&
     purpose.trim() !== "" &&
@@ -98,7 +100,7 @@ export default function ForecastFormPageContent() {
         <Inp label="Forecast title" value={title} onChange={(e) => setTitle(e.target.value)} req controlSx={{ borderRadius: "4px" }} />
         <div style={gridStyle}>
           <Inp label="Expected amount (₹)" type="number" value={expectedAmount} onChange={(e) => setExpectedAmount(e.target.value)} req min="1" controlSx={{ borderRadius: "4px" }} />
-          <Inp label="Expected expense date" type="date" value={expectedExpenseDate} onChange={(e) => setExpectedExpenseDate(e.target.value)} req controlSx={{ borderRadius: "4px" }} />
+          <Inp label="Expected expense date" type="date" value={expectedExpenseDate} onChange={(e) => setExpectedExpenseDate(e.target.value)} req min={today} controlSx={{ borderRadius: "4px" }} />
         </div>
         <Inp label="Purpose / business justification" type="textarea" value={purpose} onChange={(e) => setPurpose(e.target.value)} req controlSx={{ borderRadius: "4px", minHeight: "74px" }} />
         <Inp label="Description (optional)" type="textarea" value={description} onChange={(e) => setDescription(e.target.value)} controlSx={{ borderRadius: "4px", minHeight: "74px" }} />

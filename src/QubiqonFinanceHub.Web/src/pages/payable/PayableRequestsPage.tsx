@@ -58,7 +58,7 @@ export default function PayableRequestsPage() {
                 alignItems: "center",
                 gap: "8px",
                 color: C.primary,
-                fontFamily: "'Manrope', sans-serif",
+                fontFamily: "inherit",
                 fontSize: "18px",
                 fontWeight: 600,
                 lineHeight: "100%",
@@ -66,7 +66,7 @@ export default function PayableRequestsPage() {
               }}
             >
               <IndianRupee size={24} strokeWidth={1.8} color={C.primary} />
-              Payable requests
+              Approvals
             </h1>
           </div>
         </div>
@@ -101,6 +101,7 @@ export default function PayableRequestsPage() {
                 textAlign: "center",
                 whiteSpace: "nowrap",
                 transition: "all 160ms ease",
+                fontFamily: "inherit",
               }}
             >
               {tab.label}

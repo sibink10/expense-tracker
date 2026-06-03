@@ -53,7 +53,7 @@ export const router = createBrowserRouter([
       { path: "expenses/add", element: <AddExpensePage /> },
       { path: "expenses/pay", element: <ExpensePayPage /> },
       { path: "advances", element: <AdvanceListPage /> },
-      { path: "payable/requests", element: <PayableRequestsPage /> },
+      { path: "payable/approvals", element: <PayableRequestsPage /> },
       { path: "requests/forecasts", element: <RequestsForecastsPage /> },
       { path: "requests/expenses", element: <RequestsExpensesPage /> },
       { path: "requests/advances", element: <RequestsAdvancesPage /> },
