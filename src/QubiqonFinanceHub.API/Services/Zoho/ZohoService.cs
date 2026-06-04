@@ -868,7 +868,7 @@ public class ZohoService : IZohoService
             ["recipient_email"] = signerEmail,
             ["action_type"] = "SIGN",
             ["signing_order"] = 0,
-            ["verify_recipient"] = true,
+            ["verify_recipient"] = false,
             ["verification_type"] = "EMAIL"
         };
 
