@@ -1,8 +1,20 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { BriefcaseBusiness, ChevronLeft, ChevronRight, CirclePlus, RefreshCw, Search } from "lucide-react";
+import { BriefcaseBusiness, ChevronLeft, ChevronRight } from "lucide-react";
 import { C } from "../../shared/theme";
-import { Av, Btn, DeleteActionButton, EditActionButton, Empty, Spinner, Tbl, type TblCol } from "../ui";
+import {
+  Av,
+  CollapsibleSearch,
+  DeleteActionButton,
+  EditActionButton,
+  Empty,
+  ListPageHeader,
+  ListPageAddButton,
+  Spinner,
+  TableToolbarRefresh,
+  Tbl,
+  useNavPageAdd,
+  type TblCol,
+} from "../ui";
 import VendorDeleteConfirmModal from "./VendorDeleteConfirmModal";
 import { nextListSort } from "../../shared/utils";
 import { useAppContext } from "../../context/AppContext";
@@ -11,8 +23,8 @@ import type { Vendor } from "../../types";
 import { EVENTS, MODAL_T, ROLES } from "../../shared/constants";
 
 export default function VendorsPage() {
-  const navigate = useNavigate();
   const { is, setMdl } = useAppContext();
+  const navAdd = useNavPageAdd();
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<Vendor | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -148,70 +160,31 @@ export default function VendorsPage() {
     <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
       <style>{`
         @media (max-width: 640px) {
-          .vendors-page-header {
-            justify-content: center;
-            flex-wrap: nowrap;
-          }
-
-          .vendors-add-label {
-            display: none;
-          }
-
           .vendors-table-card {
             margin-top: 20px;
           }
-
-          .vendors-table-controls {
-            justify-content: center;
-            flex-wrap: nowrap;
-          }
-
-          .vendors-table-search {
-            flex: 0 1 260px;
-            min-width: 0;
-            max-width: 100% !important;
-          }
         }
       `}</style>
-      <div
-        className="vendors-page-header"
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "12px",
-          gap: "8px",
-          flexWrap: "wrap",
-        }}
-      >
-        <h1
-          style={{
-            margin: 0,
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            color: C.primary,
-            fontFamily: "'Manrope', sans-serif",
-            fontSize: "18px",
-            fontWeight: 600,
-            lineHeight: "100%",
-            letterSpacing: "-0.02em",
-          }}
-        >
-          <BriefcaseBusiness size={24} strokeWidth={1.8} color={C.primary} />
-          Vendors
-        </h1>
-        {is(ROLES.ADMIN) && (
-          <Btn
-            v="primary"
-            onClick={() => navigate("/vendors/add")}
-            sx={{ borderRadius: "4px", boxShadow: C.cardShadow }}
-          >
-            <CirclePlus size={15} strokeWidth={1.8} />
-            <span className="vendors-add-label">Add vendor</span>
-          </Btn>
-        )}
-      </div>
+      <ListPageHeader
+        className="list-page-header"
+        title="Vendors"
+        icon={<BriefcaseBusiness size={24} strokeWidth={1.8} color={C.primary} />}
+        search={
+          <CollapsibleSearch
+            value={search}
+            onChange={(v) => {
+              setSearch(v);
+              setPage(1);
+            }}
+            placeholder="Search vendors..."
+          />
+        }
+        addAction={
+          is(ROLES.ADMIN) && navAdd ? (
+            <ListPageAddButton addPath={navAdd.addPath} label="Add vendor" />
+          ) : undefined
+        }
+      />
       <div
         className="vendors-table-card"
         style={{
@@ -222,74 +195,11 @@ export default function VendorsPage() {
           boxShadow: C.cardShadow,
         }}
       >
-        <div
-          className="vendors-table-controls"
-          style={{
-            marginBottom: "10px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            gap: "10px",
-            flexWrap: "wrap",
-          }}
-        >
-          <div className="vendors-table-search" style={{ position: "relative", flex: 1, maxWidth: "260px", minWidth: "160px" }}>
-            <input
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Search vendors..."
-              style={{
-                width: "100%",
-                padding: "7px 12px 7px 34px",
-                border: `1.5px solid ${C.border}`,
-                borderRadius: "8px",
-                fontSize: "12px",
-                fontFamily: "'Inter', 'Manrope', sans-serif",
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-            <span
-              style={{
-                position: "absolute",
-                left: "10px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: C.muted,
-                display: "inline-flex",
-                alignItems: "center",
-              }}
-            >
-              <Search size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <button
-            type="button"
-            aria-label="Refresh vendors"
-            title="Refresh vendors"
-            onClick={() => setRefreshKey((k) => k + 1)}
-            disabled={loading}
-            style={{
-              width: 32,
-              height: 32,
-              border: "none",
-              borderRadius: "4px",
-              background: "transparent",
-              color: C.primary,
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.5 : 1,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 0,
-            }}
-          >
-            <RefreshCw size={20} strokeWidth={1.9} />
-          </button>
-        </div>
+        <TableToolbarRefresh
+          onRefresh={() => setRefreshKey((k) => k + 1)}
+          refreshDisabled={loading}
+          refreshAriaLabel="Refresh vendors"
+        />
 
         <Tbl
           cols={cols}

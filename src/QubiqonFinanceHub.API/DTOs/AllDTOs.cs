@@ -209,7 +209,7 @@ public class CreateForecastRequest
 {
     public string Title { get; set; } = "";
     public string Purpose { get; set; } = "";
-    public string Description { get; set; } = "";
+    public string? Description { get; set; }
     public decimal ExpectedAmount { get; set; }
     public DateTime ExpectedExpenseDate { get; set; }
     public string? Notes { get; set; }
@@ -221,7 +221,7 @@ public class UpdateForecastRequest
 {
     public string Title { get; set; } = "";
     public string Purpose { get; set; } = "";
-    public string Description { get; set; } = "";
+    public string? Description { get; set; }
     public decimal ExpectedAmount { get; set; }
     public DateTime ExpectedExpenseDate { get; set; }
     public string? Notes { get; set; }

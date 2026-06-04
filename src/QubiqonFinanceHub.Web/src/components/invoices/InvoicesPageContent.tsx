@@ -1,17 +1,13 @@
-import { useState, useEffect, type KeyboardEvent, type MouseEvent } from "react";
+import { useMemo, useState, useEffect, type KeyboardEvent, type MouseEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import Select from "react-select";
-import type { StylesConfig } from "react-select";
 import {
   ChevronLeft,
   ChevronRight,
-  CirclePlus,
   Download,
   HandCoins,
   IndianRupee,
   ReceiptText,
   RefreshCw,
-  Search,
   Send,
   Signature,
 } from "lucide-react";
@@ -29,6 +25,11 @@ import {
   INVOICE_MODAL_Z_INDEX,
   Spinner,
   EditActionButton,
+  CollapsibleSearch,
+  ListPageHeader,
+  ListPageAddButton,
+  OverflowStatusTabs,
+  useNavPageAdd,
   type TblCol,
 } from "../ui";
 import { useAppContext } from "../../context/AppContext";
@@ -57,66 +58,7 @@ const INVOICE_STATUS_FILTER_OPTIONS: InvoiceStatusFilterOption[] = [
   { label: "Signature failed", value: INV_S.SIGNATURE_FAILED },
 ];
 
-const invoiceFilterSelectStyles: StylesConfig<InvoiceStatusFilterOption, false> = {
-  control: (base) => ({
-    ...base,
-    minHeight: "34px",
-    borderRadius: 8,
-    backgroundColor: C.white,
-    borderColor: C.border,
-    boxShadow: "none",
-    fontSize: 12,
-    fontFamily: "'Inter', 'Manrope', sans-serif",
-    cursor: "pointer",
-  }),
-  singleValue: (base) => ({
-    ...base,
-    color: C.primary,
-    fontWeight: 500,
-  }),
-  input: (base) => ({
-    ...base,
-    color: C.primary,
-  }),
-  placeholder: (base) => ({
-    ...base,
-    color: C.muted,
-  }),
-  valueContainer: (base) => ({
-    ...base,
-    padding: "0 10px",
-  }),
-  indicatorSeparator: () => ({ display: "none" }),
-  dropdownIndicator: (base, state) => ({
-    ...base,
-    color: C.muted,
-    opacity: state.isDisabled ? 0.35 : 1,
-  }),
-  menu: (base) => ({
-    ...base,
-    borderRadius: 8,
-    boxShadow: C.cardShadow,
-    overflow: "hidden",
-    zIndex: 20,
-    backgroundColor: C.white,
-    border: `1px solid ${C.border}`,
-  }),
-  menuList: (base) => ({
-    ...base,
-    backgroundColor: C.white,
-    paddingTop: 4,
-    paddingBottom: 4,
-  }),
-  option: (base, state) => ({
-    ...base,
-    fontSize: 12,
-    fontFamily: "'Inter', 'Manrope', sans-serif",
-    color: C.invoice,
-    fontWeight: state.isSelected ? 600 : 400,
-    backgroundColor: state.isSelected ? C.successBg : state.isFocused ? C.surface : "transparent",
-    cursor: "pointer",
-  }),
-};
+const INVOICE_TAB_PRIMARY_VALUES = ["all", INV_S.DRAFT, INV_S.SENT, INV_S.PAID];
 
 const DownloadSpinner = () => (
   <span
@@ -144,6 +86,7 @@ export default function InvoicesPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { search, setSearch, sf, setSf, is, setMdl, activeOrg, t } = useAppContext();
+  const navAdd = useNavPageAdd();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [sendConfirm, setSendConfirm] = useState<Invoice | null>(null);
   const [sendLoading, setSendLoading] = useState(false);
@@ -181,8 +124,12 @@ export default function InvoicesPage() {
     setPage(1);
   };
 
-  const selectedInvoiceStatusFilter =
-    INVOICE_STATUS_FILTER_OPTIONS.find((o) => o.value === normalizedStatus) ?? INVOICE_STATUS_FILTER_OPTIONS[0];
+  const orderedInvoiceStatusTabs = useMemo(() => {
+    const byValue = new Map(INVOICE_STATUS_FILTER_OPTIONS.map((o) => [o.value, o]));
+    const primary = INVOICE_TAB_PRIMARY_VALUES.map((v) => byValue.get(v)).filter((t): t is InvoiceStatusFilterOption => !!t);
+    const rest = INVOICE_STATUS_FILTER_OPTIONS.filter((t) => !INVOICE_TAB_PRIMARY_VALUES.includes(t.value));
+    return [...primary, ...rest];
+  }, []);
 
   useEffect(() => {
     const handler = () => setRefreshKey((k) => k + 1);
@@ -574,80 +521,31 @@ export default function InvoicesPage() {
     <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
       <style>{`
         @media (max-width: 640px) {
-          .invoices-page-header {
-            justify-content: center;
-            flex-wrap: nowrap;
-          }
-
-          .invoices-add-label {
-            display: none;
-          }
-
           .invoices-table-card {
             margin-top: 20px;
           }
-
-          .invoices-table-controls {
-            justify-content: center;
-            flex-wrap: wrap;
-          }
-
-          .invoices-table-search {
-            flex: 1 1 145px !important;
-            min-width: 0;
-            max-width: 100% !important;
-          }
-
-          .invoices-table-filter {
-            flex: 1 0 100% !important;
-            min-width: 100% !important;
-            order: 3;
-          }
-
-          .invoices-table-refresh {
-            order: 2;
-          }
         }
       `}</style>
-      <div
-        className="invoices-page-header"
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "12px",
-          gap: "8px",
-          flexWrap: "wrap",
-        }}
-      >
-        <h1
-          style={{
-            margin: 0,
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            color: C.primary,
-            fontFamily: "'Manrope', sans-serif",
-            fontSize: "18px",
-            fontWeight: 600,
-            lineHeight: "100%",
-            letterSpacing: "-0.02em",
-          }}
-        >
-          <HandCoins size={24} strokeWidth={1.8} color={C.primary} />
-          Client invoices
-        </h1>
-        {(is(ROLES.FINANCE) || is(ROLES.ADMIN)) && (
-          <Btn
-            v="primary"
-            onClick={() => navigate("/invoices/add")}
-            sx={{ borderRadius: "4px", boxShadow: C.cardShadow }}
-          >
-            <CirclePlus size={15} strokeWidth={1.8} />
-            <span className="invoices-add-label">Create invoice</span>
-          </Btn>
-        )}
-      </div>
+      <ListPageHeader
+        className="list-page-header"
+        title="Client invoices"
+        icon={<HandCoins size={24} strokeWidth={1.8} color={C.primary} />}
+        search={
+          <CollapsibleSearch
+            value={search}
+            onChange={(v) => {
+              setSearch(v);
+              setPage(1);
+            }}
+            placeholder="Search invoices..."
+          />
+        }
+        addAction={
+          (is(ROLES.FINANCE) || is(ROLES.ADMIN)) && navAdd ? (
+            <ListPageAddButton addPath={navAdd.addPath} label="Create invoice" />
+          ) : undefined
+        }
+      />
       <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>
         {(
           [
@@ -698,86 +596,15 @@ export default function InvoicesPage() {
           boxShadow: C.cardShadow,
         }}
       >
-        <div
-          className="invoices-table-controls"
-          style={{
-            marginBottom: "10px",
-            display: "flex",
-            justifyContent: "flex-end",
-            alignItems: "center",
-            gap: "10px",
-            flexWrap: "wrap",
-          }}
-        >
-          <div className="invoices-table-search" style={{ position: "relative", flex: 1, maxWidth: "260px", minWidth: "160px" }}>
-            <input
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Search invoices..."
-              style={{
-                width: "100%",
-                padding: "7px 12px 7px 34px",
-                border: `1.5px solid ${C.border}`,
-                borderRadius: "8px",
-                fontSize: "12px",
-                fontFamily: "'Inter', 'Manrope', sans-serif",
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-            <span
-              style={{
-                position: "absolute",
-                left: "10px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: C.muted,
-                display: "inline-flex",
-                alignItems: "center",
-              }}
-            >
-              <Search size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <div className="invoices-table-filter" style={{ flex: "0 1 240px", minWidth: "180px" }}>
-            <Select<InvoiceStatusFilterOption, false>
-              aria-label="Filter invoices by status"
-              value={selectedInvoiceStatusFilter}
-              onChange={(option) => setInvoiceStatusFilter((option ?? INVOICE_STATUS_FILTER_OPTIONS[0]).value)}
-              options={INVOICE_STATUS_FILTER_OPTIONS}
-              isSearchable={false}
-              styles={invoiceFilterSelectStyles}
-            />
-          </div>
-          <button
-            className="invoices-table-refresh"
-            type="button"
-            aria-label="Refresh invoices"
-            title="Refresh invoices"
-            onClick={() => setRefreshKey((k) => k + 1)}
-            disabled={loading}
-            style={{
-              width: 32,
-              height: 32,
-              border: "none",
-              borderRadius: "4px",
-              background: "transparent",
-              color: C.primary,
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.5 : 1,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 0,
-              flexShrink: 0,
-            }}
-          >
-            <RefreshCw size={20} strokeWidth={1.9} />
-          </button>
-        </div>
+        <OverflowStatusTabs
+          tabs={orderedInvoiceStatusTabs}
+          value={normalizedStatus}
+          onChange={setInvoiceStatusFilter}
+          visibleCount={4}
+          onRefresh={() => setRefreshKey((k) => k + 1)}
+          refreshDisabled={loading}
+          refreshAriaLabel="Refresh invoices"
+        />
         <style>{`@keyframes invSpin { to { transform: rotate(360deg); } }`}</style>
         <Tbl
           cols={cols}

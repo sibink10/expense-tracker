@@ -1,7 +1,18 @@
 import { useState, useEffect, useMemo } from "react";
-import { BadgePercent, ChevronLeft, ChevronRight, CirclePlus, Eye, RefreshCw, Search } from "lucide-react";
+import { BadgePercent, ChevronLeft, ChevronRight, CirclePlus, Eye } from "lucide-react";
 import { C } from "../../../shared/theme";
-import { Btn, EditActionButton, Empty, Toggle, Spinner, Tbl, type TblCol } from "../../ui";
+import {
+  Btn,
+  CollapsibleSearch,
+  EditActionButton,
+  Empty,
+  ListPageHeader,
+  Spinner,
+  TableToolbarRefresh,
+  Toggle,
+  Tbl,
+  type TblCol,
+} from "../../ui";
 import { getTaxConfigs, toggleTaxConfig } from "../../../shared/api/taxConfig";
 import { useAppContext } from "../../../context/AppContext";
 import type { TaxConfig } from "../../../types";
@@ -172,7 +183,7 @@ export default function AdminTaxPage() {
     <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
       <style>{`
         @media (max-width: 640px) {
-          .admin-tax-page-header {
+          .list-page-header {
             justify-content: center;
             flex-wrap: nowrap;
           }
@@ -184,56 +195,30 @@ export default function AdminTaxPage() {
           .admin-tax-table-card {
             margin-top: 20px;
           }
-
-          .admin-tax-table-controls {
-            justify-content: center;
-            flex-wrap: nowrap;
-          }
-
-          .admin-tax-table-search {
-            flex: 0 1 260px;
-            min-width: 0;
-            max-width: 100% !important;
-          }
         }
       `}</style>
-      <div
-        className="admin-tax-page-header"
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "12px",
-          flexWrap: "wrap",
-          gap: "8px",
-        }}
-      >
-        <h1
-          style={{
-            margin: 0,
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            color: C.primary,
-            fontFamily: "'Manrope', sans-serif",
-            fontSize: "18px",
-            fontWeight: 600,
-            lineHeight: "100%",
-            letterSpacing: "-0.02em",
-          }}
-        >
-          <BadgePercent size={24} strokeWidth={1.8} color={C.primary} />
-          Tax config
-        </h1>
-        <Btn
-          v="primary"
-          onClick={() => setMdl({ t: MODAL_T.TAX_CONFIG_ADD })}
-          sx={{ borderRadius: "4px", boxShadow: C.cardShadow }}
-        >
-          <CirclePlus size={15} strokeWidth={1.8} />
-          <span className="admin-tax-add-label">Add tax</span>
-        </Btn>
-      </div>
+      <ListPageHeader
+        className="list-page-header"
+        title="Tax config"
+        icon={<BadgePercent size={24} strokeWidth={1.8} color={C.primary} />}
+        actions={
+          <>
+            <CollapsibleSearch
+              value={searchInput}
+              onChange={setSearchInput}
+              placeholder="Search tax configs..."
+            />
+            <Btn
+              v="primary"
+              onClick={() => setMdl({ t: MODAL_T.TAX_CONFIG_ADD })}
+              sx={{ borderRadius: "4px", boxShadow: C.cardShadow }}
+            >
+              <CirclePlus size={15} strokeWidth={1.8} />
+              <span className="admin-tax-add-label">Add tax</span>
+            </Btn>
+          </>
+        }
+      />
 
       <div
         className="admin-tax-table-card"
@@ -245,71 +230,11 @@ export default function AdminTaxPage() {
           boxShadow: C.cardShadow,
         }}
       >
-        <div
-          className="admin-tax-table-controls"
-          style={{
-            marginBottom: "10px",
-            display: "flex",
-            justifyContent: "flex-end",
-            alignItems: "center",
-            gap: "10px",
-            flexWrap: "wrap",
-          }}
-        >
-          <div className="admin-tax-table-search" style={{ position: "relative", flex: 1, maxWidth: "260px", minWidth: "160px" }}>
-            <input
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search tax configs..."
-              style={{
-                width: "100%",
-                padding: "7px 12px 7px 34px",
-                border: `1.5px solid ${C.border}`,
-                borderRadius: "8px",
-                fontSize: "12px",
-                fontFamily: "'Inter', 'Manrope', sans-serif",
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-            <span
-              style={{
-                position: "absolute",
-                left: "10px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: C.muted,
-                display: "inline-flex",
-                alignItems: "center",
-              }}
-            >
-              <Search size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <button
-            type="button"
-            aria-label="Refresh tax configs"
-            title="Refresh tax configs"
-            onClick={() => setRefreshKey((k) => k + 1)}
-            disabled={loading}
-            style={{
-              width: 32,
-              height: 32,
-              border: "none",
-              borderRadius: "4px",
-              background: "transparent",
-              color: C.primary,
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.5 : 1,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 0,
-            }}
-          >
-            <RefreshCw size={20} strokeWidth={1.9} />
-          </button>
-        </div>
+        <TableToolbarRefresh
+          onRefresh={() => setRefreshKey((k) => k + 1)}
+          refreshDisabled={loading}
+          refreshAriaLabel="Refresh tax configs"
+        />
 
         <Tbl
           cols={cols}

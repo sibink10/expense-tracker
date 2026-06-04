@@ -1,23 +1,31 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import Select from "react-select";
 import {
   Ban,
   Check,
   ChevronLeft,
   ChevronRight,
-  CirclePlus,
   IndianRupee,
   ReceiptText,
-  RefreshCw,
-  Search,
   X,
 } from "lucide-react";
 import type { Expense } from "../../types";
 import { C } from "../../shared/theme";
 import { EVENTS, EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP, EXP_S, EXP_STATUS, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur, nextListSort } from "../../shared/utils";
-import { Btn, Badge, Tbl, Empty, Spinner, type TblCol } from "../ui";
+import {
+  Btn,
+  Badge,
+  Tbl,
+  Empty,
+  Spinner,
+  CollapsibleSearch,
+  ListPageHeader,
+  ListPageAddButton,
+  OverflowStatusTabs,
+  useNavPageAdd,
+  type TblCol,
+} from "../ui";
 import { useAppContext } from "../../context/AppContext";
 import { getExpensesMapped } from "../../shared/api/expense";
 import { canCancelExpenseRequest, expenseUserIsSubmitterOrBeneficiary } from "../../shared/expensePermissions";
@@ -65,6 +73,7 @@ export default function ExpenseListPageContent({ myOnly, isRequest, pendingOnly,
   const showActionCol =
     is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN) || is(ROLES.EMPLOYEE);
   const showAddAction = Boolean(isRequest) && (is(ROLES.EMPLOYEE) || is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN));
+  const navAdd = useNavPageAdd();
 
   useEffect(() => {
     const handler = () => setRefreshKey((k) => k + 1);
@@ -115,7 +124,17 @@ export default function ExpenseListPageContent({ myOnly, isRequest, pendingOnly,
   const statusTabs = pendingOnly
     ? [{ label: EXP_S.PENDING, value: EXP_STATUS.PENDING_APPROVAL }]
     : STATUS_TABS;
-  const selectedStatus = statusTabs.find((tab) => tab.value === status) ?? statusTabs[0];
+
+  const EXPENSE_TAB_PRIMARY_VALUES = ["", EXP_STATUS.PENDING_APPROVAL, "Approved", "Completed"];
+  const orderedStatusTabs = useMemo(() => {
+    if (pendingOnly) return [...statusTabs];
+    const byValue = new Map(statusTabs.map((tab) => [tab.value, tab]));
+    const primary = EXPENSE_TAB_PRIMARY_VALUES.map((v) => byValue.get(v as StatusOption["value"])).filter(
+      (t): t is StatusOption => !!t,
+    );
+    const rest = statusTabs.filter((t) => !(EXPENSE_TAB_PRIMARY_VALUES as readonly string[]).includes(t.value));
+    return [...primary, ...rest];
+  }, [pendingOnly, statusTabs]);
 
   const startIndex = totalCount === 0 ? 0 : (page - 1) * pageSize;
   const endIndex = totalCount === 0 ? 0 : Math.min(startIndex + pageSize, totalCount);
@@ -248,83 +267,32 @@ export default function ExpenseListPageContent({ myOnly, isRequest, pendingOnly,
     <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
       <style>{`
         @media (max-width: 640px) {
-          .expenses-page-header {
-            justify-content: center;
-            flex-wrap: nowrap;
-          }
-
-          .expenses-add-label {
-            display: none;
-          }
-
           .expenses-table-card {
             margin-top: 20px;
-          }
-
-          .expenses-table-controls {
-            justify-content: center;
-            flex-wrap: nowrap;
-          }
-
-          .expenses-status-tabs {
-            display: none !important;
-          }
-
-          .expenses-status-select {
-            display: block !important;
-          }
-
-          .expenses-table-search {
-            flex: 0 1 260px;
-            min-width: 0;
-            max-width: 100% !important;
-          }
-
-          .expenses-search-refresh {
-            justify-content: center;
           }
         }
       `}</style>
       {!hideHeader && (
-        <div
-          className="expenses-page-header"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "12px",
-            gap: "8px",
-            flexWrap: "wrap",
-          }}
-        >
-        <h1
-          style={{
-            margin: 0,
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            color: C.primary,
-            fontFamily: "'Manrope', sans-serif",
-            fontSize: "18px",
-            fontWeight: 600,
-            lineHeight: "100%",
-            letterSpacing: "-0.02em",
-          }}
-        >
-          <ReceiptText size={24} strokeWidth={1.8} color={C.primary} />
-          Expense requests
-        </h1>
-        {showAddAction && (
-          <Btn
-            v="primary"
-            onClick={() => navigate("/expenses/add")}
-            sx={{ borderRadius: "4px", boxShadow: C.cardShadow }}
-          >
-            <CirclePlus size={15} strokeWidth={1.8} />
-            <span className="expenses-add-label">Add expense</span>
-          </Btn>
-        )}
-      </div>
+        <ListPageHeader
+          className="list-page-header"
+          title="Expense requests"
+          icon={<ReceiptText size={24} strokeWidth={1.8} color={C.primary} />}
+          search={
+            <CollapsibleSearch
+              value={search}
+              onChange={(v) => {
+                setSearch(v);
+                setPage(1);
+              }}
+              placeholder="Search expenses..."
+            />
+          }
+          addAction={
+            showAddAction && navAdd ? (
+              <ListPageAddButton addPath={navAdd.addPath} label="Add expense" />
+            ) : undefined
+          }
+        />
       )}
       <div
         className="expenses-table-card"
@@ -336,162 +304,16 @@ export default function ExpenseListPageContent({ myOnly, isRequest, pendingOnly,
           boxShadow: C.cardShadow,
         }}
       >
-        <div
-          className="expenses-table-controls"
-          style={{
-            marginBottom: "10px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: "10px",
-            flexWrap: "wrap",
-          }}
-        >
-          <div
-            className="expenses-status-tabs"
-            style={{
-              display: pendingOnly ? "none" : "flex",
-              gap: "4px",
-              padding: "2px",
-              background: C.white,
-              border: `0.5px solid ${C.border}`,
-              borderRadius: "4px",
-              width: "fit-content",
-              maxWidth: "100%",
-              overflowX: "auto",
-            }}
-          >
-            {statusTabs.map((tab) => (
-              <button
-                key={tab.value || "all"}
-                type="button"
-                onClick={() => setStatusFilter(tab.value)}
-                style={{
-                  padding: "6px 12px",
-                  border: "none",
-                  borderRadius: "4px",
-                  background: status === tab.value ? C.successBg : C.white,
-                  color: status === tab.value ? C.success : C.muted,
-                  fontWeight: status === tab.value ? 600 : 500,
-                  fontSize: "12px",
-                  fontFamily: "'Inter', sans-serif",
-                  lineHeight: 1.2,
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-          <div
-            className="expenses-search-refresh"
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              alignItems: "center",
-              gap: "10px",
-              flex: "1 1 280px",
-              minWidth: 0,
-            }}
-          >
-            <div className="expenses-table-search" style={{ position: "relative", flex: 1, maxWidth: "260px", minWidth: "160px" }}>
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-                placeholder="Search expenses..."
-                style={{
-                  width: "100%",
-                  padding: "7px 12px 7px 34px",
-                  border: `1.5px solid ${C.border}`,
-                  borderRadius: "8px",
-                  fontSize: "12px",
-                  fontFamily: "'Inter', 'Manrope', sans-serif",
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-              <span
-                style={{
-                  position: "absolute",
-                  left: "10px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: C.muted,
-                  display: "inline-flex",
-                  alignItems: "center",
-                }}
-              >
-                <Search size={16} strokeWidth={2} />
-              </span>
-            </div>
-            <button
-              type="button"
-              aria-label="Refresh expenses"
-              title="Refresh expenses"
-              onClick={() => setRefreshKey((k) => k + 1)}
-              disabled={loading}
-              style={{
-                width: 32,
-                height: 32,
-                border: "none",
-                borderRadius: "4px",
-                background: "transparent",
-                color: C.primary,
-                cursor: loading ? "not-allowed" : "pointer",
-                opacity: loading ? 0.5 : 1,
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: 0,
-              }}
-            >
-              <RefreshCw size={20} strokeWidth={1.9} />
-            </button>
-          </div>
-        </div>
-        <div className="expenses-status-select" style={{ display: pendingOnly ? "none" : "none", marginBottom: "10px" }}>
-          <Select<StatusOption, false>
-            value={selectedStatus}
-            onChange={(option) => setStatusFilter((option ?? STATUS_TABS[0]).value)}
-            options={[...statusTabs]}
-            isSearchable={false}
-            styles={{
-              control: (base) => ({
-                ...base,
-                minHeight: "34px",
-                borderRadius: 8,
-                borderColor: C.border,
-                boxShadow: "none",
-                fontSize: 12,
-                fontFamily: "'Inter', 'Manrope', sans-serif",
-              }),
-              valueContainer: (base) => ({
-                ...base,
-                padding: "0 10px",
-              }),
-              indicatorSeparator: () => ({ display: "none" }),
-              menu: (base) => ({
-                ...base,
-                borderRadius: 8,
-                boxShadow: C.cardShadow,
-                overflow: "hidden",
-                zIndex: 20,
-              }),
-              option: (base, state) => ({
-                ...base,
-                fontSize: 12,
-                fontFamily: "'Inter', 'Manrope', sans-serif",
-                background: state.isSelected ? C.successBg : state.isFocused ? C.surface : C.white,
-                color: state.isSelected ? C.success : C.primary,
-              }),
-            }}
-          />
-        </div>
+        <OverflowStatusTabs
+          tabs={orderedStatusTabs}
+          value={status}
+          onChange={(v) => setStatusFilter(v as StatusOption["value"])}
+          visibleCount={4}
+          hidden={pendingOnly}
+          onRefresh={() => setRefreshKey((k) => k + 1)}
+          refreshDisabled={loading}
+          refreshAriaLabel="Refresh expenses"
+        />
         <Tbl
           cols={cols}
           rows={loading ? [] : rows}

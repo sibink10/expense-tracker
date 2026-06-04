@@ -1,12 +1,24 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import Select, { type GroupBase, type StylesConfig } from "react-select";
-import { Check, ChevronLeft, ChevronRight, CirclePlus, IndianRupee, ReceiptText, RefreshCw, Search, X } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Check, ChevronLeft, ChevronRight, IndianRupee, ReceiptText, X } from "lucide-react";
 import type { Bill } from "../../types";
 import { C } from "../../shared/theme";
 import { BILL_PAYMENT_PRIORITY, BILL_S, EVENTS, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur, daysOverdueFromDueYmd, nextListSort } from "../../shared/utils";
-import { Av, Btn, Badge, Tbl, Empty, Spinner, type TblCol } from "../ui";
+import {
+  Av,
+  Btn,
+  Badge,
+  Tbl,
+  Empty,
+  Spinner,
+  CollapsibleSearch,
+  ListPageHeader,
+  ListPageAddButton,
+  OverflowStatusTabs,
+  useNavPageAdd,
+  type TblCol,
+} from "../ui";
 import { useAppContext } from "../../context/AppContext";
 import { getBills } from "../../shared/api/bill";
 
@@ -35,55 +47,14 @@ const PAYMENT_PRIORITY_OPTIONS: BillFilterOption[] = [
   { label: "Pay later", value: `pay:${BILL_PAYMENT_PRIORITY.LATER}` },
 ];
 
-const BILL_FILTER_GROUPS: GroupBase<BillFilterOption>[] = [
-  { label: "Status", options: STATUS_OPTIONS },
-  { label: "Payment priority", options: PAYMENT_PRIORITY_OPTIONS },
-];
-
 const BILL_FILTER_OPTIONS = [...STATUS_OPTIONS, ...PAYMENT_PRIORITY_OPTIONS];
 
-const billFilterSelectStyles: StylesConfig<BillFilterOption, false, GroupBase<BillFilterOption>> = {
-  control: (base) => ({
-    ...base,
-    minHeight: "34px",
-    borderRadius: 8,
-    borderColor: C.border,
-    boxShadow: "none",
-    fontSize: 12,
-    fontFamily: "'Inter', 'Manrope', sans-serif",
-  }),
-  valueContainer: (base) => ({
-    ...base,
-    padding: "0 10px",
-  }),
-  indicatorSeparator: () => ({ display: "none" }),
-  menu: (base) => ({
-    ...base,
-    borderRadius: 8,
-    boxShadow: C.cardShadow,
-    overflow: "hidden",
-    zIndex: 20,
-  }),
-  option: (base, state) => ({
-    ...base,
-    fontSize: 12,
-    fontFamily: "'Inter', 'Manrope', sans-serif",
-    background: state.isSelected ? C.successBg : state.isFocused ? C.surface : C.white,
-    color: state.isSelected ? C.success : C.primary,
-  }),
-  groupHeading: (base) => ({
-    ...base,
-    color: C.muted,
-    fontFamily: "'Inter', 'Manrope', sans-serif",
-    fontSize: 11,
-    fontWeight: 700,
-  }),
-};
+const BILL_TAB_PRIMARY_VALUES = ["all", BILL_S.SUBMITTED, BILL_S.APPROVED, BILL_S.PAID];
 
 export default function BillListPage({ pendingOnly, hideHeader }: { pendingOnly?: boolean; hideHeader?: boolean } = {}) {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { search, setSearch, sf, setSf, fil, is, setMdl } = useAppContext();
+  const navAdd = useNavPageAdd();
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -193,8 +164,13 @@ export default function BillListPage({ pendingOnly, hideHeader }: { pendingOnly?
   };
 
   const selectedBillFilterValue = payPriority !== "all" ? `pay:${payPriority}` : normalizedStatus;
-  const selectedBillFilter =
-    BILL_FILTER_OPTIONS.find((option) => option.value === selectedBillFilterValue) ?? STATUS_OPTIONS[0];
+
+  const orderedBillFilterTabs = useMemo(() => {
+    const byValue = new Map(BILL_FILTER_OPTIONS.map((o) => [o.value, o]));
+    const primary = BILL_TAB_PRIMARY_VALUES.map((v) => byValue.get(v)).filter((t): t is BillFilterOption => !!t);
+    const rest = BILL_FILTER_OPTIONS.filter((t) => !BILL_TAB_PRIMARY_VALUES.includes(t.value));
+    return [...primary, ...rest];
+  }, []);
 
   const cols: TblCol[] = [
     { label: "Bill #", sortKey: "BillCode", sx: { textAlign: "left" } },
@@ -318,38 +294,8 @@ export default function BillListPage({ pendingOnly, hideHeader }: { pendingOnly?
     <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
       <style>{`
         @media (max-width: 640px) {
-          .bills-page-header {
-            justify-content: center;
-            flex-wrap: nowrap;
-          }
-
-          .bills-add-label {
-            display: none;
-          }
-
           .bills-table-card {
             margin-top: 20px;
-          }
-
-          .bills-table-controls {
-            justify-content: center;
-            flex-wrap: wrap;
-          }
-
-          .bills-table-search {
-            flex: 1 1 145px !important;
-            min-width: 0;
-            max-width: 100% !important;
-          }
-
-          .bills-table-filter {
-            flex: 1 0 100% !important;
-            min-width: 100% !important;
-            order: 3;
-          }
-
-          .bills-table-refresh {
-            order: 2;
           }
 
           .bills-vendor-avatar {
@@ -358,45 +304,26 @@ export default function BillListPage({ pendingOnly, hideHeader }: { pendingOnly?
         }
       `}</style>
       {!hideHeader && (
-        <div
-          className="bills-page-header"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "12px",
-            gap: "8px",
-            flexWrap: "wrap",
-          }}
-        >
-          <h1
-          style={{
-            margin: 0,
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            color: C.primary,
-            fontFamily: "'Manrope', sans-serif",
-            fontSize: "18px",
-            fontWeight: 600,
-            lineHeight: "100%",
-            letterSpacing: "-0.02em",
-          }}
-        >
-          <ReceiptText size={24} strokeWidth={1.8} color={C.primary} />
-          Vendor bills
-        </h1>
-        {(is(ROLES.FINANCE) || is(ROLES.ADMIN)) && (
-          <Btn
-            v="primary"
-            onClick={() => navigate("/bills/add")}
-            sx={{ borderRadius: "4px", boxShadow: C.cardShadow }}
-          >
-            <CirclePlus size={15} strokeWidth={1.8} />
-            <span className="bills-add-label">Submit bill</span>
-          </Btn>
-        )}
-      </div>
+        <ListPageHeader
+          className="list-page-header"
+          title="Vendor bills"
+          icon={<ReceiptText size={24} strokeWidth={1.8} color={C.primary} />}
+          search={
+            <CollapsibleSearch
+              value={search}
+              onChange={(v) => {
+                setSearch(v);
+                setPage(1);
+              }}
+              placeholder="Search bills..."
+            />
+          }
+          addAction={
+            (is(ROLES.FINANCE) || is(ROLES.ADMIN)) && navAdd ? (
+              <ListPageAddButton addPath={navAdd.addPath} label="Submit bill" />
+            ) : undefined
+          }
+        />
       )}
       <div
         className="bills-table-card"
@@ -408,86 +335,16 @@ export default function BillListPage({ pendingOnly, hideHeader }: { pendingOnly?
           boxShadow: C.cardShadow,
         }}
       >
-        <div
-          className="bills-table-controls"
-          style={{
-            marginBottom: "10px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            gap: "10px",
-            flexWrap: "wrap",
-          }}
-        >
-          <div className="bills-table-search" style={{ position: "relative", flex: 1, maxWidth: "260px", minWidth: "160px" }}>
-            <input
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Search bills..."
-              style={{
-                width: "100%",
-                padding: "7px 12px 7px 34px",
-                border: `1.5px solid ${C.border}`,
-                borderRadius: "8px",
-                fontSize: "12px",
-                fontFamily: "'Inter', 'Manrope', sans-serif",
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-            <span
-              style={{
-                position: "absolute",
-                left: "10px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: C.muted,
-                display: "inline-flex",
-                alignItems: "center",
-              }}
-            >
-              <Search size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <div className="bills-table-filter" style={{ display: pendingOnly ? "none" : "flex", flex: "0 1 240px", minWidth: "180px" }}>
-            <Select<BillFilterOption, false, GroupBase<BillFilterOption>>
-              aria-label="Filter bills by status or payment priority"
-              value={selectedBillFilter}
-              onChange={(option) => setBillFilter((option ?? STATUS_OPTIONS[0]).value)}
-              options={BILL_FILTER_GROUPS}
-              isSearchable={false}
-              styles={billFilterSelectStyles}
-            />
-          </div>
-          <button
-            className="bills-table-refresh"
-            type="button"
-            aria-label="Refresh bills"
-            title="Refresh bills"
-            onClick={() => setRefreshKey((k) => k + 1)}
-            disabled={loading}
-            style={{
-              width: 32,
-              height: 32,
-              border: "none",
-              borderRadius: "4px",
-              background: "transparent",
-              color: C.primary,
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.5 : 1,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 0,
-              flexShrink: 0,
-            }}
-          >
-            <RefreshCw size={20} strokeWidth={1.9} />
-          </button>
-        </div>
+        <OverflowStatusTabs
+          tabs={orderedBillFilterTabs}
+          value={selectedBillFilterValue}
+          onChange={setBillFilter}
+          visibleCount={4}
+          hidden={pendingOnly}
+          onRefresh={() => setRefreshKey((k) => k + 1)}
+          refreshDisabled={loading}
+          refreshAriaLabel="Refresh bills"
+        />
 
         <Tbl
           cols={cols}

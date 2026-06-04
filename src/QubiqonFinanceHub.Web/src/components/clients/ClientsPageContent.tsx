@@ -1,8 +1,21 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronRight, CirclePlus, HandCoins, RefreshCw, Search, UserRoundX } from "lucide-react";
+import { ChevronLeft, ChevronRight, HandCoins, UserRoundX } from "lucide-react";
 import { C } from "../../shared/theme";
-import { Av, Btn, DeleteActionButton, EditActionButton, Empty, Spinner, Tbl, type TblCol } from "../ui";
+import {
+  Av,
+  Btn,
+  CollapsibleSearch,
+  DeleteActionButton,
+  EditActionButton,
+  Empty,
+  ListPageHeader,
+  ListPageAddButton,
+  Spinner,
+  TableToolbarRefresh,
+  Tbl,
+  useNavPageAdd,
+  type TblCol,
+} from "../ui";
 import ClientDeleteConfirmModal from "./ClientDeleteConfirmModal";
 import { useAppContext } from "../../context/AppContext";
 import { getClientsPaged } from "../../shared/api/clients";
@@ -11,8 +24,8 @@ import { nextListSort } from "../../shared/utils";
 import { EVENTS, MODAL_T, ROLES } from "../../shared/constants";
 
 export default function ClientsPage() {
-  const navigate = useNavigate();
   const { is, setMdl, t } = useAppContext();
+  const navAdd = useNavPageAdd();
   const [clients, setClients] = useState<Client[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -157,70 +170,31 @@ export default function ClientsPage() {
     <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
       <style>{`
         @media (max-width: 640px) {
-          .clients-page-header {
-            justify-content: center;
-            flex-wrap: nowrap;
-          }
-
-          .clients-add-label {
-            display: none;
-          }
-
           .clients-table-card {
             margin-top: 20px;
           }
-
-          .clients-table-controls {
-            justify-content: center;
-            flex-wrap: nowrap;
-          }
-
-          .clients-table-search {
-            flex: 0 1 260px;
-            min-width: 0;
-            max-width: 100% !important;
-          }
         }
       `}</style>
-      <div
-        className="clients-page-header"
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "12px",
-          flexWrap: "wrap",
-          gap: "8px",
-        }}
-      >
-        <h1
-          style={{
-            margin: 0,
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            color: C.primary,
-            fontFamily: "'Manrope', sans-serif",
-            fontSize: "18px",
-            fontWeight: 600,
-            lineHeight: "100%",
-            letterSpacing: "-0.02em",
-          }}
-        >
-          <HandCoins size={24} strokeWidth={1.8} color={C.primary} />
-          Clients
-        </h1>
-        {is(ROLES.ADMIN) && (
-          <Btn
-            v="primary"
-            onClick={() => navigate("/clients/add")}
-            sx={{ borderRadius: "4px", boxShadow: C.cardShadow }}
-          >
-            <CirclePlus size={15} strokeWidth={1.8} />
-            <span className="clients-add-label">Add client</span>
-          </Btn>
-        )}
-      </div>
+      <ListPageHeader
+        className="list-page-header"
+        title="Clients"
+        icon={<HandCoins size={24} strokeWidth={1.8} color={C.primary} />}
+        search={
+          <CollapsibleSearch
+            value={searchInput}
+            onChange={(v) => {
+              setSearchInput(v);
+              setPage(1);
+            }}
+            placeholder="Search clients..."
+          />
+        }
+        addAction={
+          is(ROLES.ADMIN) && navAdd ? (
+            <ListPageAddButton addPath={navAdd.addPath} label="Add client" />
+          ) : undefined
+        }
+      />
       <div
         className="clients-table-card"
         style={{
@@ -231,71 +205,11 @@ export default function ClientsPage() {
           boxShadow: C.cardShadow,
         }}
       >
-        <div
-          className="clients-table-controls"
-          style={{
-            marginBottom: "10px",
-            display: "flex",
-            justifyContent: "flex-end",
-            alignItems: "center",
-            gap: "10px",
-            flexWrap: "wrap",
-          }}
-        >
-          <div className="clients-table-search" style={{ position: "relative", flex: 1, maxWidth: "260px", minWidth: "160px" }}>
-            <input
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search clients..."
-              style={{
-                width: "100%",
-                padding: "7px 12px 7px 34px",
-                border: `1.5px solid ${C.border}`,
-                borderRadius: "8px",
-                fontSize: "12px",
-                fontFamily: "'Inter', 'Manrope', sans-serif",
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-            <span
-              style={{
-                position: "absolute",
-                left: "10px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: C.muted,
-                display: "inline-flex",
-                alignItems: "center",
-              }}
-            >
-              <Search size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <button
-            type="button"
-            aria-label="Refresh clients"
-            title="Refresh clients"
-            onClick={() => setRefreshKey((k) => k + 1)}
-            disabled={loading}
-            style={{
-              width: 32,
-              height: 32,
-              border: "none",
-              borderRadius: "4px",
-              background: "transparent",
-              color: C.primary,
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.5 : 1,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 0,
-            }}
-          >
-            <RefreshCw size={20} strokeWidth={1.9} />
-          </button>
-        </div>
+        <TableToolbarRefresh
+          onRefresh={() => setRefreshKey((k) => k + 1)}
+          refreshDisabled={loading}
+          refreshAriaLabel="Refresh clients"
+        />
         <Tbl
           cols={cols}
           rows={loading ? [] : rows}

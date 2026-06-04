@@ -69,7 +69,7 @@ export default function ForecastFormPageContent() {
       const formData = new FormData();
       formData.append("title", title.trim());
       formData.append("purpose", purpose.trim());
-      formData.append("description", description.trim());
+      if (description.trim()) formData.append("description", description.trim());
       formData.append("expectedAmount", String(Number(expectedAmount)));
       formData.append("expectedExpenseDate", expectedExpenseDate);
       if (notes.trim()) formData.append("notes", notes.trim());

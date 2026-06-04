@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Plus, RefreshCw, Send, Target, X } from "lucide-react";
+import { Check, Plus, Send, Target, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Badge, Btn, Empty, Filter, Tbl } from "../ui";
+import {
+  Badge,
+  Btn,
+  CollapsibleSearch,
+  Empty,
+  Filter,
+  ListPageHeader,
+  ListPageAddButton,
+  Tbl,
+  useNavPageAdd,
+} from "../ui";
 import { C } from "../../shared/theme";
 import { approveForecast, cancelForecast, getForecastsMapped, rejectForecast, submitForecast } from "../../shared/api/forecast";
 import type { Forecast } from "../../types";
@@ -32,6 +42,7 @@ export default function ForecastListPageContent({ myOnly, isRequest, pendingOnly
   const [desc, setDesc] = useState(true);
   const myOnlyActual = myOnly ?? false;
   const showAddAction = Boolean(isRequest) && (is(ROLES.EMPLOYEE) || is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN));
+  const navAdd = useNavPageAdd();
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -188,31 +199,25 @@ export default function ForecastListPageContent({ myOnly, isRequest, pendingOnly
   return (
     <div style={{ width: "100%" }}>
       {!hideHeader && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", marginBottom: "20px" }}>
-          <h1 style={{ display: "flex", alignItems: "center", gap: "8px", color: C.text, fontSize: "24px", fontWeight: 600, margin: 0 }}>
-            <Target size={22} color={C.text} strokeWidth={1.8} />
-            Forecast management
-          </h1>
-          {showAddAction && (
-            <Btn onClick={() => navigate("/forecasts/add")} sx={{ borderRadius: "4px" }}>
-              <Plus size={14} />
-              Add forecast
-            </Btn>
-          )}
-        </div>
+        <ListPageHeader
+          title="Forecast management"
+          icon={<Target size={22} color={C.text} strokeWidth={1.8} />}
+          search={<CollapsibleSearch value={search} onChange={setSearch} placeholder="Search forecasts..." />}
+          addAction={
+            showAddAction && navAdd ? (
+              <ListPageAddButton addPath={navAdd.addPath} label="Add forecast" />
+            ) : undefined
+          }
+        />
       )}
       <div style={{ background: "#fff", borderRadius: "4px", padding: "16px", boxShadow: "-5px -2px 108.5px 0px #00024914" }}>
         <Filter
-          search={search}
-          onSearch={setSearch}
           status={status}
           onStatus={pendingOnly ? () => undefined : setStatus}
           opts={statusOptions}
-          trailing={
-            <Btn sm v="secondary" onClick={load} disabled={loading} sx={{ borderRadius: "4px" }}>
-              <RefreshCw size={13} />
-            </Btn>
-          }
+          onRefresh={load}
+          refreshDisabled={loading}
+          hidden={pendingOnly}
         />
         <Tbl
           cols={[

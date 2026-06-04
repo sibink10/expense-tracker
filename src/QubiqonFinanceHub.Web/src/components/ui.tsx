@@ -6,6 +6,7 @@ import { EXP_S, BILL_S, ADV_S, INV_S } from "../shared/constants";
 import { activityCommentStatusFallback } from "../shared/activityCommentStatus";
 import type { ActivityComment } from "../types";
 import { EditIcon, TrashIcon } from "./icons";
+import { OverflowStatusTabs } from "./list-toolbar";
 
 function activityStatusPillColors(t: ActivityComment["t"]): { color: string; background: string } {
   switch (t) {
@@ -1107,87 +1108,70 @@ export const SortTh: React.FC<{
 };
 
 export const Filter: React.FC<{
-  search: string;
-  onSearch: (v: string) => void;
+  /** @deprecated Search moved to ListPageHeader */
+  search?: string;
+  /** @deprecated Search moved to ListPageHeader */
+  onSearch?: (v: string) => void;
   status: string;
   onStatus: (s: string) => void;
   opts: string[];
-  /** Renders after the search box, before status pills (e.g. payment priority toggles) */
+  /** Renders before status tabs (e.g. payment priority) */
   prepend?: ReactNode;
-  /** Renders on the right end of the filter row (e.g. refresh), inside the card with tabs */
+  /** @deprecated Search moved to ListPageHeader; kept for card toolbar refresh + tabs only */
   trailing?: ReactNode;
-  /** When set, replaces the status pill row (e.g. combined filters) */
+  /** When set, replaces the status tab row */
   statusSlot?: ReactNode;
-}> = ({ search, onSearch, status, onStatus, opts, trailing, prepend, statusSlot }) => (
-  <div
-    style={{
-      display: "flex",
-      gap: "6px",
-      flexWrap: "wrap",
-      alignItems: "center",
-      marginBottom: "14px",
-      justifyContent: "space-between",
-    }}
-  >
-    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center", flex: "1 1 auto", minWidth: 0 }}>
-    <div style={{ position: "relative", flex: "1", minWidth: "160px", maxWidth: "260px" }}>
-      <input
-        value={search}
-        onChange={(e) => onSearch(e.target.value)}
-        placeholder="Search..."
-        style={{
-          width: "100%",
-          padding: "7px 12px 7px 30px",
-          border: `1.5px solid ${C.border}`,
-          borderRadius: "8px",
-          fontSize: "12px",
-          fontFamily: "'Inter', 'Manrope', sans-serif",
-          outline: "none",
-          boxSizing: "border-box",
-        }}
-      />
-      <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", fontSize: "12px", color: C.muted }}>⌕</span>
+  onRefresh?: () => void;
+  refreshDisabled?: boolean;
+  hidden?: boolean;
+  visibleTabCount?: number;
+}> = ({
+  status,
+  onStatus,
+  opts,
+  trailing,
+  prepend,
+  statusSlot,
+  onRefresh,
+  refreshDisabled,
+  hidden,
+  visibleTabCount = 4,
+}) => {
+  const tabs = opts.map((s) => ({ label: s === "all" ? "All" : s, value: s }));
+  return (
+    <div style={{ marginBottom: "14px" }}>
+      {statusSlot ?? (
+        <OverflowStatusTabs
+          tabs={tabs}
+          value={status}
+          onChange={onStatus}
+          visibleCount={visibleTabCount}
+          onRefresh={onRefresh}
+          refreshDisabled={refreshDisabled}
+          hidden={hidden}
+        />
+      )}
+      {prepend}
+      {trailing ? <div style={{ flexShrink: 0, marginTop: "6px" }}>{trailing}</div> : null}
     </div>
-    {prepend}
-    {statusSlot ?? (
-    <div
-      style={{
-        display: "flex",
-        gap: "2px",
-        background: C.surface,
-        borderRadius: "8px",
-        padding: "2px",
-        minHeight: "34px",
-        alignItems: "center",
-      }}
-    >
-      {opts.map((s) => (
-        <button
-          key={s}
-          onClick={() => onStatus(s)}
-          style={{
-            minHeight: "30px",
-            padding: "6px 10px",
-            borderRadius: "6px",
-            border: "none",
-            fontSize: "11px",
-            fontWeight: 600,
-            cursor: "pointer",
-            fontFamily: "'Inter', 'Manrope', sans-serif",
-            background: status === s ? "#fff" : "transparent",
-            color: status === s ? C.primary : C.muted,
-            boxShadow: status === s ? "0 1px 3px rgba(0,0,0,0.06)" : "none",
-          }}
-        >
-          {s === "all" ? "All" : s}
-        </button>
-      ))}
-    </div>
-    )}
-    </div>
-    {trailing ? <div style={{ flexShrink: 0, alignSelf: "center" }}>{trailing}</div> : null}
-  </div>
-);
+  );
+};
+
+export {
+  CollapsibleSearch,
+  ListPageHeader,
+  ListPageAddButton,
+  OverflowStatusTabs,
+  TableToolbarRefresh,
+  useNavPageAdd,
+} from "./list-toolbar";
+export type {
+  CollapsibleSearchProps,
+  ListPageHeaderProps,
+  ListPageAddButtonProps,
+  StatusTab,
+  OverflowStatusTabsProps,
+} from "./list-toolbar";
 
 export const CLog: React.FC<{ comments: ActivityComment[] }> = ({ comments }) =>
   comments?.length > 0 ? (

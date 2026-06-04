@@ -76,7 +76,7 @@ public class ForecastService : IForecastService
 
     public async Task<ForecastDto> UpdateAsync(Guid id, UpdateForecastRequest dto)
     {
-        ValidateForecastFields(dto.Title, dto.Purpose, dto.ExpectedAmount, dto.ExpectedExpenseDate, dto.Description);
+        ValidateForecastFields(dto.Title, dto.Purpose, dto.ExpectedAmount, dto.ExpectedExpenseDate);
         var orgId = await _tenant.GetCurrentOrganizationId();
         var emp = await _tenant.GetCurrentEmployeeAsync();
         var forecast = await _db.Forecasts
@@ -89,7 +89,7 @@ public class ForecastService : IForecastService
 
         forecast.Title = dto.Title.Trim();
         forecast.Purpose = dto.Purpose.Trim();
-        forecast.Description = dto.Description.Trim();
+        forecast.Description = string.IsNullOrWhiteSpace(dto.Description) ? string.Empty : dto.Description.Trim();
         forecast.ExpectedAmount = dto.ExpectedAmount;
         forecast.ExpectedExpenseDate = dto.ExpectedExpenseDate;
         forecast.Notes = string.IsNullOrWhiteSpace(dto.Notes) ? null : dto.Notes.Trim();
@@ -405,11 +405,10 @@ public class ForecastService : IForecastService
         return resolved;
     }
 
-    private static void ValidateForecastFields(string title, string purpose, decimal amount, DateTime expectedDate, string? description = null)
+    private static void ValidateForecastFields(string title, string purpose, decimal amount, DateTime expectedDate)
     {
         if (string.IsNullOrWhiteSpace(title)) throw new InvalidOperationException("Forecast title is required.");
         if (string.IsNullOrWhiteSpace(purpose)) throw new InvalidOperationException("Purpose is required.");
-        if (description != null && string.IsNullOrWhiteSpace(description)) throw new InvalidOperationException("Description is required.");
         if (amount <= 0) throw new InvalidOperationException("Expected amount must be greater than zero.");
         if (expectedDate == default) throw new InvalidOperationException("Expected expense date is required.");
     }
