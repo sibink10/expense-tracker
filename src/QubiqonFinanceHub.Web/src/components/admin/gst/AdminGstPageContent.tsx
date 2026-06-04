@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { C } from "../../../shared/theme";
-import { Btn, Empty, Toggle } from "../../ui";
+import { C, R } from "../../../shared/theme";
+import { Btn, Empty, PageShell, Toggle } from "../../ui";
 import { getTaxConfigs, toggleTaxConfig } from "../../../shared/api/taxConfig";
 import type { TaxConfig } from "../../../types";
 import { EVENTS } from "../../../shared/constants";
@@ -38,18 +38,22 @@ export default function AdminGstPage() {
   };
 
   return (
-    <div>
-      <h1 style={{ fontSize: "20px", fontWeight: 700, margin: "0 0 16px" }}>
-        <span style={{ color: C.primary }}>📊</span> GST config
-      </h1>
-      <p style={{ color: C.muted, fontSize: "12px", margin: "0 0 20px" }}>
-        GST rates from tax config. Add or edit via Tax config with type GST.
-      </p>
-
+    <PageShell
+      header={
+        <>
+          <h1 style={{ fontSize: "20px", fontWeight: 700, margin: "0 0 16px" }}>
+            <span style={{ color: C.primary }}>📊</span> GST config
+          </h1>
+          <p style={{ color: C.muted, fontSize: "12px", margin: "0 0 20px" }}>
+            GST rates from tax config. Add or edit via Tax config with type GST.
+          </p>
+        </>
+      }
+    >
       <div
         style={{
           background: "#fff",
-          borderRadius: "12px",
+          borderRadius: R.control,
           padding: "16px",
           border: `1px solid ${C.border}`,
         }}
@@ -142,7 +146,7 @@ export default function AdminGstPage() {
                       <span
                         style={{
                           padding: "2px 8px",
-                          borderRadius: "6px",
+                          borderRadius: R.control,
                           fontSize: "10px",
                           fontWeight: 600,
                           background: t.isActive ? `${C.success}20` : `${C.muted}20`,
@@ -165,6 +169,6 @@ export default function AdminGstPage() {
           </div>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }

@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { Save, Target } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Alert, Btn, Inp, MultiFileUp } from "../ui";
-import { C } from "../../shared/theme";
+import { Alert, Btn, Inp, MultiFileUp, PageShell } from "../ui";
+import { C, R } from "../../shared/theme";
 import { createForecastForm, getForecastById, updateForecastForm } from "../../shared/api/forecast";
 import { useAppContext } from "../../context/AppContext";
 
@@ -91,32 +91,35 @@ export default function ForecastFormPageContent() {
   };
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%" }}>
-      <h1 style={{ display: "flex", alignItems: "center", gap: "8px", margin: "0 0 20px", color: C.text, fontSize: narrow ? "18px" : "24px", fontWeight: 600 }}>
-        <Target size={narrow ? 18 : 22} color={C.text} strokeWidth={1.8} />
-        {editing ? "Edit forecast" : "Create forecast"}
-      </h1>
-      <div style={{ background: "#fff", borderRadius: "4px", padding: narrow ? "16px" : "20px", boxShadow: "-5px -2px 108.5px 0px #00024914" }}>
-        <Inp label="Forecast title" value={title} onChange={(e) => setTitle(e.target.value)} req controlSx={{ borderRadius: "4px" }} />
+    <PageShell
+      header={
+        <h1 style={{ display: "flex", alignItems: "center", gap: "8px", margin: 0, color: C.text, fontSize: narrow ? "18px" : "24px", fontWeight: 600 }}>
+          <Target size={narrow ? 18 : 22} color={C.text} strokeWidth={1.8} />
+          {editing ? "Edit forecast" : "Create forecast"}
+        </h1>
+      }
+    >
+      <div style={{ background: "#fff", borderRadius: R.control, padding: narrow ? "16px" : "20px", boxShadow: "-5px -2px 108.5px 0px #00024914" }}>
+        <Inp label="Forecast title" value={title} onChange={(e) => setTitle(e.target.value)} req controlSx={{ borderRadius: R.control }} />
         <div style={gridStyle}>
-          <Inp label="Expected amount (₹)" type="number" value={expectedAmount} onChange={(e) => setExpectedAmount(e.target.value)} req min="1" controlSx={{ borderRadius: "4px" }} />
-          <Inp label="Expected expense date" type="date" value={expectedExpenseDate} onChange={(e) => setExpectedExpenseDate(e.target.value)} req min={today} controlSx={{ borderRadius: "4px" }} />
+          <Inp label="Expected amount (₹)" type="number" value={expectedAmount} onChange={(e) => setExpectedAmount(e.target.value)} req min="1" controlSx={{ borderRadius: R.control }} />
+          <Inp label="Expected expense date" type="date" value={expectedExpenseDate} onChange={(e) => setExpectedExpenseDate(e.target.value)} req min={today} controlSx={{ borderRadius: R.control }} />
         </div>
-        <Inp label="Purpose / business justification" type="textarea" value={purpose} onChange={(e) => setPurpose(e.target.value)} req controlSx={{ borderRadius: "4px", minHeight: "74px" }} />
-        <Inp label="Description (optional)" type="textarea" value={description} onChange={(e) => setDescription(e.target.value)} controlSx={{ borderRadius: "4px", minHeight: "74px" }} />
-        <Inp label="Additional notes" type="textarea" value={notes} onChange={(e) => setNotes(e.target.value)} controlSx={{ borderRadius: "4px" }} />
+        <Inp label="Purpose / business justification" type="textarea" value={purpose} onChange={(e) => setPurpose(e.target.value)} req controlSx={{ borderRadius: R.control, minHeight: "74px" }} />
+        <Inp label="Description (optional)" type="textarea" value={description} onChange={(e) => setDescription(e.target.value)} controlSx={{ borderRadius: R.control, minHeight: "74px" }} />
+        <Inp label="Additional notes" type="textarea" value={notes} onChange={(e) => setNotes(e.target.value)} controlSx={{ borderRadius: R.control }} />
         <MultiFileUp files={files} onChange={setFiles} title="Supporting documents" radius="4px" />
         {error && <Alert sx={{ marginBottom: "14px" }}>{error}</Alert>}
         <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <Btn v="secondary" onClick={() => navigate("/forecasts")} sx={{ borderRadius: "4px" }}>
+          <Btn v="secondary" onClick={() => navigate("/forecasts")} sx={{ borderRadius: R.control }}>
             Cancel
           </Btn>
-          <Btn onClick={save} disabled={!canSave} sx={{ borderRadius: "4px" }}>
+          <Btn onClick={save} disabled={!canSave} sx={{ borderRadius: R.control }}>
             <Save size={14} />
             {loading ? "Saving..." : editing ? "Save" : "Submit forecast"}
           </Btn>
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

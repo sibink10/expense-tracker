@@ -15,7 +15,7 @@ import {
 import AccountFormModal from "./AccountFormModal";
 import { useAppContext } from "../../../context/AppContext";
 import { type Account, createAccount, getAccounts, updateAccount } from "../../../shared/api";
-import { C } from "../../../shared/theme";
+import { C, R, tableIconButtonSx } from "../../../shared/theme";
 
 type Mode = "add" | "edit";
 const PAGE_SIZE = 10;
@@ -162,7 +162,7 @@ export default function AdminAccountsPage() {
             }}
           >
             <EditActionButton
-              sx={{ width: 30, height: 30, background: C.actionEditBg, borderRadius: "4px" }}
+              sx={tableIconButtonSx(C.actionEditBg)}
               onClick={() => openEdit(item)}
             />
           </span>
@@ -173,7 +173,24 @@ export default function AdminAccountsPage() {
   }));
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
+      <ListPageHeader
+        className="list-page-header"
+        title="Accounts"
+        icon={<Landmark size={24} strokeWidth={1.8} color={C.primary} />}
+        actions={
+          <>
+            <CollapsibleSearch
+              value={searchInput}
+              onChange={setSearchInput}
+              placeholder="Search accounts..."
+            />
+            <Btn v="primary" onClick={openAdd} sx={{ borderRadius: R.control, boxShadow: C.cardShadow }}>
+              <CirclePlus size={15} strokeWidth={1.8} />
+              <span className="admin-accounts-add-label">Add account</span>
+            </Btn>
+          </>
+        }
+      >
       <style>{`
         @media (max-width: 640px) {
           .list-page-header {
@@ -190,30 +207,11 @@ export default function AdminAccountsPage() {
           }
         }
       `}</style>
-      <ListPageHeader
-        className="list-page-header"
-        title="Accounts"
-        icon={<Landmark size={24} strokeWidth={1.8} color={C.primary} />}
-        actions={
-          <>
-            <CollapsibleSearch
-              value={searchInput}
-              onChange={setSearchInput}
-              placeholder="Search accounts..."
-            />
-            <Btn v="primary" onClick={openAdd} sx={{ borderRadius: "4px", boxShadow: C.cardShadow }}>
-              <CirclePlus size={15} strokeWidth={1.8} />
-              <span className="admin-accounts-add-label">Add account</span>
-            </Btn>
-          </>
-        }
-      />
-
       <div
         className="admin-accounts-table-card"
         style={{
           background: C.white,
-          borderRadius: "12px",
+          borderRadius: R.control,
           padding: "14px 16px 16px",
           marginTop: "26px",
           boxShadow: C.cardShadow,
@@ -300,7 +298,7 @@ export default function AdminAccountsPage() {
               style={{
                 width: 73,
                 height: 28,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 padding: "4px 8px",
                 gap: "4px",
                 border: `1px solid ${C.subtleBorder}`,
@@ -333,7 +331,7 @@ export default function AdminAccountsPage() {
               style={{
                 width: 73,
                 height: 28,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 padding: "4px 8px",
                 gap: "4px",
                 border: `1px solid ${C.subtleBorder}`,
@@ -370,6 +368,6 @@ export default function AdminAccountsPage() {
         onClose={() => setModalOpen(false)}
         onSubmit={handleSubmit}
       />
-    </div>
+    </ListPageHeader>
   );
 }

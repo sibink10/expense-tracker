@@ -37,3 +37,6 @@ public enum CommentActionType { Submitted = 0, Approved = 1, Rejected = 2, Cance
 public enum SubscriptionPlan { Free = 0, Starter = 1, Professional = 2, Enterprise = 3 }
 
 public enum CustomerType { Individual, Business }
+
+/// <summary>Dashboard chart aggregation window.</summary>
+public enum DashboardPeriod { Total = 0, Month = 1 }

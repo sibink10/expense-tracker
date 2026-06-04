@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, RefreshCw, Search, UserRoundX, Users } from "lucide-react";
-import { C } from "../../shared/theme";
-import { DeleteActionButton, EditActionButton, Empty, Spinner, Tbl, Toggle, type TblCol } from "../ui";
+import { C, R, listTableCardStyle, tableIconButtonSx } from "../../shared/theme";
+import "../list-toolbar/list-toolbar.css";
+import { DeleteActionButton, EditActionButton, Empty, PageShell, Spinner, Tbl, Toggle, type TblCol } from "../ui";
 import EmployeeDeleteConfirmModal from "./EmployeeDeleteConfirmModal";
 import EmployeeFormModal from "./EmployeeFormModal";
 import { useAppContext } from "../../context/AppContext";
@@ -167,11 +168,11 @@ export default function EmployeesPage() {
         v: (
           <span style={{ display: "flex", gap: "6px", alignItems: "center" }}>
             <EditActionButton
-              sx={{ width: 30, height: 30, background: C.actionEditBg, borderRadius: "4px" }}
+              sx={tableIconButtonSx(C.actionEditBg)}
               onClick={() => openEdit(e)}
             />
             <DeleteActionButton
-              sx={{ width: 30, height: 30, background: C.actionDeleteBg, borderRadius: "4px" }}
+              sx={tableIconButtonSx(C.actionDeleteBg)}
               onClick={() => setDeleteTarget(e)}
               disabled={isCurrentUser(e)}
             />
@@ -187,7 +188,41 @@ export default function EmployeesPage() {
   }));
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
+    <PageShell
+      header={
+      <div
+        className="employees-page-header"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "12px",
+          gap: "8px",
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <h1
+            className="list-page-header__title"
+            style={{
+              margin: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              color: C.primary,
+              fontFamily: "'Manrope', sans-serif",
+              fontWeight: 600,
+              lineHeight: "100%",
+              letterSpacing: "-0.02em",
+            }}
+          >
+            <Users size={24} strokeWidth={1.8} color={C.primary} />
+            Employees
+          </h1>
+        </div>
+      </div>
+      }
+    >
       <style>{`
         @media (max-width: 640px) {
           .employees-page-header {
@@ -216,45 +251,10 @@ export default function EmployeesPage() {
         }
       `}</style>
       <div
-        className="employees-page-header"
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "12px",
-          gap: "8px",
-          flexWrap: "wrap",
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              margin: 0,
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              color: C.primary,
-              fontFamily: "'Manrope', sans-serif",
-              fontSize: "18px",
-              fontWeight: 600,
-              lineHeight: "100%",
-              letterSpacing: "-0.02em",
-            }}
-          >
-            <Users size={24} strokeWidth={1.8} color={C.primary} />
-            Employees
-          </h1>
-        </div>
-      </div>
-
-      <div
         className="employees-table-card"
         style={{
-          background: "#fff",
-          borderRadius: "12px",
-          padding: "14px 16px 16px",
+          ...listTableCardStyle,
           marginTop: "26px",
-          boxShadow: "0 -2px 108.5px 0 #00024914",
         }}
       >
         <div className="employees-table-controls" style={{ marginBottom: "10px", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
@@ -267,7 +267,7 @@ export default function EmployeesPage() {
                 width: "100%",
                 padding: "7px 12px 7px 34px",
                 border: `1.5px solid ${C.border}`,
-                borderRadius: "8px",
+                borderRadius: R.control,
                 fontSize: "12px",
                 fontFamily: "'Inter', 'Manrope', sans-serif",
                 outline: "none",
@@ -298,7 +298,7 @@ export default function EmployeesPage() {
               width: 32,
               height: 32,
               border: "none",
-              borderRadius: "4px",
+              borderRadius: R.control,
               background: "transparent",
               color: C.primary,
               cursor: loading ? "not-allowed" : "pointer",
@@ -386,7 +386,7 @@ export default function EmployeesPage() {
             style={{
               width: 73,
               height: 28,
-              borderRadius: "4px",
+              borderRadius: R.control,
               padding: "4px 8px",
               gap: "4px",
               border: "1px solid #DEDEDE",
@@ -421,7 +421,7 @@ export default function EmployeesPage() {
             style={{
               width: 73,
               height: 28,
-              borderRadius: "4px",
+              borderRadius: R.control,
               padding: "4px 8px",
               gap: "4px",
               border: "1px solid #DEDEDE",
@@ -472,7 +472,7 @@ export default function EmployeesPage() {
           }
         }}
       />
-    </div>
+    </PageShell>
   );
 }
 

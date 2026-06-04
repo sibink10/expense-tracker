@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { C } from "../../shared/theme";
+import { PageShell } from "../../components/ui";
 
 const requestCards = [
   { path: "/requests/forecasts", label: "Forecast requests", description: "View forecasts you have submitted." },
@@ -9,15 +10,16 @@ const requestCards = [
 
 export default function RequestsPage() {
   return (
-    <div style={{ width: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap", marginBottom: "24px" }}>
+    <PageShell
+      header={
         <div>
           <h1 style={{ margin: 0, color: C.text, fontSize: "24px", fontWeight: 600 }}>Requests</h1>
           <p style={{ margin: "8px 0 0", color: C.muted, maxWidth: "680px" }}>
             Access your personal forecast, expense, and advance request pages from one place.
           </p>
         </div>
-      </div>
+      }
+    >
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px" }}>
         {requestCards.map((item) => (
           <Link
@@ -46,6 +48,6 @@ export default function RequestsPage() {
           </Link>
         ))}
       </div>
-    </div>
+    </PageShell>
   );
 }

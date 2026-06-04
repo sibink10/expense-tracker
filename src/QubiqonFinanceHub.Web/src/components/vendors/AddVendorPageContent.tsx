@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { C } from "../../shared/theme";
-import { Inp, Btn, Alert } from "../ui";
+import { C, R } from "../../shared/theme";
+import { Inp, Btn, Alert, PageShell } from "../ui";
 import PhoneInputField, { isValidPhoneNumber } from "../PhoneInputField";
 import { createVendor } from "../../shared/api/vendor";
 import { getCategories, type Category } from "../../shared/api";
@@ -105,14 +105,11 @@ export default function AddVendorPage() {
   const cellStyle = { marginBottom: 0 };
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%" }}>
-      <h1 style={{ fontSize: "20px", fontWeight: 700, margin: "0 0 20px", color: C.vendor }}>
-        Add vendor
-      </h1>
+    <PageShell header={<h1 style={{ fontSize: "20px", fontWeight: 700, margin: 0, color: C.vendor }}>Add vendor</h1>}>
       <div
         style={{
           background: "#fff",
-          borderRadius: "12px",
+          borderRadius: R.control,
           padding: "20px",
           border: `1px solid ${C.border}`,
           width: "100%",
@@ -229,6 +226,6 @@ export default function AddVendorPage() {
           </Btn>
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

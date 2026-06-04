@@ -155,7 +155,10 @@ public interface IEmailService
 
 public interface IDashboardService
 {
-    Task<DashboardDto> GetStatsAsync(bool myOnly = false, string? reportCurrency = null);
+    Task<DashboardDto> GetStatsAsync(
+        bool myOnly = false,
+        string? reportCurrency = null,
+        DashboardPeriod period = DashboardPeriod.Total);
 }
 
 public interface IEmployeeService

@@ -9,7 +9,7 @@ import {
   X,
 } from "lucide-react";
 import type { Advance } from "../../types";
-import { C } from "../../shared/theme";
+import { C, R, workflowTableActionStyle } from "../../shared/theme";
 import { ADV_S, EVENTS, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur, nextListSort } from "../../shared/utils";
 import {
@@ -40,14 +40,6 @@ const STATUS_TABS = [
 ] as const;
 
 type StatusOption = (typeof STATUS_TABS)[number];
-
-const workflowActionStyle = (fg: string, bg: string) => ({
-  borderRadius: "4px",
-  background: bg,
-  color: fg,
-  padding: "6px 8px",
-  minHeight: 26,
-});
 
 export default function AdvanceListPageContent({ myOnly, isRequest, pendingOnly, hideHeader }: { myOnly?: boolean; isRequest?: boolean; pendingOnly?: boolean; hideHeader?: boolean }) {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -142,7 +134,6 @@ export default function AdvanceListPageContent({ myOnly, isRequest, pendingOnly,
     ...(!is(ROLES.EMPLOYEE)
       ? [{ label: "Employee", sortKey: "Employee", sx: { textAlign: "left", verticalAlign: "middle" } } as TblCol]
       : []),
-    { label: "Purpose", sortKey: "Purpose", sx: { textAlign: "left", verticalAlign: "middle" } },
     { label: "Amount", sortKey: "Amount" },
     { label: "Balance Due", sortKey: "BalanceDue" },
     { label: "Status" },
@@ -169,22 +160,6 @@ export default function AdvanceListPageContent({ myOnly, isRequest, pendingOnly,
               },
             ]
           : []),
-        {
-          v: (
-            <div
-              style={{
-                maxWidth: "220px",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                color: C.primary,
-              }}
-            >
-              {a.purpose || "NA"}
-            </div>
-          ),
-          sx: { textAlign: "left" as const, verticalAlign: "middle" as const },
-        },
         { v: <span style={{ fontWeight: 700, color: C.primary, whiteSpace: "nowrap" }}>{fmtCur(a.amt)}</span> },
         {
           v: (
@@ -218,7 +193,7 @@ export default function AdvanceListPageContent({ myOnly, isRequest, pendingOnly,
                           <Btn
                             sm
                             v="ghost"
-                            sx={workflowActionStyle(C.success, C.successBg)}
+                            sx={workflowTableActionStyle(C.success, C.successBg)}
                             onClick={(e) => {
                               e.stopPropagation();
                               setMdl({ t: MODAL_T.ADV_APPROVE, d: a });
@@ -230,7 +205,7 @@ export default function AdvanceListPageContent({ myOnly, isRequest, pendingOnly,
                           <Btn
                             sm
                             v="ghost"
-                            sx={workflowActionStyle(C.danger, C.dangerBg)}
+                            sx={workflowTableActionStyle(C.danger, C.dangerBg)}
                             onClick={(e) => {
                               e.stopPropagation();
                               setMdl({ t: MODAL_T.REJECT, d: a, it: ITEM_T.ADVANCE });
@@ -244,38 +219,24 @@ export default function AdvanceListPageContent({ myOnly, isRequest, pendingOnly,
                     {(is(ROLES.FINANCE) || is(ROLES.ADMIN)) &&
                       a.status !== ADV_S.CANCELLED &&
                       (a.status === ADV_S.APPROVED || a.status === ADV_S.PARTIALLY_DISBURSED) && (
-                        <>
-                          <Btn
-                            sm
-                            v="ghost"
-                            sx={workflowActionStyle(C.invoiceActionPaid, C.invoiceActionPaidBg)}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setMdl({ t: MODAL_T.ADV_DISBURSE, d: a });
-                            }}
-                          >
-                            <IndianRupee size={13} strokeWidth={1.9} />
-                            Disburse
-                          </Btn>
-                          <Btn
-                            sm
-                            v="ghost"
-                            sx={workflowActionStyle(C.danger, C.dangerBg)}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setMdl({ t: MODAL_T.REJECT, d: a, it: ITEM_T.ADVANCE });
-                            }}
-                          >
-                            <X size={13} strokeWidth={1.9} />
-                            Reject
-                          </Btn>
-                        </>
+                        <Btn
+                          sm
+                          v="ghost"
+                          sx={workflowTableActionStyle(C.invoiceActionPaid, C.invoiceActionPaidBg)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMdl({ t: MODAL_T.ADV_DISBURSE, d: a });
+                          }}
+                        >
+                          <IndianRupee size={13} strokeWidth={1.9} />
+                          Disburse
+                        </Btn>
                       )}
                     {canCancelAdvanceRow && (
                       <Btn
                         sm
                         v="ghost"
-                        sx={workflowActionStyle(C.danger, C.dangerBg)}
+                        sx={workflowTableActionStyle(C.danger, C.dangerBg)}
                         onClick={(e) => {
                           e.stopPropagation();
                           setMdl({ t: MODAL_T.ADV_CANCEL_CONFIRM, d: a });
@@ -285,6 +246,22 @@ export default function AdvanceListPageContent({ myOnly, isRequest, pendingOnly,
                         Cancel
                       </Btn>
                     )}
+                    {(is(ROLES.FINANCE) || is(ROLES.ADMIN)) &&
+                      a.status !== ADV_S.CANCELLED &&
+                      (a.status === ADV_S.APPROVED || a.status === ADV_S.PARTIALLY_DISBURSED) && (
+                        <Btn
+                          sm
+                          v="ghost"
+                          sx={workflowTableActionStyle(C.danger, C.dangerBg)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMdl({ t: MODAL_T.REJECT, d: a, it: ITEM_T.ADVANCE });
+                          }}
+                        >
+                          <X size={13} strokeWidth={1.9} />
+                          Reject
+                        </Btn>
+                      )}
                   </span>
                 ),
                 sx: {
@@ -299,16 +276,8 @@ export default function AdvanceListPageContent({ myOnly, isRequest, pendingOnly,
   });
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
-      <style>{`
-        @media (max-width: 640px) {
-          .advances-table-card {
-            margin-top: 20px;
-          }
-        }
-      `}</style>
-      {!hideHeader && (
         <ListPageHeader
+          hidden={hideHeader}
           className="list-page-header"
           title="Advance requests"
           icon={<BanknoteArrowUp size={24} strokeWidth={1.8} color={C.primary} />}
@@ -327,13 +296,19 @@ export default function AdvanceListPageContent({ myOnly, isRequest, pendingOnly,
               <ListPageAddButton addPath={navAdd.addPath} label="Request advance" />
             ) : undefined
           }
-        />
-      )}
+        >
+      <style>{`
+        @media (max-width: 640px) {
+          .advances-table-card {
+            margin-top: 20px;
+          }
+        }
+      `}</style>
       <div
         className="advances-table-card"
         style={{
           background: C.white,
-          borderRadius: "12px",
+          borderRadius: R.control,
           padding: "14px 16px 16px",
           marginTop: "26px",
           boxShadow: C.cardShadow,
@@ -430,7 +405,7 @@ export default function AdvanceListPageContent({ myOnly, isRequest, pendingOnly,
               style={{
                 width: 73,
                 height: 28,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 padding: "4px 8px",
                 gap: "4px",
                 border: `1px solid ${C.subtleBorder}`,
@@ -463,7 +438,7 @@ export default function AdvanceListPageContent({ myOnly, isRequest, pendingOnly,
               style={{
                 width: 73,
                 height: 28,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 padding: "4px 8px",
                 gap: "4px",
                 border: `1px solid ${C.subtleBorder}`,
@@ -486,6 +461,6 @@ export default function AdvanceListPageContent({ myOnly, isRequest, pendingOnly,
           </div>
         </div>
       </div>
-    </div>
+    </ListPageHeader>
   );
 }

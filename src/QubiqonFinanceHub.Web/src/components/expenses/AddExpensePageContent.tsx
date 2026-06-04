@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { ReceiptText, Send, Target } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { C } from "../../shared/theme";
-import { Inp, Btn, Av, MultiFileUp, Alert } from "../ui";
+import { C, R } from "../../shared/theme";
+import { Inp, Btn, Av, MultiFileUp, Alert, PageShell } from "../ui";
 import { AsyncSelectInput } from "../AsyncSelectInput";
 import { useAppContext } from "../../context/AppContext";
 import { createExpenseForm } from "../../shared/api/expense";
@@ -109,7 +109,7 @@ export default function AddExpensePage() {
     gap: "14px",
   };
   const cellStyle = { marginBottom: 0 };
-  const controlStyle = { borderRadius: "4px" };
+  const controlStyle = { borderRadius: R.control };
   const canSubmit =
     amt.trim() !== "" &&
     pur.trim() !== "" &&
@@ -122,28 +122,31 @@ export default function AddExpensePage() {
   const overForecast = expenseType === "forecast" && selectedForecast !== null && expenseAmount > selectedForecast.expectedAmount;
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%" }}>
-      <h1
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          color: C.text,
-          fontFamily: "'Manrope', sans-serif",
-          fontSize: narrow ? "18px" : "24px",
-          fontWeight: 600,
-          letterSpacing: "-0.02em",
-          lineHeight: "100%",
-          margin: "0 0 20px",
-        }}
-      >
-        <ReceiptText size={narrow ? 18 : 22} color={C.text} strokeWidth={1.8} />
-        Add expense
-      </h1>
+    <PageShell
+      header={
+        <h1
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            color: C.text,
+            fontFamily: "'Manrope', sans-serif",
+            fontSize: narrow ? "18px" : "24px",
+            fontWeight: 600,
+            letterSpacing: "-0.02em",
+            lineHeight: "100%",
+            margin: 0,
+          }}
+        >
+          <ReceiptText size={narrow ? 18 : 22} color={C.text} strokeWidth={1.8} />
+          Add expense
+        </h1>
+      }
+    >
       <div
         style={{
           background: "#fff",
-          borderRadius: "4px",
+          borderRadius: R.control,
           padding: narrow ? "16px" : "20px",
           boxShadow: "-5px -2px 108.5px 0px #00024914",
           width: "100%",
@@ -158,7 +161,7 @@ export default function AddExpensePage() {
               gap: "10px",
               padding: "10px 14px",
               background: C.surface,
-              borderRadius: "4px",
+              borderRadius: R.control,
               marginBottom: "14px",
             }}
           >
@@ -175,7 +178,7 @@ export default function AddExpensePage() {
             <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: C.primary, marginBottom: "4px" }}>
               Expense type <span style={{ color: C.accent }}>*</span>
             </label>
-            <div style={{ display: "inline-flex", gap: "2px", background: C.surface, borderRadius: "4px", padding: "2px", minHeight: "34px" }}>
+            <div style={{ display: "inline-flex", gap: "2px", background: C.surface, borderRadius: R.control, padding: "2px", minHeight: "34px" }}>
               {[
                 { key: "adHoc" as const, label: "Ad-Hoc Expense" },
                 { key: "forecast" as const, label: "Forecast Expense" },
@@ -190,7 +193,7 @@ export default function AddExpensePage() {
                   style={{
                     minHeight: "30px",
                     padding: "6px 12px",
-                    borderRadius: "4px",
+                    borderRadius: R.control,
                     border: "none",
                     fontSize: "11px",
                     fontWeight: 600,
@@ -217,7 +220,7 @@ export default function AddExpensePage() {
                 controlSx={controlStyle}
               />
               {selectedForecast && (
-                <div style={{ display: "grid", gridTemplateColumns: narrow ? "1fr" : "repeat(3, 1fr)", gap: "10px", padding: "12px", background: C.surface, borderRadius: "4px", marginTop: "-8px", marginBottom: "14px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: narrow ? "1fr" : "repeat(3, 1fr)", gap: "10px", padding: "12px", background: C.surface, borderRadius: R.control, marginTop: "-8px", marginBottom: "14px" }}>
                   <div>
                     <div style={{ fontSize: "10px", color: C.muted, fontWeight: 700 }}>Title</div>
                     <div style={{ fontSize: "12px", color: C.primary, fontWeight: 600 }}>{selectedForecast.title}</div>
@@ -289,7 +292,7 @@ export default function AddExpensePage() {
         </div>
         {error && <Alert sx={{ marginBottom: "14px" }}>{error}</Alert>}
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Btn onClick={openConfirm} disabled={!canSubmit} sx={{ borderRadius: "4px" }}>
+          <Btn onClick={openConfirm} disabled={!canSubmit} sx={{ borderRadius: R.control }}>
             <Send size={14} />
             {loading ? "Submitting..." : "Submit"}
           </Btn>
@@ -299,7 +302,7 @@ export default function AddExpensePage() {
         <div style={{ fontSize: "13px", color: C.primary, lineHeight: 1.5 }}>
           Submit this expense request for approval?
         </div>
-        <div style={{ display: "grid", gap: "8px", marginTop: "14px", padding: "12px", background: C.surface, borderRadius: "8px", fontSize: "12px" }}>
+        <div style={{ display: "grid", gap: "8px", marginTop: "14px", padding: "12px", background: C.surface, borderRadius: R.control, fontSize: "12px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
             <span style={{ color: C.muted }}>Amount</span>
             <strong style={{ color: overForecast ? C.danger : C.primary }}>₹{expenseAmount.toLocaleString("en-IN")}</strong>
@@ -323,7 +326,7 @@ export default function AddExpensePage() {
                 <strong>{selectedForecast.expectedExpenseDate}</strong>
               </div>
               {overForecast && (
-                <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", padding: "10px", background: C.dangerBg, borderRadius: "6px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", padding: "10px", background: C.dangerBg, borderRadius: R.control }}>
                   <span style={{ color: C.danger, fontWeight: 600 }}>Over forecast by</span>
                   <strong style={{ color: C.danger }}>₹{(expenseAmount - selectedForecast.expectedAmount).toLocaleString("en-IN")}</strong>
                 </div>
@@ -332,15 +335,15 @@ export default function AddExpensePage() {
           )}
         </div>
         <div style={{ marginTop: "18px", display: "flex", justifyContent: "flex-end", gap: "8px", flexWrap: "wrap" }}>
-          <Btn v="secondary" onClick={() => setConfirmOpen(false)} disabled={loading} sx={{ borderRadius: "4px" }}>
+          <Btn v="secondary" onClick={() => setConfirmOpen(false)} disabled={loading} sx={{ borderRadius: R.control }}>
             Cancel
           </Btn>
-          <Btn onClick={submit} disabled={loading} sx={{ borderRadius: "4px" }}>
+          <Btn onClick={submit} disabled={loading} sx={{ borderRadius: R.control }}>
             <Send size={14} />
             {loading ? "Submitting..." : "Confirm submit"}
           </Btn>
         </div>
       </Mdl>
-    </div>
+    </PageShell>
   );
 }

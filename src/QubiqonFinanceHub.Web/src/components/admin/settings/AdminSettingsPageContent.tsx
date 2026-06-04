@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { ArrowUpRight, ClipboardList, Mail, Settings } from "lucide-react";
-import { C } from "../../../shared/theme";
-import { Inp, Btn, Toggle } from "../../ui";
+import { C, R } from "../../../shared/theme";
+import { Inp, Btn, Toggle, PageShell } from "../../ui";
 import { useAppContext } from "../../../context/AppContext";
 import { getOrganization } from "../../../shared/api";
 import { isEmailListValid, fmtCur } from "../../../shared/utils";
@@ -126,7 +126,7 @@ export default function AdminSettingsPage() {
   };
 
   const cardStyle: React.CSSProperties = {
-    borderRadius: "4px",
+    borderRadius: R.control,
     border: "none",
     padding: "20px",
     background: "#fff",
@@ -172,7 +172,7 @@ export default function AdminSettingsPage() {
             right: 0,
             width: "260px",
             padding: "10px 12px",
-            borderRadius: "10px",
+            borderRadius: R.control,
             background: "#fff",
             border: `1px solid ${C.border}`,
             boxShadow: "0 10px 24px rgba(15,23,42,0.12)",
@@ -193,8 +193,8 @@ export default function AdminSettingsPage() {
   );
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%" }}>
-      <div style={{ marginBottom: "20px" }}>
+    <PageShell
+      header={
         <h1
           style={{
             margin: 0,
@@ -211,7 +211,8 @@ export default function AdminSettingsPage() {
         >
           <Settings size={24} color="#242424" strokeWidth={1.9} /> Settings
         </h1>
-      </div>
+      }
+    >
       <div
         style={{
           display: "grid",
@@ -374,6 +375,6 @@ export default function AdminSettingsPage() {
       <div style={{ marginTop: "24px" }}>
         <Btn onClick={handleSave} disabled={saving}>{saving ? "Saving..." : "Save settings"}</Btn>
       </div>
-    </div>
+    </PageShell>
   );
 }

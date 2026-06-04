@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { C } from "../../shared/theme";
+import { C, R } from "../../shared/theme";
 import { fmtCur } from "../../shared/utils";
 import { Inp, Btn, Mdl, Alert, INVOICE_MODAL_Z_INDEX } from "../ui";
 import { useAppContext } from "../../context/AppContext";
@@ -82,7 +82,7 @@ export default function InvPayModal() {
         style={{
           padding: "10px 14px",
           background: C.surface,
-          borderRadius: "8px",
+          borderRadius: R.control,
           marginBottom: "12px",
           fontSize: "12px",
         }}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { ChevronLeft, ChevronRight, CirclePlus, FolderKanban, Tags } from "lucide-react";
-import { C } from "../../../shared/theme";
+import { C, R } from "../../../shared/theme";
 import {
   Btn,
   CollapsibleSearch,
@@ -111,7 +111,7 @@ export default function AdminCategoriesPage() {
           <span
             style={{
               padding: "2px 8px",
-              borderRadius: "6px",
+              borderRadius: R.control,
               fontSize: "10px",
               fontWeight: 600,
               background: category.isActive ? C.successBg : C.surface,
@@ -148,23 +148,6 @@ export default function AdminCategoriesPage() {
   }));
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
-      <style>{`
-        @media (max-width: 640px) {
-          .list-page-header {
-            justify-content: center;
-            flex-wrap: nowrap;
-          }
-
-          .admin-categories-add-label {
-            display: none;
-          }
-
-          .admin-categories-table-card {
-            margin-top: 20px;
-          }
-        }
-      `}</style>
       <ListPageHeader
         className="list-page-header"
         title="Categories"
@@ -183,20 +166,35 @@ export default function AdminCategoriesPage() {
                 setError(null);
                 setModalOpen(true);
               }}
-              sx={{ borderRadius: "4px", boxShadow: C.cardShadow }}
+              sx={{ borderRadius: R.control, boxShadow: C.cardShadow }}
             >
               <CirclePlus size={15} strokeWidth={1.8} />
               <span className="admin-categories-add-label">Add category</span>
             </Btn>
           </>
         }
-      />
+      >
+      <style>{`
+        @media (max-width: 640px) {
+          .list-page-header {
+            justify-content: center;
+            flex-wrap: nowrap;
+          }
 
+          .admin-categories-add-label {
+            display: none;
+          }
+
+          .admin-categories-table-card {
+            margin-top: 20px;
+          }
+        }
+      `}</style>
       <div
         className="admin-categories-table-card"
         style={{
           background: C.white,
-          borderRadius: "12px",
+          borderRadius: R.control,
           padding: "14px 16px 16px",
           marginTop: "26px",
           boxShadow: C.cardShadow,
@@ -283,7 +281,7 @@ export default function AdminCategoriesPage() {
               style={{
                 width: 73,
                 height: 28,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 padding: "4px 8px",
                 gap: "4px",
                 border: `1px solid ${C.subtleBorder}`,
@@ -316,7 +314,7 @@ export default function AdminCategoriesPage() {
               style={{
                 width: 73,
                 height: 28,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 padding: "4px 8px",
                 gap: "4px",
                 border: `1px solid ${C.subtleBorder}`,
@@ -349,7 +347,7 @@ export default function AdminCategoriesPage() {
         onClose={() => setModalOpen(false)}
         onSubmit={handleAdd}
       />
-    </div>
+    </ListPageHeader>
   );
 }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { BriefcaseBusiness, ChevronLeft, ChevronRight } from "lucide-react";
-import { C } from "../../shared/theme";
+import { C, R, tableIconButtonSx } from "../../shared/theme";
 import {
   Av,
   CollapsibleSearch,
@@ -134,14 +134,14 @@ export default function VendorsPage() {
                   }}
                 >
                   <EditActionButton
-                    sx={{ width: 30, height: 30, background: C.actionEditBg, borderRadius: "4px" }}
+                    sx={tableIconButtonSx(C.actionEditBg)}
                     onClick={(e) => {
                       e.stopPropagation();
                       setMdl({ t: MODAL_T.VENDOR_EDIT, d: vendor });
                     }}
                   />
                   <DeleteActionButton
-                    sx={{ width: 30, height: 30, background: C.actionDeleteBg, borderRadius: "4px" }}
+                    sx={tableIconButtonSx(C.actionDeleteBg)}
                     onClick={(e) => {
                       e.stopPropagation();
                       setDeleteTarget(vendor);
@@ -157,14 +157,6 @@ export default function VendorsPage() {
   }));
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
-      <style>{`
-        @media (max-width: 640px) {
-          .vendors-table-card {
-            margin-top: 20px;
-          }
-        }
-      `}</style>
       <ListPageHeader
         className="list-page-header"
         title="Vendors"
@@ -184,12 +176,19 @@ export default function VendorsPage() {
             <ListPageAddButton addPath={navAdd.addPath} label="Add vendor" />
           ) : undefined
         }
-      />
+      >
+      <style>{`
+        @media (max-width: 640px) {
+          .vendors-table-card {
+            margin-top: 20px;
+          }
+        }
+      `}</style>
       <div
         className="vendors-table-card"
         style={{
           background: C.white,
-          borderRadius: "12px",
+          borderRadius: R.control,
           padding: "14px 16px 16px",
           marginTop: "26px",
           boxShadow: C.cardShadow,
@@ -282,7 +281,7 @@ export default function VendorsPage() {
               style={{
                 width: 73,
                 height: 28,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 padding: "4px 8px",
                 gap: "4px",
                 border: `1px solid ${C.subtleBorder}`,
@@ -315,7 +314,7 @@ export default function VendorsPage() {
               style={{
                 width: 73,
                 height: 28,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 padding: "4px 8px",
                 gap: "4px",
                 border: `1px solid ${C.subtleBorder}`,
@@ -348,6 +347,6 @@ export default function VendorsPage() {
         onClose={() => setDeleteTarget(null)}
         onRemoved={() => setRefreshKey((k) => k + 1)}
       />
-    </div>
+    </ListPageHeader>
   );
 }

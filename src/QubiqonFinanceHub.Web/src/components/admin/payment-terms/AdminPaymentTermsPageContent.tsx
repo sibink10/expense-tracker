@@ -15,7 +15,7 @@ import {
 import PaymentTermFormModal from "./PaymentTermFormModal";
 import { useAppContext } from "../../../context/AppContext";
 import { type PaymentTerm, createPaymentTerm, getPaymentTerms, updatePaymentTerm } from "../../../shared/api";
-import { C } from "../../../shared/theme";
+import { C, R, tableIconButtonSx } from "../../../shared/theme";
 
 type Mode = "add" | "edit";
 const PAGE_SIZE = 10;
@@ -180,7 +180,7 @@ export default function AdminPaymentTermsPage() {
             }}
           >
             <EditActionButton
-              sx={{ width: 30, height: 30, background: C.actionEditBg, borderRadius: "4px" }}
+              sx={tableIconButtonSx(C.actionEditBg)}
               onClick={() => openEdit(item)}
             />
           </span>
@@ -191,7 +191,24 @@ export default function AdminPaymentTermsPage() {
   }));
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
+      <ListPageHeader
+        className="list-page-header"
+        title="Payment terms"
+        icon={<Clock size={24} strokeWidth={1.8} color={C.primary} />}
+        actions={
+          <>
+            <CollapsibleSearch
+              value={searchInput}
+              onChange={setSearchInput}
+              placeholder="Search payment terms..."
+            />
+            <Btn v="primary" onClick={openAdd} sx={{ borderRadius: R.control, boxShadow: C.cardShadow }}>
+              <CirclePlus size={15} strokeWidth={1.8} />
+              <span className="admin-payment-terms-add-label">Add payment term</span>
+            </Btn>
+          </>
+        }
+      >
       <style>{`
         @media (max-width: 640px) {
           .list-page-header {
@@ -208,30 +225,11 @@ export default function AdminPaymentTermsPage() {
           }
         }
       `}</style>
-      <ListPageHeader
-        className="list-page-header"
-        title="Payment terms"
-        icon={<Clock size={24} strokeWidth={1.8} color={C.primary} />}
-        actions={
-          <>
-            <CollapsibleSearch
-              value={searchInput}
-              onChange={setSearchInput}
-              placeholder="Search payment terms..."
-            />
-            <Btn v="primary" onClick={openAdd} sx={{ borderRadius: "4px", boxShadow: C.cardShadow }}>
-              <CirclePlus size={15} strokeWidth={1.8} />
-              <span className="admin-payment-terms-add-label">Add payment term</span>
-            </Btn>
-          </>
-        }
-      />
-
       <div
         className="admin-payment-terms-table-card"
         style={{
           background: C.white,
-          borderRadius: "12px",
+          borderRadius: R.control,
           padding: "14px 16px 16px",
           marginTop: "26px",
           boxShadow: C.cardShadow,
@@ -318,7 +316,7 @@ export default function AdminPaymentTermsPage() {
               style={{
                 width: 73,
                 height: 28,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 padding: "4px 8px",
                 gap: "4px",
                 border: `1px solid ${C.subtleBorder}`,
@@ -351,7 +349,7 @@ export default function AdminPaymentTermsPage() {
               style={{
                 width: 73,
                 height: 28,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 padding: "4px 8px",
                 gap: "4px",
                 border: `1px solid ${C.subtleBorder}`,
@@ -390,6 +388,6 @@ export default function AdminPaymentTermsPage() {
         onClose={() => setModalOpen(false)}
         onSubmit={handleSubmit}
       />
-    </div>
+    </ListPageHeader>
   );
 }

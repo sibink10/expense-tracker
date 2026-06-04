@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 export const C = {
   primary: "#242424",
   accent: "#219268",
@@ -28,7 +30,8 @@ export const C = {
   clientAvatarText: "#219268",
   actionIcon: "#6D6B6B",
   actionDangerIcon: "#FF383C",
-  cardShadow: "0 -2px 108.5px 0 #00024914",
+  cardShadow: "0 1px 4px rgba(15, 23, 42, 0.06)",
+  tableButtonShadow: "0 1px 3px rgba(15, 23, 42, 0.1)",
   actionEditBg: "#EEF2FF",
   actionEditIcon: "#4F46E5",
   actionDeleteBg: "#FCEBEB",
@@ -42,6 +45,41 @@ export const C = {
   invoiceActionPaidBg: "#E1F5EE",
 };
 
+/** Standard corner radius for cards, tables, buttons, tabs, and status pills */
 export const R = {
-  control: "4px",
+  control: "0.75rem",
 };
+
+/** White list/table container used on list pages */
+export const listTableCardStyle: CSSProperties = {
+  background: C.white,
+  borderRadius: R.control,
+  padding: "14px 16px 16px",
+  boxShadow: C.cardShadow,
+};
+
+/** Corner radius for workflow and icon buttons inside table action columns */
+export const R_TABLE_BUTTON = "6px";
+
+/** Workflow buttons inside table action columns */
+export function workflowTableActionStyle(fg: string, bg: string): CSSProperties {
+  return {
+    borderRadius: R_TABLE_BUTTON,
+    background: bg,
+    color: fg,
+    padding: "6px 8px",
+    minHeight: 26,
+    boxShadow: C.tableButtonShadow,
+  };
+}
+
+/** Icon edit/delete buttons in table rows */
+export function tableIconButtonSx(background: string): CSSProperties {
+  return {
+    width: 30,
+    height: 30,
+    background,
+    borderRadius: R_TABLE_BUTTON,
+    boxShadow: C.tableButtonShadow,
+  };
+}

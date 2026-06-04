@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Building2, ExternalLink, MapPin, Phone, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { C } from "../../../shared/theme";
-import { Btn, EditActionButton } from "../../ui";
+import { C, R, tableIconButtonSx } from "../../../shared/theme";
+import { Btn, EditActionButton, PageShell } from "../../ui";
 import { getOrganizations, type OrganizationPayload } from "../../../shared/api";
 
 export default function AdminOrgViewPage() {
@@ -46,18 +46,17 @@ export default function AdminOrgViewPage() {
   const hasOrgs = orgs.length > 0;
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%" }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "12px",
-          gap: "8px",
-          flexWrap: "wrap",
-        }}
-      >
-        <div>
+    <PageShell
+      header={
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "8px",
+            flexWrap: "wrap",
+          }}
+        >
           <h1
             style={{
               margin: 0,
@@ -74,12 +73,12 @@ export default function AdminOrgViewPage() {
           >
             <Building2 size={24} color="#242424" strokeWidth={1.9} /> Organizations
           </h1>
+          <Btn v="invoice" onClick={() => navigate("/admin/org/edit")}>
+            <Plus size={14} /> Add organization
+          </Btn>
         </div>
-        <Btn v="invoice" onClick={() => navigate("/admin/org/edit")}>
-          <Plus size={14} /> Add organization
-        </Btn>
-      </div>
-
+      }
+    >
       {loading ? (
         <div style={{ padding: "40px 0", textAlign: "center", color: C.muted }}>Loading organizations…</div>
       ) : !hasOrgs ? (
@@ -104,7 +103,7 @@ export default function AdminOrgViewPage() {
                 <div
                   key={org.id ?? org.orgName}
                   style={{
-                    borderRadius: "4px",
+                    borderRadius: R.control,
                     border: "none",
                     padding: "14px 16px 12px",
                     background: "#fff",
@@ -144,7 +143,7 @@ export default function AdminOrgViewPage() {
                       style={{
                         width: 48,
                         height: 48,
-                        borderRadius: "4px",
+                        borderRadius: R.control,
                         background: C.surface,
                         border: "none",
                         display: "flex",
@@ -237,7 +236,7 @@ export default function AdminOrgViewPage() {
 
                   <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "4px" }}>
                     <EditActionButton
-                      sx={{ width: 30, height: 30, background: C.actionEditBg, borderRadius: "4px" }}
+                      sx={tableIconButtonSx(C.actionEditBg)}
                       onClick={() => navigate(`/admin/org/edit/${org.id ?? ""}`)}
                     />
                   </div>
@@ -246,7 +245,7 @@ export default function AdminOrgViewPage() {
             })}
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }
 

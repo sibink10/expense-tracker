@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { C } from "../../../shared/theme";
-import { Inp, Btn, FileUp, Toggle } from "../../ui";
+import { C, R } from "../../../shared/theme";
+import { Inp, Btn, FileUp, Toggle, PageShell } from "../../ui";
 import PhoneInputField, { isValidPhoneNumber } from "../../PhoneInputField";
 import { getOrganization, saveOrganization } from "../../../shared/api";
 import { countryNameToPhoneCountry } from "../../../shared/countryPhoneDefault";
@@ -196,18 +196,22 @@ export default function AdminOrgPage() {
   };
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%" }}>
-      <h1 style={{ fontSize: "20px", fontWeight: 700, margin: "0 0 4px" }}>
-        <span style={{ color: C.invoice }}>🏢</span> {id ? "Edit organization" : "Organization profile"}
-      </h1>
-      <p style={{ margin: "0 0 18px", fontSize: "12px", color: C.muted }}>
-        This information appears on invoices, bills and email notifications.
-      </p>
-
+    <PageShell
+      header={
+        <>
+          <h1 style={{ fontSize: "20px", fontWeight: 700, margin: "0 0 4px" }}>
+            <span style={{ color: C.invoice }}>🏢</span> {id ? "Edit organization" : "Organization profile"}
+          </h1>
+          <p style={{ margin: 0, fontSize: "12px", color: C.muted }}>
+            This information appears on invoices, bills and email notifications.
+          </p>
+        </>
+      }
+    >
       <div
         style={{
           background: "#fff",
-          borderRadius: "12px",
+          borderRadius: R.control,
           padding: "20px",
           border: `1px solid ${C.border}`,
           width: "100%",
@@ -642,6 +646,6 @@ export default function AdminOrgPage() {
           </Btn>
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

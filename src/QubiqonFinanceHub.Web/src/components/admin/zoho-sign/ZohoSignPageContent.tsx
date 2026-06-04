@@ -9,13 +9,14 @@ import {
   Send,
   Signature,
 } from "lucide-react";
-import { C } from "../../../shared/theme";
+import { C, R, workflowTableActionStyle } from "../../../shared/theme";
 import {
   Btn,
   CollapsibleSearch,
   Empty,
   Inp,
   ListPageHeader,
+  PageShell,
   Mdl,
   Spinner,
   TableToolbarRefresh,
@@ -40,14 +41,6 @@ type ZohoSignRequest = { id: string; name: string; status: string; createdTime?:
 
 const PAGE_SIZE = 10;
 const centeredColSx = { textAlign: "center" as const, verticalAlign: "middle" as const };
-
-const workflowActionStyle = (fg: string, bg: string) => ({
-  borderRadius: "4px",
-  background: bg,
-  color: fg,
-  padding: "6px 8px",
-  minHeight: 26,
-});
 
 const statusPillStyle = (status: string) => {
   const normalized = status.toLowerCase();
@@ -230,7 +223,7 @@ export default function ZohoSignPage() {
             <span
               style={{
                 padding: "3px 10px",
-                borderRadius: "20px",
+                borderRadius: R.control,
                 fontSize: "10px",
                 fontWeight: 600,
                 whiteSpace: "nowrap",
@@ -259,7 +252,7 @@ export default function ZohoSignPage() {
               <Btn
                 sm
                 v="ghost"
-                sx={workflowActionStyle(C.actionDownloadIcon, C.actionDownloadBg)}
+                sx={workflowTableActionStyle(C.actionDownloadIcon, C.actionDownloadBg)}
                 onClick={(event) => {
                   event.stopPropagation();
                   void handleDownloadPdf(request.id);
@@ -279,14 +272,38 @@ export default function ZohoSignPage() {
 
   if (!canAccess) {
     return (
-      <div style={{ color: C.muted, fontFamily: "'Inter', sans-serif", fontSize: "13px" }}>
-        You need Finance or Admin access to use Zoho Sign.
-      </div>
+      <PageShell>
+        <div style={{ color: C.muted, fontFamily: "'Inter', sans-serif", fontSize: "13px" }}>
+          You need Finance or Admin access to use Zoho Sign.
+        </div>
+      </PageShell>
     );
   }
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
+      <ListPageHeader
+        className="list-page-header"
+        title="Zoho Sign"
+        icon={<Signature size={24} strokeWidth={1.8} color={C.primary} />}
+        actions={
+          <>
+            <CollapsibleSearch
+              value={searchInput}
+              onChange={setSearchInput}
+              placeholder="Search sign requests..."
+            />
+            <Btn
+              v="primary"
+              onClick={() => setSendModalOpen(true)}
+              disabled={setupLoading || loadingTemplates || !setup?.isConfigured || !!setup?.tokenError}
+              sx={{ borderRadius: R.control, boxShadow: C.cardShadow }}
+            >
+              <CirclePlus size={15} strokeWidth={1.8} />
+              <span className="zoho-sign-add-label">Send document</span>
+            </Btn>
+          </>
+        }
+      >
       <style>{`
         @media (max-width: 640px) {
           .list-page-header {
@@ -303,34 +320,10 @@ export default function ZohoSignPage() {
           }
         }
       `}</style>
-      <ListPageHeader
-        className="list-page-header"
-        title="Zoho Sign"
-        icon={<Signature size={24} strokeWidth={1.8} color={C.primary} />}
-        actions={
-          <>
-            <CollapsibleSearch
-              value={searchInput}
-              onChange={setSearchInput}
-              placeholder="Search sign requests..."
-            />
-            <Btn
-              v="primary"
-              onClick={() => setSendModalOpen(true)}
-              disabled={setupLoading || loadingTemplates || !setup?.isConfigured || !!setup?.tokenError}
-              sx={{ borderRadius: "4px", boxShadow: C.cardShadow }}
-            >
-              <CirclePlus size={15} strokeWidth={1.8} />
-              <span className="zoho-sign-add-label">Send document</span>
-            </Btn>
-          </>
-        }
-      />
-
       <section
         style={{
           background: C.white,
-          borderRadius: "12px",
+          borderRadius: R.control,
           padding: "14px 16px",
           boxShadow: C.cardShadow,
         }}
@@ -369,7 +362,7 @@ export default function ZohoSignPage() {
         className="zoho-sign-table-card"
         style={{
           background: C.white,
-          borderRadius: "12px",
+          borderRadius: R.control,
           padding: "14px 16px 16px",
           marginTop: "26px",
           boxShadow: C.cardShadow,
@@ -459,7 +452,7 @@ export default function ZohoSignPage() {
               style={{
                 width: 73,
                 height: 28,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 padding: "4px 8px",
                 gap: "4px",
                 border: `1px solid ${C.subtleBorder}`,
@@ -492,7 +485,7 @@ export default function ZohoSignPage() {
               style={{
                 width: 73,
                 height: 28,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 padding: "4px 8px",
                 gap: "4px",
                 border: `1px solid ${C.subtleBorder}`,
@@ -573,7 +566,7 @@ export default function ZohoSignPage() {
               </Btn>
               <Btn
                 v="ghost"
-                sx={workflowActionStyle(C.actionDownloadIcon, C.actionDownloadBg)}
+                sx={workflowTableActionStyle(C.actionDownloadIcon, C.actionDownloadBg)}
                 onClick={() => void handleDownloadPdf(detailRequest.id)}
                 disabled={downloadingId === detailRequest.id}
               >
@@ -584,6 +577,6 @@ export default function ZohoSignPage() {
           </div>
         )}
       </Mdl>
-    </div>
+    </ListPageHeader>
   );
 }

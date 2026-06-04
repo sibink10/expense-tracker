@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { C } from "../../shared/theme";
+import { C, R } from "../../shared/theme";
 import { BILL_S, EVENTS, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur, fmtQty, formatTdsDetailParen, downloadFromSasUrl, buildDownloadFilename, daysOverdueFromDueYmd } from "../../shared/utils";
-import { Av, Btn, Badge, Mdl, CLog, MODAL_Z_INDEX } from "../ui";
+import { Av, Btn, Badge, Mdl, CLog, MODAL_Z_INDEX, MobileHScroll } from "../ui";
 import { EditIcon } from "../icons";
 import { useAppContext } from "../../context/AppContext";
 import { getBillAttachment, getBillDocument, removeBillDocument, approveBill } from "../../shared/api/bill";
@@ -183,9 +183,9 @@ export default function BillDetailModal({ bill: b }: Props) {
         </div>
       )}
       {b.lineItems && b.lineItems.length > 0 && (
-        <div style={{ marginBottom: "12px", overflowX: "auto" }}>
+        <MobileHScroll minWidth={600} style={{ marginBottom: "12px" }}>
           <div style={{ fontSize: "10px", color: C.muted, marginBottom: "4px", fontWeight: 600 }}>Items</div>
-          <table style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse", fontSize: "11px", border: `1px solid ${C.border}`, borderRadius: "6px", overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px", border: `1px solid ${C.border}`, borderRadius: R.control, overflow: "hidden" }}>
             <thead>
               <tr style={{ background: C.surface }}>
                 <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, fontSize: "10px", color: C.muted }}>#</th>
@@ -211,11 +211,11 @@ export default function BillDetailModal({ bill: b }: Props) {
               ))}
             </tbody>
           </table>
-        </div>
+        </MobileHScroll>
       )}
       <div style={{ marginBottom: "12px" }}>
         <div style={{ fontSize: "10px", color: C.muted, marginBottom: "4px" }}>Description / Notes</div>
-        <div style={{ padding: "8px 12px", background: C.surface, borderRadius: "6px", fontSize: "11px" }}>{b.desc?.trim() ? b.desc : "—"}</div>
+        <div style={{ padding: "8px 12px", background: C.surface, borderRadius: R.control, fontSize: "11px" }}>{b.desc?.trim() ? b.desc : "—"}</div>
       </div>
       <div style={{ marginBottom: "12px" }}>
         <div style={{ fontSize: "10px", color: C.muted, marginBottom: "4px", fontWeight: 600 }}>Summary</div>
@@ -223,7 +223,7 @@ export default function BillDetailModal({ bill: b }: Props) {
           style={{
             padding: "14px 16px",
             background: `${C.vendor}08`,
-            borderRadius: "8px",
+            borderRadius: R.control,
             fontSize: "12px",
             border: `1px solid ${C.vendor}20`,
           }}
@@ -307,7 +307,7 @@ export default function BillDetailModal({ bill: b }: Props) {
           <div style={{ display: "grid", gap: "8px" }}>
             {b.documents.length > 0 ? (
               b.documents.map((document) => (
-                <div key={document.id} style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", padding: "8px 10px", background: C.surface, borderRadius: "8px" }}>
+                <div key={document.id} style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", padding: "8px 10px", background: C.surface, borderRadius: R.control }}>
                   <span style={{ fontSize: "11px", fontWeight: 600 }}>📎 {document.name}</span>
                   <span style={{ fontSize: "10px", color: C.muted }}>{document.sizeLabel}</span>
                   <span style={{ fontSize: "10px", color: C.muted }}>{document.uploadedAt}</span>
@@ -331,7 +331,7 @@ export default function BillDetailModal({ bill: b }: Props) {
             ) : (
               <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                 {b.file && (
-                  <span style={{ padding: "6px 10px", background: C.surface, borderRadius: "6px", fontSize: "11px" }}>
+                  <span style={{ padding: "6px 10px", background: C.surface, borderRadius: R.control, fontSize: "11px" }}>
                     📎 {b.file.n}
                   </span>
                 )}
@@ -345,7 +345,7 @@ export default function BillDetailModal({ bill: b }: Props) {
         </div>
       )}
       {b.paidRef && (
-        <div style={{ padding: "8px 12px", background: C.successBg, borderRadius: "6px", marginBottom: "12px", fontSize: "11px" }}>✓ Paid — Ref: <strong>{b.paidRef}</strong></div>
+        <div style={{ padding: "8px 12px", background: C.successBg, borderRadius: R.control, marginBottom: "12px", fontSize: "11px" }}>✓ Paid — Ref: <strong>{b.paidRef}</strong></div>
       )}
       <CLog comments={b.comments} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
@@ -363,7 +363,7 @@ export default function BillDetailModal({ bill: b }: Props) {
                 height: "36px",
                 padding: 0,
                 border: "none",
-                borderRadius: "8px",
+                borderRadius: R.control,
                 background: "rgba(37, 99, 235, 0.1)",
                 cursor: "pointer",
                 fontFamily: "inherit",

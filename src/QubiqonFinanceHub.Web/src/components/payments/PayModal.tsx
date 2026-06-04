@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { C } from "../../shared/theme";
+import { C, R } from "../../shared/theme";
 import { fmtCur } from "../../shared/utils";
 import { Inp, Btn, Mdl, Alert } from "../ui";
 import { useAppContext } from "../../context/AppContext";
@@ -81,7 +81,7 @@ export default function PayModal() {
         style={{
           padding: "10px 14px",
           background: C.surface,
-          borderRadius: "8px",
+          borderRadius: R.control,
           marginBottom: "12px",
           fontSize: "12px",
         }}

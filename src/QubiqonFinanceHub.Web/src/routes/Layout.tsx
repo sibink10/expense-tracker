@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   BanknoteArrowUp,
   BriefcaseBusiness,
@@ -18,7 +18,15 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { C, R } from "../shared/theme";
+import { C } from "../shared/theme";
+
+/** Sidebar / shell radii — unchanged from before the 0.75rem app-wide update */
+const SIDEBAR_R = {
+  control: "4px",
+  item: "8px",
+  panel: "10px",
+  profilePanel: "12px",
+} as const;
 import { buildNav } from "../shared/nav";
 import Modals from "../components/Modals";
 import DeepLinkHandler from "../components/DeepLinkHandler";
@@ -70,6 +78,7 @@ export default function Layout() {
   const navigate = useNavigate();
   const [orgOpen, setOrgOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openSection, setOpenSection] = useState<string | null | undefined>(undefined);
   const [isMobile, setIsMobile] = useState(
@@ -109,6 +118,17 @@ export default function Layout() {
   useEffect(() => {
     rf();
   }, [location.pathname, rf]);
+
+  useEffect(() => {
+    if (!profileOpen) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [profileOpen]);
 
   const nav = buildNav(cfg);
   const visibleNav = nav
@@ -192,7 +212,7 @@ export default function Layout() {
           gap: "8px",
           width: "100%",
           padding: "8px",
-          borderRadius: R.control,
+          borderRadius: SIDEBAR_R.control,
           border: `1px solid ${C.border}`,
           background: C.surface,
           cursor: orgs.length > 0 ? "pointer" : "default",
@@ -239,7 +259,7 @@ export default function Layout() {
             left: 0,
             right: 0,
             background: "#fff",
-            borderRadius: "10px",
+            borderRadius: SIDEBAR_R.panel,
             border: `1px solid ${C.border}`,
             boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
             padding: "6px 4px",
@@ -276,7 +296,7 @@ export default function Layout() {
                   background: isActive ? `${C.invoice}10` : "transparent",
                   cursor: "pointer",
                   textAlign: "left",
-                  borderRadius: "8px",
+                  borderRadius: SIDEBAR_R.item,
                 }}
               >
                 <div
@@ -385,7 +405,7 @@ export default function Layout() {
           )}
           {organizationSummary}
         </div>
-        <div style={{ position: "relative" }}>
+        <div ref={profileMenuRef} style={{ position: "relative" }}>
           <button
             type="button"
             onClick={() => {
@@ -393,26 +413,70 @@ export default function Layout() {
               setOrgOpen(false);
             }}
             style={{
-              width: 34,
-              height: 34,
-              borderRadius: "999px",
-              border: `1px solid ${C.successBg}`,
-              background: C.clientAvatarBg,
-              color: C.clientAvatarText,
-              cursor: "pointer",
               display: "inline-flex",
               alignItems: "center",
-              justifyContent: "center",
-              fontSize: "13px",
-              fontWeight: 800,
+              gap: "8px",
+              padding: isMobile ? "2px" : "2px 4px 2px 2px",
+              border: "none",
+              borderRadius: SIDEBAR_R.control,
+              background: "transparent",
+              cursor: "pointer",
               fontFamily: "'Inter', 'Manrope', sans-serif",
-              boxShadow: "0 4px 14px rgba(33,146,104,0.15)",
+              maxWidth: isMobile ? undefined : "220px",
             }}
             aria-haspopup="menu"
             aria-expanded={profileOpen}
-            title={user.name}
+            title={`${user.name} (${user.role})`}
           >
-            {userInitial}
+            <div
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: "999px",
+                border: `1px solid ${C.successBg}`,
+                background: C.clientAvatarBg,
+                color: C.clientAvatarText,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "13px",
+                fontWeight: 800,
+                flexShrink: 0,
+                boxShadow: "0 4px 14px rgba(33,146,104,0.15)",
+              }}
+            >
+              {userInitial}
+            </div>
+            {!isMobile && (
+              <div style={{ textAlign: "left", minWidth: 0, flex: 1 }}>
+                <div
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    color: C.primary,
+                    lineHeight: 1.1,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {user.name || user.email}
+                </div>
+                <div
+                  style={{
+                    fontSize: "9px",
+                    color: C.muted,
+                    textTransform: "capitalize",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {user.role}
+                </div>
+              </div>
+            )}
+            {!isMobile && <ChevronDown size={14} color={C.muted} style={{ flexShrink: 0 }} />}
           </button>
           {profileOpen && (
             <div
@@ -422,7 +486,7 @@ export default function Layout() {
                 right: 0,
                 width: "230px",
                 background: "#fff",
-                borderRadius: "12px",
+                borderRadius: SIDEBAR_R.profilePanel,
                 border: `1px solid ${C.border}`,
                 boxShadow: "0 14px 34px rgba(15,23,42,0.14)",
                 padding: "12px",
@@ -468,7 +532,7 @@ export default function Layout() {
                     width: "100%",
                     background: C.clientAvatarBg,
                     border: "none",
-                    borderRadius: R.control,
+                    borderRadius: SIDEBAR_R.control,
                     padding: "8px 10px",
                     fontSize: "12px",
                     fontWeight: 700,
@@ -608,7 +672,7 @@ export default function Layout() {
                               border: "none",
                               color: "inherit",
                               cursor: "pointer",
-                              borderRadius: R.control,
+                              borderRadius: SIDEBAR_R.control,
                               lineHeight: 0,
                               display: "inline-flex",
                               alignItems: "center",
@@ -699,7 +763,7 @@ export default function Layout() {
                                 gap: "6px",
                                 minHeight: "30px",
                                 padding: "8px 8px",
-                                borderRadius: R.control,
+                                borderRadius: SIDEBAR_R.control,
                                 color: itemActive ? "#fff" : C.muted,
                                 cursor: "pointer",
                                 fontSize: "12px",
@@ -725,7 +789,7 @@ export default function Layout() {
                                     border: "none",
                                     color: "inherit",
                                     cursor: "pointer",
-                                    borderRadius: R.control,
+                                    borderRadius: SIDEBAR_R.control,
                                     lineHeight: 0,
                                     display: "inline-flex",
                                     alignItems: "center",
@@ -767,12 +831,15 @@ export default function Layout() {
             minWidth: 0,
             minHeight: 0,
             padding: isMobile ? "16px" : "32px",
-            overflowY: "auto",
-            overscrollBehavior: "contain",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
             marginLeft: !isMobile ? sidebarWidth : 0,
           }}
         >
-          <Outlet />
+          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", width: "100%" }}>
+            <Outlet />
+          </div>
         </main>
       </div>
       <DeepLinkHandler />

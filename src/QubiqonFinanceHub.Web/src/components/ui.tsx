@@ -1,12 +1,41 @@
-import { useRef, type CSSProperties, type ReactNode } from "react";
-import { FileText, Paperclip, UploadCloud, X } from "lucide-react";
+import {
+  Children,
+  Fragment,
+  createContext,
+  isValidElement,
+  useContext,
+  useRef,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import {
+  Check,
+  Download,
+  Eye,
+  FileText,
+  IndianRupee,
+  Paperclip,
+  Pencil,
+  RefreshCw,
+  Save,
+  Send,
+  Signature,
+  Trash2,
+  UploadCloud,
+  Wallet,
+  X,
+  XCircle,
+  ArrowLeft,
+} from "lucide-react";
 import Select from "react-select";
 import { C, R } from "../shared/theme";
+import { useIsMobile } from "../shared/useIsMobile";
 import { EXP_S, BILL_S, ADV_S, INV_S } from "../shared/constants";
 import { activityCommentStatusFallback } from "../shared/activityCommentStatus";
 import type { ActivityComment } from "../types";
 import { EditIcon, TrashIcon } from "./icons";
 import { OverflowStatusTabs } from "./list-toolbar";
+import "./shared/detail-modal.css";
 
 function activityStatusPillColors(t: ActivityComment["t"]): { color: string; background: string } {
   switch (t) {
@@ -100,7 +129,7 @@ export const Inp: React.FC<InpProps> = ({
           control: (base) => ({
             ...base,
             minHeight: "34px",
-            borderRadius: 8,
+            borderRadius: R.control,
             borderColor: C.border,
             boxShadow: "none",
             "&:hover": { borderColor: C.border },
@@ -118,7 +147,7 @@ export const Inp: React.FC<InpProps> = ({
           }),
           menu: (base) => ({
             ...base,
-            borderRadius: 8,
+            borderRadius: R.control,
             boxShadow: "0 8px 24px rgba(15,23,42,0.12)",
           }),
           option: (base, state) => ({
@@ -149,7 +178,7 @@ export const Inp: React.FC<InpProps> = ({
           width: "100%",
           padding: "8px 12px",
           border: `1.5px solid ${C.border}`,
-          borderRadius: "8px",
+          borderRadius: R.control,
           fontSize: "13px",
           fontFamily: "'Inter', 'Manrope', sans-serif",
           resize: "vertical",
@@ -183,7 +212,7 @@ export const Inp: React.FC<InpProps> = ({
             width: "100%",
             padding: endAdornment ? "8px 40px 8px 12px" : "8px 12px",
             border: `1.5px solid ${C.border}`,
-            borderRadius: "8px",
+            borderRadius: R.control,
             fontSize: "13px",
             fontFamily: "'Inter', 'Manrope', sans-serif",
             outline: "none",
@@ -224,7 +253,7 @@ export const Alert: React.FC<{
       padding: "10px 14px",
       background: C.dangerBg,
       color: C.danger,
-      borderRadius: "8px",
+      borderRadius: R.control,
       fontSize: "12px",
       border: `1px solid ${C.danger}22`,
       ...sx,
@@ -331,8 +360,8 @@ export const Badge: React.FC<{
     <span
       title={tooltip}
       style={{
-        padding: "3px 10px",
-        borderRadius: "20px",
+        padding: "6px 10px",
+        borderRadius: R.control,
         fontSize: "10px",
         fontWeight: 600,
         background: bg,
@@ -346,6 +375,106 @@ export const Badge: React.FC<{
   );
 };
 
+const InModalContext = createContext(false);
+
+const MODAL_BTN_ICON = { size: 14, strokeWidth: 1.9 } as const;
+
+const ModalBtnSpinner = () => (
+  <span
+    style={{
+      display: "inline-block",
+      width: 12,
+      height: 12,
+      border: "2px solid currentColor",
+      borderTopColor: "transparent",
+      borderRadius: "50%",
+      animation: "modal-btn-spin 0.7s linear infinite",
+      opacity: 0.85,
+    }}
+  />
+);
+
+function collectTextContent(node: ReactNode): string {
+  const parts: string[] = [];
+  Children.forEach(node, (child) => {
+    if (child == null || typeof child === "boolean") return;
+    if (typeof child === "string" || typeof child === "number") {
+      parts.push(String(child));
+      return;
+    }
+    if (isValidElement(child) && child.type === Fragment) {
+      parts.push(collectTextContent(child.props.children));
+    }
+  });
+  return parts.join(" ").replace(/\s+/g, " ").trim();
+}
+
+function withoutTextContent(node: ReactNode): ReactNode {
+  const items: ReactNode[] = [];
+  Children.forEach(node, (child) => {
+    if (child == null || typeof child === "boolean") return;
+    if (typeof child === "string" || typeof child === "number") return;
+    if (isValidElement(child) && child.type === Fragment) {
+      const inner = withoutTextContent(child.props.children);
+      if (inner != null && inner !== false) items.push(<Fragment key={items.length}>{inner}</Fragment>);
+      return;
+    }
+    items.push(child);
+  });
+  if (items.length === 0) return null;
+  if (items.length === 1) return items[0];
+  return items;
+}
+
+function hasRenderableContent(node: ReactNode): boolean {
+  if (node == null || typeof node === "boolean") return false;
+  if (Array.isArray(node)) return node.length > 0 && node.some(hasRenderableContent);
+  return true;
+}
+
+function isLoadingLabel(text: string): boolean {
+  return /(\.\.\.|…)$/i.test(text) || /\b(loading|syncing|downloading|updating|sending|approving|removing|saving|adding|processing)\b/i.test(text);
+}
+
+const MODAL_LABEL_ICONS: Record<string, ReactNode> = {
+  Download: <Download {...MODAL_BTN_ICON} />,
+  Close: <X {...MODAL_BTN_ICON} />,
+  Cancel: <X {...MODAL_BTN_ICON} />,
+  Approve: <Check {...MODAL_BTN_ICON} />,
+  Reject: <XCircle {...MODAL_BTN_ICON} />,
+  Pay: <Wallet {...MODAL_BTN_ICON} />,
+  View: <Eye {...MODAL_BTN_ICON} />,
+  Edit: <Pencil {...MODAL_BTN_ICON} />,
+  Save: <Save {...MODAL_BTN_ICON} />,
+  Add: <Check {...MODAL_BTN_ICON} />,
+  Remove: <Trash2 {...MODAL_BTN_ICON} />,
+  Disburse: <Wallet {...MODAL_BTN_ICON} />,
+  Confirm: <Check {...MODAL_BTN_ICON} />,
+  "Sync to storage": <RefreshCw {...MODAL_BTN_ICON} />,
+  "Mark sent": <Send {...MODAL_BTN_ICON} />,
+  "Mark as sent": <Send {...MODAL_BTN_ICON} />,
+  "Mark paid": <IndianRupee {...MODAL_BTN_ICON} />,
+  "Send for signing": <Signature {...MODAL_BTN_ICON} />,
+  "Resend for signing": <Signature {...MODAL_BTN_ICON} />,
+  Sign: <Signature {...MODAL_BTN_ICON} />,
+  "Send for signature": <Signature {...MODAL_BTN_ICON} />,
+  "Confirm payment": <Wallet {...MODAL_BTN_ICON} />,
+};
+
+function modalIconOnlyContent(children: ReactNode): { content: ReactNode; label: string } {
+  const label = collectTextContent(children);
+  const stripped = withoutTextContent(children);
+  if (hasRenderableContent(stripped)) {
+    return { content: stripped, label };
+  }
+  if (isLoadingLabel(label)) {
+    return { content: <ModalBtnSpinner />, label };
+  }
+  const icon = MODAL_LABEL_ICONS[label];
+  if (icon) return { content: icon, label };
+  return { content: label ? label.charAt(0).toUpperCase() : "•", label };
+}
+
 export const Btn: React.FC<{
   children: ReactNode;
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
@@ -356,6 +485,11 @@ export const Btn: React.FC<{
   /** Native tooltip; when `disabled`, wrapped so the tooltip still shows on hover */
   title?: string;
 }> = ({ children, onClick, v = "primary", disabled, sm, sx, title }) => {
+  const inModal = useContext(InModalContext);
+  const isMobile = useIsMobile();
+  const iconOnly = inModal && isMobile;
+  const { content, label: derivedLabel } = iconOnly ? modalIconOnlyContent(children) : { content: children, label: "" };
+  const tooltip = title ?? derivedLabel;
   const vs: Record<string, CSSProperties> = {
     primary: { background: C.accent, color: "#fff" },
     secondary: { background: C.surface, color: C.primary, border: `1.5px solid ${C.border}` },
@@ -386,17 +520,19 @@ export const Btn: React.FC<{
   const buttonEl = (
     <button
       type="button"
+      className={iconOnly ? "app-modal-btn" : undefined}
       onClick={onClick}
       disabled={disabled}
-      title={disabled ? undefined : title}
+      title={disabled ? undefined : tooltip || undefined}
+      aria-label={iconOnly && tooltip ? tooltip : undefined}
       style={buttonStyle}
     >
-      {children}
+      {content}
     </button>
   );
-  if (disabled && title) {
+  if (disabled && tooltip) {
     return (
-      <span title={title} style={{ display: "inline-flex", cursor: "not-allowed" }}>
+      <span title={tooltip} style={{ display: "inline-flex", cursor: "not-allowed" }}>
         {buttonEl}
       </span>
     );
@@ -433,7 +569,7 @@ export const IconActionButton: React.FC<{
       width: 24,
       height: 24,
       border: "none",
-      borderRadius: "4px",
+      borderRadius: R.control,
       background: "transparent",
       color: C.muted,
       cursor: disabled ? "not-allowed" : "pointer",
@@ -482,7 +618,7 @@ export const Av: React.FC<{ n?: string; sz?: number; v?: boolean; bg?: string; c
       style={{
         width: sz,
         height: sz,
-        borderRadius: v ? "8px" : "50%",
+        borderRadius: v ? R.control : "50%",
         background: bg ?? (v
           ? `linear-gradient(135deg,${C.vendor},${C.vendorL})`
           : `linear-gradient(135deg,${C.primary},${C.accent})`),
@@ -503,6 +639,90 @@ export const Av: React.FC<{ n?: string; sz?: number; v?: boolean; bg?: string; c
 export const MODAL_Z_INDEX = 900;
 export const INVOICE_MODAL_Z_INDEX = 1000;
 
+const MODAL_SCROLL_CSS = `
+  .app-modal-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: ${C.surface} transparent;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-width: 0;
+  }
+  .app-modal-scroll::-webkit-scrollbar {
+    width: 2px;
+    height: 2px;
+  }
+  .app-modal-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .app-modal-scroll::-webkit-scrollbar-thumb {
+    background: ${C.surface};
+    border-radius: 1px;
+  }
+  .app-modal-scroll::-webkit-scrollbar-thumb:hover {
+    background: ${C.border};
+  }
+  .mobile-h-scroll {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+  .mobile-h-scroll__inner {
+    min-width: 0;
+    max-width: 100%;
+  }
+  @media (max-width: 767px) {
+    .mobile-h-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .mobile-h-scroll__inner {
+      min-width: var(--mobile-h-scroll-min, 760px);
+    }
+    .app-modal-scroll .app-modal-btn {
+      padding: 8px !important;
+      min-width: 36px;
+      min-height: 36px;
+      justify-content: center;
+      gap: 0 !important;
+    }
+  }
+  @keyframes modal-btn-spin {
+    to { transform: rotate(360deg); }
+  }
+  .detail-modal-grid--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .detail-modal-grid--2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  @media (max-width: 720px) {
+    .detail-modal-grid--3 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 520px) {
+    .detail-modal-grid--3,
+    .detail-modal-grid--2 {
+      grid-template-columns: 1fr;
+    }
+  }
+`;
+
+/** Wide modal content (tables, invoice preview): horizontal scroll only below 768px. */
+export const MobileHScroll: React.FC<{
+  children: ReactNode;
+  minWidth?: number;
+  style?: CSSProperties;
+}> = ({ children, minWidth = 760, style }) => (
+  <div className="mobile-h-scroll" style={style}>
+    <div
+      className="mobile-h-scroll__inner"
+      style={{ "--mobile-h-scroll-min": `${minWidth}px` } as CSSProperties}
+    >
+      {children}
+    </div>
+  </div>
+);
+
 export const Mdl: React.FC<{
   open: boolean;
   close: () => void;
@@ -511,9 +731,26 @@ export const Mdl: React.FC<{
   /** Custom max width (e.g. "960px") for larger modals */
   maxWidth?: string;
   zIndex?: number;
+  /** Refined header/body spacing (off for legacy invoice detail modal) */
+  detail?: boolean;
+  /** Small label above title (e.g. "Client", "Vendor") */
+  subtitle?: string;
+  onBack?: () => void;
   children: ReactNode;
-}> = ({ open, close, title, w, maxWidth, zIndex = MODAL_Z_INDEX, children }) => {
+}> = ({
+  open,
+  close,
+  title,
+  w,
+  maxWidth,
+  zIndex = MODAL_Z_INDEX,
+  detail = true,
+  subtitle,
+  onBack,
+  children,
+}) => {
   if (!open) return null;
+  const resolvedMaxWidth = maxWidth ?? (w ? (detail ? "820px" : "760px") : detail ? "520px" : "500px");
   return (
     <div
       style={{
@@ -527,89 +764,115 @@ export const Mdl: React.FC<{
       }}
     >
       <div
+        className={detail ? "detail-mdl-overlay" : undefined}
         style={{
           position: "absolute",
           inset: 0,
-          background: "rgba(27,42,74,0.4)",
-          backdropFilter: "blur(3px)",
+          background: detail ? undefined : "rgba(27,42,74,0.4)",
+          backdropFilter: detail ? undefined : "blur(3px)",
         }}
       />
-      <style>{`
-        .app-modal-scroll {
-          scrollbar-width: thin;
-          scrollbar-color: ${C.surface} transparent;
-        }
-        .app-modal-scroll::-webkit-scrollbar {
-          width: 2px;
-          height: 2px;
-        }
-        .app-modal-scroll::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .app-modal-scroll::-webkit-scrollbar-thumb {
-          background: ${C.surface};
-          border-radius: 1px;
-        }
-        .app-modal-scroll::-webkit-scrollbar-thumb:hover {
-          background: ${C.border};
-        }
-      `}</style>
+      <style>{MODAL_SCROLL_CSS}</style>
       <div
+        className={detail ? "detail-mdl-panel" : undefined}
         onClick={(e) => e.stopPropagation()}
         style={{
           position: "relative",
           background: "#fff",
-          borderRadius: "14px",
+          borderRadius: detail ? undefined : "14px",
           width: "100%",
-          maxWidth: maxWidth ?? (w ? "760px" : "500px"),
+          maxWidth: resolvedMaxWidth,
           maxHeight: "88vh",
           overflow: "hidden",
+          minWidth: 0,
           display: "flex",
           flexDirection: "column",
-          boxShadow: "0 20px 60px rgba(27,42,74,0.18)",
+          boxShadow: detail ? undefined : "0 20px 60px rgba(27,42,74,0.18)",
         }}
       >
         <div
+          className={detail ? "detail-mdl-header" : undefined}
           style={{
-            padding: "16px 24px 12px",
-            borderBottom: `1px solid ${C.border}`,
+            padding: detail ? undefined : "16px 24px 12px",
+            borderBottom: detail ? undefined : `1px solid ${C.border}`,
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            gap: "12px",
             position: "sticky",
             top: 0,
             background: "#fff",
-            borderRadius: "14px 14px 0 0",
-            zIndex: 0,
+            borderRadius: detail ? undefined : "14px 14px 0 0",
+            zIndex: 1,
           }}
         >
-          <h2 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: C.primary }}>{title}</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0, flex: 1 }}>
+            {detail && onBack && (
+              <button type="button" onClick={onBack} aria-label="Back" className="detail-mdl-icon-btn">
+                <ArrowLeft size={18} strokeWidth={2} />
+              </button>
+            )}
+            <div className={detail ? "detail-mdl-header__text" : undefined} style={{ minWidth: 0 }}>
+              {detail && subtitle && <span className="detail-mdl-kicker">{subtitle}</span>}
+              <h2
+                className={detail ? "detail-mdl-title" : undefined}
+                style={
+                  detail
+                    ? undefined
+                    : {
+                        margin: 0,
+                        fontSize: "16px",
+                        fontWeight: 700,
+                        color: C.primary,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }
+                }
+              >
+                {title}
+              </h2>
+            </div>
+          </div>
           <button
+            type="button"
             onClick={close}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              fontSize: "16px",
-              color: C.muted,
-            }}
+            aria-label="Close"
+            className={detail ? "detail-mdl-icon-btn" : undefined}
+            style={
+              detail
+                ? undefined
+                : {
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: "16px",
+                    color: C.muted,
+                  }
+            }
           >
-            ✕
+            {detail ? <X size={18} strokeWidth={2} /> : "✕"}
           </button>
         </div>
-        <div
-          className="app-modal-scroll"
-          style={{
-            padding: "16px 24px 20px",
-            position: "relative",
-            zIndex: 0,
-            overflow: "auto",
-            flex: 1,
-            minHeight: 0,
-          }}
-        >
-          {children}
-        </div>
+        <InModalContext.Provider value={true}>
+          <div
+            className={`app-modal-scroll${detail ? " detail-mdl-body" : ""}`}
+            style={{
+              padding: detail ? undefined : "16px 24px 20px",
+              position: "relative",
+              zIndex: 0,
+              flex: 1,
+              minHeight: 0,
+              background: detail ? "#fff" : undefined,
+            }}
+          >
+            {detail ? (
+              <div className="detail-mdl-body-inner">{children}</div>
+            ) : (
+              children
+            )}
+          </div>
+        </InModalContext.Provider>
       </div>
     </div>
   );
@@ -619,7 +882,7 @@ export const Stat: React.FC<{ label: string; value: ReactNode }> = ({ label, val
   <div
     style={{
       background: "#fff",
-      borderRadius: "4px",
+      borderRadius: R.control,
       padding: "14px 16px",
       flex: "1",
       minWidth: "120px",
@@ -713,7 +976,7 @@ export const FileUp: React.FC<{
             gap: "10px",
             padding: "10px 14px",
             background: C.vendorBg,
-            borderRadius: "8px",
+            borderRadius: R.control,
             border: `1px solid ${C.vendor}25`,
           }}
         >
@@ -732,7 +995,7 @@ export const FileUp: React.FC<{
           style={{
             padding: "20px",
             border: `2px dashed ${C.border}`,
-            borderRadius: "8px",
+            borderRadius: R.control,
             textAlign: "center",
             cursor: "pointer",
             background: C.surface,
@@ -764,7 +1027,7 @@ export const MultiFileUp: React.FC<{
   accept?: string;
   hint?: string;
   radius?: string;
-}> = ({ files, onChange, req, accept = ".pdf,.jpg,.jpeg,.png", hint, title = "Attachments", radius = "8px" }) => {
+}> = ({ files, onChange, req, accept = ".pdf,.jpg,.jpeg,.png", hint, title = "Attachments", radius = R.control }) => {
   const ref = useRef<HTMLInputElement>(null);
   const hintText = hint ?? (accept === ".pdf" ? "PDF only" : "PDF, JPG, PNG up to 10 MB");
 
@@ -1157,6 +1420,9 @@ export const Filter: React.FC<{
   );
 };
 
+export { default as PageShell, pageShellBodyStyle, pageShellRootStyle } from "./PageShell";
+export type { PageShellProps } from "./PageShell";
+
 export {
   CollapsibleSearch,
   ListPageHeader,
@@ -1190,7 +1456,7 @@ export const CLog: React.FC<{ comments: ActivityComment[] }> = ({ comments }) =>
             style={{
               padding: "8px 12px",
               background: C.surface,
-              borderRadius: "6px",
+              borderRadius: R.control,
               borderLeft: `3px solid ${border}`,
               marginBottom: "4px",
             }}
@@ -1226,7 +1492,7 @@ export const CLog: React.FC<{ comments: ActivityComment[] }> = ({ comments }) =>
                     color: pill.color,
                     background: pill.background,
                     padding: "2px 8px",
-                    borderRadius: "4px",
+                    borderRadius: R.control,
                     lineHeight: 1.3,
                     whiteSpace: "nowrap",
                   }}
@@ -1247,7 +1513,7 @@ export const EmailBanner: React.FC<{ to: string; cc?: string; subj: string }> = 
     style={{
       padding: "10px 14px",
       background: "#F0FDF4",
-      borderRadius: "8px",
+      borderRadius: R.control,
       border: "1px solid #BBF7D0",
       marginBottom: "12px",
       fontSize: "11px",

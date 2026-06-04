@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
-import { C } from "../shared/theme";
+import { C, R } from "../shared/theme";
 import { getAuthMe } from "../shared/api/auth";
 import type { AppUser } from "../types";
 
@@ -51,7 +51,7 @@ function NoAccessScreen({ onSignOut }: { onSignOut: () => void }) {
           padding: "12px 24px",
           background: "rgba(255,255,255,0.2)",
           border: "1px solid rgba(255,255,255,0.4)",
-          borderRadius: "10px",
+          borderRadius: R.control,
           color: "#fff",
           fontSize: "14px",
           fontWeight: 600,

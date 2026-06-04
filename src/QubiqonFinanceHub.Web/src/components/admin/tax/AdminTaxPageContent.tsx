@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { BadgePercent, ChevronLeft, ChevronRight, CirclePlus, Eye } from "lucide-react";
-import { C } from "../../../shared/theme";
+import { C, R, tableIconButtonSx } from "../../../shared/theme";
 import {
   Btn,
   CollapsibleSearch,
@@ -116,7 +116,7 @@ export default function AdminTaxPage() {
           <span
             style={{
               padding: "2px 8px",
-              borderRadius: "6px",
+              borderRadius: R.control,
               fontSize: "10px",
               fontWeight: 600,
               background: item.isActive ? C.successBg : C.surface,
@@ -149,7 +149,7 @@ export default function AdminTaxPage() {
                 padding: 0,
                 background: C.invoiceActionSentBg,
                 color: C.invoiceActionSent,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 justifyContent: "center",
               }}
               title="View"
@@ -161,7 +161,7 @@ export default function AdminTaxPage() {
               <Eye size={15} strokeWidth={1.9} />
             </Btn>
             <EditActionButton
-              sx={{ width: 30, height: 30, background: C.actionEditBg, borderRadius: "4px" }}
+              sx={tableIconButtonSx(C.actionEditBg)}
               onClick={(e) => {
                 e.stopPropagation();
                 setMdl({ t: MODAL_T.TAX_CONFIG_EDIT, d: item });
@@ -180,7 +180,28 @@ export default function AdminTaxPage() {
   }));
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
+      <ListPageHeader
+        className="list-page-header"
+        title="Tax config"
+        icon={<BadgePercent size={24} strokeWidth={1.8} color={C.primary} />}
+        actions={
+          <>
+            <CollapsibleSearch
+              value={searchInput}
+              onChange={setSearchInput}
+              placeholder="Search tax configs..."
+            />
+            <Btn
+              v="primary"
+              onClick={() => setMdl({ t: MODAL_T.TAX_CONFIG_ADD })}
+              sx={{ borderRadius: R.control, boxShadow: C.cardShadow }}
+            >
+              <CirclePlus size={15} strokeWidth={1.8} />
+              <span className="admin-tax-add-label">Add tax</span>
+            </Btn>
+          </>
+        }
+      >
       <style>{`
         @media (max-width: 640px) {
           .list-page-header {
@@ -197,34 +218,11 @@ export default function AdminTaxPage() {
           }
         }
       `}</style>
-      <ListPageHeader
-        className="list-page-header"
-        title="Tax config"
-        icon={<BadgePercent size={24} strokeWidth={1.8} color={C.primary} />}
-        actions={
-          <>
-            <CollapsibleSearch
-              value={searchInput}
-              onChange={setSearchInput}
-              placeholder="Search tax configs..."
-            />
-            <Btn
-              v="primary"
-              onClick={() => setMdl({ t: MODAL_T.TAX_CONFIG_ADD })}
-              sx={{ borderRadius: "4px", boxShadow: C.cardShadow }}
-            >
-              <CirclePlus size={15} strokeWidth={1.8} />
-              <span className="admin-tax-add-label">Add tax</span>
-            </Btn>
-          </>
-        }
-      />
-
       <div
         className="admin-tax-table-card"
         style={{
           background: C.white,
-          borderRadius: "12px",
+          borderRadius: R.control,
           padding: "14px 16px 16px",
           marginTop: "26px",
           boxShadow: C.cardShadow,
@@ -312,7 +310,7 @@ export default function AdminTaxPage() {
               style={{
                 width: 73,
                 height: 28,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 padding: "4px 8px",
                 gap: "4px",
                 border: `1px solid ${C.subtleBorder}`,
@@ -345,7 +343,7 @@ export default function AdminTaxPage() {
               style={{
                 width: 73,
                 height: 28,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 padding: "4px 8px",
                 gap: "4px",
                 border: `1px solid ${C.subtleBorder}`,
@@ -368,6 +366,6 @@ export default function AdminTaxPage() {
           </div>
         </div>
       </div>
-    </div>
+    </ListPageHeader>
   );
 }

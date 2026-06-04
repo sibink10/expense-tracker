@@ -1,8 +1,8 @@
 import { useState, useCallback } from "react";
-import { C } from "../../shared/theme";
+import { C, R } from "../../shared/theme";
 import { EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP, EXP_S, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur } from "../../shared/utils";
-import { Av, Btn, Empty, ListRefreshButton } from "../ui";
+import { Av, Btn, Empty, ListRefreshButton, PageShell } from "../ui";
 import { useAppContext } from "../../context/AppContext";
 import { getExpensesMapped } from "../../shared/api/expense";
 
@@ -51,12 +51,11 @@ export default function ExpensePayPage() {
   }, [myOnly, setExps]);
 
   return (
-    <div>
-      <h1 style={{ fontSize: "20px", fontWeight: 700, margin: "0 0 16px" }}>Expense payments</h1>
+    <PageShell header={<h1 style={{ fontSize: "20px", fontWeight: 700, margin: 0 }}>Expense payments</h1>}>
       <div
         style={{
           background: "#fff",
-          borderRadius: "12px",
+          borderRadius: R.control,
           padding: "16px",
           border: `1px solid ${C.border}`,
         }}
@@ -109,6 +108,6 @@ export default function ExpensePayPage() {
           })
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }

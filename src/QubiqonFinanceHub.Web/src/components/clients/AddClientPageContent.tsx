@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { CirclePlus, HandCoins } from "lucide-react";
-import { C } from "../../shared/theme";
-import { Inp, Btn, Alert } from "../ui";
+import { C, R } from "../../shared/theme";
+import { Inp, Btn, Alert, PageShell } from "../ui";
 import PhoneInputField, { isValidPhoneNumber } from "../PhoneInputField";
 import { countryNameToPhoneCountry } from "../../shared/countryPhoneDefault";
 import { isOptionalPhoneValid } from "../../shared/phoneUtils";
@@ -128,7 +128,7 @@ export default function AddClientPage() {
   };
   const fullWidth = { gridColumn: "1 / -1" as const };
   const cellStyle = { marginBottom: 0 };
-  const controlStyle = { borderRadius: "4px" };
+  const controlStyle = { borderRadius: R.control };
   const canSubmit =
     name.trim() &&
     email.trim() &&
@@ -140,28 +140,31 @@ export default function AddClientPage() {
     isOptionalPhoneValid(phone);
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%" }}>
-      <h1
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          color: C.text,
-          fontFamily: "'Manrope', sans-serif",
-          fontSize: "18px",
-          fontWeight: 600,
-          letterSpacing: "-0.02em",
-          lineHeight: "100%",
-          margin: "0 0 20px",
-        }}
-      >
-        <HandCoins size={22} color={C.text} strokeWidth={1.8} />
-        Add client
-      </h1>
+    <PageShell
+      header={
+        <h1
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            color: C.text,
+            fontFamily: "'Manrope', sans-serif",
+            fontSize: "18px",
+            fontWeight: 600,
+            letterSpacing: "-0.02em",
+            lineHeight: "100%",
+            margin: 0,
+          }}
+        >
+          <HandCoins size={22} color={C.text} strokeWidth={1.8} />
+          Add client
+        </h1>
+      }
+    >
       <div
         style={{
           background: "#fff",
-          borderRadius: "4px",
+          borderRadius: R.control,
           padding: "20px",
           border: "none",
           boxShadow: "-5px -2px 108.5px 0px #00024914",
@@ -317,13 +320,13 @@ export default function AddClientPage() {
 
           {error && <Alert sx={{ ...fullWidth }}>{error}</Alert>}
           <div style={{ ...fullWidth, display: "flex", justifyContent: "flex-end" }}>
-            <Btn onClick={submit} disabled={!canSubmit || loading} sx={{ borderRadius: "4px" }}>
+            <Btn onClick={submit} disabled={!canSubmit || loading} sx={{ borderRadius: R.control }}>
               <CirclePlus size={15} strokeWidth={1.8} />
               {loading ? "Adding..." : "Add client"}
             </Btn>
           </div>
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

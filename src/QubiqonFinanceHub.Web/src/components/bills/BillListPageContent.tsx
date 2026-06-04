@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Check, ChevronLeft, ChevronRight, IndianRupee, ReceiptText, X } from "lucide-react";
 import type { Bill } from "../../types";
-import { C } from "../../shared/theme";
+import { C, R, workflowTableActionStyle } from "../../shared/theme";
 import { BILL_PAYMENT_PRIORITY, BILL_S, EVENTS, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur, daysOverdueFromDueYmd, nextListSort } from "../../shared/utils";
 import {
@@ -21,14 +21,6 @@ import {
 } from "../ui";
 import { useAppContext } from "../../context/AppContext";
 import { getBills } from "../../shared/api/bill";
-
-const workflowActionStyle = (fg: string, bg: string) => ({
-  borderRadius: "4px",
-  background: bg,
-  color: fg,
-  padding: "6px 8px",
-  minHeight: 26,
-});
 
 type BillFilterOption = { label: string; value: string };
 
@@ -250,7 +242,7 @@ export default function BillListPage({ pendingOnly, hideHeader }: { pendingOnly?
                       <Btn
                         sm
                         v="ghost"
-                        sx={workflowActionStyle(C.success, C.successBg)}
+                        sx={workflowTableActionStyle(C.success, C.successBg)}
                         onClick={() => setMdl({ t: MODAL_T.BILL_APPROVE, d: b, it: ITEM_T.BILL })}
                       >
                         <Check size={13} strokeWidth={1.9} />
@@ -259,7 +251,7 @@ export default function BillListPage({ pendingOnly, hideHeader }: { pendingOnly?
                       <Btn
                         sm
                         v="ghost"
-                        sx={workflowActionStyle(C.danger, C.dangerBg)}
+                        sx={workflowTableActionStyle(C.danger, C.dangerBg)}
                         onClick={() => setMdl({ t: MODAL_T.REJECT, d: b, it: ITEM_T.BILL })}
                       >
                         <X size={13} strokeWidth={1.9} />
@@ -274,7 +266,7 @@ export default function BillListPage({ pendingOnly, hideHeader }: { pendingOnly?
                       <Btn
                         sm
                         v="ghost"
-                        sx={workflowActionStyle(C.invoiceActionPaid, C.invoiceActionPaidBg)}
+                        sx={workflowTableActionStyle(C.invoiceActionPaid, C.invoiceActionPaidBg)}
                         onClick={() => setMdl({ t: MODAL_T.PAY, d: b, it: ITEM_T.BILL })}
                       >
                         <IndianRupee size={13} strokeWidth={1.9} />
@@ -291,20 +283,8 @@ export default function BillListPage({ pendingOnly, hideHeader }: { pendingOnly?
   }));
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
-      <style>{`
-        @media (max-width: 640px) {
-          .bills-table-card {
-            margin-top: 20px;
-          }
-
-          .bills-vendor-avatar {
-            display: none;
-          }
-        }
-      `}</style>
-      {!hideHeader && (
         <ListPageHeader
+          hidden={hideHeader}
           className="list-page-header"
           title="Vendor bills"
           icon={<ReceiptText size={24} strokeWidth={1.8} color={C.primary} />}
@@ -323,13 +303,23 @@ export default function BillListPage({ pendingOnly, hideHeader }: { pendingOnly?
               <ListPageAddButton addPath={navAdd.addPath} label="Submit bill" />
             ) : undefined
           }
-        />
-      )}
+        >
+      <style>{`
+        @media (max-width: 640px) {
+          .bills-table-card {
+            margin-top: 20px;
+          }
+
+          .bills-vendor-avatar {
+            display: none;
+          }
+        }
+      `}</style>
       <div
         className="bills-table-card"
         style={{
           background: C.white,
-          borderRadius: "12px",
+          borderRadius: R.control,
           padding: "14px 16px 16px",
           marginTop: "26px",
           boxShadow: C.cardShadow,
@@ -427,7 +417,7 @@ export default function BillListPage({ pendingOnly, hideHeader }: { pendingOnly?
               style={{
                 width: 73,
                 height: 28,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 padding: "4px 8px",
                 gap: "4px",
                 border: `1px solid ${C.subtleBorder}`,
@@ -460,7 +450,7 @@ export default function BillListPage({ pendingOnly, hideHeader }: { pendingOnly?
               style={{
                 width: 73,
                 height: 28,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 padding: "4px 8px",
                 gap: "4px",
                 border: `1px solid ${C.subtleBorder}`,
@@ -483,6 +473,6 @@ export default function BillListPage({ pendingOnly, hideHeader }: { pendingOnly?
           </div>
         </div>
       </div>
-    </div>
+    </ListPageHeader>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, HandCoins, UserRoundX } from "lucide-react";
-import { C } from "../../shared/theme";
+import { C, R, tableIconButtonSx } from "../../shared/theme";
 import {
   Av,
   Btn,
@@ -141,14 +141,14 @@ export default function ClientsPage() {
                   }}
                 >
                   <EditActionButton
-                    sx={{ width: 30, height: 30, background: C.actionEditBg, borderRadius: "4px" }}
+                    sx={tableIconButtonSx(C.actionEditBg)}
                     onClick={(e) => {
                       e.stopPropagation();
                       setMdl({ t: MODAL_T.CLIENT_EDIT, d: client });
                     }}
                   />
                   <DeleteActionButton
-                    sx={{ width: 30, height: 30, background: C.actionDeleteBg, borderRadius: "4px" }}
+                    sx={tableIconButtonSx(C.actionDeleteBg)}
                     onClick={(e) => {
                       e.stopPropagation();
                       setDeleteTarget(client);
@@ -167,14 +167,6 @@ export default function ClientsPage() {
   }));
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
-      <style>{`
-        @media (max-width: 640px) {
-          .clients-table-card {
-            margin-top: 20px;
-          }
-        }
-      `}</style>
       <ListPageHeader
         className="list-page-header"
         title="Clients"
@@ -194,12 +186,19 @@ export default function ClientsPage() {
             <ListPageAddButton addPath={navAdd.addPath} label="Add client" />
           ) : undefined
         }
-      />
+      >
+      <style>{`
+        @media (max-width: 640px) {
+          .clients-table-card {
+            margin-top: 20px;
+          }
+        }
+      `}</style>
       <div
         className="clients-table-card"
         style={{
           background: C.white,
-          borderRadius: "12px",
+          borderRadius: R.control,
           padding: "14px 16px 16px",
           marginTop: "26px",
           boxShadow: C.cardShadow,
@@ -287,7 +286,7 @@ export default function ClientsPage() {
               style={{
                 width: 73,
                 height: 28,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 padding: "4px 8px",
                 gap: "4px",
                 border: `1px solid ${C.subtleBorder}`,
@@ -320,7 +319,7 @@ export default function ClientsPage() {
               style={{
                 width: 73,
                 height: 28,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 padding: "4px 8px",
                 gap: "4px",
                 border: `1px solid ${C.subtleBorder}`,
@@ -353,6 +352,6 @@ export default function ClientsPage() {
         onClose={() => setDeleteTarget(null)}
         onRemoved={() => setRefreshKey((k) => k + 1)}
       />
-    </div>
+    </ListPageHeader>
   );
 }

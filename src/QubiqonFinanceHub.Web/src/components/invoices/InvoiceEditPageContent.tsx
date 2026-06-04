@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { C } from "../../shared/theme";
+import { C, R } from "../../shared/theme";
 import { CURRENCIES, EVENTS, PAY_TERMS } from "../../shared/constants";
 import { addDays, fmtCur, round2, aggregateLineGstRows } from "../../shared/utils";
-import { Inp, Btn, Alert } from "../ui";
+import { Inp, Btn, Alert, PageShell } from "../ui";
 import DecimalLineInput from "../DecimalLineInput";
 import { getInvoice, updateInvoice } from "../../shared/api/invoice";
 import { getTaxConfigs } from "../../shared/api/taxConfig";
@@ -185,31 +185,35 @@ export default function InvoiceEditPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: "40px", textAlign: "center", color: C.muted }}>Loading invoice…</div>
+      <PageShell>
+        <div style={{ padding: "40px", textAlign: "center", color: C.muted }}>Loading invoice…</div>
+      </PageShell>
     );
   }
 
   if (error && !canSubmit) {
     return (
-      <div>
+      <PageShell>
         <Alert sx={{ marginBottom: "16px" }}>{error}</Alert>
         <Btn v="secondary" onClick={() => navigate("/invoices")}>
           Back to invoices
         </Btn>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%" }}>
-      <h1 style={{ fontSize: "20px", fontWeight: 700, margin: "0 0 20px" }}>
-        <span style={{ color: C.invoice }}>✏️</span> Edit invoice
-      </h1>
-
+    <PageShell
+      header={
+        <h1 style={{ fontSize: "20px", fontWeight: 700, margin: 0 }}>
+          <span style={{ color: C.invoice }}>✏️</span> Edit invoice
+        </h1>
+      }
+    >
       <div
         style={{
           background: "#fff",
-          borderRadius: "12px",
+          borderRadius: R.control,
           padding: "20px",
           border: `1px solid ${C.border}`,
           width: "100%",
@@ -271,7 +275,7 @@ export default function InvoiceEditPage() {
                   borderCollapse: "collapse",
                   fontSize: "12px",
                   border: `1px solid ${C.border}`,
-                  borderRadius: "8px",
+                  borderRadius: R.control,
                   overflow: "hidden",
                   tableLayout: "fixed",
                 }}
@@ -307,7 +311,7 @@ export default function InvoiceEditPage() {
                             width: "100%",
                             padding: "8px 10px",
                             border: `1px solid ${C.border}`,
-                            borderRadius: "6px",
+                            borderRadius: R.control,
                             fontSize: "12px",
                             lineHeight: "1.25",
                             boxSizing: "border-box",
@@ -324,7 +328,7 @@ export default function InvoiceEditPage() {
                             width: "100%",
                             padding: "8px 10px",
                             border: `1px solid ${C.border}`,
-                            borderRadius: "6px",
+                            borderRadius: R.control,
                             fontSize: "12px",
                             lineHeight: "1.25",
                             boxSizing: "border-box",
@@ -357,7 +361,7 @@ export default function InvoiceEditPage() {
                             width: "100%",
                             padding: "8px 10px",
                             border: `1px solid ${C.border}`,
-                            borderRadius: "6px",
+                            borderRadius: R.control,
                             fontSize: "12px",
                             lineHeight: "1.25",
                             boxSizing: "border-box",
@@ -441,7 +445,7 @@ export default function InvoiceEditPage() {
                 ...fullWidth,
                 padding: "12px 14px",
                 background: `${C.invoice}08`,
-                borderRadius: "8px",
+                borderRadius: R.control,
                 fontSize: "12px",
               }}
             >
@@ -490,6 +494,6 @@ export default function InvoiceEditPage() {
           </div>
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Btn, Mdl, CLog, INVOICE_MODAL_Z_INDEX, Badge } from "../ui";
-import { C } from "../../shared/theme";
+import { Btn, Mdl, CLog, INVOICE_MODAL_Z_INDEX, Badge, MobileHScroll } from "../ui";
+import { C, R, workflowTableActionStyle } from "../../shared/theme";
 import { useAppContext } from "../../context/AppContext";
 import type { Invoice } from "../../types";
 import { downloadInvoicePdf } from "../../shared/invoicePdf";
@@ -36,14 +36,6 @@ const LoaderSpinner = () => (
     }}
   />
 );
-
-const workflowActionStyle = (fg: string, bg: string) => ({
-  borderRadius: "4px",
-  background: bg,
-  color: fg,
-  padding: "6px 8px",
-  minHeight: 26,
-});
 
 export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
   const { setMdl, activeOrg, is, t } = useAppContext();
@@ -220,7 +212,7 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
       return (
         <Btn
           v="ghost"
-          sx={workflowActionStyle(C.invoiceActionSign, C.invoiceActionSignBg)}
+          sx={workflowTableActionStyle(C.invoiceActionSign, C.invoiceActionSignBg)}
           onClick={() => setZohoSignConfirmOpen(true)}
           disabled={zohoSignLoading}
         >
@@ -232,7 +224,7 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
 
     if (inv.status === INV_S.PENDING_SIGNATURE) {
       return (
-        <Btn v="ghost" sx={workflowActionStyle(C.invoiceActionSign, C.invoiceActionSignBg)} disabled>
+        <Btn v="ghost" sx={workflowTableActionStyle(C.invoiceActionSign, C.invoiceActionSignBg)} disabled>
           <Signature size={14} strokeWidth={1.9} />
           Sign
         </Btn>
@@ -243,7 +235,7 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
       return (
         <Btn
           v="ghost"
-          sx={workflowActionStyle(C.invoiceActionSign, C.invoiceActionSignBg)}
+          sx={workflowTableActionStyle(C.invoiceActionSign, C.invoiceActionSignBg)}
           onClick={() => void handleSyncSignedPdf()}
           disabled={syncLoading}
         >
@@ -257,7 +249,7 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
       return (
         <Btn
           v="ghost"
-          sx={workflowActionStyle(C.invoiceActionSent, C.invoiceActionSentBg)}
+          sx={workflowTableActionStyle(C.invoiceActionSent, C.invoiceActionSentBg)}
           onClick={() => setSendConfirmOpen(true)}
           disabled={sendLoading}
         >
@@ -271,7 +263,7 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
       return (
         <Btn
           v="ghost"
-          sx={workflowActionStyle(C.invoiceActionPaid, C.invoiceActionPaidBg)}
+          sx={workflowTableActionStyle(C.invoiceActionPaid, C.invoiceActionPaidBg)}
           onClick={() => {
             setMdl(null);
             setTimeout(() => setMdl({ t: MODAL_T.INV_PAY, d: inv }), 50);
@@ -287,14 +279,14 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
   };
 
   return (
-    <Mdl open close={() => setMdl(null)} title={inv.id} w zIndex={INVOICE_MODAL_Z_INDEX}>
+    <Mdl open close={() => setMdl(null)} title={inv.id} w zIndex={INVOICE_MODAL_Z_INDEX} detail={false}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       {signingRelated && (
         <div
           style={{
             marginBottom: 12,
             padding: "10px 12px",
-            borderRadius: 8,
+            borderRadius: R.control,
             background: C.surface,
             border: `1px solid ${C.border}`,
             display: "flex",
@@ -313,20 +305,13 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
           )}
         </div>
       )}
-      <div
-        style={{
-          marginBottom: "16px",
-          overflowX: "auto",
-          WebkitOverflowScrolling: "touch",
-        }}
-      >
-        <div style={{ minWidth: 760 }}>
+      <MobileHScroll style={{ marginBottom: "16px" }}>
           {needsSignedPdfSync && (
             <div
               style={{
                 marginBottom: 12,
                 padding: "10px 12px",
-                borderRadius: 8,
+                borderRadius: R.control,
                 background: "rgba(214, 158, 46, 0.1)",
                 border: `1px solid ${C.invoice}`,
                 fontSize: 12,
@@ -342,7 +327,7 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
             <div
               style={{
                 border: `1px solid ${C.border}`,
-                borderRadius: "10px",
+                borderRadius: R.control,
                 overflow: "hidden",
                 background: "#fff",
                 minHeight: 480,
@@ -363,8 +348,7 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
           ) : (
             <InvoiceDocument invoice={inv} organization={activeOrg} />
           )}
-        </div>
-      </div>
+      </MobileHScroll>
 
       <CLog comments={inv.comments} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
@@ -385,7 +369,7 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
                 height: "36px",
                 padding: 0,
                 border: "none",
-                borderRadius: "8px",
+                borderRadius: R.control,
                 background: "rgba(37, 99, 235, 0.1)",
                 cursor: "pointer",
                 fontFamily: "inherit",

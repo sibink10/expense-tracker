@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { ArrowLeft, Check, Download, Edit, Eye, ReceiptText, Send, Target, X } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Alert, Badge, Btn, CLog, Empty, Mdl, IconActionButton } from "../ui";
-import { C } from "../../shared/theme";
+import { Alert, Badge, Btn, CLog, Empty, Mdl, IconActionButton, PageShell } from "../ui";
+import { C, R } from "../../shared/theme";
 import { approveForecast, cancelForecast, getForecastById, getForecastDocument, rejectForecast, submitForecast } from "../../shared/api/forecast";
 import { getExpenseById } from "../../shared/api/expense";
 import type { Forecast, UploadedDocument } from "../../types";
@@ -166,15 +166,28 @@ export default function ForecastDetailPageContent() {
     navigate("/expenses");
   };
 
-  if (error) return <Alert>{error}</Alert>;
-  if (!forecast) return <Empty icon={<Target />} title={loading ? "Loading forecast..." : "Forecast not found"} sub="Open a forecast from the list." />;
+  if (error) {
+    return (
+      <PageShell>
+        <Alert>{error}</Alert>
+      </PageShell>
+    );
+  }
+  if (!forecast) {
+    return (
+      <PageShell>
+        <Empty icon={<Target />} title={loading ? "Loading forecast..." : "Forecast not found"} sub="Open a forecast from the list." />
+      </PageShell>
+    );
+  }
 
   return (
-    <div style={{ width: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", alignItems: "flex-start", marginBottom: "20px", flexWrap: "wrap" }}>
+    <PageShell
+      header={
+      <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", alignItems: "flex-start", flexWrap: "wrap" }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-            <span style={{ width: "38px", height: "38px", borderRadius: "8px", background: C.successBg, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <span style={{ width: "38px", height: "38px", borderRadius: R.control, background: C.successBg, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <Target size={20} color={C.success} strokeWidth={1.8} />
             </span>
             <div style={{ minWidth: 0 }}>
@@ -185,35 +198,35 @@ export default function ForecastDetailPageContent() {
           </div>
         </div>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <Btn v="secondary" onClick={() => navigate("/forecasts")} sx={{ borderRadius: "4px" }}>
+          <Btn v="secondary" onClick={() => navigate("/forecasts")} sx={{ borderRadius: R.control }}>
             <ArrowLeft size={14} />
             Back
           </Btn>
           {forecast.status === "Draft" && (
             <>
-              <Btn v="secondary" onClick={() => navigate(`/forecasts/${forecast.id}/edit`)} sx={{ borderRadius: "4px" }} disabled={!!actionLoading}>
+              <Btn v="secondary" onClick={() => navigate(`/forecasts/${forecast.id}/edit`)} sx={{ borderRadius: R.control }} disabled={!!actionLoading}>
                 <Edit size={14} />
                 Edit
               </Btn>
-              <Btn onClick={submit} sx={{ borderRadius: "4px" }} disabled={!!actionLoading}>
+              <Btn onClick={submit} sx={{ borderRadius: R.control }} disabled={!!actionLoading}>
                 <Send size={14} />
                 {actionLoading === "submit" ? "Submitting..." : "Submit"}
               </Btn>
             </>
           )}
           {canCancel && (
-            <Btn v="danger" onClick={cancel} sx={{ borderRadius: "4px" }} disabled={!!actionLoading}>
+            <Btn v="danger" onClick={cancel} sx={{ borderRadius: R.control }} disabled={!!actionLoading}>
               <X size={14} />
               {actionLoading === "cancel" ? "Cancelling..." : "Cancel"}
             </Btn>
           )}
           {canReview && forecast.status === "Submitted" && (
             <>
-              <Btn v="success" onClick={approve} sx={{ borderRadius: "4px" }} disabled={!!actionLoading}>
+              <Btn v="success" onClick={approve} sx={{ borderRadius: R.control }} disabled={!!actionLoading}>
                 <Check size={14} />
                 {actionLoading === "approve" ? "Approving..." : "Approve"}
               </Btn>
-              <Btn v="danger" onClick={reject} sx={{ borderRadius: "4px" }} disabled={!!actionLoading}>
+              <Btn v="danger" onClick={reject} sx={{ borderRadius: R.control }} disabled={!!actionLoading}>
                 <X size={14} />
                 {actionLoading === "reject" ? "Rejecting..." : "Reject"}
               </Btn>
@@ -221,8 +234,9 @@ export default function ForecastDetailPageContent() {
           )}
         </div>
       </div>
-
-      <div style={{ position: "relative", background: "#fff", borderRadius: "8px", padding: "20px", boxShadow: "0px 2px 3px 0px #253EA70A", border: `1px solid ${C.border}`, marginBottom: "16px" }}>
+      }
+    >
+      <div style={{ position: "relative", background: "#fff", borderRadius: R.control, padding: "20px", boxShadow: "0px 2px 3px 0px #253EA70A", border: `1px solid ${C.border}`, marginBottom: "16px" }}>
         <div style={{ position: "absolute", top: 20, right: 20 }}>
           <Badge s={forecast.status} />
         </div>
@@ -236,7 +250,7 @@ export default function ForecastDetailPageContent() {
         </div>
       </div>
 
-      <div style={{ background: "#fff", borderRadius: "8px", padding: "20px", boxShadow: "0px 2px 3px 0px #253EA70A", border: `1px solid ${C.border}`, marginBottom: "16px" }}>
+      <div style={{ background: "#fff", borderRadius: R.control, padding: "20px", boxShadow: "0px 2px 3px 0px #253EA70A", border: `1px solid ${C.border}`, marginBottom: "16px" }}>
         <h2 style={{ fontSize: "14px", margin: "0 0 12px", color: C.primary }}>Supporting documents</h2>
         {forecast.documents.length === 0 ? (
           <div style={{ fontSize: "12px", color: C.muted }}>No documents uploaded.</div>
@@ -245,7 +259,7 @@ export default function ForecastDetailPageContent() {
             {forecast.documents.map((doc) => (
               <div
                 key={doc.id}
-                style={{ border: `1px solid ${C.border}`, background: "#fff", borderRadius: "4px", padding: "14px", display: "grid", gap: "10px" }}
+                style={{ border: `1px solid ${C.border}`, background: "#fff", borderRadius: R.control, padding: "14px", display: "grid", gap: "10px" }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", justifyContent: "space-between" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, flex: 1 }}>
@@ -278,7 +292,7 @@ export default function ForecastDetailPageContent() {
         )}
       </div>
 
-      <div style={{ background: "#fff", borderRadius: "8px", padding: "20px", boxShadow: "0px 2px 3px 0px #253EA70A", border: `1px solid ${C.border}`, marginBottom: "16px" }}>
+      <div style={{ background: "#fff", borderRadius: R.control, padding: "20px", boxShadow: "0px 2px 3px 0px #253EA70A", border: `1px solid ${C.border}`, marginBottom: "16px" }}>
         <h2 style={{ fontSize: "15px", margin: "0 0 14px", color: C.primary, fontWeight: 700 }}>Related expenses</h2>
         {forecast.relatedExpenses.length === 0 ? (
           <div style={{ fontSize: "12px", color: C.muted }}>No expenses raised against this forecast.</div>
@@ -289,13 +303,13 @@ export default function ForecastDetailPageContent() {
                 key={expense.id}
                 type="button"
                 onClick={() => void openRelatedExpense(expense.id, expense.expenseCode)}
-                style={{ position: "relative", minHeight: "148px", border: `1px solid ${C.border}`, borderLeft: `5px solid ${C.success}`, background: "#fff", borderRadius: "8px", padding: "18px 18px 16px", cursor: "pointer", textAlign: "left", boxShadow: "0 10px 26px rgba(27,42,74,0.06)" }}
+                style={{ position: "relative", minHeight: "148px", border: `1px solid ${C.border}`, borderLeft: `5px solid ${C.success}`, background: "#fff", borderRadius: R.control, padding: "18px 18px 16px", cursor: "pointer", textAlign: "left", boxShadow: "0 10px 26px rgba(27,42,74,0.06)" }}
               >
                 <div style={{ position: "absolute", top: "14px", right: "14px" }}>
                   <Badge s={expense.status} />
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", paddingRight: "110px", marginBottom: "18px" }}>
-                  <span style={{ width: "34px", height: "34px", borderRadius: "8px", background: C.successBg, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ width: "34px", height: "34px", borderRadius: R.control, background: C.successBg, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <ReceiptText size={17} color={C.success} />
                   </span>
                   <span style={{ fontSize: "14px", fontWeight: 800, color: C.primary }}>{expense.expenseCode}</span>
@@ -318,7 +332,7 @@ export default function ForecastDetailPageContent() {
         )}
       </div>
 
-      <div style={{ background: "#fff", borderRadius: "8px", padding: "20px", boxShadow: "0px 2px 3px 0px #253EA70A", border: `1px solid ${C.border}` }}>
+      <div style={{ background: "#fff", borderRadius: R.control, padding: "20px", boxShadow: "0px 2px 3px 0px #253EA70A", border: `1px solid ${C.border}` }}>
         <CLog comments={forecast.comments} />
       </div>
 
@@ -332,7 +346,7 @@ export default function ForecastDetailPageContent() {
         w
       >
         {viewDocUrl ? (
-          <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden", background: "#fff", minHeight: 520 }}>
+          <div style={{ border: `1px solid ${C.border}`, borderRadius: R.control, overflow: "hidden", background: "#fff", minHeight: 520 }}>
             <iframe
               title={viewDocName ?? "Document preview"}
               src={viewDocUrl}
@@ -343,6 +357,6 @@ export default function ForecastDetailPageContent() {
           <div style={{ padding: 20, fontSize: 13, color: C.muted }}>Loading preview…</div>
         )}
       </Mdl>
-    </div>
+    </PageShell>
   );
 }

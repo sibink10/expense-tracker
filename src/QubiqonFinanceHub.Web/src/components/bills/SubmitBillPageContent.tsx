@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { CalendarDays, FilePlus2, ReceiptText, X, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { C } from "../../shared/theme";
+import { C, R } from "../../shared/theme";
 import { BILL_PAYMENT_PRIORITY, BILL_PAYMENT_PRIORITY_OPTIONS, EVENTS, PAY_TERMS } from "../../shared/constants";
 import { addDays, fmtCur, round2, aggregateLineGstRows, formatTdsOptionLabel, formatTdsSummarySnippet } from "../../shared/utils";
-import { Inp, Btn, MultiFileUp, Alert, Mdl } from "../ui";
+import { Inp, Btn, MultiFileUp, Alert, Mdl, PageShell } from "../ui";
 import DecimalLineInput from "../DecimalLineInput";
 import { AsyncSelectInput } from "../AsyncSelectInput";
 import { useAppContext } from "../../context/AppContext";
@@ -17,7 +17,7 @@ import type { TaxConfig } from "../../types";
 
 const GRID_BREAKPOINT = 600;
 const cellCompact = { marginBottom: 0 };
-const controlStyle = { borderRadius: "4px" };
+const controlStyle = { borderRadius: R.control };
 
 function Section({
   title,
@@ -29,7 +29,7 @@ function Section({
       style={{
         padding: "16px 18px",
         border: `1px solid ${C.border}`,
-        borderRadius: "10px",
+        borderRadius: R.control,
         marginBottom: "16px",
         background: "#fff",
         ...style,
@@ -268,43 +268,45 @@ export default function SubmitBillPage() {
     !loading;
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%" }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "12px",
-          margin: "0 0 20px",
-        }}
-      >
-        <h1
+    <PageShell
+      header={
+        <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "8px",
-            color: C.text,
-            fontFamily: "'Manrope', sans-serif",
-            fontSize: narrow ? "18px" : "24px",
-            fontWeight: 600,
-            letterSpacing: "-0.02em",
-            lineHeight: "100%",
-            margin: 0,
+            justifyContent: "space-between",
+            gap: "12px",
           }}
         >
-          <ReceiptText size={narrow ? 18 : 22} color={C.text} strokeWidth={1.8} />
-          Submit vendor bill
-        </h1>
-        <Btn v="vendor" onClick={openConfirm} disabled={!canSubmit} sx={{ borderRadius: "4px" }}>
-          <FilePlus2 size={14} />
-          {loading ? "Submitting..." : "Submit bill"}
-        </Btn>
-      </div>
+          <h1
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              color: C.text,
+              fontFamily: "'Manrope', sans-serif",
+              fontSize: narrow ? "18px" : "24px",
+              fontWeight: 600,
+              letterSpacing: "-0.02em",
+              lineHeight: "100%",
+              margin: 0,
+            }}
+          >
+            <ReceiptText size={narrow ? 18 : 22} color={C.text} strokeWidth={1.8} />
+            Submit vendor bill
+          </h1>
+          <Btn v="vendor" onClick={openConfirm} disabled={!canSubmit} sx={{ borderRadius: R.control }}>
+            <FilePlus2 size={14} />
+            {loading ? "Submitting..." : "Submit bill"}
+          </Btn>
+        </div>
+      }
+    >
 
       <div
         style={{
           background: "#fff",
-          borderRadius: "4px",
+          borderRadius: R.control,
           padding: narrow ? "16px" : "20px",
           boxShadow: "-5px -2px 108.5px 0px #00024914",
           width: "100%",
@@ -393,7 +395,7 @@ export default function SubmitBillPage() {
           }}
         >
           <span>Add at least one item</span>
-          <Btn sm v="vendor" onClick={addItemRow} sx={{ borderRadius: "4px" }}>
+          <Btn sm v="vendor" onClick={addItemRow} sx={{ borderRadius: R.control }}>
             <Plus size={13} />
             Add New Row
           </Btn>
@@ -406,7 +408,7 @@ export default function SubmitBillPage() {
               borderCollapse: "collapse",
               fontSize: "12px",
               border: `1px solid ${C.border}`,
-              borderRadius: "8px",
+              borderRadius: R.control,
               overflow: "hidden",
             }}
           >
@@ -448,7 +450,7 @@ export default function SubmitBillPage() {
                           width: "100%",
                           padding: "8px 10px",
                           border: `1px solid ${C.border}`,
-                          borderRadius: "4px",
+                          borderRadius: R.control,
                           fontSize: "12px",
                           boxSizing: "border-box",
                         }}
@@ -472,7 +474,7 @@ export default function SubmitBillPage() {
                         emptyFallback={1}
                         textAlign="center"
                         onChange={(v) => updateItemRow(row.id, "quantity", v)}
-                        style={{ lineHeight: 1, borderRadius: "4px" }}
+                        style={{ lineHeight: 1, borderRadius: R.control }}
                       />
                     </td>
                     <td style={{ padding: "10px 12px", verticalAlign: "top", textAlign: "right" }}>
@@ -482,7 +484,7 @@ export default function SubmitBillPage() {
                         emptyFallback={0}
                         textAlign="right"
                         onChange={(v) => updateItemRow(row.id, "rate", v)}
-                        style={{ lineHeight: 1, borderRadius: "4px" }}
+                        style={{ lineHeight: 1, borderRadius: R.control }}
                       />
                     </td>
                     <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
@@ -577,7 +579,7 @@ export default function SubmitBillPage() {
             style={{
               padding: "14px 16px",
               background: `${C.vendor}08`,
-              borderRadius: "8px",
+              borderRadius: R.control,
               fontSize: "12px",
               border: `1px solid ${C.vendor}20`,
             }}
@@ -659,7 +661,7 @@ export default function SubmitBillPage() {
         <div style={{ fontSize: "13px", color: C.primary, lineHeight: 1.5 }}>
           Submit this vendor bill for approval and payment processing?
         </div>
-        <div style={{ display: "grid", gap: "8px", marginTop: "14px", padding: "12px", background: `${C.vendor}08`, borderRadius: "8px", fontSize: "12px" }}>
+        <div style={{ display: "grid", gap: "8px", marginTop: "14px", padding: "12px", background: `${C.vendor}08`, borderRadius: R.control, fontSize: "12px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
             <span style={{ color: C.muted }}>Bill number</span>
             <strong>{vendorBillNumber.trim()}</strong>
@@ -674,15 +676,15 @@ export default function SubmitBillPage() {
           </div>
         </div>
         <div style={{ marginTop: "18px", display: "flex", justifyContent: "flex-end", gap: "8px", flexWrap: "wrap" }}>
-          <Btn v="secondary" onClick={() => setConfirmOpen(false)} disabled={loading} sx={{ borderRadius: "4px" }}>
+          <Btn v="secondary" onClick={() => setConfirmOpen(false)} disabled={loading} sx={{ borderRadius: R.control }}>
             Cancel
           </Btn>
-          <Btn v="vendor" onClick={handleSubmit} disabled={loading} sx={{ borderRadius: "4px" }}>
+          <Btn v="vendor" onClick={handleSubmit} disabled={loading} sx={{ borderRadius: R.control }}>
             <FilePlus2 size={14} />
             {loading ? "Submitting..." : "Confirm submit"}
           </Btn>
         </div>
       </Mdl>
-    </div>
+    </PageShell>
   );
 }

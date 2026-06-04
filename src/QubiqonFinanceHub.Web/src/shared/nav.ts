@@ -15,7 +15,7 @@ export function buildNav(_cfg?: { advEnabled?: boolean }): NavSection[] {
       items: [{ path: "/", l: "Dashboard", i: "dashboard", r: allRoles, end: true }],
     },
     {
-      s: "Requests",
+      s: "My Requests",
       i: "requests",
       items: [
         {

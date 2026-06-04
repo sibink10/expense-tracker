@@ -534,6 +534,8 @@ public record DashboardDto(
     /// <summary>Bills donut: Approved, Partially paid, Overdue (open balance).</summary>
     IReadOnlyList<DashboardSliceDto> BillsPayableSlices,
     IReadOnlyList<DashboardSliceDto> ReceivablesByClient,
+    /// <summary>Collected revenue (sum of paidAmound) per client for Paid / Partially paid invoices.</summary>
+    IReadOnlyList<DashboardSliceDto> ClientRevenueByClient,
     IReadOnlyList<string> AvailableReportCurrencies,
     string? DisplayCurrency)
 {

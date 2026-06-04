@@ -108,8 +108,11 @@ public class AuthController(FinanceHubDbContext db, IAzureRoleService azureRoleS
 public class DashboardController(IDashboardService dashboard) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> Get([FromQuery] bool myOnly = false, [FromQuery] string? reportCurrency = null) =>
-        Ok(await dashboard.GetStatsAsync(myOnly, reportCurrency));
+    public async Task<IActionResult> Get(
+        [FromQuery] bool myOnly = false,
+        [FromQuery] string? reportCurrency = null,
+        [FromQuery] DashboardPeriod period = DashboardPeriod.Total) =>
+        Ok(await dashboard.GetStatsAsync(myOnly, reportCurrency, period));
 }
 
 // ═══════════════════════════════════════════════════

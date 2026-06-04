@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import type { Expense } from "../../types";
-import { C } from "../../shared/theme";
+import { C, R, workflowTableActionStyle } from "../../shared/theme";
 import { EVENTS, EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP, EXP_S, EXP_STATUS, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur, nextListSort } from "../../shared/utils";
 import {
@@ -42,14 +42,6 @@ const STATUS_TABS = [
 ] as const;
 
 type StatusOption = (typeof STATUS_TABS)[number];
-
-const workflowActionStyle = (fg: string, bg: string) => ({
-  borderRadius: "4px",
-  background: bg,
-  color: fg,
-  padding: "6px 8px",
-  minHeight: 26,
-});
 
 export default function ExpenseListPageContent({ myOnly, isRequest, pendingOnly, hideHeader }: { myOnly?: boolean; isRequest?: boolean; pendingOnly?: boolean; hideHeader?: boolean }) {
   const navigate = useNavigate();
@@ -145,7 +137,6 @@ export default function ExpenseListPageContent({ myOnly, isRequest, pendingOnly,
     ...(!is(ROLES.EMPLOYEE)
       ? [{ label: "Employee", sortKey: "Employee", sx: { textAlign: "left" } } as TblCol]
       : []),
-    { label: "Purpose", sortKey: "Purpose", sx: { textAlign: "left" } },
     { label: "Amount", sortKey: "Amount" },
     { label: "Balance Due", sortKey: "BalanceDue" },
     { label: "Bill date", sortKey: "BillDate" },
@@ -180,14 +171,6 @@ export default function ExpenseListPageContent({ myOnly, isRequest, pendingOnly,
               },
             ]
           : []),
-        {
-          v: (
-            <div style={{ maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {e.purpose}
-            </div>
-          ),
-          sx: { textAlign: "left" as const },
-        },
         { v: <span style={{ fontWeight: 700, color: C.primary }}>{fmtCur(e.amt)}</span> },
         {
           v: (
@@ -218,39 +201,39 @@ export default function ExpenseListPageContent({ myOnly, isRequest, pendingOnly,
                       e.status !== EXP_S.CANCELLED &&
                       (e.status === EXP_S.PENDING || e.status === EXP_S.PENDING_BILL_APPROVAL) && (
                         <>
-                          <Btn sm v="ghost" sx={workflowActionStyle(C.success, C.successBg)} onClick={() => setMdl({ t: MODAL_T.EXP_APPROVE, d: e })}>
+                          <Btn sm v="ghost" sx={workflowTableActionStyle(C.success, C.successBg)} onClick={() => setMdl({ t: MODAL_T.EXP_APPROVE, d: e })}>
                             <Check size={13} strokeWidth={1.9} />
                             Approve
                           </Btn>
-                          <Btn sm v="ghost" sx={workflowActionStyle(C.danger, C.dangerBg)} onClick={() => setMdl({ t: MODAL_T.REJECT, d: e, it: ITEM_T.EXPENSE })}>
+                          <Btn sm v="ghost" sx={workflowTableActionStyle(C.danger, C.dangerBg)} onClick={() => setMdl({ t: MODAL_T.REJECT, d: e, it: ITEM_T.EXPENSE })}>
                             <X size={13} strokeWidth={1.9} />
                             Reject
                           </Btn>
                         </>
                       )}
                     {canShowPayAction && (
-                      <>
-                        <Btn sm v="ghost" sx={workflowActionStyle(C.danger, C.dangerBg)} onClick={() => setMdl({ t: MODAL_T.REJECT, d: e, it: ITEM_T.EXPENSE })}>
-                          <X size={13} strokeWidth={1.9} />
-                          Reject
-                        </Btn>
-                        <Btn
-                          sm
-                          v="ghost"
-                          sx={workflowActionStyle(C.invoiceActionPaid, C.invoiceActionPaidBg)}
-                          onClick={() => setMdl({ t: MODAL_T.PAY, d: e, it: ITEM_T.EXPENSE })}
-                          disabled={!hasDocuments}
-                          title={!hasDocuments ? EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP : undefined}
-                        >
-                          <IndianRupee size={13} strokeWidth={1.9} />
-                          Pay
-                        </Btn>
-                      </>
+                      <Btn
+                        sm
+                        v="ghost"
+                        sx={workflowTableActionStyle(C.invoiceActionPaid, C.invoiceActionPaidBg)}
+                        onClick={() => setMdl({ t: MODAL_T.PAY, d: e, it: ITEM_T.EXPENSE })}
+                        disabled={!hasDocuments}
+                        title={!hasDocuments ? EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP : undefined}
+                      >
+                        <IndianRupee size={13} strokeWidth={1.9} />
+                        Pay
+                      </Btn>
                     )}
                     {canCancelExpenseRow && (
-                      <Btn sm v="ghost" sx={workflowActionStyle(C.muted, C.surface)} onClick={() => setMdl({ t: MODAL_T.EXP_CANCEL_CONFIRM, d: e })}>
+                      <Btn sm v="ghost" sx={workflowTableActionStyle(C.muted, C.surface)} onClick={() => setMdl({ t: MODAL_T.EXP_CANCEL_CONFIRM, d: e })}>
                         <Ban size={13} strokeWidth={1.9} />
                         Cancel
+                      </Btn>
+                    )}
+                    {canShowPayAction && (
+                      <Btn sm v="ghost" sx={workflowTableActionStyle(C.danger, C.dangerBg)} onClick={() => setMdl({ t: MODAL_T.REJECT, d: e, it: ITEM_T.EXPENSE })}>
+                        <X size={13} strokeWidth={1.9} />
+                        Reject
                       </Btn>
                     )}
                   </span>
@@ -264,16 +247,8 @@ export default function ExpenseListPageContent({ myOnly, isRequest, pendingOnly,
   });
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
-      <style>{`
-        @media (max-width: 640px) {
-          .expenses-table-card {
-            margin-top: 20px;
-          }
-        }
-      `}</style>
-      {!hideHeader && (
         <ListPageHeader
+          hidden={hideHeader}
           className="list-page-header"
           title="Expense requests"
           icon={<ReceiptText size={24} strokeWidth={1.8} color={C.primary} />}
@@ -292,13 +267,19 @@ export default function ExpenseListPageContent({ myOnly, isRequest, pendingOnly,
               <ListPageAddButton addPath={navAdd.addPath} label="Add expense" />
             ) : undefined
           }
-        />
-      )}
+        >
+      <style>{`
+        @media (max-width: 640px) {
+          .expenses-table-card {
+            margin-top: 20px;
+          }
+        }
+      `}</style>
       <div
         className="expenses-table-card"
         style={{
           background: C.white,
-          borderRadius: "12px",
+          borderRadius: R.control,
           padding: "14px 16px 16px",
           marginTop: "26px",
           boxShadow: C.cardShadow,
@@ -395,7 +376,7 @@ export default function ExpenseListPageContent({ myOnly, isRequest, pendingOnly,
               style={{
                 width: 73,
                 height: 28,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 padding: "4px 8px",
                 gap: "4px",
                 border: `1px solid ${C.subtleBorder}`,
@@ -428,7 +409,7 @@ export default function ExpenseListPageContent({ myOnly, isRequest, pendingOnly,
               style={{
                 width: 73,
                 height: 28,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 padding: "4px 8px",
                 gap: "4px",
                 border: `1px solid ${C.subtleBorder}`,
@@ -451,6 +432,6 @@ export default function ExpenseListPageContent({ myOnly, isRequest, pendingOnly,
           </div>
         </div>
       </div>
-    </div>
+    </ListPageHeader>
   );
 }

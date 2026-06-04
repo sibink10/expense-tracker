@@ -4,6 +4,7 @@ import ExpenseListPageContent from "../../components/expenses/ExpenseListPageCon
 import ForecastListPageContent from "../../components/forecasts/ForecastListPageContent";
 import BillListPageContent from "../../components/bills/BillListPageContent";
 import { C } from "../../shared/theme";
+import { PageShell } from "../../components/ui";
 import { BanknoteArrowUp, IndianRupee } from "lucide-react";
 
 const tabs = [
@@ -32,25 +33,18 @@ export default function PayableRequestsPage() {
   };
 
   return (
-    <div style={{ width: "100%" }}>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "16px",
-          marginBottom: "24px",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: "12px",
-          }}
-        >
-          <div>
+    <PageShell
+      header={
+        <>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "12px",
+            }}
+          >
             <h1
               style={{
                 margin: 0,
@@ -69,48 +63,49 @@ export default function PayableRequestsPage() {
               Approvals
             </h1>
           </div>
-        </div>
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "10px",
-            padding: "10px",
-            background: C.surface,
-            border: `1px solid ${C.border}`,
-            borderRadius: "14px",
-          }}
-        >
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveTab(tab.key)}
-              style={{
-                padding: "12px 20px",
-                borderRadius: "999px",
-                border:
-                  activeTab === tab.key
-                    ? `1px solid ${C.success}`
-                    : "1px solid transparent",
-                background: activeTab === tab.key ? C.successBg : C.white,
-                color: activeTab === tab.key ? C.success : C.text,
-                fontWeight: activeTab === tab.key ? 700 : 600,
-                cursor: "pointer",
-                minWidth: "120px",
-                textAlign: "center",
-                whiteSpace: "nowrap",
-                transition: "all 160ms ease",
-                fontFamily: "inherit",
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ minHeight: "620px" }}>{renderActiveTab()}</div>
-    </div>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "10px",
+              padding: "10px",
+              background: C.surface,
+              border: `1px solid ${C.border}`,
+              borderRadius: "14px",
+              marginTop: "16px",
+            }}
+          >
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                style={{
+                  padding: "12px 20px",
+                  borderRadius: "999px",
+                  border:
+                    activeTab === tab.key
+                      ? `1px solid ${C.success}`
+                      : "1px solid transparent",
+                  background: activeTab === tab.key ? C.successBg : C.white,
+                  color: activeTab === tab.key ? C.success : C.text,
+                  fontWeight: activeTab === tab.key ? 700 : 600,
+                  cursor: "pointer",
+                  minWidth: "120px",
+                  textAlign: "center",
+                  whiteSpace: "nowrap",
+                  transition: "all 160ms ease",
+                  fontFamily: "inherit",
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </>
+      }
+    >
+      <div style={{ minHeight: 0 }}>{renderActiveTab()}</div>
+    </PageShell>
   );
 }

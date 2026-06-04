@@ -16,6 +16,8 @@ export interface InvoiceStatusCounts {
   overdue: number;
 }
 
+export type DashboardPeriod = "total" | "month";
+
 export interface DashboardData {
   pendingSubmittedBills: number;
   billsToPayCount: number;
@@ -28,6 +30,7 @@ export interface DashboardData {
   advanceSlices: DashboardSlice[];
   billsPayableSlices: DashboardSlice[];
   receivablesByClient: DashboardSlice[];
+  clientRevenueByClient: DashboardSlice[];
   availableReportCurrencies: string[];
   displayCurrency?: string | null;
   draftInvoices?: number;
@@ -40,13 +43,15 @@ export interface DashboardData {
 export interface GetDashboardParams {
   myOnly?: boolean;
   reportCurrency?: string;
+  period?: DashboardPeriod;
 }
 
 export async function getDashboard(params: GetDashboardParams = {}): Promise<DashboardData> {
-  const { myOnly = false, reportCurrency } = params;
+  const { myOnly = false, reportCurrency, period = "total" } = params;
   const { data } = await apiClient.get<DashboardData>("/dashboard", {
     params: {
       myOnly,
+      period,
       ...(reportCurrency ? { reportCurrency } : {}),
     },
   });

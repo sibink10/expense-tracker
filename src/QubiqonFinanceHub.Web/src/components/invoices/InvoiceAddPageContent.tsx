@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { CalendarDays, FileText, Plus, Send, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { C } from "../../shared/theme";
+import { C, R } from "../../shared/theme";
 import { CURRENCIES, EVENTS, PAY_TERMS } from "../../shared/constants";
 import { addDays, fmtCur, round2, aggregateLineGstRows } from "../../shared/utils";
-import { Inp, Btn, Alert, Mdl } from "../ui";
+import { Inp, Btn, Alert, Mdl, PageShell } from "../ui";
 import DecimalLineInput from "../DecimalLineInput";
 import { AsyncSelectInput } from "../AsyncSelectInput";
 import { createInvoice } from "../../shared/api/invoice";
@@ -205,50 +205,51 @@ export default function InvoiceAddPage() {
   };
   const fullWidth = { gridColumn: "1 / -1" as const };
   const cellStyle = { marginBottom: 0, minWidth: 0 };
-  const controlStyle = { borderRadius: "4px", width: "100%", minWidth: 0, boxSizing: "border-box" as const };
+  const controlStyle = { borderRadius: R.control, width: "100%", minWidth: 0, boxSizing: "border-box" as const };
   const lineControlStyle = {
-    borderRadius: "4px",
+    borderRadius: R.control,
   };
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "12px",
-          flexWrap: narrow ? "wrap" : "nowrap",
-          margin: "0 0 20px",
-        }}
-      >
-        <h1
+    <PageShell
+      header={
+        <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "8px",
-            color: C.text,
-            fontFamily: "'Manrope', sans-serif",
-            fontSize: narrow ? "18px" : "24px",
-            fontWeight: 600,
-            letterSpacing: "-0.02em",
-            lineHeight: "100%",
-            margin: 0,
+            justifyContent: "space-between",
+            gap: "12px",
+            flexWrap: narrow ? "wrap" : "nowrap",
           }}
         >
-          <FileText size={narrow ? 18 : 22} color={C.text} strokeWidth={1.8} />
-          Create invoice
-        </h1>
-        <Btn v="invoice" onClick={openConfirm} disabled={!canSubmit || loading} sx={{ borderRadius: "4px" }}>
-          <Send size={14} />
-          {loading ? "Creating..." : "Create invoice"}
-        </Btn>
-      </div>
-
+          <h1
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              color: C.text,
+              fontFamily: "'Manrope', sans-serif",
+              fontSize: narrow ? "18px" : "24px",
+              fontWeight: 600,
+              letterSpacing: "-0.02em",
+              lineHeight: "100%",
+              margin: 0,
+            }}
+          >
+            <FileText size={narrow ? 18 : 22} color={C.text} strokeWidth={1.8} />
+            Create invoice
+          </h1>
+          <Btn v="invoice" onClick={openConfirm} disabled={!canSubmit || loading} sx={{ borderRadius: R.control }}>
+            <Send size={14} />
+            {loading ? "Creating..." : "Create invoice"}
+          </Btn>
+        </div>
+      }
+    >
       <div
         style={{
           background: "#fff",
-          borderRadius: "4px",
+          borderRadius: R.control,
           padding: narrow ? "16px" : "20px",
           boxShadow: "-5px -2px 108.5px 0px #00024914",
           width: "100%",
@@ -330,7 +331,7 @@ export default function InvoiceAddPage() {
                   borderCollapse: "collapse",
                   fontSize: "12px",
                   border: `1px solid ${C.border}`,
-                  borderRadius: "4px",
+                  borderRadius: R.control,
                   overflow: "hidden",
                   tableLayout: "fixed",
                 }}
@@ -366,7 +367,7 @@ export default function InvoiceAddPage() {
                             width: "100%",
                             padding: "8px 10px",
                             border: `1px solid ${C.border}`,
-                            borderRadius: "4px",
+                            borderRadius: R.control,
                             fontSize: "12px",
                             lineHeight: "1.25",
                             boxSizing: "border-box",
@@ -383,7 +384,7 @@ export default function InvoiceAddPage() {
                             width: "100%",
                             padding: "8px 10px",
                             border: `1px solid ${C.border}`,
-                            borderRadius: "4px",
+                            borderRadius: R.control,
                             fontSize: "12px",
                             lineHeight: "1.25",
                             boxSizing: "border-box",
@@ -418,7 +419,7 @@ export default function InvoiceAddPage() {
                             width: "100%",
                             padding: "8px 10px",
                             border: `1px solid ${C.border}`,
-                            borderRadius: "4px",
+                            borderRadius: R.control,
                             fontSize: "12px",
                             lineHeight: "1.25",
                             boxSizing: "border-box",
@@ -532,7 +533,7 @@ export default function InvoiceAddPage() {
                 ...fullWidth,
                 padding: "12px 14px",
                 background: `${C.invoice}08`,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 fontSize: "12px",
               }}
             >
@@ -582,7 +583,7 @@ export default function InvoiceAddPage() {
         <div style={{ fontSize: "13px", color: C.primary, lineHeight: 1.5 }}>
           Create this invoice{sendImmediately ? " and send it immediately" : ""}?
         </div>
-        <div style={{ display: "grid", gap: "8px", marginTop: "14px", padding: "12px", background: `${C.invoice}08`, borderRadius: "8px", fontSize: "12px" }}>
+        <div style={{ display: "grid", gap: "8px", marginTop: "14px", padding: "12px", background: `${C.invoice}08`, borderRadius: R.control, fontSize: "12px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
             <span style={{ color: C.muted }}>Client</span>
             <strong>{selectedClient?.name ?? "Selected client"}</strong>
@@ -606,6 +607,6 @@ export default function InvoiceAddPage() {
           </Btn>
         </div>
       </Mdl>
-    </div>
+    </PageShell>
   );
 }

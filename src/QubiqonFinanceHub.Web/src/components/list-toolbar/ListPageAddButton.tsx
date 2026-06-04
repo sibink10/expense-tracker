@@ -30,7 +30,6 @@ export default function ListPageAddButton({ addPath, label, className }: ListPag
         v="primary"
         onClick={handleClick}
         sx={{
-          borderRadius: "4px",
           boxShadow: C.cardShadow,
           width: "100%",
           height: "100%",

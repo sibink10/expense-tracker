@@ -13,7 +13,7 @@
 
 .phone-input-field .PhoneInputCountryIcon {
   box-shadow: 0 0 0 1px var(--phone-border, #e2e8f0);
-  border-radius: 4px;
+  border-radius: 0.75rem;
 }
 
 .phone-input-field .PhoneInputInput {
@@ -22,7 +22,7 @@
   padding: 6px 10px;
   font-size: 13px;
   font-family: "Inter", "Manrope", system-ui, sans-serif;
-  border-radius: var(--phone-radius, 8px);
+  border-radius: var(--phone-radius, 0.75rem);
   border: 1px solid var(--phone-border, #e2e8f0);
   outline: none;
   box-sizing: border-box;
@@ -50,7 +50,7 @@
   min-height: 34px;
   padding: 0 6px;
   font-size: 13px;
-  border-radius: var(--phone-radius, 8px);
+  border-radius: var(--phone-radius, 0.75rem);
   border: 1px solid var(--phone-border, #e2e8f0);
   background: #fff;
   cursor: pointer;

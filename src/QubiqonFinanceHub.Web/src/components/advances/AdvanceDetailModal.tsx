@@ -8,6 +8,13 @@ import { getApiErrorMessage } from "../../shared/api/client";
 import { cancelAdvance } from "../../shared/api/advance";
 import { useAppContext } from "../../context/AppContext";
 import type { Advance } from "../../types";
+import {
+  DetailField,
+  DetailGrid,
+  DetailModalSurface,
+  DetailSection,
+  DetailTable,
+} from "../shared/EntityDetailModalParts";
 
 interface Props {
   advance: Advance;
@@ -21,35 +28,44 @@ export default function AdvanceDetailModal({ advance: a, previousAdvances: hist 
   const canCancelAdvance = !isCancelled && canCancelAdvanceRequest(a, user);
 
   return (
-    <Mdl open close={() => setMdl(null)} title={a.id} w>
-      <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap", marginBottom: "16px" }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: "13px", fontWeight: 600 }}>{a.empName} · {a.dept}</div>
+    <Mdl open close={() => setMdl(null)} title={a.id} subtitle="Advance" w>
+      <DetailModalSurface>
+      <DetailSection title="General information">
+        <DetailGrid>
+          <DetailField label="Employee" value={`${a.empName} · ${a.dept}`} />
+          <DetailField label="Amount" value={fmtCur(a.amt)} />
+          {(a.paidAmount ?? 0) > 0 && (
+            <DetailField label="Paid" value={fmtCur(a.paidAmount ?? 0)} />
+          )}
+        </DetailGrid>
+        <div style={{ marginTop: "12px" }}>
+          <Badge s={a.status} />
         </div>
-        <div style={{ fontSize: "20px", fontWeight: 700, color: C.advance }}>{fmtCur(a.amt)}</div>
-        {(a.paidAmount ?? 0) > 0 && (
-          <div>
-            <div style={{ fontSize: "10px", color: C.muted }}>Paid</div>
-            <div style={{ fontSize: "14px", fontWeight: 600, color: C.advance }}>{fmtCur(a.paidAmount ?? 0)}</div>
-          </div>
-        )}
-        <div style={{ display: "flex", alignItems: "center" }}><Badge s={a.status} /></div>
-      </div>
-      <div style={{ padding: "10px 14px", background: C.surface, borderRadius: "8px", marginBottom: "12px", fontSize: "12px" }}>{a.purpose}</div>
+      </DetailSection>
+
+      <DetailSection title="Purpose">
+        <div className="detail-purpose-block">{a.purpose || "—"}</div>
+      </DetailSection>
+
       <CLog comments={a.comments} />
+
       {(is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN)) && hist.length > 0 && (
-        <div style={{ marginBottom: "12px" }}>
-          <div style={{ fontSize: "10px", color: C.muted, fontWeight: 600, textTransform: "uppercase", marginBottom: "6px" }}>Previous advances</div>
-          {hist.map((h) => (
-            <div key={h.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "6px 10px", borderBottom: `1px solid ${C.border}`, fontSize: "11px" }}>
-              <span style={{ color: C.advance, fontWeight: 600 }}>{h.id}</span>
-              <span>{fmtCur(h.amt)}</span>
-              <Badge s={h.status} />
-            </div>
-          ))}
-        </div>
+        <DetailSection title="Previous advances">
+          <DetailTable
+            columns={["ID", "Amount", "Status"]}
+            rows={hist.map((h) => [
+              <span key={`${h.id}-id`} style={{ color: C.advance, fontWeight: 600 }}>
+                {h.id}
+              </span>,
+              fmtCur(h.amt),
+              <Badge key={`${h.id}-s`} s={h.status} />,
+            ])}
+          />
+        </DetailSection>
       )}
-      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "flex-end" }}>
+
+      </DetailModalSurface>
+      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "flex-end", padding: "16px 0 8px" }}>
         {canCancelAdvance && (
           <Btn
             v="secondary"
@@ -74,7 +90,8 @@ export default function AdvanceDetailModal({ advance: a, previousAdvances: hist 
         )}
         {(is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN)) &&
           !advanceRaisedByCurrentUser(a, user) &&
-          !isCancelled && a.status === ADV_S.PENDING && (
+          !isCancelled &&
+          a.status === ADV_S.PENDING && (
           <>
             <Btn v="success" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: MODAL_T.ADV_APPROVE, d: a }), 50); }}>Approve</Btn>
             <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: MODAL_T.REJECT, d: a, it: ITEM_T.ADVANCE }), 50); }}>Reject</Btn>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { C } from "../../shared/theme";
+import { C, R } from "../../shared/theme";
 import { fmtCur } from "../../shared/utils";
 import { Inp, Btn, Mdl, Alert } from "../ui";
 import { useAppContext } from "../../context/AppContext";
@@ -102,7 +102,7 @@ export default function AdvanceDisburseModal() {
         style={{
           padding: "10px 14px",
           background: C.surface,
-          borderRadius: "8px",
+          borderRadius: R.control,
           marginBottom: "12px",
           fontSize: "12px",
         }}
@@ -141,7 +141,7 @@ export default function AdvanceDisburseModal() {
             marginBottom: "8px",
             padding: "8px 10px",
             background: C.surface,
-            borderRadius: "8px",
+            borderRadius: R.control,
             border: `1px solid ${C.border}`,
           }}
         >

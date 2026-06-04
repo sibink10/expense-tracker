@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMsal } from "@azure/msal-react";
-import { C } from "../shared/theme";
+import { C, R } from "../shared/theme";
 import { Av } from "./ui";
 import { MicrosoftIcon } from "./icons";
 import { ROLES } from "../shared/constants";
@@ -147,7 +147,7 @@ export default function Login({ onLogin }: LoginProps) {
             style={{
               background: "#fff",
               border: "1px solid #e7eaee",
-              borderRadius: "12px",
+              borderRadius: R.control,
               padding: "32px",
               boxShadow: "0 10px 24px rgba(18, 38, 63, 0.05)",
             }}
@@ -164,7 +164,7 @@ export default function Login({ onLogin }: LoginProps) {
                 style={{
                   padding: "8px 10px",
                   background: C.dangerBg,
-                  borderRadius: "8px",
+                  borderRadius: R.control,
                   marginBottom: "12px",
                   fontSize: "11px",
                   color: C.danger,
@@ -186,7 +186,7 @@ export default function Login({ onLogin }: LoginProps) {
                 padding: "11px 14px",
                 width: "100%",
                 border: "1px solid #d7dce2",
-                borderRadius: "8px",
+                borderRadius: R.control,
                 background: useDevPicker ? "#f8fafc" : "#fff",
                 cursor: ld ? "wait" : useDevPicker ? "not-allowed" : "pointer",
                 fontFamily: "'Inter', 'Manrope', sans-serif",
@@ -225,7 +225,7 @@ export default function Login({ onLogin }: LoginProps) {
                     gap: "8px",
                     padding: "8px 10px",
                     background: "#f8fafc",
-                    borderRadius: "8px",
+                    borderRadius: R.control,
                     marginBottom: "12px",
                     border: `1px solid ${C.border}`,
                   }}
@@ -245,7 +245,7 @@ export default function Login({ onLogin }: LoginProps) {
                         padding: "10px 12px",
                         background: sel === u.id ? `${C.accent}10` : "#fff",
                         border: `1.5px solid ${sel === u.id ? C.accent : "transparent"}`,
-                        borderRadius: "8px",
+                        borderRadius: R.control,
                         cursor: ld ? "wait" : "pointer",
                         width: "100%",
                         textAlign: "left",
@@ -307,7 +307,7 @@ export default function Login({ onLogin }: LoginProps) {
                     width: "100%",
                     height: "42px",
                     border: "1px solid #e4e8ed",
-                    borderRadius: "8px",
+                    borderRadius: R.control,
                     padding: "0 12px",
                     fontSize: "13px",
                     color: "#111827",
@@ -335,7 +335,7 @@ export default function Login({ onLogin }: LoginProps) {
                     width: "100%",
                     height: "42px",
                     border: "1px solid #e4e8ed",
-                    borderRadius: "8px",
+                    borderRadius: R.control,
                     padding: "0 12px",
                     fontSize: "13px",
                     color: "#111827",
@@ -354,7 +354,7 @@ export default function Login({ onLogin }: LoginProps) {
                     padding: "9px 18px",
                     width: "100%",
                     border: "none",
-                    borderRadius: "8px",
+                    borderRadius: R.control,
                     background: "#10a879",
                     cursor: ld ? "wait" : "pointer",
                     fontFamily: "'Inter', 'Manrope', sans-serif",

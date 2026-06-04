@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import Select from "react-select";
-import { C } from "../shared/theme";
+import { C, R } from "../shared/theme";
 
 interface Option {
   value: string;
@@ -15,7 +15,7 @@ interface AsyncSelectInputProps {
   disabled?: boolean;
   placeholder?: string;
   req?: boolean;
-  controlRadius?: number;
+  controlRadius?: string | number;
 }
 
 export function AsyncSelectInput({
@@ -26,7 +26,7 @@ export function AsyncSelectInput({
   disabled,
   placeholder,
   req = true,
-  controlRadius = 8,
+  controlRadius = R.control,
 }: AsyncSelectInputProps) {
   const [options, setOptions] = useState<Option[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,7 +121,7 @@ export function AsyncSelectInput({
           }),
           menu: (base) => ({
             ...base,
-            borderRadius: 8,
+            borderRadius: R.control,
             boxShadow: "0 8px 24px rgba(15,23,42,0.12)",
             zIndex: 20,
           }),

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { C } from "../../shared/theme";
+import { C, R } from "../../shared/theme";
 import { EVENTS, EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP, EXP_S, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur, downloadFromSasUrl, buildDownloadFilename } from "../../shared/utils";
 import {
@@ -273,7 +273,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
       {e.forecast && (
         <div style={{ marginBottom: "12px" }}>
           <div style={{ fontSize: "10px", color: C.muted, marginBottom: "4px" }}>Forecast</div>
-          <div style={{ padding: "10px 14px", background: C.surface, borderRadius: "8px", fontSize: "12px" }}>
+          <div style={{ padding: "10px 14px", background: C.surface, borderRadius: R.control, fontSize: "12px" }}>
             <div style={{ fontWeight: 700, color: C.primary, marginBottom: "4px" }}>{e.forecast.title}</div>
             <div style={{ color: C.muted }}>
               {e.forecast.purpose} · ₹{e.forecast.expectedAmount.toLocaleString("en-IN")} · {e.forecast.expectedExpenseDate}
@@ -289,7 +289,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
         ) : (
           <>
             <div style={{ fontSize: "10px", color: C.muted, marginBottom: "4px" }}>Purpose</div>
-            <div style={{ padding: "10px 14px", background: C.surface, borderRadius: "8px", fontSize: "12px" }}>{e.purpose}</div>
+            <div style={{ padding: "10px 14px", background: C.surface, borderRadius: R.control, fontSize: "12px" }}>{e.purpose}</div>
           </>
         )}
       </div>
@@ -308,7 +308,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
           <div style={{ display: "grid", gap: "8px" }}>
             {e.documents.length > 0 ? (
               e.documents.map((document) => (
-                <div key={document.id} style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", padding: "8px 10px", background: C.surface, borderRadius: "8px" }}>
+                <div key={document.id} style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", padding: "8px 10px", background: C.surface, borderRadius: R.control }}>
                   <span style={{ fontSize: "11px", fontWeight: 600 }}>📎 {document.name}</span>
                   <span style={{ fontSize: "10px", color: C.muted }}>{document.sizeLabel}</span>
                   <span style={{ fontSize: "10px", color: C.muted }}>{document.uploadedAt}</span>
@@ -334,7 +334,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
             ) : (
               <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                 {e.file && (
-                  <span style={{ padding: "6px 10px", background: C.surface, borderRadius: "6px", fontSize: "11px" }}>
+                  <span style={{ padding: "6px 10px", background: C.surface, borderRadius: R.control, fontSize: "11px" }}>
                     📎 {e.file.n} ({e.file.s})
                   </span>
                 )}
@@ -406,7 +406,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
 
       {/* Inline upload panel when Awaiting bill and no image */}
       {showBillUploadPanel && (
-        <div style={{ padding: "14px", background: C.surface, borderRadius: "8px", marginBottom: "12px", border: `1px solid ${C.border}` }}>
+        <div style={{ padding: "14px", background: C.surface, borderRadius: R.control, marginBottom: "12px", border: `1px solid ${C.border}` }}>
           <div style={{ fontSize: "11px", fontWeight: 600, color: C.primary, marginBottom: "10px" }}>Upload bill documents (PDF)</div>
           <MultiFileUp files={billFilesRaw} onChange={setBillFilesRaw} accept=".pdf" hint="PDF only" title="Bill documents" />
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}>
@@ -439,7 +439,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
                 height: "36px",
                 padding: 0,
                 border: "none",
-                borderRadius: "8px",
+                borderRadius: R.control,
                 background: "rgba(37, 99, 235, 0.1)",
                 cursor: "pointer",
                 fontFamily: "inherit",

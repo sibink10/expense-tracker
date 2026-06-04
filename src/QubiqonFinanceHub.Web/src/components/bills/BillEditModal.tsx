@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { C } from "../../shared/theme";
+import { C, R } from "../../shared/theme";
 import { BILL_ACCOUNTS, BILL_PAYMENT_PRIORITY, BILL_PAYMENT_PRIORITY_OPTIONS, EVENTS, MODAL_T, PAY_TERMS } from "../../shared/constants";
 import { addDays, fmtCur, round2, aggregateLineGstRows, formatTdsOptionLabel, formatTdsSummarySnippet, downloadFromSasUrl, buildDownloadFilename } from "../../shared/utils";
-import { Inp, Btn, Alert, Mdl, MultiFileUp } from "../ui";
+import { Inp, Btn, Alert, Mdl, MultiFileUp, MobileHScroll } from "../ui";
 import DecimalLineInput from "../DecimalLineInput";
 import { useAppContext } from "../../context/AppContext";
 import { updateBill, uploadVendorBill, removeBillDocument, getBillDocument } from "../../shared/api/bill";
@@ -47,7 +47,7 @@ function priorityValueFromApiLabel(label?: string): string {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div style={{ padding: "16px 18px", border: `1px solid ${C.border}`, borderRadius: "10px", marginBottom: "16px", background: "#fff" }}>
+    <div style={{ padding: "16px 18px", border: `1px solid ${C.border}`, borderRadius: R.control, marginBottom: "16px", background: "#fff" }}>
       <h3 style={{ fontSize: "13px", fontWeight: 600, color: C.primary, margin: "0 0 12px", paddingBottom: "8px", borderBottom: `1px solid ${C.border}`, textTransform: "uppercase", letterSpacing: "0.05em" }}>{title}</h3>
       {children}
     </div>
@@ -219,7 +219,7 @@ export default function BillEditModal() {
     <Mdl open close={() => setMdl(null)} title={`Edit bill — ${bill.vendorBillNumber || bill.id}`} w maxWidth="960px">
       <Section title="Vendor & Bill Info">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-          <div style={{ gridColumn: "1 / -1", padding: "10px 12px", background: C.surface, borderRadius: "8px", fontSize: "12px" }}>
+          <div style={{ gridColumn: "1 / -1", padding: "10px 12px", background: C.surface, borderRadius: R.control, fontSize: "12px" }}>
             <span style={{ color: C.muted }}>Vendor</span> <strong>{bill.vName}</strong> {bill.vGst && <span style={{ color: C.muted }}>· {bill.vGst}</span>}
           </div>
           <Inp label="Vendor bill number" value={vendorBillNumber} onChange={(e) => setVendorBillNumber(e.target.value)} req ph="Enter vendor bill number" style={cellCompact} />
@@ -246,8 +246,8 @@ export default function BillEditModal() {
           <span>Add at least one item</span>
           <Btn sm v="vendor" onClick={addItemRow}>＋ Add New Row</Btn>
         </div>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", minWidth: "780px", borderCollapse: "collapse", fontSize: "12px", border: `1px solid ${C.border}`, borderRadius: "8px", overflow: "hidden" }}>
+        <MobileHScroll minWidth={780}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", border: `1px solid ${C.border}`, borderRadius: R.control, overflow: "hidden" }}>
             <thead>
               <tr style={{ background: C.surface }}>
                 <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600, fontSize: "11px", color: C.muted }}>Item Details</th>
@@ -268,7 +268,7 @@ export default function BillEditModal() {
                 return (
                   <tr key={row.id} style={{ borderTop: `1px solid ${C.border}` }}>
                     <td style={{ padding: "10px 12px" }}>
-                      <input type="text" value={row.description} onChange={(e) => updateItemRow(row.id, "description", e.target.value)} placeholder="Item name / description" style={{ width: "100%", padding: "8px 10px", border: `1px solid ${C.border}`, borderRadius: "6px", fontSize: "12px", boxSizing: "border-box" }} />
+                      <input type="text" value={row.description} onChange={(e) => updateItemRow(row.id, "description", e.target.value)} placeholder="Item name / description" style={{ width: "100%", padding: "8px 10px", border: `1px solid ${C.border}`, borderRadius: R.control, fontSize: "12px", boxSizing: "border-box" }} />
                     </td>
                     <td style={{ padding: "10px 12px" }}>
                       <Inp label="" type="select" value={row.account} onChange={(e) => updateItemRow(row.id, "account", e.target.value)} opts={accountOpts} style={cellCompact} />
@@ -291,7 +291,7 @@ export default function BillEditModal() {
               })}
             </tbody>
           </table>
-        </div>
+        </MobileHScroll>
       </Section>
 
       <Section title="Summary">
@@ -309,7 +309,7 @@ export default function BillEditModal() {
               style={cellCompact}
             />
           </div>
-          <div style={{ padding: "14px 16px", background: `${C.vendor}08`, borderRadius: "8px", fontSize: "12px", border: `1px solid ${C.vendor}20` }}>
+          <div style={{ padding: "14px 16px", background: `${C.vendor}08`, borderRadius: R.control, fontSize: "12px", border: `1px solid ${C.vendor}20` }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}><span style={{ color: C.muted }}>Sub Total</span><span style={{ fontWeight: 600 }}>{fmtCur(subTotal)}</span></div>
             {totalQty > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", fontSize: "11px", color: C.muted }}><span>Total Quantity</span><span>{totalQty}</span></div>}
             {discountPct && parseFloat(discountPct) > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}><span style={{ color: C.muted }}>Discount ({discountPct}%)</span><span style={{ color: C.success }}>-{fmtCur(discountAmount)}</span></div>}
@@ -348,7 +348,7 @@ export default function BillEditModal() {
               <div style={{ fontSize: "10px", color: C.muted, marginBottom: "6px", fontWeight: 600 }}>Current attachments</div>
               <div style={{ display: "grid", gap: "8px" }}>
                 {documents.map((document) => (
-                  <div key={document.id} style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", padding: "8px 10px", background: C.surface, borderRadius: "8px" }}>
+                  <div key={document.id} style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", padding: "8px 10px", background: C.surface, borderRadius: R.control }}>
                     <span style={{ fontSize: "11px", fontWeight: 600 }}>📎 {document.name}</span>
                     <span style={{ fontSize: "10px", color: C.muted }}>{document.sizeLabel}</span>
                     <span style={{ fontSize: "10px", color: C.muted }}>{document.uploadedAt}</span>

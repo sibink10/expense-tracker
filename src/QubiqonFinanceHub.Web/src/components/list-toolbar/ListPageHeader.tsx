@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { C } from "../../shared/theme";
+import PageShell from "../PageShell";
 import "./list-toolbar.css";
 
 export type ListPageHeaderProps = {
@@ -12,6 +13,8 @@ export type ListPageHeaderProps = {
   actions?: ReactNode;
   className?: string;
   hidden?: boolean;
+  /** When set, wraps content in a fixed header + scrollable body layout */
+  children?: ReactNode;
 };
 
 export default function ListPageHeader({
@@ -22,8 +25,9 @@ export default function ListPageHeader({
   actions,
   className,
   hidden,
+  children,
 }: ListPageHeaderProps) {
-  if (hidden) return null;
+  if (hidden && children == null) return null;
 
   const structuredActions = search || addAction;
   const actionContent = structuredActions ? (
@@ -44,7 +48,7 @@ export default function ListPageHeader({
     <div className="list-page-header__actions">{actions}</div>
   ) : null;
 
-  return (
+  const headerEl = hidden ? null : (
     <div
       className={`list-page-header ${className ?? ""}`.trim()}
       style={{
@@ -60,7 +64,6 @@ export default function ListPageHeader({
           gap: "8px",
           color: C.primary,
           fontFamily: "'Manrope', sans-serif",
-          fontSize: "18px",
           fontWeight: 600,
           lineHeight: "100%",
           letterSpacing: "-0.02em",
@@ -72,4 +75,10 @@ export default function ListPageHeader({
       {actionContent}
     </div>
   );
+
+  if (children != null) {
+    return <PageShell header={headerEl}>{children}</PageShell>;
+  }
+
+  return headerEl;
 }

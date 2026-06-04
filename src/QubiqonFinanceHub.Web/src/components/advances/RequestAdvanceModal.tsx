@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { CirclePlus, X } from "lucide-react";
-import { C } from "../../shared/theme";
+import { C, R } from "../../shared/theme";
 import { fmtCur } from "../../shared/utils";
 import { Alert, Av, Btn, Inp, Mdl } from "../ui";
 import { useAppContext } from "../../context/AppContext";
@@ -65,7 +65,7 @@ export default function RequestAdvanceModal() {
       <div
         style={{
           background: C.white,
-          borderRadius: "12px",
+          borderRadius: R.control,
           padding: "4px 0 0",
         }}
       >
@@ -76,7 +76,7 @@ export default function RequestAdvanceModal() {
             gap: "10px",
             padding: "10px 14px",
             background: C.advanceBg,
-            borderRadius: "8px",
+            borderRadius: R.control,
             marginBottom: "14px",
           }}
         >
@@ -124,7 +124,7 @@ export default function RequestAdvanceModal() {
             sm
             onClick={() => setMdl(null)}
             disabled={loading}
-            sx={{ borderRadius: "4px" }}
+            sx={{ borderRadius: R.control }}
           >
             <X size={15} strokeWidth={1.8} />
             Cancel
@@ -134,7 +134,7 @@ export default function RequestAdvanceModal() {
             sm
             onClick={openConfirm}
             disabled={!amt || !pur.trim() || invalidAmount || over || loading}
-            sx={{ borderRadius: "4px", boxShadow: C.cardShadow }}
+            sx={{ borderRadius: R.control, boxShadow: C.cardShadow }}
           >
             <CirclePlus size={15} strokeWidth={1.8} />
             {loading ? "Submitting..." : "Submit"}
@@ -145,7 +145,7 @@ export default function RequestAdvanceModal() {
         <div style={{ fontSize: "13px", color: C.primary, lineHeight: 1.5 }}>
           Submit this advance request for approval?
         </div>
-        <div style={{ display: "grid", gap: "8px", marginTop: "14px", padding: "12px", background: C.advanceBg, borderRadius: "8px", fontSize: "12px" }}>
+        <div style={{ display: "grid", gap: "8px", marginTop: "14px", padding: "12px", background: C.advanceBg, borderRadius: R.control, fontSize: "12px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
             <span style={{ color: C.muted }}>Amount</span>
             <strong>{fmtCur(parseFloat(amt) || 0)}</strong>
@@ -156,10 +156,10 @@ export default function RequestAdvanceModal() {
           </div>
         </div>
         <div style={{ marginTop: "18px", display: "flex", justifyContent: "flex-end", gap: "8px", flexWrap: "wrap" }}>
-          <Btn v="secondary" sm onClick={() => setConfirmOpen(false)} disabled={loading} sx={{ borderRadius: "4px" }}>
+          <Btn v="secondary" sm onClick={() => setConfirmOpen(false)} disabled={loading} sx={{ borderRadius: R.control }}>
             Cancel
           </Btn>
-          <Btn v="primary" sm onClick={submit} disabled={loading} sx={{ borderRadius: "4px" }}>
+          <Btn v="primary" sm onClick={submit} disabled={loading} sx={{ borderRadius: R.control }}>
             <CirclePlus size={15} strokeWidth={1.8} />
             {loading ? "Submitting..." : "Confirm submit"}
           </Btn>

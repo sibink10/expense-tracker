@@ -10,7 +10,7 @@ namespace QubiqonFinanceHub.API.Services.Implementations;
 
 public class DashboardService : IDashboardService
 {
-    private const int TopReceivableClients = 8;
+    private const int TopClients = 8;
     private const string DefaultReportCurrency = "INR";
 
     private static readonly InvoiceStatusCountsDto EmptyInvoiceCounts = new(0, 0, 0, 0, 0);
@@ -18,22 +18,22 @@ public class DashboardService : IDashboardService
 
     private readonly FinanceHubDbContext _db;
     private readonly ITenantService _tenant;
-    private readonly IInvoiceService _invoices;
     private readonly ICurrencyRateService _currencyRates;
 
     public DashboardService(
         FinanceHubDbContext db,
         ITenantService tenant,
-        IInvoiceService invoices,
         ICurrencyRateService currencyRates)
     {
         _db = db;
         _tenant = tenant;
-        _invoices = invoices;
         _currencyRates = currencyRates;
     }
 
-    public async Task<DashboardDto> GetStatsAsync(bool myOnly = false, string? reportCurrency = null)
+    public async Task<DashboardDto> GetStatsAsync(
+        bool myOnly = false,
+        string? reportCurrency = null,
+        DashboardPeriod period = DashboardPeriod.Total)
     {
         var role = (await _tenant.GetCurrentEmployeeAsync()).Role;
         var scopeMyOnly = myOnly || role == UserRole.Employee;
@@ -44,20 +44,30 @@ public class DashboardService : IDashboardService
         var orgId = await _tenant.GetCurrentOrganizationId();
         var empId = _tenant.GetCurrentEmployeeId();
         var todayUtc = DateTime.UtcNow.Date;
+        (DateTime Start, DateTime End)? monthRange =
+            period == DashboardPeriod.Month ? GetCurrentMonthRangeUtc() : null;
 
         var expenses = _db.ExpenseRequests.Where(e => e.OrganizationId == orgId);
         if (scopeMyOnly) expenses = expenses.Where(e => e.EmployeeId == empId);
+        if (monthRange != null)
+            expenses = expenses.Where(e => e.CreatedAt >= monthRange.Value.Start && e.CreatedAt < monthRange.Value.End);
 
         var advances = _db.AdvancePayments.Where(a => a.OrganizationId == orgId);
         if (scopeMyOnly) advances = advances.Where(a => a.EmployeeId == empId);
+        if (monthRange != null)
+            advances = advances.Where(a => a.CreatedAt >= monthRange.Value.Start && a.CreatedAt < monthRange.Value.End);
 
-        // Pending approvals: expense + advance only (not vendor bills).
         var pendingExpenseApprovals =
-            await expenses.CountAsync(e =>
-                e.Status == ExpenseStatus.PendingApproval ||
-                e.Status == ExpenseStatus.AwaitingBill ||
-                e.Status == ExpenseStatus.PendingBillApproval);
-        var pendingAdvanceOnly = await advances.CountAsync(a => a.Status == AdvanceStatus.Pending);
+            await _db.ExpenseRequests.Where(e => e.OrganizationId == orgId)
+                .Where(e => scopeMyOnly ? e.EmployeeId == empId : true)
+                .CountAsync(e =>
+                    e.Status == ExpenseStatus.PendingApproval ||
+                    e.Status == ExpenseStatus.AwaitingBill ||
+                    e.Status == ExpenseStatus.PendingBillApproval);
+        var pendingAdvanceOnly =
+            await _db.AdvancePayments.Where(a => a.OrganizationId == orgId)
+                .Where(a => scopeMyOnly ? a.EmployeeId == empId : true)
+                .CountAsync(a => a.Status == AdvanceStatus.Pending);
         var pendingApprovals = pendingExpenseApprovals + pendingAdvanceOnly;
 
         var expenseSlices = await BuildExpenseSlicesAsync(expenses);
@@ -70,35 +80,46 @@ public class DashboardService : IDashboardService
 
         if (includeBills)
         {
-            var bills = await _db.VendorBills
-                .Where(b => b.OrganizationId == orgId)
-                .AsNoTracking()
-                .ToListAsync();
+            var billsQuery = _db.VendorBills.Where(b => b.OrganizationId == orgId).AsNoTracking();
+            var allBills = await billsQuery.ToListAsync();
+            pendingSubmittedBills = allBills.Count(b => b.Status == BillStatus.Submitted);
 
-            pendingSubmittedBills = bills.Count(b => b.Status == BillStatus.Submitted);
-            (billsPayableSlices, billsToPayCount, billsToPayAmount) =
-                BuildBillsPayableAggregates(bills, todayUtc);
+            var chartBills = monthRange != null
+                ? allBills
+                    .Where(b => b.BillDate >= monthRange.Value.Start && b.BillDate < monthRange.Value.End)
+                    .ToList()
+                : allBills;
+
+            (_, billsToPayCount, billsToPayAmount) = BuildBillsPayableAggregates(allBills, todayUtc);
+            (billsPayableSlices, _, _) = BuildBillsPayableAggregates(chartBills, todayUtc);
         }
 
         var invoiceCounts = EmptyInvoiceCounts;
-        if (includeInvoices)
-            invoiceCounts = await _invoices.GetStatusCountsAsync();
+        List<DashboardSliceDto> clientRevenueByClient = EmptySlices;
 
         IReadOnlyList<string> availableCurrencies = [DefaultReportCurrency];
         string reportCode = DefaultReportCurrency;
         decimal receivableOutstanding = 0;
         List<DashboardSliceDto> receivablesByClient = EmptySlices;
 
-        if (includeReceivables)
+        if (includeInvoices)
         {
+            var invoices = _db.Invoices.Where(i => i.OrganizationId == orgId).AsNoTracking();
+            invoiceCounts = await GetInvoiceStatusCountsAsync(invoices, todayUtc, monthRange);
+
             var (usdRates, currencies) = await _currencyRates.LoadUsdReportingRatesAsync();
             availableCurrencies = currencies;
             reportCode = ResolveReportCurrency(reportCurrency, availableCurrencies);
 
-            var invoices = _db.Invoices.Where(i => i.OrganizationId == orgId).AsNoTracking();
-            var receivableBuckets = await LoadReceivableCurrencyBucketsAsync(invoices);
-            (receivableOutstanding, receivablesByClient) =
-                BuildReceivablesInReportCurrency(receivableBuckets, reportCode, usdRates);
+            if (includeReceivables)
+            {
+                var receivableBuckets = await LoadReceivableCurrencyBucketsAsync(invoices);
+                (receivableOutstanding, receivablesByClient) =
+                    BuildReceivablesInReportCurrency(receivableBuckets, reportCode, usdRates);
+            }
+
+            var revenueBuckets = await LoadClientRevenueCurrencyBucketsAsync(invoices, monthRange);
+            clientRevenueByClient = BuildClientRevenueInReportCurrency(revenueBuckets, reportCode, usdRates);
         }
         else
         {
@@ -117,23 +138,107 @@ public class DashboardService : IDashboardService
             advanceSlices,
             billsPayableSlices,
             receivablesByClient,
+            clientRevenueByClient,
             availableCurrencies,
             reportCode);
     }
 
-    /// <summary>
-    /// Payable rows with open balance (excludes draft/rejected/paid), same basis as /api/bills display.
-    /// </summary>
+    private static (DateTime Start, DateTime End) GetCurrentMonthRangeUtc()
+    {
+        var now = DateTime.UtcNow;
+        var start = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var end = start.AddMonths(1);
+        return (start, end);
+    }
+
+    private static async Task<InvoiceStatusCountsDto> GetInvoiceStatusCountsAsync(
+        IQueryable<Invoice> invoices,
+        DateTime today,
+        (DateTime Start, DateTime End)? monthRange)
+    {
+        if (monthRange != null)
+        {
+            invoices = invoices.Where(i =>
+                i.InvoiceDate >= monthRange.Value.Start && i.InvoiceDate < monthRange.Value.End);
+        }
+
+        var draft = await invoices.CountAsync(x => x.Status == InvoiceStatus.Draft);
+        var sent = await invoices.CountAsync(x =>
+            x.Status == InvoiceStatus.Sent
+            && !(x.paidAmound < x.Total && x.DueDate < today));
+        var partiallyPaid = await invoices.CountAsync(x =>
+            x.Status == InvoiceStatus.PartiallyPaid
+            && !(x.paidAmound < x.Total && x.DueDate < today));
+        var paid = await invoices.CountAsync(x => x.Status == InvoiceStatus.Paid);
+        var overdue = await invoices.CountAsync(x =>
+            x.paidAmound < x.Total
+            && x.DueDate < today
+            && (x.Status == InvoiceStatus.Sent || x.Status == InvoiceStatus.PartiallyPaid));
+
+        return new InvoiceStatusCountsDto(draft, sent, partiallyPaid, paid, overdue);
+    }
+
+    private static async Task<List<ClientRevenueCurrencyBucket>> LoadClientRevenueCurrencyBucketsAsync(
+        IQueryable<Invoice> invoices,
+        (DateTime Start, DateTime End)? monthRange)
+    {
+        var query = invoices.Where(i =>
+            i.paidAmound > 0
+            && (i.Status == InvoiceStatus.Paid || i.Status == InvoiceStatus.PartiallyPaid));
+
+        if (monthRange != null)
+        {
+            query = query.Where(i =>
+                i.PaidAt != null
+                && i.PaidAt >= monthRange.Value.Start
+                && i.PaidAt < monthRange.Value.End);
+        }
+
+        return await query
+            .GroupBy(i => new { i.ClientId, i.Currency })
+            .Select(g => new ClientRevenueCurrencyBucket(
+                g.Key.ClientId,
+                g.Max(i => i.Client.Name) ?? "Unknown",
+                g.Key.Currency ?? "",
+                g.Sum(i => i.paidAmound)))
+            .ToListAsync();
+    }
+
+    private List<DashboardSliceDto> BuildClientRevenueInReportCurrency(
+        IReadOnlyList<ClientRevenueCurrencyBucket> buckets,
+        string reportCode,
+        IReadOnlyDictionary<string, decimal> usdRates)
+    {
+        var byClient = new Dictionary<Guid, (string Name, decimal Total)>();
+
+        foreach (var bucket in buckets)
+        {
+            var source = (bucket.Currency ?? "").Trim().ToUpperInvariant();
+            if (source.Length != 3) source = reportCode;
+
+            var converted = _currencyRates.TryConvert(bucket.Collected, source, reportCode, usdRates);
+            if (converted == null) continue;
+
+            if (byClient.TryGetValue(bucket.ClientId, out var existing))
+                byClient[bucket.ClientId] = (existing.Name, existing.Total + converted.Value);
+            else
+                byClient[bucket.ClientId] = (bucket.ClientName, converted.Value);
+        }
+
+        return byClient
+            .Select(kv => new DashboardSliceDto(kv.Value.Name, kv.Value.Total, reportCode))
+            .Where(s => s.Value > 0)
+            .OrderByDescending(s => s.Value)
+            .Take(TopClients)
+            .ToList();
+    }
+
     private static bool VendorBillEligibleForBillsToPay(VendorBill b) =>
         b.Status != BillStatus.Paid
         && b.Status != BillStatus.Rejected
         && b.Status != BillStatus.Draft
         && b.PaidAmount < b.TotalPayable;
 
-    /// <summary>
-    /// Buckets: Approved, Partially paid, and Overdue. Overdue = <see cref="VendorBillStatusRules.IsComputationallyOverdue"/>
-    /// (Approved or PartiallyPaid + past due + open balance; same as bills list Overdue filter and BillDto display).
-    /// </summary>
     private static (
         List<DashboardSliceDto> slices,
         int count,
@@ -224,11 +329,6 @@ public class DashboardService : IDashboardService
         ];
     }
 
-
-
-    /// <summary>
-    /// One row per (client, native currency) with summed open balance — minimizes rows and FX calls for large invoice sets.
-    /// </summary>
     private static async Task<List<ReceivableCurrencyBucket>> LoadReceivableCurrencyBucketsAsync(
         IQueryable<Invoice> invoices) =>
         await invoices
@@ -271,7 +371,7 @@ public class DashboardService : IDashboardService
             .Select(kv => new DashboardSliceDto(kv.Value.Name, kv.Value.Total, reportCode))
             .Where(s => s.Value > 0)
             .OrderByDescending(s => s.Value)
-            .Take(TopReceivableClients)
+            .Take(TopClients)
             .ToList();
 
         return (totalOutstanding, topClients);
@@ -303,4 +403,10 @@ public class DashboardService : IDashboardService
         string ClientName,
         string Currency,
         decimal Outstanding);
+
+    private sealed record ClientRevenueCurrencyBucket(
+        Guid ClientId,
+        string ClientName,
+        string Currency,
+        decimal Collected);
 }

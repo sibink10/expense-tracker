@@ -12,7 +12,7 @@ import {
   Tbl,
   useNavPageAdd,
 } from "../ui";
-import { C } from "../../shared/theme";
+import { C, listTableCardStyle, workflowTableActionStyle } from "../../shared/theme";
 import { approveForecast, cancelForecast, getForecastsMapped, rejectForecast, submitForecast } from "../../shared/api/forecast";
 import type { Forecast } from "../../types";
 import { useAppContext } from "../../context/AppContext";
@@ -23,14 +23,6 @@ const STATUS_OPTIONS = ["all", "Draft", "Submitted", "Approved", "Rejected", "Ca
 function formatMoney(value: number) {
   return `₹${value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 }
-
-const workflowActionStyle = (fg: string, bg: string) => ({
-  borderRadius: "4px",
-  background: bg,
-  color: fg,
-  padding: "6px 8px",
-  minHeight: 26,
-});
 
 export default function ForecastListPageContent({ myOnly, isRequest, pendingOnly, hideHeader }: { myOnly?: boolean; isRequest?: boolean; pendingOnly?: boolean; hideHeader?: boolean }) {
   const navigate = useNavigate();
@@ -79,7 +71,6 @@ export default function ForecastListPageContent({ myOnly, isRequest, pendingOnly
         forecast,
         _cells: [
           { v: <span style={{ fontWeight: 600, color: C.primary }}>{forecast.title}</span> },
-          { v: forecast.purpose },
           { v: formatMoney(forecast.expectedAmount), sx: { whiteSpace: "nowrap" as const } },
           { v: forecast.expectedExpenseDate, sx: { whiteSpace: "nowrap" as const } },
           { v: <Badge s={forecast.status} />, sx: { textAlign: "center" as const, verticalAlign: "middle" as const } },
@@ -88,12 +79,12 @@ export default function ForecastListPageContent({ myOnly, isRequest, pendingOnly
           { v: forecast.expensesRaised, sx: { textAlign: "center" as const, verticalAlign: "middle" as const } },
           {
             v: (
-              <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", flexWrap: "nowrap", minHeight: 36, alignItems: "center", overflowX: "auto" }}>
+              <div style={{ display: "flex", gap: "6px", justifyContent: "center", flexWrap: "nowrap", minHeight: 36, alignItems: "center", overflowX: "auto", width: "100%" }}>
                 {forecast.status === "Draft" && (
                   <Btn
                     sm
                     v="ghost"
-                    sx={workflowActionStyle(C.success, C.successBg)}
+                    sx={workflowTableActionStyle(C.success, C.successBg)}
                     disabled={!!actionLoading}
                     onClick={async (e) => {
                       e.stopPropagation();
@@ -115,7 +106,7 @@ export default function ForecastListPageContent({ myOnly, isRequest, pendingOnly
                   <Btn
                     sm
                     v="ghost"
-                    sx={workflowActionStyle(C.danger, C.dangerBg)}
+                    sx={workflowTableActionStyle(C.danger, C.dangerBg)}
                     disabled={!!actionLoading}
                     onClick={async (e) => {
                       e.stopPropagation();
@@ -138,7 +129,7 @@ export default function ForecastListPageContent({ myOnly, isRequest, pendingOnly
                     <Btn
                       sm
                       v="ghost"
-                      sx={workflowActionStyle(C.success, C.successBg)}
+                      sx={workflowTableActionStyle(C.success, C.successBg)}
                       disabled={!!actionLoading}
                       onClick={async (e) => {
                         e.stopPropagation();
@@ -158,7 +149,7 @@ export default function ForecastListPageContent({ myOnly, isRequest, pendingOnly
                     <Btn
                       sm
                       v="ghost"
-                      sx={workflowActionStyle(C.danger, C.dangerBg)}
+                      sx={workflowTableActionStyle(C.danger, C.dangerBg)}
                       disabled={!!actionLoading}
                       onClick={async (e) => {
                         e.stopPropagation();
@@ -181,7 +172,7 @@ export default function ForecastListPageContent({ myOnly, isRequest, pendingOnly
                 )}
               </div>
             ),
-            sx: { textAlign: "right" as const },
+            sx: { textAlign: "center" as const, verticalAlign: "middle" as const },
           },
         ],
       })),
@@ -197,9 +188,8 @@ export default function ForecastListPageContent({ myOnly, isRequest, pendingOnly
   };
 
   return (
-    <div style={{ width: "100%" }}>
-      {!hideHeader && (
         <ListPageHeader
+          hidden={hideHeader}
           title="Forecast management"
           icon={<Target size={22} color={C.text} strokeWidth={1.8} />}
           search={<CollapsibleSearch value={search} onChange={setSearch} placeholder="Search forecasts..." />}
@@ -208,9 +198,8 @@ export default function ForecastListPageContent({ myOnly, isRequest, pendingOnly
               <ListPageAddButton addPath={navAdd.addPath} label="Add forecast" />
             ) : undefined
           }
-        />
-      )}
-      <div style={{ background: "#fff", borderRadius: "4px", padding: "16px", boxShadow: "-5px -2px 108.5px 0px #00024914" }}>
+        >
+      <div style={{ ...listTableCardStyle, marginTop: hideHeader ? 0 : undefined }}>
         <Filter
           status={status}
           onStatus={pendingOnly ? () => undefined : setStatus}
@@ -222,14 +211,13 @@ export default function ForecastListPageContent({ myOnly, isRequest, pendingOnly
         <Tbl
           cols={[
             { label: "Forecast title", sortKey: "Title" },
-            { label: "Purpose", sortKey: "Purpose" },
             { label: "Expected amount", sortKey: "ExpectedAmount" },
             { label: "Expected date", sortKey: "ExpectedExpenseDate" },
             { label: "Status", sortKey: "Status", sx: { textAlign: "center" } },
             { label: "Created by", sortKey: "CreatedBy" },
             { label: "Created date", sortKey: "CreatedAt" },
             { label: "Expenses raised", sx: { textAlign: "center" } },
-            { label: "Actions", sx: { textAlign: "right" } },
+            { label: "Actions", sx: { textAlign: "center" } },
           ]}
           rows={rows}
           onRow={(row) => navigate(`/forecasts/${(row as (typeof rows)[number]).forecast.id}`)}
@@ -239,6 +227,6 @@ export default function ForecastListPageContent({ myOnly, isRequest, pendingOnly
           bodyFallback={<Empty icon={<Target />} title={loading ? "Loading forecasts..." : "No forecasts"} sub={search ? "Try a different search term." : "Create a forecast to get started."} />}
         />
       </div>
-    </div>
+    </ListPageHeader>
   );
 }

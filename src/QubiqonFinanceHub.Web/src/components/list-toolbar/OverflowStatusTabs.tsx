@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Select, { type StylesConfig } from "react-select";
 import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
-import { C } from "../../shared/theme";
+import { C, R } from "../../shared/theme";
 import "./list-toolbar.css";
 
 export type StatusTab = { label: string; value: string };
@@ -16,7 +16,7 @@ const mobileStatusSelectStyles: StylesConfig<StatusTab, false> = {
   control: (base) => ({
     ...base,
     minHeight: "34px",
-    borderRadius: 8,
+    borderRadius: R.control,
     borderColor: C.border,
     boxShadow: "none",
     fontSize: 12,
@@ -45,7 +45,7 @@ const mobileStatusSelectStyles: StylesConfig<StatusTab, false> = {
   }),
   menu: (base) => ({
     ...base,
-    borderRadius: 8,
+    borderRadius: R.control,
     boxShadow: C.cardShadow,
     overflow: "hidden",
     zIndex: 30,
@@ -136,6 +136,37 @@ export default function OverflowStatusTabs({
       style={cssVars}
       role="presentation"
     >
+      <div className="list-toolbar-overflow-tabs__main">
+        <div className="list-toolbar-overflow-tabs__desktop">
+          <div className="list-toolbar-overflow-tabs__group" role="tablist" aria-label="Status filters">
+            {visibleTabs.map((tab) => tabButton(tab, tab.value === value, () => onChange(tab.value)))}
+          </div>
+
+          {hasOverflow ? (
+            <button
+              type="button"
+              className="list-toolbar-overflow-tabs__chevron"
+              aria-label={expanded ? "Show fewer status filters" : "Show more status filters"}
+              aria-expanded={expanded}
+              onClick={() => setExpanded((e) => !e)}
+            >
+              {expanded ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+            </button>
+          ) : null}
+        </div>
+
+        <div className="list-toolbar-overflow-tabs__mobile-select">
+          <Select<StatusTab, false>
+            aria-label={mobileSelectAriaLabel}
+            value={selectedTab}
+            onChange={(option) => onChange((option ?? tabOptions[0]).value)}
+            options={tabOptions}
+            isSearchable={false}
+            styles={mobileStatusSelectStyles}
+          />
+        </div>
+      </div>
+
       {onRefresh ? (
         <button
           type="button"
@@ -148,35 +179,6 @@ export default function OverflowStatusTabs({
           <RefreshCw size={20} strokeWidth={1.9} />
         </button>
       ) : null}
-
-      <div className="list-toolbar-overflow-tabs__desktop">
-        <div className="list-toolbar-overflow-tabs__group" role="tablist" aria-label="Status filters">
-          {visibleTabs.map((tab) => tabButton(tab, tab.value === value, () => onChange(tab.value)))}
-        </div>
-
-        {hasOverflow ? (
-          <button
-            type="button"
-            className="list-toolbar-overflow-tabs__chevron"
-            aria-label={expanded ? "Show fewer status filters" : "Show more status filters"}
-            aria-expanded={expanded}
-            onClick={() => setExpanded((e) => !e)}
-          >
-            {expanded ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
-          </button>
-        ) : null}
-      </div>
-
-      <div className="list-toolbar-overflow-tabs__mobile-select">
-        <Select<StatusTab, false>
-          aria-label={mobileSelectAriaLabel}
-          value={selectedTab}
-          onChange={(option) => onChange((option ?? tabOptions[0]).value)}
-          options={tabOptions}
-          isSearchable={false}
-          styles={mobileStatusSelectStyles}
-        />
-      </div>
     </div>
   );
 }

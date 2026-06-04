@@ -12,7 +12,7 @@ import {
   Signature,
 } from "lucide-react";
 import type { Invoice } from "../../types";
-import { C } from "../../shared/theme";
+import { C, R, workflowTableActionStyle, tableIconButtonSx } from "../../shared/theme";
 import { EVENTS, INV_S, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur, daysOverdueFromDueYmd, nextListSort } from "../../shared/utils";
 import {
@@ -73,14 +73,6 @@ const DownloadSpinner = () => (
     }}
   />
 );
-
-const workflowActionStyle = (fg: string, bg: string) => ({
-  borderRadius: "4px",
-  background: bg,
-  color: fg,
-  padding: "6px 8px",
-  minHeight: 26,
-});
 
 export default function InvoicesPage() {
   const navigate = useNavigate();
@@ -308,7 +300,7 @@ export default function InvoicesPage() {
         <Btn
           sm
           v="ghost"
-          sx={workflowActionStyle(C.invoiceActionSign, C.invoiceActionSignBg)}
+          sx={workflowTableActionStyle(C.invoiceActionSign, C.invoiceActionSignBg)}
           onClick={(e) => {
             e.stopPropagation();
             openZohoSignModal(inv);
@@ -325,7 +317,7 @@ export default function InvoicesPage() {
         <Btn
           sm
           v="ghost"
-          sx={workflowActionStyle(C.invoiceActionSign, C.invoiceActionSignBg)}
+          sx={workflowTableActionStyle(C.invoiceActionSign, C.invoiceActionSignBg)}
           disabled
         >
           <Signature size={13} strokeWidth={1.9} />
@@ -341,7 +333,7 @@ export default function InvoicesPage() {
           <Btn
             sm
             v="ghost"
-            sx={workflowActionStyle(C.invoiceActionSign, C.invoiceActionSignBg)}
+            sx={workflowTableActionStyle(C.invoiceActionSign, C.invoiceActionSignBg)}
             onClick={(e) => void handleSyncSignedPdf(inv, e)}
             disabled={syncing}
           >
@@ -354,7 +346,7 @@ export default function InvoicesPage() {
         <Btn
           sm
           v="ghost"
-          sx={workflowActionStyle(C.invoiceActionSent, C.invoiceActionSentBg)}
+          sx={workflowTableActionStyle(C.invoiceActionSent, C.invoiceActionSentBg)}
           onClick={(e) => {
             e.stopPropagation();
             setSendConfirm(inv);
@@ -371,7 +363,7 @@ export default function InvoicesPage() {
         <Btn
           sm
           v="ghost"
-          sx={workflowActionStyle(C.invoiceActionPaid, C.invoiceActionPaidBg)}
+          sx={workflowTableActionStyle(C.invoiceActionPaid, C.invoiceActionPaidBg)}
           onClick={(e) => {
             e.stopPropagation();
             setMdl({ t: MODAL_T.INV_PAY, d: inv });
@@ -388,7 +380,7 @@ export default function InvoicesPage() {
         <Btn
           sm
           v="ghost"
-          sx={workflowActionStyle(C.muted, C.surface)}
+          sx={workflowTableActionStyle(C.muted, C.surface)}
           disabled
         >
           <IndianRupee size={13} strokeWidth={1.9} />
@@ -477,7 +469,7 @@ export default function InvoicesPage() {
             {inv.apiId && (
               <EditActionButton
                 disabled={!canEditInvoice(inv)}
-                sx={{ width: 30, height: 30, background: C.actionEditBg, borderRadius: "4px" }}
+                sx={tableIconButtonSx(C.actionEditBg)}
                 onClick={(e) => {
                   e.stopPropagation();
                   navigate(`/invoices/edit/${inv.apiId}`);
@@ -494,7 +486,7 @@ export default function InvoicesPage() {
                 width: 30,
                 height: 30,
                 border: "none",
-                borderRadius: "4px",
+                borderRadius: R.control,
                 background: C.actionDownloadBg,
                 color: C.actionDownloadIcon,
                 cursor: downloadingId === inv.id ? "not-allowed" : "pointer",
@@ -518,14 +510,6 @@ export default function InvoicesPage() {
   }));
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
-      <style>{`
-        @media (max-width: 640px) {
-          .invoices-table-card {
-            margin-top: 20px;
-          }
-        }
-      `}</style>
       <ListPageHeader
         className="list-page-header"
         title="Client invoices"
@@ -545,7 +529,14 @@ export default function InvoicesPage() {
             <ListPageAddButton addPath={navAdd.addPath} label="Create invoice" />
           ) : undefined
         }
-      />
+      >
+      <style>{`
+        @media (max-width: 640px) {
+          .invoices-table-card {
+            margin-top: 20px;
+          }
+        }
+      `}</style>
       <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>
         {(
           [
@@ -575,7 +566,7 @@ export default function InvoicesPage() {
                 flex: "1",
                 minWidth: "120px",
                 cursor: "pointer",
-                borderRadius: "4px",
+                borderRadius: R.control,
                 border: active ? `2px solid ${C.invoice}` : "2px solid transparent",
                 boxSizing: "border-box",
                 transition: "border-color 0.15s ease",
@@ -590,7 +581,7 @@ export default function InvoicesPage() {
         className="invoices-table-card"
         style={{
           background: C.white,
-          borderRadius: "12px",
+          borderRadius: R.control,
           padding: "14px 16px 16px",
           marginTop: "26px",
           boxShadow: C.cardShadow,
@@ -699,7 +690,7 @@ export default function InvoicesPage() {
               style={{
                 width: 73,
                 height: 28,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 padding: "4px 8px",
                 gap: "4px",
                 border: `1px solid ${C.subtleBorder}`,
@@ -732,7 +723,7 @@ export default function InvoicesPage() {
               style={{
                 width: 73,
                 height: 28,
-                borderRadius: "4px",
+                borderRadius: R.control,
                 padding: "4px 8px",
                 gap: "4px",
                 border: `1px solid ${C.subtleBorder}`,
@@ -806,6 +797,6 @@ export default function InvoicesPage() {
           </Btn>
         </div>
       </Mdl>
-    </div>
+    </ListPageHeader>
   );
 }

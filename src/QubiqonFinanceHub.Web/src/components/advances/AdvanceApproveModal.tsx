@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Btn, Mdl, Alert, Inp } from "../ui";
-import { C } from "../../shared/theme";
+import { C, R } from "../../shared/theme";
 import { useAppContext } from "../../context/AppContext";
 import { approveAdvance, rejectAdvance } from "../../shared/api/advance";
 import { advanceRaisedByCurrentUser } from "../../shared/expensePermissions";
@@ -82,7 +82,7 @@ export default function AdvanceApproveModal() {
               marginBottom: "12px",
               padding: "12px 14px",
               background: C.surface,
-              borderRadius: "8px",
+              borderRadius: R.control,
               border: `1px solid ${C.border}`,
               fontSize: "12px",
               lineHeight: 1.5,

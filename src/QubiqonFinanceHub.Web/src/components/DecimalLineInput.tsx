@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from "react";
-import { C } from "../shared/theme";
+import { C, R } from "../shared/theme";
 import { fmtQty, round2 } from "../shared/utils";
 
 type Props = {
@@ -46,7 +46,7 @@ export default function DecimalLineInput({
     width: "100%",
     padding: "8px 10px",
     border: `1px solid ${C.border}`,
-    borderRadius: "6px",
+    borderRadius: R.control,
     fontSize: "12px",
     lineHeight: "1.25",
     textAlign,
