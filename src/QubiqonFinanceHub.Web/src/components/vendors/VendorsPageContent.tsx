@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { BriefcaseBusiness, ChevronLeft, ChevronRight } from "lucide-react";
-import { C, R, tableIconButtonSx } from "../../shared/theme";
+import { C, R, listSectionTableBodyMarginTop, listTableCardStyle, tableIconButtonSx } from "../../shared/theme";
 import {
   Av,
   CollapsibleSearch,
@@ -158,6 +158,7 @@ export default function VendorsPage() {
 
   return (
       <ListPageHeader
+        tableBodyMarginTop={listSectionTableBodyMarginTop}
         className="list-page-header"
         title="Vendors"
         icon={<BriefcaseBusiness size={24} strokeWidth={1.8} color={C.primary} />}
@@ -177,23 +178,7 @@ export default function VendorsPage() {
           ) : undefined
         }
       >
-      <style>{`
-        @media (max-width: 640px) {
-          .vendors-table-card {
-            margin-top: 20px;
-          }
-        }
-      `}</style>
-      <div
-        className="vendors-table-card"
-        style={{
-          background: C.white,
-          borderRadius: R.control,
-          padding: "14px 16px 16px",
-          marginTop: "26px",
-          boxShadow: C.cardShadow,
-        }}
-      >
+      <div className="vendors-table-card list-table-card" style={listTableCardStyle}>
         <TableToolbarRefresh
           onRefresh={() => setRefreshKey((k) => k + 1)}
           refreshDisabled={loading}

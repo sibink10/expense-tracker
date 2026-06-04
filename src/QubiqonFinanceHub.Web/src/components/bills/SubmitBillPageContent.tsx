@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { CalendarDays, FilePlus2, ReceiptText, X, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { C, R } from "../../shared/theme";
+import { C, R, listSectionTableBodyMarginTop } from "../../shared/theme";
 import { BILL_PAYMENT_PRIORITY, BILL_PAYMENT_PRIORITY_OPTIONS, EVENTS, PAY_TERMS } from "../../shared/constants";
 import { addDays, fmtCur, round2, aggregateLineGstRows, formatTdsOptionLabel, formatTdsSummarySnippet } from "../../shared/utils";
 import { Inp, Btn, MultiFileUp, Alert, Mdl, PageShell } from "../ui";
@@ -290,6 +290,7 @@ export default function SubmitBillPage() {
               letterSpacing: "-0.02em",
               lineHeight: "100%",
               margin: 0,
+              paddingBottom: "20px",
             }}
           >
             <ReceiptText size={narrow ? 18 : 22} color={C.text} strokeWidth={1.8} />
@@ -305,10 +306,10 @@ export default function SubmitBillPage() {
 
       <div
         style={{
+          marginTop: listSectionTableBodyMarginTop,
           background: "#fff",
           borderRadius: R.control,
           padding: narrow ? "16px" : "20px",
-          boxShadow: "-5px -2px 108.5px 0px #00024914",
           width: "100%",
           boxSizing: "border-box",
         }}

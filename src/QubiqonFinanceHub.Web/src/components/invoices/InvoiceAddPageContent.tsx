@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { CalendarDays, FileText, Plus, Send, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { C, R } from "../../shared/theme";
+import { C, R, listSectionTableBodyMarginTop } from "../../shared/theme";
 import { CURRENCIES, EVENTS, PAY_TERMS } from "../../shared/constants";
 import { addDays, fmtCur, round2, aggregateLineGstRows } from "../../shared/utils";
 import { Inp, Btn, Alert, Mdl, PageShell } from "../ui";
@@ -234,6 +234,7 @@ export default function InvoiceAddPage() {
               letterSpacing: "-0.02em",
               lineHeight: "100%",
               margin: 0,
+              paddingBottom: "20px",
             }}
           >
             <FileText size={narrow ? 18 : 22} color={C.text} strokeWidth={1.8} />
@@ -248,10 +249,10 @@ export default function InvoiceAddPage() {
     >
       <div
         style={{
+          marginTop: listSectionTableBodyMarginTop,
           background: "#fff",
           borderRadius: R.control,
           padding: narrow ? "16px" : "20px",
-          boxShadow: "-5px -2px 108.5px 0px #00024914",
           width: "100%",
           boxSizing: "border-box",
         }}

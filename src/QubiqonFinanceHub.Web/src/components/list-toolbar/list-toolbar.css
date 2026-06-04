@@ -4,13 +4,137 @@
   --lt-control-height: 34px;
 }
 
-/* Page header: title + search/add */
+/* Page header: title + search/add — left flush, 8px right inset */
 .list-page-header {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  box-sizing: border-box;
+  padding-left: 0;
+  padding-right: var(--list-page-header-padding-right, 8px);
+  margin-bottom: var(--list-page-header-margin-bottom, 0);
+}
+
+.page-shell--list-page .list-page-body {
+  padding-top: var(--list-table-body-margin-top, 10px);
+  box-sizing: border-box;
+}
+
+.page-shell--list-page .list-page-body > *:first-child,
+.list-page-body--embedded > *:first-child {
+  margin-top: 0 !important;
+}
+
+.list-page-body--embedded {
+  padding-top: var(--list-table-body-margin-top, 10px);
+  box-sizing: border-box;
+}
+
+.page-shell--payable-approvals {
+  --list-table-card-padding-x: 16px;
+  --list-table-body-margin-top: 20px;
+  --list-page-header-margin-bottom: 0;
+  --list-page-header-padding-right: 8px;
+}
+
+.page-shell--payable-approvals .payable-approvals-header {
+  padding-left: 0;
+  padding-right: var(--list-page-header-padding-right, 8px);
+  box-sizing: border-box;
+  margin-bottom: var(--list-page-header-margin-bottom, 0);
+}
+
+.page-shell--payable-approvals .payable-approvals-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--lt-primary, #242424);
+  font-family: "Manrope", sans-serif;
+  font-weight: 600;
+  line-height: 100%;
+  letter-spacing: -0.02em;
+  font-size: 24px;
+}
+
+.page-shell--payable-approvals .payable-approvals-tabs {
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+  margin-bottom: 0;
+  padding: 12px var(--list-table-card-padding-x, 16px);
+  background: var(--lt-surface, #f7f8fa);
+  border: 1px solid var(--lt-border, #e2e6ed);
+  border-radius: 0.75rem;
+}
+
+.page-shell--payable-approvals .payable-approvals-tab {
+  padding: 12px 20px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: #fff;
+  color: var(--lt-primary, #242424);
+  font-weight: 600;
+  cursor: pointer;
+  min-width: 120px;
+  text-align: center;
+  white-space: nowrap;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+  font-family: inherit;
+}
+
+.page-shell--payable-approvals .payable-approvals-tab--active {
+  border-color: var(--lt-success, #219268);
+  background: var(--lt-success-bg, #e1f5ee);
+  color: var(--lt-success, #219268);
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .page-shell--payable-approvals .payable-approvals-title {
+    font-size: 18px;
+  }
+}
+
+.page-shell--payable-approvals .payable-approvals-body {
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+.list-page-header--standalone-search .list-page-header__row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  width: 100%;
+}
+
+.list-page-header--standalone-search .list-page-header__search-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.list-page-header--standalone-search .list-page-header__search-row .list-toolbar-search {
+  flex: 0 1 260px;
+  min-width: 160px;
+  max-width: 260px;
+  width: 100%;
+}
+
+.list-page-header__legacy {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
 }
 
 .list-page-header__title {
@@ -218,13 +342,25 @@
 }
 
 @media (max-width: 640px) {
-  .list-page-header {
+  .page-shell--list-page .list-page-body,
+  .list-page-body--embedded {
+    padding-top: var(--list-table-body-margin-top, 8px);
+  }
+
+  .list-page-header__legacy {
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
   }
 
   .list-page-header__actions {
+    width: 100%;
+  }
+
+  .list-page-header--standalone-search .list-page-header__search-row .list-toolbar-search {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: none;
     width: 100%;
   }
 

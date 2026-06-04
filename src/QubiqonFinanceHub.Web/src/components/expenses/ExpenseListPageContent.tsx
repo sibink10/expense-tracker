@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import type { Expense } from "../../types";
-import { C, R, workflowTableActionStyle } from "../../shared/theme";
+import { C, R, listSectionTableBodyMarginTop, listTableCardStyle, workflowTableActionStyle } from "../../shared/theme";
 import { EVENTS, EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP, EXP_S, EXP_STATUS, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur, nextListSort } from "../../shared/utils";
 import {
@@ -43,7 +43,18 @@ const STATUS_TABS = [
 
 type StatusOption = (typeof STATUS_TABS)[number];
 
-export default function ExpenseListPageContent({ myOnly, isRequest, pendingOnly, hideHeader }: { myOnly?: boolean; isRequest?: boolean; pendingOnly?: boolean; hideHeader?: boolean }) {
+export default function ExpenseListPageContent({
+  myOnly,
+  isRequest,
+  pendingOnly,
+  hideHeader,
+}: {
+  myOnly?: boolean;
+  isRequest?: boolean;
+  pendingOnly?: boolean;
+  hideHeader?: boolean;
+}) {
+  const useSectionTableSpacing = Boolean(isRequest || (!hideHeader && !pendingOnly));
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { is, setMdl, user } = useAppContext();
@@ -249,7 +260,7 @@ export default function ExpenseListPageContent({ myOnly, isRequest, pendingOnly,
   return (
         <ListPageHeader
           hidden={hideHeader}
-          className="list-page-header"
+          tableBodyMarginTop={useSectionTableSpacing ? listSectionTableBodyMarginTop : undefined}
           title="Expense requests"
           icon={<ReceiptText size={24} strokeWidth={1.8} color={C.primary} />}
           search={
@@ -268,23 +279,7 @@ export default function ExpenseListPageContent({ myOnly, isRequest, pendingOnly,
             ) : undefined
           }
         >
-      <style>{`
-        @media (max-width: 640px) {
-          .expenses-table-card {
-            margin-top: 20px;
-          }
-        }
-      `}</style>
-      <div
-        className="expenses-table-card"
-        style={{
-          background: C.white,
-          borderRadius: R.control,
-          padding: "14px 16px 16px",
-          marginTop: "26px",
-          boxShadow: C.cardShadow,
-        }}
-      >
+      <div className="expenses-table-card list-table-card" style={listTableCardStyle}>
         <OverflowStatusTabs
           tabs={orderedStatusTabs}
           value={status}

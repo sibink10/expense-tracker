@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { CirclePlus, HandCoins } from "lucide-react";
-import { C, R } from "../../shared/theme";
+import { C, R, listSectionTableBodyMarginTop } from "../../shared/theme";
 import { Inp, Btn, Alert, PageShell } from "../ui";
 import PhoneInputField, { isValidPhoneNumber } from "../PhoneInputField";
 import { countryNameToPhoneCountry } from "../../shared/countryPhoneDefault";
@@ -149,25 +149,25 @@ export default function AddClientPage() {
             gap: "8px",
             color: C.text,
             fontFamily: "'Manrope', sans-serif",
-            fontSize: "18px",
+            fontSize: narrow ? "18px" : "24px",
             fontWeight: 600,
             letterSpacing: "-0.02em",
             lineHeight: "100%",
             margin: 0,
+            paddingBottom: "20px",
           }}
         >
-          <HandCoins size={22} color={C.text} strokeWidth={1.8} />
+          <HandCoins size={narrow ? 18 : 22} color={C.text} strokeWidth={1.8} />
           Add client
         </h1>
       }
     >
       <div
         style={{
+          marginTop: listSectionTableBodyMarginTop,
           background: "#fff",
           borderRadius: R.control,
-          padding: "20px",
-          border: "none",
-          boxShadow: "-5px -2px 108.5px 0px #00024914",
+          padding: narrow ? "16px" : "20px",
           width: "100%",
           boxSizing: "border-box",
         }}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, RefreshCw, Search, UserRoundX, Users } from "lucide-react";
-import { C, R, listTableCardStyle, tableIconButtonSx } from "../../shared/theme";
+import { C, R, listTableBodyMarginTop, listTableCardStyle, tableIconButtonSx } from "../../shared/theme";
 import "../list-toolbar/list-toolbar.css";
 import { DeleteActionButton, EditActionButton, Empty, PageShell, Spinner, Tbl, Toggle, type TblCol } from "../ui";
 import EmployeeDeleteConfirmModal from "./EmployeeDeleteConfirmModal";
@@ -196,7 +196,7 @@ export default function EmployeesPage() {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: "12px",
+          marginBottom: "0",
           gap: "8px",
           flexWrap: "wrap",
         }}
@@ -254,7 +254,7 @@ export default function EmployeesPage() {
         className="employees-table-card"
         style={{
           ...listTableCardStyle,
-          marginTop: "26px",
+          marginTop: listTableBodyMarginTop,
         }}
       >
         <div className="employees-table-controls" style={{ marginBottom: "10px", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>

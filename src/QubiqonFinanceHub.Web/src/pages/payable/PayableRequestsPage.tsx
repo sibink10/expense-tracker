@@ -5,7 +5,8 @@ import ForecastListPageContent from "../../components/forecasts/ForecastListPage
 import BillListPageContent from "../../components/bills/BillListPageContent";
 import { C } from "../../shared/theme";
 import { PageShell } from "../../components/ui";
-import { BanknoteArrowUp, IndianRupee } from "lucide-react";
+import "../../components/list-toolbar/list-toolbar.css";
+import { IndianRupee } from "lucide-react";
 
 const tabs = [
   { key: "forecasts", label: "Forecasts" },
@@ -34,78 +35,33 @@ export default function PayableRequestsPage() {
 
   return (
     <PageShell
+      className="page-shell--payable-approvals"
       header={
-        <>
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: "12px",
-            }}
-          >
-            <h1
-              style={{
-                margin: 0,
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                color: C.primary,
-                fontFamily: "inherit",
-                fontSize: "18px",
-                fontWeight: 600,
-                lineHeight: "100%",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              <IndianRupee size={24} strokeWidth={1.8} color={C.primary} />
-              Approvals
-            </h1>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "10px",
-              padding: "10px",
-              background: C.surface,
-              border: `1px solid ${C.border}`,
-              borderRadius: "14px",
-              marginTop: "16px",
-            }}
-          >
+        <div className="payable-approvals-header">
+          <h1 className="payable-approvals-title list-page-header__title">
+            <IndianRupee size={24} strokeWidth={1.8} color={C.primary} />
+            Approvals
+          </h1>
+          <div className="payable-approvals-tabs" role="tablist" aria-label="Approval categories">
             {tabs.map((tab) => (
               <button
                 key={tab.key}
                 type="button"
+                role="tab"
+                aria-selected={activeTab === tab.key}
+                className={`payable-approvals-tab${activeTab === tab.key ? " payable-approvals-tab--active" : ""}`}
                 onClick={() => setActiveTab(tab.key)}
-                style={{
-                  padding: "12px 20px",
-                  borderRadius: "999px",
-                  border:
-                    activeTab === tab.key
-                      ? `1px solid ${C.success}`
-                      : "1px solid transparent",
-                  background: activeTab === tab.key ? C.successBg : C.white,
-                  color: activeTab === tab.key ? C.success : C.text,
-                  fontWeight: activeTab === tab.key ? 700 : 600,
-                  cursor: "pointer",
-                  minWidth: "120px",
-                  textAlign: "center",
-                  whiteSpace: "nowrap",
-                  transition: "all 160ms ease",
-                  fontFamily: "inherit",
-                }}
               >
                 {tab.label}
               </button>
             ))}
           </div>
-        </>
+        </div>
       }
     >
-      <div style={{ minHeight: 0 }}>{renderActiveTab()}</div>
+      <div className="payable-approvals-body">
+        {renderActiveTab()}
+      </div>
     </PageShell>
   );
 }

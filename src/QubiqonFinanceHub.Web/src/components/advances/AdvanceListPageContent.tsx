@@ -9,7 +9,7 @@ import {
   X,
 } from "lucide-react";
 import type { Advance } from "../../types";
-import { C, R, workflowTableActionStyle } from "../../shared/theme";
+import { C, R, listSectionTableBodyMarginTop, listTableCardStyle, workflowTableActionStyle } from "../../shared/theme";
 import { ADV_S, EVENTS, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur, nextListSort } from "../../shared/utils";
 import {
@@ -41,7 +41,18 @@ const STATUS_TABS = [
 
 type StatusOption = (typeof STATUS_TABS)[number];
 
-export default function AdvanceListPageContent({ myOnly, isRequest, pendingOnly, hideHeader }: { myOnly?: boolean; isRequest?: boolean; pendingOnly?: boolean; hideHeader?: boolean }) {
+export default function AdvanceListPageContent({
+  myOnly,
+  isRequest,
+  pendingOnly,
+  hideHeader,
+}: {
+  myOnly?: boolean;
+  isRequest?: boolean;
+  pendingOnly?: boolean;
+  hideHeader?: boolean;
+}) {
+  const useSectionTableSpacing = Boolean(isRequest || (!hideHeader && !pendingOnly));
   const [searchParams, setSearchParams] = useSearchParams();
   const { is, setMdl, user } = useAppContext();
   const myOnlyActual = myOnly ?? false;
@@ -278,7 +289,7 @@ export default function AdvanceListPageContent({ myOnly, isRequest, pendingOnly,
   return (
         <ListPageHeader
           hidden={hideHeader}
-          className="list-page-header"
+          tableBodyMarginTop={useSectionTableSpacing ? listSectionTableBodyMarginTop : undefined}
           title="Advance requests"
           icon={<BanknoteArrowUp size={24} strokeWidth={1.8} color={C.primary} />}
           search={
@@ -297,23 +308,7 @@ export default function AdvanceListPageContent({ myOnly, isRequest, pendingOnly,
             ) : undefined
           }
         >
-      <style>{`
-        @media (max-width: 640px) {
-          .advances-table-card {
-            margin-top: 20px;
-          }
-        }
-      `}</style>
-      <div
-        className="advances-table-card"
-        style={{
-          background: C.white,
-          borderRadius: R.control,
-          padding: "14px 16px 16px",
-          marginTop: "26px",
-          boxShadow: C.cardShadow,
-        }}
-      >
+      <div className="advances-table-card list-table-card" style={listTableCardStyle}>
         <OverflowStatusTabs
           tabs={orderedStatusTabs}
           value={status}

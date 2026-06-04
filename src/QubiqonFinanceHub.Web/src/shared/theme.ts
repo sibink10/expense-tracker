@@ -50,13 +50,31 @@ export const R = {
   control: "0.75rem",
 };
 
+/** Horizontal padding inside list table cards */
+export const listTableCardPaddingX = "16px";
+
+/** Right inset for list page title/search header (search aligns with table content) */
+export const listPageHeaderPaddingRight = "8px";
+
 /** White list/table container used on list pages */
 export const listTableCardStyle: CSSProperties = {
   background: C.white,
   borderRadius: R.control,
-  padding: "14px 16px 16px",
+  padding: `14px ${listTableCardPaddingX} 16px`,
   boxShadow: C.cardShadow,
 };
+
+/** Gap between list page title/search header and table card */
+export const listTableBodyMarginTop = "10px";
+
+/** Gap above table card on My Requests and Payable list pages */
+export const listSectionTableBodyMarginTop = "20px";
+
+/** @deprecated Use listSectionTableBodyMarginTop */
+export const listRequestTableBodyMarginTop = listSectionTableBodyMarginTop;
+
+/** Extra gap below list page title/search block (most spacing comes from listTableBodyMarginTop) */
+export const listPageHeaderMarginBottom = "0px";
 
 /** Corner radius for workflow and icon buttons inside table action columns */
 export const R_TABLE_BUTTON = "6px";

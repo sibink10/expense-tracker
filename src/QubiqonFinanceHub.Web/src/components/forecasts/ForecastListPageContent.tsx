@@ -12,7 +12,7 @@ import {
   Tbl,
   useNavPageAdd,
 } from "../ui";
-import { C, listTableCardStyle, workflowTableActionStyle } from "../../shared/theme";
+import { C, listSectionTableBodyMarginTop, listTableCardStyle, workflowTableActionStyle } from "../../shared/theme";
 import { approveForecast, cancelForecast, getForecastsMapped, rejectForecast, submitForecast } from "../../shared/api/forecast";
 import type { Forecast } from "../../types";
 import { useAppContext } from "../../context/AppContext";
@@ -24,7 +24,18 @@ function formatMoney(value: number) {
   return `₹${value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 }
 
-export default function ForecastListPageContent({ myOnly, isRequest, pendingOnly, hideHeader }: { myOnly?: boolean; isRequest?: boolean; pendingOnly?: boolean; hideHeader?: boolean }) {
+export default function ForecastListPageContent({
+  myOnly,
+  isRequest,
+  pendingOnly,
+  hideHeader,
+}: {
+  myOnly?: boolean;
+  isRequest?: boolean;
+  pendingOnly?: boolean;
+  hideHeader?: boolean;
+}) {
+  const useSectionTableSpacing = Boolean(isRequest || (!hideHeader && !pendingOnly));
   const navigate = useNavigate();
   const { t, is, user } = useAppContext();
   const [data, setData] = useState<Forecast[]>([]);
@@ -190,8 +201,9 @@ export default function ForecastListPageContent({ myOnly, isRequest, pendingOnly
   return (
         <ListPageHeader
           hidden={hideHeader}
+          tableBodyMarginTop={useSectionTableSpacing ? listSectionTableBodyMarginTop : undefined}
           title="Forecast management"
-          icon={<Target size={22} color={C.text} strokeWidth={1.8} />}
+          icon={<Target size={24} strokeWidth={1.8} color={C.primary} />}
           search={<CollapsibleSearch value={search} onChange={setSearch} placeholder="Search forecasts..." />}
           addAction={
             showAddAction && navAdd ? (
@@ -199,7 +211,7 @@ export default function ForecastListPageContent({ myOnly, isRequest, pendingOnly
             ) : undefined
           }
         >
-      <div style={{ ...listTableCardStyle, marginTop: hideHeader ? 0 : undefined }}>
+      <div className="forecasts-table-card list-table-card" style={listTableCardStyle}>
         <Filter
           status={status}
           onStatus={pendingOnly ? () => undefined : setStatus}

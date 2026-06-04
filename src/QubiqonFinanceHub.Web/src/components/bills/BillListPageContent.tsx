@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Check, ChevronLeft, ChevronRight, IndianRupee, ReceiptText, X } from "lucide-react";
 import type { Bill } from "../../types";
-import { C, R, workflowTableActionStyle } from "../../shared/theme";
+import { C, R, listSectionTableBodyMarginTop, listTableCardStyle, workflowTableActionStyle } from "../../shared/theme";
 import { BILL_PAYMENT_PRIORITY, BILL_S, EVENTS, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur, daysOverdueFromDueYmd, nextListSort } from "../../shared/utils";
 import {
@@ -285,6 +285,7 @@ export default function BillListPage({ pendingOnly, hideHeader }: { pendingOnly?
   return (
         <ListPageHeader
           hidden={hideHeader}
+          tableBodyMarginTop={hideHeader ? undefined : listSectionTableBodyMarginTop}
           className="list-page-header"
           title="Vendor bills"
           icon={<ReceiptText size={24} strokeWidth={1.8} color={C.primary} />}
@@ -306,25 +307,12 @@ export default function BillListPage({ pendingOnly, hideHeader }: { pendingOnly?
         >
       <style>{`
         @media (max-width: 640px) {
-          .bills-table-card {
-            margin-top: 20px;
-          }
-
           .bills-vendor-avatar {
             display: none;
           }
         }
       `}</style>
-      <div
-        className="bills-table-card"
-        style={{
-          background: C.white,
-          borderRadius: R.control,
-          padding: "14px 16px 16px",
-          marginTop: "26px",
-          boxShadow: C.cardShadow,
-        }}
-      >
+      <div className="bills-table-card list-table-card" style={listTableCardStyle}>
         <OverflowStatusTabs
           tabs={orderedBillFilterTabs}
           value={selectedBillFilterValue}
