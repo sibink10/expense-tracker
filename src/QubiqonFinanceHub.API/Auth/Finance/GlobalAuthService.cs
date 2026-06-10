@@ -72,6 +72,7 @@ public class GlobalAuthService : IGlobalAuthService
     {
         var tenantId = _config["AzureAd:TenantId"]!;
         var clientId = _config["AzureAd:ClientId"]!;
+        var serverClientId = _config["ServerApp:ClientId"]!;
         var state = CreateSignedState(returnUrl);
 
         var query = new Dictionary<string, string?>
@@ -80,7 +81,7 @@ public class GlobalAuthService : IGlobalAuthService
             ["response_type"] = "code",
             ["redirect_uri"] = callbackUrl,
             ["response_mode"] = "query",
-            ["scope"] = "openid profile email offline_access",
+            ["scope"] = $"api://{serverClientId}/access_as_user",
             ["state"] = state,
         };
 
