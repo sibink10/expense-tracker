@@ -2,7 +2,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.IdentityModel.Tokens.Jwt;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using QubiqonFinanceHub.API.Auth.Shared;
 using QubiqonFinanceHub.API.Data;
@@ -31,19 +33,22 @@ public class GlobalAuthService : IGlobalAuthService
     private readonly IAzureOAuthTokenClient _tokenClient;
     private readonly IConfiguration _config;
     private readonly GlobalAuthOptions _options;
+    private readonly IWebHostEnvironment _environment;
 
     public GlobalAuthService(
         FinanceHubDbContext db,
         IAuthSessionStore sessionStore,
         IAzureOAuthTokenClient tokenClient,
         IConfiguration config,
-        IOptions<GlobalAuthOptions> options)
+        IOptions<GlobalAuthOptions> options,
+        IWebHostEnvironment environment)
     {
         _db = db;
         _sessionStore = sessionStore;
         _tokenClient = tokenClient;
         _config = config;
         _options = options.Value;
+        _environment = environment;
     }
 
     public string GetOAuthRedirectUri()
@@ -90,17 +95,39 @@ public class GlobalAuthService : IGlobalAuthService
         uri = null;
         if (string.IsNullOrWhiteSpace(returnUrl)) return false;
         if (!Uri.TryCreate(returnUrl, UriKind.Absolute, out var parsed)) return false;
-        if (parsed.Scheme != Uri.UriSchemeHttps && !(parsed.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) && parsed.Scheme == Uri.UriSchemeHttp))
-            return false;
 
-        var allowed = _options.AllowedReturnHosts ?? [];
-        if (allowed.Length == 0) return false;
+        var allowedHosts = NormalizeAllowedHosts(_options.AllowedReturnHosts);
+        if (allowedHosts.Length == 0) return false;
 
-        var hostMatch = allowed.Any(h =>
+        var hostAllowed = allowedHosts.Any(h =>
             parsed.Host.Equals(h, StringComparison.OrdinalIgnoreCase)
             || parsed.Host.EndsWith("." + h, StringComparison.OrdinalIgnoreCase));
+        if (!hostAllowed) return false;
 
-        return hostMatch && (uri = parsed) != null;
+        if (parsed.Scheme == Uri.UriSchemeHttps)
+            return (uri = parsed) != null;
+
+        if (parsed.Scheme != Uri.UriSchemeHttp) return false;
+
+        var httpOk = parsed.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            || parsed.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)
+            || _environment.IsDevelopment();
+        return httpOk && (uri = parsed) != null;
+    }
+
+    private static string[] NormalizeAllowedHosts(string[]? hosts) =>
+        (hosts ?? [])
+            .Select(NormalizeAllowedHost)
+            .Where(h => !string.IsNullOrWhiteSpace(h))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+    private static string NormalizeAllowedHost(string entry)
+    {
+        var value = entry.Trim();
+        if (value.Contains("://", StringComparison.Ordinal) && Uri.TryCreate(value, UriKind.Absolute, out var uri))
+            return uri.Host;
+        return value.TrimEnd('/');
     }
 
     public string CreateSignedState(string returnUrl)
