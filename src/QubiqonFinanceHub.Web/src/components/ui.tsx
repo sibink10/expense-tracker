@@ -803,7 +803,7 @@ export const Mdl: React.FC<{
             top: 0,
             background: "#fff",
             borderRadius: detail ? undefined : "14px 14px 0 0",
-            zIndex: 1,
+            zIndex: 0,
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0, flex: 1 }}>
