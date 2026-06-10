@@ -1,15 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { useMsal, useIsAuthenticated } from "@azure/msal-react";
-import { InteractionStatus } from "@azure/msal-browser";
 import { C, R } from "../shared/theme";
 import { getAuthMe } from "../shared/api/auth";
+import { fetchAppToken, logoutSession, TokenForbiddenError } from "../shared/auth/sessionAuth";
+import Login from "./Login";
 import type { AppUser } from "../types";
-
-const MSAL_PLACEHOLDER = "00000000-0000-0000-0000-000000000000";
-const isMsalConfigured = () => {
-  const id = import.meta.env.VITE_AZURE_CLIENT_ID;
-  return id && id !== MSAL_PLACEHOLDER;
-};
 
 function NoAccessScreen({ onSignOut }: { onSignOut: () => void }) {
   return (
@@ -41,7 +35,15 @@ function NoAccessScreen({ onSignOut }: { onSignOut: () => void }) {
         🚫
       </div>
       <h1 style={{ color: "#fff", fontSize: "22px", fontWeight: 700, margin: 0 }}>No access</h1>
-      <p style={{ color: "rgba(255,255,255,0.8)", margin: 0, fontSize: "14px", textAlign: "center", maxWidth: "360px" }}>
+      <p
+        style={{
+          color: "rgba(255,255,255,0.8)",
+          margin: 0,
+          fontSize: "14px",
+          textAlign: "center",
+          maxWidth: "360px",
+        }}
+      >
         Your account is not authorized to use this application. Contact your administrator to get access.
       </p>
       <button
@@ -97,47 +99,44 @@ export function LoadingScreen({ message = "Checking login…" }: { message?: str
 
 interface AuthGateProps {
   onAuth: (user: AppUser) => void;
-  renderLogin: (onLogin: (u: AppUser) => void) => React.ReactNode;
 }
 
-export default function AuthGate({ onAuth, renderLogin }: AuthGateProps) {
-  const { instance, accounts, inProgress } = useMsal();
-  const isAuthenticated = useIsAuthenticated();
-  const [mounted, setMounted] = useState(false);
-  const [fetchingMe, setFetchingMe] = useState(false);
+export default function AuthGate({ onAuth }: AuthGateProps) {
+  const [checking, setChecking] = useState(true);
   const [noAccess, setNoAccess] = useState(false);
   const fetchedRef = useRef(false);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
 
-  const useDevPicker = !isMsalConfigured();
-  const isCheckingAuth = useDevPicker ? false : inProgress !== InteractionStatus.None;
+    fetchAppToken()
+      .then((token) => {
+        if (!token) return null;
+        return getAuthMe();
+      })
+      .then((user) => {
+        if (user) onAuth(user);
+      })
+      .catch((err) => {
+        if (err instanceof TokenForbiddenError) setNoAccess(true);
+        else setNoAccess(true);
+      })
+      .finally(() => setChecking(false));
+  }, [onAuth]);
 
-  useEffect(() => {
-    if (!useDevPicker && mounted && isAuthenticated && accounts[0] && !fetchedRef.current) {
-      fetchedRef.current = true;
-      setFetchingMe(true);
-      setNoAccess(false);
-      getAuthMe()
-        .then((user) => onAuth(user))
-        .catch(() => setNoAccess(true))
-        .finally(() => setFetchingMe(false));
-    }
-  }, [useDevPicker, mounted, isAuthenticated, accounts, onAuth]);
-
-  const handleSignOut = () => {
-    instance.logoutRedirect();
+  const handleSignOut = async () => {
+    await logoutSession();
+    setNoAccess(false);
   };
 
   if (noAccess) {
     return <NoAccessScreen onSignOut={handleSignOut} />;
   }
 
-  if (isCheckingAuth || fetchingMe) {
-    return <LoadingScreen message={fetchingMe ? "Loading profile…" : "Checking login status…"} />;
+  if (checking) {
+    return <LoadingScreen message="Checking login status…" />;
   }
 
-  return <>{renderLogin(onAuth)}</>;
+  return <Login />;
 }

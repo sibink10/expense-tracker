@@ -31,6 +31,7 @@ import { buildNav } from "../shared/nav";
 import Modals from "../components/Modals";
 import DeepLinkHandler from "../components/DeepLinkHandler";
 import { useAppContext } from "../context/AppContext";
+import { logoutSession } from "../shared/auth/sessionAuth";
 import { selectOrganization } from "../shared/api";
 import { MODAL_T } from "../shared/constants";
 import type { UserRole } from "../types";
@@ -65,7 +66,6 @@ export default function Layout() {
   const {
     user,
     setUser,
-    instance,
     cfg,
     toast,
     rf,
@@ -95,16 +95,10 @@ export default function Layout() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  const isMsalConfigured =
-    import.meta.env.VITE_AZURE_CLIENT_ID &&
-    import.meta.env.VITE_AZURE_CLIENT_ID !== "00000000-0000-0000-0000-000000000000";
-
-  const handleLogout = () => {
-    if (isMsalConfigured) {
-      instance.logoutRedirect();
-    } else {
-      setUser(null);
-    }
+  const handleLogout = async () => {
+    await logoutSession();
+    setUser(null);
+    window.location.href = "/";
   };
 
   const handleAddPath = (addPath: string) => {

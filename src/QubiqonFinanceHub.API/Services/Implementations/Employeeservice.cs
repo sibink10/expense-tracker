@@ -139,8 +139,6 @@ public class EmployeeService : IEmployeeService
                 deletedByEntra.UpdatedAt = DateTime.UtcNow;
                 await UpsertFinanceRoleAsync(deletedByEntra.Id, financeRole.Id);
 
-                if (!string.IsNullOrWhiteSpace(deletedByEntra.EntraObjectId))
-                    await _azureRoleService.AssignRoleAsync(deletedByEntra.EntraObjectId, deletedByEntra.Role);
                 await _db.SaveChangesAsync();
                 return MapToDto(deletedByEntra);
             }
@@ -190,11 +188,7 @@ public class EmployeeService : IEmployeeService
                 await UpsertFinanceRoleAsync(emp.Id, role.Id);
 
                 if (Enum.TryParse<UserRole>(role.Code, true, out var newRole))
-                {
                     emp.Role = newRole;
-                    if (!string.IsNullOrWhiteSpace(emp.EntraObjectId))
-                        await _azureRoleService.AssignRoleAsync(emp.EntraObjectId, newRole);
-                }
             }
 
             emp.UpdatedAt = DateTime.UtcNow;

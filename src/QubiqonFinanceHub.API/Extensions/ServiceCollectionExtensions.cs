@@ -1,13 +1,16 @@
+using System.Text;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Identity.Web;
+using Microsoft.IdentityModel.Tokens;
+using QubiqonFinanceHub.API.Auth.Finance;
+using QubiqonFinanceHub.API.Auth.Shared;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.Services.Implementations;
 using QubiqonFinanceHub.API.Services.Interfaces;
 using QubiqonFinanceHub.API.Services.Pdf;
 using QubiqonFinanceHub.API.Services.Zoho;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace QubiqonFinanceHub.API.Extensions;
 
@@ -46,6 +49,14 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IExcelUploadService, ExcelUploadService>();
         services.AddScoped<IGraphApiService, GraphApiService>();
 
+        services.Configure<GlobalAuthOptions>(config.GetSection(GlobalAuthOptions.SectionName));
+        services.AddScoped<IAuthSessionStore, AuthSessionStore>();
+        services.AddScoped<IAzureOAuthTokenClient, AzureOAuthTokenClient>();
+        services.AddScoped<IAzureTokenRefreshService, AzureTokenRefreshService>();
+        services.AddScoped<IGlobalAuthService, GlobalAuthService>();
+        services.AddScoped<IAppJwtService, AppJwtService>();
+        services.AddScoped<IFinanceRoleResolver, FinanceRoleResolver>();
+
         services.AddFluentValidationAutoValidation();
         return services;
     }
@@ -60,15 +71,31 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddApplicationAuth(this IServiceCollection services, IConfiguration config)
     {
-        services.AddMicrosoftIdentityWebApiAuthentication(config, "AzureAd")
-            .EnableTokenAcquisitionToCallDownstreamApi()
-            .AddInMemoryTokenCaches();
+        var jwtSecret = config["GlobalAuth:AppJwtSecret"]
+            ?? throw new InvalidOperationException("GlobalAuth:AppJwtSecret is required.");
 
-        // Tell .NET to read roles from "roles" claim
-        services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
-        {
-            options.TokenValidationParameters.RoleClaimType = "roles";
-        });
+        var oauthRedirectUri = config["GlobalAuth:OAuthRedirectUri"]?.Trim();
+        if (string.IsNullOrEmpty(oauthRedirectUri))
+            throw new InvalidOperationException("GlobalAuth:OAuthRedirectUri is required.");
+        if (!Uri.TryCreate(oauthRedirectUri, UriKind.Absolute, out _))
+            throw new InvalidOperationException("GlobalAuth:OAuthRedirectUri must be an absolute URL.");
+
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidIssuer = "qubiqon-finance",
+                    ValidateAudience = true,
+                    ValidAudience = "qubiqon-finance-api",
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+                    RoleClaimType = "role",
+                    ClockSkew = TimeSpan.FromMinutes(2)
+                };
+            });
 
         services.AddAuthorizationBuilder()
             .AddPolicy("EmployeeOnly", p => p.RequireRole("Employee", "Approver", "Finance", "Admin"))

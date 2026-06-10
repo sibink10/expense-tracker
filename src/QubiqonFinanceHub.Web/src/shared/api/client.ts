@@ -1,18 +1,14 @@
-import axios, { type AxiosInstance } from "axios";
+import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
+import { fetchAppToken, getAppAccessToken } from "../auth/sessionAuth";
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || "https://localhost:7201/api";
-console.log(import.meta.env);
-const apiScope =
-  import.meta.env.VITE_API_SCOPE ||
-  (import.meta.env.VITE_AZURE_CLIENT_ID
-    ? `api://${import.meta.env.VITE_AZURE_CLIENT_ID}/.default`
-    : "User.Read");
+
+type RetryableRequestConfig = InternalAxiosRequestConfig & { _retry?: boolean };
 
 let tokenGetter: (() => Promise<string | null>) | null = null;
 
 /**
  * Set the function that provides the Bearer token for API requests.
- * Call this from AppProvider with MSAL's acquireTokenSilent.
  */
 export function setApiTokenGetter(getter: () => Promise<string | null>) {
   tokenGetter = getter;
@@ -21,6 +17,7 @@ export function setApiTokenGetter(getter: () => Promise<string | null>) {
 function createClient(): AxiosInstance {
   const client = axios.create({
     baseURL,
+    withCredentials: true,
     headers: {
       "Content-Type": "application/json",
     },
@@ -44,8 +41,21 @@ function createClient(): AxiosInstance {
 
   client.interceptors.response.use(
     (response) => response,
-    (err: unknown) => {
+    async (err: unknown) => {
       if (axios.isAxiosError(err)) {
+        const status = err.response?.status;
+        const config = err.config as RetryableRequestConfig | undefined;
+
+        if (status === 401 && config && !config._retry) {
+          config._retry = true;
+          const token = await fetchAppToken();
+          if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+            return client.request(config);
+          }
+          window.location.assign("/");
+        }
+
         const data = err.response?.data as
           | {
               message?: string;
@@ -90,7 +100,6 @@ function createClient(): AxiosInstance {
 }
 
 export const apiClient = createClient();
-export { apiScope };
 
 /** Message from axios error interceptor, or fallback (e.g. for non-Error throws). */
 export function getApiErrorMessage(err: unknown, fallback: string): string {

@@ -148,9 +148,10 @@ export default function AddExpensePage() {
           background: "#fff",
           borderRadius: R.control,
           padding: narrow ? "16px" : "20px",
-          boxShadow: "-5px -2px 108.5px 0px #00024914",
+          paddingTop:"20px",
           width: "100%",
           boxSizing: "border-box",
+          marginTop: "20px",
         }}
       >
         {!is(ROLES.FINANCE) && (

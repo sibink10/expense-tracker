@@ -16,7 +16,7 @@ namespace QubiqonFinanceHub.API.Controllers;
 //  AUTH
 // ═══════════════════════════════════════════════════
 [ApiController, Route("api/auth"), Authorize]
-public class AuthController(FinanceHubDbContext db, IAzureRoleService azureRoleService) : ControllerBase
+public class AuthController(FinanceHubDbContext db) : ControllerBase
 {
     [HttpGet("me")]
     public async Task<IActionResult> Me()
@@ -50,7 +50,6 @@ public class AuthController(FinanceHubDbContext db, IAzureRoleService azureRoleS
                 CreatedAt = DateTime.UtcNow,
                 IsDelete = false
             };
-            await azureRoleService.AssignRoleAsync(emp.EntraObjectId!, UserRole.Employee);
             db.Employees.Add(emp);
             await db.SaveChangesAsync();
         }

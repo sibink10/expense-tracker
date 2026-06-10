@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using QubiqonFinanceHub.API.Auth.Shared;
 using QubiqonFinanceHub.API.Models.Entities;
 using CurrencyRatesCache = QubiqonFinanceHub.API.Models.CurrencyRatesCache;
 using QubiqonFinanceHub.API.Models.Enums;
@@ -33,6 +34,7 @@ public class FinanceHubDbContext : DbContext
     public DbSet<PaymentTerm> PaymentTerms => Set<PaymentTerm>();
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<CurrencyRatesCache> CurrencyRatesCaches => Set<CurrencyRatesCache>();
+    public DbSet<AuthSession> AuthSessions => Set<AuthSession>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -272,6 +274,21 @@ public class FinanceHubDbContext : DbContext
             e.ToTable("Accounts", DbSchemas.Finance);
             e.HasIndex(x => new { x.OrganizationId, x.ShortName }).IsUnique();
             e.HasIndex(x => new { x.OrganizationId, x.Name }).IsUnique();
+        });
+
+        b.Entity<AuthSession>(e => {
+            e.ToTable("auth_sessions", DbSchemas.Dbo);
+            e.HasKey(x => x.SessionId);
+            e.Property(x => x.SessionId).HasColumnName("session_id");
+            e.Property(x => x.UserOid).HasColumnName("user_oid").HasMaxLength(36).IsUnicode(false);
+            e.Property(x => x.Email).HasColumnName("email").HasMaxLength(256);
+            e.Property(x => x.AzureAccessToken).HasColumnName("azure_access_token");
+            e.Property(x => x.RefreshToken).HasColumnName("refresh_token");
+            e.Property(x => x.AccessTokenExpiry).HasColumnName("access_token_expiry");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("(sysutcdatetime())");
+            e.Property(x => x.ExpiresAt).HasColumnName("expires_at");
+            e.HasIndex(x => x.UserOid).HasDatabaseName("IX_auth_sessions_user_oid");
+            e.HasIndex(x => x.ExpiresAt).HasDatabaseName("IX_auth_sessions_expires_at");
         });
     }
 }

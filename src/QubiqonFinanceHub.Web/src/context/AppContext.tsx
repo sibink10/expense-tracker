@@ -7,10 +7,9 @@ import {
   useEffect,
   type ReactNode,
 } from "react";
-import { useMsal } from "@azure/msal-react";
-import type { IPublicClientApplication } from "@azure/msal-browser";
 import { INIT_CONFIG } from "../shared/config";
-import { setApiTokenGetter, apiScope } from "../shared/api/client";
+import { setApiTokenGetter } from "../shared/api/client";
+import { getAppAccessToken } from "../shared/auth/sessionAuth";
 import {
   INIT_EXPENSES,
   INIT_BILLS,
@@ -69,7 +68,6 @@ export interface AppContextValue {
   setSearch: React.Dispatch<React.SetStateAction<string>>;
   sf: string;
   setSf: React.Dispatch<React.SetStateAction<string>>;
-  instance: IPublicClientApplication;
   t: (m: string, type?: string) => void;
   rf: () => void;
   approve: (
@@ -113,14 +111,7 @@ export interface AppProviderProps {
   children: ReactNode;
   user: AppUser;
   setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
-  /** Must be used inside MsalProvider. Wraps the authenticated app layout. */
 }
-
-const MSAL_PLACEHOLDER = "00000000-0000-0000-0000-000000000000";
-const isMsalConfigured = () => {
-  const id = import.meta.env.VITE_AZURE_CLIENT_ID;
-  return id && id !== MSAL_PLACEHOLDER;
-};
 
 const parseSettingNumber = (value: string | undefined, fallback: number) => {
   if (value == null || value.trim() === "") return fallback;
@@ -129,23 +120,9 @@ const parseSettingNumber = (value: string | undefined, fallback: number) => {
 };
 
 export function AppProvider({ children, user, setUser }: AppProviderProps) {
-  const { instance } = useMsal();
   useEffect(() => {
-    if (!isMsalConfigured()) return;
-    setApiTokenGetter(async () => {
-      const accounts = instance.getAllAccounts();
-      if (accounts.length === 0) return null;
-      try {
-        const result = await instance.acquireTokenSilent({
-          scopes: [apiScope],
-          account: accounts[0],
-        });
-        return result.accessToken ?? null;
-      } catch {
-        return null;
-      }
-    });
-  }, [instance]);
+    setApiTokenGetter(getAppAccessToken);
+  }, []);
 
   const [cfg, setCfg] = useState<AppConfig>(
     () => JSON.parse(JSON.stringify(INIT_CONFIG)) as AppConfig,
@@ -483,7 +460,6 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
       setSearch,
       sf,
       setSf,
-      instance,
       t,
       rf,
       approve,
@@ -517,7 +493,6 @@ export function AppProvider({ children, user, setUser }: AppProviderProps) {
       email,
       search,
       sf,
-      instance,
       t,
       rf,
       approve,

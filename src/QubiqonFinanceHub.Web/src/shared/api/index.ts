@@ -1,4 +1,3 @@
-export { apiClient, setApiTokenGetter, apiScope } from "./client";
 export { getAuthMe } from "./auth";
 export { getEmployees, getEmployeeRoleEmployees, type Employee } from "./employees";
 export { getExpenses, getExpensesMapped, type GetExpensesParams } from "./expense";

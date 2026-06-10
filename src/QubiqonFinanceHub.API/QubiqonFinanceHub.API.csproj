@@ -20,8 +20,9 @@
     <PackageReference Include="Microsoft.Graph" Version="5.103.0" />
     <PackageReference Include="Microsoft.Identity.Client" Version="4.83.1" />
 
-    <!-- Azure AD / Entra ID Authentication -->
-    <PackageReference Include="Microsoft.Identity.Web" Version="4.5.0" />
+    <!-- JWT Bearer authentication -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
 
     <!-- Excel upload -->
     <PackageReference Include="ExcelDataReader" Version="3.7.0" />

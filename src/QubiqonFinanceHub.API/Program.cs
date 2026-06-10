@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using QubiqonFinanceHub.API.Auth.Shared;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.Extensions;
 using QubiqonFinanceHub.API.Middleware;
@@ -71,11 +72,18 @@ app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 app.UseSwagger();
 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v2/swagger.json", "Qubiqon Finance Hub v2"));
 
-app.UseHttpsRedirection();
+app.UseWhen(
+    context => !IsLocalhostHost(context.Request.Host.Host),
+    builder => builder.UseHttpsRedirection());
 app.UseCors("AllowFrontend");
+app.UseMiddleware<QubiqonSessionMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseSerilogRequestLogging();
 app.MapControllers();
 app.MapHealthChecks("/health");
 app.Run();
+
+static bool IsLocalhostHost(string host) =>
+    host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+    || host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase);

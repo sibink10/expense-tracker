@@ -4,6 +4,21 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   envDir: 'env',
   plugins: [react()],
-  server: { port: 3000, proxy: { '/api': { target: 'https://localhost:7201', changeOrigin: true, secure: false } } },
-  build: { outDir: 'dist', sourcemap: true },
+  server: {
+    host: true,
+    port: 3000,
+    allowedHosts: [
+      'finance-dev.qubiqon.io',
+      'project-management-dev.qubiqon.io',
+      'supply-dev.qubiqon.io',
+      'qhrms-dev.qubiqon.io'
+    ],
+    proxy: {
+      '/api': {
+        target: 'https://localhost:7201',
+        changeOrigin: true,
+        secure: false
+      }
+    }
+  }
 });

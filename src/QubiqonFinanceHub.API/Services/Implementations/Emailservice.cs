@@ -1,5 +1,6 @@
 using Microsoft.Identity.Client;
 using Microsoft.EntityFrameworkCore;
+using QubiqonFinanceHub.API.Auth.Shared;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.Models.Constants;
 using QubiqonFinanceHub.API.Models.Entities;
@@ -77,15 +78,11 @@ public class EmailService : IEmailService
             }
             else
             {
-                // 3. Get user's incoming bearer token (delegated flow)
-                var userToken = _httpContext.HttpContext!.Request.Headers["Authorization"]
-                    .ToString().Replace("Bearer ", "").Trim();
+                var session = _httpContext.HttpContext!.Items[SessionContextKeys.AuthSession] as AuthSession;
+                if (session == null || string.IsNullOrEmpty(session.AzureAccessToken))
+                    throw new InvalidOperationException("No active session found for delegated email.");
 
-                if (string.IsNullOrEmpty(userToken))
-                    throw new InvalidOperationException("No bearer token found in request.");
-
-                // 4. OBO exchange — get Graph token on behalf of user
-                var graphToken = await GetGraphTokenOnBehalfOfAsync(userToken);
+                var graphToken = await GetGraphTokenOnBehalfOfAsync(session.AzureAccessToken);
 
                 // 5. Send via Graph API (delegated flow)
                 await SendViaGraphAsync(
