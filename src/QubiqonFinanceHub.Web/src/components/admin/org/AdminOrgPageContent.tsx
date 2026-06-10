@@ -216,6 +216,7 @@ export default function AdminOrgPage() {
           border: `1px solid ${C.border}`,
           width: "100%",
           boxSizing: "border-box",
+          marginTop: "20px",
         }}
       >
         {loading && (

@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.EntityFrameworkCore;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
@@ -760,4 +761,47 @@ public class InvoiceService : IInvoiceService
 
     private static string GetDisplayStatus(Invoice inv) =>
         InvoiceStatusRules.GetDisplayStatus(inv, DateTime.UtcNow.Date);
+
+    /// <summary>Adds sub total, GST total, TDS row HTML, and tax labels for invoice notification emails.</summary>
+    public async Task AppendInvoiceEmailTaxVariablesAsync(Guid invoiceId, Dictionary<string, string> variables)
+    {
+        var inv = await _db.Invoices
+            .AsNoTracking()
+            .Include(x => x.TaxConfig)
+            .FirstOrDefaultAsync(x => x.Id == invoiceId);
+
+        if (inv == null)
+        {
+            variables["sub_total"] = "—";
+            variables["total_gst"] = "—";
+            variables["tax_amount"] = "—";
+            variables["tax_name"] = string.Empty;
+            variables["tds_row_html"] = string.Empty;
+            return;
+        }
+
+        variables["sub_total"] = FormatCurrency(inv.SubTotal, inv.Currency);
+        variables["total_gst"] = inv.TotalGST > 0 ? FormatCurrency(inv.TotalGST, inv.Currency) : "—";
+        variables["tax_amount"] = inv.TaxAmount > 0 ? FormatCurrency(inv.TaxAmount, inv.Currency) : "—";
+        variables["tax_name"] = inv.TaxConfig?.Name ?? string.Empty;
+        variables["tds_row_html"] = BuildInvoiceTdsRowHtml(inv);
+    }
+
+    private static string BuildInvoiceTdsRowHtml(Invoice inv)
+    {
+        if (inv.TaxAmount <= 0) return string.Empty;
+
+        var t = inv.TaxConfig;
+        var rawLabel = t == null
+            ? "TDS"
+            : string.IsNullOrWhiteSpace(t.Section)
+                ? $"{t.Name} ({t.Rate:N2}%)"
+                : $"{t.Name} ({t.Rate:N2}%) — {t.Section}";
+        var tdsLabel = WebUtility.HtmlEncode(rawLabel);
+        var amount = WebUtility.HtmlEncode(FormatCurrency(inv.TaxAmount, inv.Currency));
+
+        return $"""
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:#dc2626;margin-bottom:8px;"><span>{tdsLabel}</span><strong>-{amount}</strong></div>
+            """;
+    }
 }

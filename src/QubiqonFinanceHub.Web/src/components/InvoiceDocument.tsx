@@ -2,7 +2,7 @@ import type { Invoice } from "../types";
 import type { OrganizationPayload } from "../shared/api/organization";
 import { C } from "../shared/theme";
 import { INV_S } from "../shared/constants";
-import { fmtCur, fmtQty, daysOverdueFromDueYmd } from "../shared/utils";
+import { fmtCur, fmtQty, daysOverdueFromDueYmd, formatTdsDetailParen } from "../shared/utils";
 
 interface Props {
   invoice: Invoice;
@@ -89,8 +89,12 @@ export default function InvoiceDocument({ invoice: inv, organization: org, hideS
     [org?.city, org?.state].filter(Boolean).join(", "),
     [org?.country, org?.postalCode].filter(Boolean).join(" "),
   ]);
-  const subTotal = inv.items.reduce((sum, item) => sum + item.qty * item.rate, 0);
-  const totalGst = inv.items.reduce((sum, item) => sum + item.gstAmt, 0);
+  const subTotal = inv.subTotal ?? inv.items.reduce((sum, item) => sum + item.qty * item.rate, 0);
+  const totalGst = inv.totalGst ?? inv.items.reduce((sum, item) => sum + item.gstAmt, 0);
+  const tdsAmt = inv.taxAmt ?? 0;
+  const tdsLabel = inv.taxName
+    ? `TDS ${formatTdsDetailParen(null, inv.taxName)}`
+    : "TDS";
   const paidAmount = inv.paidAmound ?? (inv.status === INV_S.PAID ? inv.total : 0);
   const balanceDue = Math.max(inv.total - paidAmount, 0);
   const ribbonColor =
@@ -421,27 +425,44 @@ export default function InvoiceDocument({ invoice: inv, organization: org, hideS
           }}
         >
           <div>
-            {[
-              ["Sub total", fmtCur(subTotal, inv.currency)],
-              ["GST", fmtCur(totalGst, inv.currency)],
-              ["Total", fmtCur(inv.total, inv.currency)],
-              ["Payment made", paidAmount > 0 ? `(${fmtCur(paidAmount, inv.currency)})` : fmtCur(0, inv.currency)],
-              ["Balance due", fmtCur(balanceDue, inv.currency)],
-            ].map(([label, value], idx) => (
+            {(
+              [
+                { key: "subtotal", label: "Sub total", value: fmtCur(subTotal, inv.currency), bold: false, danger: false },
+                { key: "gst", label: "GST", value: fmtCur(totalGst, inv.currency), bold: false, danger: false },
+                ...(tdsAmt > 0
+                  ? [{
+                      key: "tds",
+                      label: tdsLabel,
+                      value: `-${fmtCur(tdsAmt, inv.currency)}`,
+                      bold: false,
+                      danger: true,
+                    }]
+                  : []),
+                { key: "total", label: "Total", value: fmtCur(inv.total, inv.currency), bold: true, danger: false },
+                {
+                  key: "paid",
+                  label: "Payment made",
+                  value: paidAmount > 0 ? `(${fmtCur(paidAmount, inv.currency)})` : fmtCur(0, inv.currency),
+                  bold: false,
+                  danger: true,
+                },
+                { key: "balance", label: "Balance due", value: fmtCur(balanceDue, inv.currency), bold: true, danger: false },
+              ] as const
+            ).map((row) => (
               <div
-                key={label}
+                key={row.key}
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
                   fontSize: "10px",
-                  fontWeight: idx >= 2 ? 700 : 600,
-                  color: idx === 3 ? C.danger : "#111827",
+                  fontWeight: row.bold ? 700 : 600,
+                  color: row.danger ? C.danger : "#111827",
                   marginBottom: "7px",
                 }}
               >
-                <span>{label}</span>
-                <span>{value}</span>
+                <span>{row.label}</span>
+                <span>{row.value}</span>
               </div>
             ))}
             {inv.paidRef && (

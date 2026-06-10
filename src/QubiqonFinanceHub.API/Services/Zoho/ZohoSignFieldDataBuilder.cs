@@ -57,6 +57,8 @@ public static class ZohoSignFieldDataBuilder
             ["sub_total"] = FormatCurrency(invoice.SubTotal, invoice.Currency),
             ["total_gst"] = FormatCurrency(invoice.TotalGST ?? 0, invoice.Currency),
             ["tax_amount"] = FormatCurrency(invoice.TaxAmount, invoice.Currency),
+            ["tds_amount"] = FormatCurrency(invoice.TaxAmount, invoice.Currency),
+            ["tax_name"] = MergeFieldOrNa(invoice.TaxName),
             ["total"] = FormatCurrency(invoice.Total, invoice.Currency),
             ["total_in_words"] = MergeFieldOrNa(invoice.TotalInWords),
             ["currency"] = MergeFieldOrNa(invoice.Currency),

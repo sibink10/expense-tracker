@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { C, R } from "../../shared/theme";
 import { CURRENCIES, EVENTS, PAY_TERMS } from "../../shared/constants";
-import { addDays, fmtCur, round2, aggregateLineGstRows } from "../../shared/utils";
+import { addDays, fmtCur, round2, aggregateLineGstRows, formatTdsOptionLabel, formatTdsSummarySnippet } from "../../shared/utils";
 import { Inp, Btn, Alert, PageShell } from "../ui";
 import DecimalLineInput from "../DecimalLineInput";
 import { getInvoice, updateInvoice } from "../../shared/api/invoice";
@@ -245,7 +245,10 @@ export default function InvoiceEditPage() {
             disabled={taxLoading}
             opts={[
               { v: "", l: taxLoading ? "Loading..." : "No TDS" },
-              ...tdsConfigs.map((t) => ({ v: t.id, l: `${t.name} (${t.rate}%)` })),
+              ...tdsConfigs.map((t) => ({
+                v: t.id,
+                l: formatTdsOptionLabel(t.name, t.rate, t.section),
+              })),
             ]}
             style={cellStyle}
           />
@@ -464,7 +467,7 @@ export default function InvoiceEditPage() {
               ))}
               {tdsRate > 0 && (
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", color: C.danger }}>
-                  <span>TDS ({selectedTds?.section ?? ""} @ {tdsRate}%)</span>
+                  <span>TDS ({formatTdsSummarySnippet(selectedTds?.section, tdsRate)})</span>
                   <span style={{ fontWeight: 600 }}>-{fmtCur(tdsAmount, currency)}</span>
                 </div>
               )}

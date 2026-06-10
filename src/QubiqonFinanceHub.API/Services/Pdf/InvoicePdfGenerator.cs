@@ -35,6 +35,7 @@ public sealed class InvoicePdfGenerator : IInvoicePdfGenerator
     {
         var inv = await _db.Invoices
             .Include(x => x.Client)
+            .Include(x => x.TaxConfig)
             .Include(x => x.LineItems.OrderBy(l => l.LineNumber))
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == invoiceId, cancellationToken)
@@ -94,6 +95,8 @@ public sealed class InvoicePdfGenerator : IInvoicePdfGenerator
             LineItems = lineItems,
             SubTotal = inv.SubTotal,
             TotalGst = inv.TotalGST,
+            TaxAmount = inv.TaxAmount,
+            TaxName = inv.TaxConfig?.Name,
             Total = inv.Total,
             PaidAmount = paid,
             BalanceDue = balance,

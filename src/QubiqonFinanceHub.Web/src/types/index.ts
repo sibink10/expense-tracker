@@ -209,8 +209,10 @@ export interface Invoice {
   currency: string;
   items: InvoiceItem[];
   subTotal: number;
+  totalGst?: number;
   taxId: string | null;
   taxConfigId?: string | null;
+  taxName?: string | null;
   taxAmt: number;
   total: number;
   invDate: string;

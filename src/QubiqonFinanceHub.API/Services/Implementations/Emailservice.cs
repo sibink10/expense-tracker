@@ -1480,6 +1480,7 @@ public class EmailService : IEmailService
 
         var viewLinkSection = BuildViewLinkSection(variables);
         var gstLineBreakdownHtml = GetVariableOrEmpty(variables, "gst_line_breakdown_html");
+        var tdsRowHtml = GetVariableOrEmpty(variables, "tds_row_html");
 
         var htmlBody = $$"""
             <!DOCTYPE html>
@@ -1598,6 +1599,7 @@ public class EmailService : IEmailService
                                 <div style="display:flex;justify-content:space-between;font-size:12px;color:#111827;margin-bottom:8px;"><span>Sub Total</span><strong>{{Encode(GetVariable(variables, "sub_total"))}}</strong></div>
                                 {{gstLineBreakdownHtml}}
                                 <div style="display:flex;justify-content:space-between;font-size:12px;color:#111827;margin-bottom:8px;"><span>GST (total)</span><strong>{{Encode(GetVariable(variables, "total_gst"))}}</strong></div>
+                                {{tdsRowHtml}}
                                 <div style="display:flex;justify-content:space-between;font-size:15px;color:#111827;font-weight:700;margin-bottom:8px;"><span>Total</span><strong>{{Encode(GetVariable(variables, "amount"))}}</strong></div>
                                 <div style="display:flex;justify-content:space-between;font-size:12px;color:#dc2626;margin-bottom:8px;"><span>Payment Made</span><strong>({{Encode(GetVariable(variables, "payment_made"))}})</strong></div>
                                 <div style="display:flex;justify-content:space-between;font-size:15px;color:#111827;font-weight:700;margin-bottom:8px;"><span>Balance Due</span><strong>{{Encode(GetVariable(variables, "balance_due"))}}</strong></div>

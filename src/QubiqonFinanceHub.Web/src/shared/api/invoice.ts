@@ -51,6 +51,8 @@ export interface ApiInvoice {
   currency: string;
   lineItems?: ApiInvoiceLineItem[];
   subTotal?: number;
+  totalGST?: number;
+  taxName?: string | null;
   taxAmount?: number;
   taxConfigId?: string | null;
   total: number;
@@ -113,8 +115,9 @@ function mapLineItem(it: ApiInvoiceLineItem): InvoiceItem {
 function mapApiInvoiceToApp(item: ApiInvoice): Invoice {
   const items: InvoiceItem[] = (item.lineItems ?? []).map(mapLineItem);
   const subTotal = item.subTotal ?? items.reduce((s, i) => s + i.qty * i.rate, 0);
-  const taxAmt = item.taxAmount ?? items.reduce((s, i) => s + i.gstAmt, 0);
-  const total = item.total ?? subTotal + taxAmt;
+  const totalGst = item.totalGST ?? items.reduce((s, i) => s + i.gstAmt, 0);
+  const taxAmt = item.taxAmount ?? 0;
+  const total = item.total ?? subTotal + totalGst - taxAmt;
   return {
     id: item.invoiceCode ?? item.invoiceNumber ?? item.id,
     apiId: item.id,
@@ -126,8 +129,10 @@ function mapApiInvoiceToApp(item: ApiInvoice): Invoice {
     currency: item.currency ?? "INR",
     items,
     subTotal,
+    totalGst,
     taxId: null,
     taxConfigId: item.taxConfigId ?? null,
+    taxName: item.taxName ?? null,
     taxAmt,
     total,
     invDate: item.invoiceDate?.split("T")[0] ?? "",

@@ -36,6 +36,8 @@ public sealed class InvoicePdfModel
 
     public decimal SubTotal { get; init; }
     public decimal TotalGst { get; init; }
+    public decimal TaxAmount { get; init; }
+    public string? TaxName { get; init; }
     public decimal Total { get; init; }
     public decimal PaidAmount { get; init; }
     public decimal BalanceDue { get; init; }

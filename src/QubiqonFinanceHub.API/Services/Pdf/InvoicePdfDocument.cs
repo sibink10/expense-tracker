@@ -272,6 +272,11 @@ public sealed class InvoicePdfDocument : IDocument
                         TotalRow(totals, "Sub Total",    FormatMoney(_m.SubTotal),   bold: false, red: false);
                         if (_m.TotalGst != 0)
                             TotalRow(totals, "GST",      FormatMoney(_m.TotalGst),   bold: false, red: false);
+                        if (_m.TaxAmount > 0)
+                        {
+                            var tdsLabel = string.IsNullOrWhiteSpace(_m.TaxName) ? "TDS" : $"TDS ({_m.TaxName})";
+                            TotalRow(totals, tdsLabel, $"-{FormatMoney(_m.TaxAmount)}", bold: false, red: true);
+                        }
                         TotalRow(totals, "Total",        FormatMoney(_m.Total),      bold: true,  red: false);
                         var paidLabel = _m.PaidAmount > 0
                             ? $"(-) {FormatMoney(_m.PaidAmount)}"
