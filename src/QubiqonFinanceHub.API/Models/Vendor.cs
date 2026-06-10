@@ -37,5 +37,7 @@ public partial class Vendor
 
     public bool IsDelete { get; set; }
 
+    public virtual ICollection<Quotation> Quotations { get; set; } = new List<Quotation>();
+
     public virtual ICollection<VendorBill> VendorBills { get; set; } = new List<VendorBill>();
 }

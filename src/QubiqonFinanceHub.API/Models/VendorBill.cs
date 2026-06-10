@@ -57,6 +57,8 @@ public partial class VendorBill
 
     public virtual ICollection<ActivityComment> ActivityComments { get; set; } = new List<ActivityComment>();
 
+    public virtual ICollection<PurchaseOrder> PurchaseOrders { get; set; } = new List<PurchaseOrder>();
+
     public virtual ICollection<RequestDocument> RequestDocuments { get; set; } = new List<RequestDocument>();
 
     public virtual TaxConfiguration? TaxConfig { get; set; }

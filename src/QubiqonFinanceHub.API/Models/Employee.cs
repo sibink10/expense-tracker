@@ -61,6 +61,12 @@ public partial class Employee
 
     public virtual ICollection<Announcement> Announcements { get; set; } = new List<Announcement>();
 
+    public virtual ICollection<AssetHistory> AssetHistoryActionByNavigations { get; set; } = new List<AssetHistory>();
+
+    public virtual ICollection<AssetHistory> AssetHistoryEmployees { get; set; } = new List<AssetHistory>();
+
+    public virtual ICollection<Asset> Assets { get; set; } = new List<Asset>();
+
     public virtual ICollection<Attachment> Attachments { get; set; } = new List<Attachment>();
 
     public virtual ICollection<AttendanceEntry> AttendanceEntryApprovers { get; set; } = new List<AttendanceEntry>();
@@ -81,11 +87,17 @@ public partial class Employee
 
     public virtual ICollection<EmployeeBankDetail> EmployeeBankDetails { get; set; } = new List<EmployeeBankDetail>();
 
+    public virtual ICollection<EmployeeDocument> EmployeeDocumentEmployees { get; set; } = new List<EmployeeDocument>();
+
+    public virtual ICollection<EmployeeDocument> EmployeeDocumentUploadedByEmployees { get; set; } = new List<EmployeeDocument>();
+
     public virtual EmployeeOrganizationContext? EmployeeOrganizationContext { get; set; }
+
+    public virtual EmployeeProfileExtension? EmployeeProfileExtension { get; set; }
 
     public virtual EmployeeRole? EmployeeRole { get; set; }
 
-    public virtual ICollection<EmployeeRole1> EmployeeRole1s { get; set; } = new List<EmployeeRole1>();
+    public virtual EmployeeRole1? EmployeeRole1 { get; set; }
 
     public virtual ICollection<EmployeeSalaryPackage> EmployeeSalaryPackageCreatedBies { get; set; } = new List<EmployeeSalaryPackage>();
 
@@ -94,6 +106,8 @@ public partial class Employee
     public virtual ICollection<Engagement> Engagements { get; set; } = new List<Engagement>();
 
     public virtual ICollection<ExpenseRequest> ExpenseRequests { get; set; } = new List<ExpenseRequest>();
+
+    public virtual ICollection<Forecast> Forecasts { get; set; } = new List<Forecast>();
 
     public virtual ICollection<GeneratedLetter> GeneratedLetterEmployees { get; set; } = new List<GeneratedLetter>();
 
@@ -139,6 +153,8 @@ public partial class Employee
 
     public virtual ICollection<PurchaseOrder> PurchaseOrders { get; set; } = new List<PurchaseOrder>();
 
+    public virtual ICollection<QhrmsemployeeRole> QhrmsemployeeRoles { get; set; } = new List<QhrmsemployeeRole>();
+
     public virtual ICollection<QscmemployeeRole> QscmemployeeRoles { get; set; } = new List<QscmemployeeRole>();
 
     public virtual ICollection<Quotation> QuotationCreatedBies { get; set; } = new List<Quotation>();
@@ -146,6 +162,8 @@ public partial class Employee
     public virtual ICollection<Quotation> QuotationSelectedByNavigations { get; set; } = new List<Quotation>();
 
     public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+
+    public virtual ICollection<RequestDocument1> RequestDocument1s { get; set; } = new List<RequestDocument1>();
 
     public virtual ICollection<RequestDocument> RequestDocuments { get; set; } = new List<RequestDocument>();
 

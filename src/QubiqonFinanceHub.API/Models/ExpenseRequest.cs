@@ -33,9 +33,13 @@ public partial class ExpenseRequest
 
     public decimal PaidAmount { get; set; }
 
+    public Guid? ForecastId { get; set; }
+
     public virtual ICollection<ActivityComment> ActivityComments { get; set; } = new List<ActivityComment>();
 
     public virtual Employee Employee { get; set; } = null!;
+
+    public virtual Forecast? Forecast { get; set; }
 
     public virtual ICollection<RequestDocument> RequestDocuments { get; set; } = new List<RequestDocument>();
 }

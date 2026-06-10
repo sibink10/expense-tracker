@@ -29,6 +29,10 @@ public partial class TaxConfiguration
 
     public virtual Organization Organization { get; set; } = null!;
 
+    public virtual ICollection<PolineItem> PolineItems { get; set; } = new List<PolineItem>();
+
+    public virtual ICollection<PurchaseOrder> PurchaseOrders { get; set; } = new List<PurchaseOrder>();
+
     public virtual ICollection<VendorBillLineItem> VendorBillLineItems { get; set; } = new List<VendorBillLineItem>();
 
     public virtual ICollection<VendorBill> VendorBills { get; set; } = new List<VendorBill>();

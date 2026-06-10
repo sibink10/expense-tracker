@@ -49,5 +49,9 @@ public partial class Engagement
 
     public virtual ICollection<Invoice1> Invoice1s { get; set; } = new List<Invoice1>();
 
+    public virtual ICollection<RequestDocument1> RequestDocument1s { get; set; } = new List<RequestDocument1>();
+
+    public virtual ICollection<ResourceAllocation> ResourceAllocations { get; set; } = new List<ResourceAllocation>();
+
     public virtual ICollection<TimesheetMonthDocument> TimesheetMonthDocuments { get; set; } = new List<TimesheetMonthDocument>();
 }

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace QubiqonFinanceHub.API.Models;
 
-public partial class EmployeeRole
+public partial class QhrmsemployeeRole
 {
     public Guid Id { get; set; }
 
@@ -13,9 +13,9 @@ public partial class EmployeeRole
 
     public bool IsActive { get; set; }
 
-    public DateTime CreatedAt { get; set; }
+    public Guid? CreatedBy { get; set; }
 
-    public DateTime? UpdatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 
     public virtual Employee Employee { get; set; } = null!;
 

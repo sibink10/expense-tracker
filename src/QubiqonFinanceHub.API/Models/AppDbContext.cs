@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
-using QubiqonFinanceHub.API.Models;
 
-namespace QubiqonFinanceHub.API.Data;
+namespace QubiqonFinanceHub.API.Models;
 
 public partial class AppDbContext : DbContext
 {
@@ -24,11 +23,21 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Announcement> Announcements { get; set; }
 
+    public virtual DbSet<App> Apps { get; set; }
+
+    public virtual DbSet<Asset> Assets { get; set; }
+
+    public virtual DbSet<AssetHistory> AssetHistories { get; set; }
+
+    public virtual DbSet<AssetType> AssetTypes { get; set; }
+
     public virtual DbSet<Attachment> Attachments { get; set; }
 
     public virtual DbSet<AttendanceEntry> AttendanceEntries { get; set; }
 
     public virtual DbSet<AuditLog> AuditLogs { get; set; }
+
+    public virtual DbSet<AuthSession> AuthSessions { get; set; }
 
     public virtual DbSet<BusinessUnit> BusinessUnits { get; set; }
 
@@ -48,15 +57,23 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Designation> Designations { get; set; }
 
+    public virtual DbSet<DocumentCategory> DocumentCategories { get; set; }
+
+    public virtual DbSet<DocumentType> DocumentTypes { get; set; }
+
     public virtual DbSet<EmailTemplate> EmailTemplates { get; set; }
 
     public virtual DbSet<Employee> Employees { get; set; }
 
     public virtual DbSet<EmployeeBankDetail> EmployeeBankDetails { get; set; }
 
+    public virtual DbSet<EmployeeDocument> EmployeeDocuments { get; set; }
+
     public virtual DbSet<EmployeeIdconfig> EmployeeIdconfigs { get; set; }
 
     public virtual DbSet<EmployeeOrganizationContext> EmployeeOrganizationContexts { get; set; }
+
+    public virtual DbSet<EmployeeProfileExtension> EmployeeProfileExtensions { get; set; }
 
     public virtual DbSet<EmployeeRole> EmployeeRoles { get; set; }
 
@@ -71,6 +88,12 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<ExpenseRequest> ExpenseRequests { get; set; }
 
     public virtual DbSet<FocusArea> FocusAreas { get; set; }
+
+    public virtual DbSet<Forecast> Forecasts { get; set; }
+
+    public virtual DbSet<Gender> Genders { get; set; }
+
+    public virtual DbSet<GenderPronoun> GenderPronouns { get; set; }
 
     public virtual DbSet<GeneratedLetter> GeneratedLetters { get; set; }
 
@@ -105,6 +128,8 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<LetterType> LetterTypes { get; set; }
 
     public virtual DbSet<Location> Locations { get; set; }
+
+    public virtual DbSet<MaritalStatus> MaritalStatuses { get; set; }
 
     public virtual DbSet<MaterialRequest> MaterialRequests { get; set; }
 
@@ -142,9 +167,13 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<RequestDocument> RequestDocuments { get; set; }
 
+    public virtual DbSet<RequestDocument1> RequestDocuments1 { get; set; }
+
     public virtual DbSet<ResignationRequest> ResignationRequests { get; set; }
 
     public virtual DbSet<Resource> Resources { get; set; }
+
+    public virtual DbSet<ResourceAllocation> ResourceAllocations { get; set; }
 
     public virtual DbSet<RevenuePoint> RevenuePoints { get; set; }
 
@@ -157,6 +186,8 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<SalaryStructure> SalaryStructures { get; set; }
 
     public virtual DbSet<SalaryStructureComponent> SalaryStructureComponents { get; set; }
+
+    public virtual DbSet<Salutation> Salutations { get; set; }
 
     public virtual DbSet<ScmAuditLog> ScmAuditLogs { get; set; }
 
@@ -185,8 +216,7 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<WorkMode> WorkModes { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=tcp:qubiqon-finance-server.database.windows.net,1433;Initial Catalog=QubiqonFinanceHub;Persist Security Info=False;User ID=sqladmin;Password=Qubiqon@2026!;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;");
+        => optionsBuilder.UseSqlServer("Name=ConnectionStrings:DefaultConnection");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -213,6 +243,8 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => e.ExpenseRequestId, "IX_ActivityComments_ExpenseRequestId").HasFilter("([ExpenseRequestId] IS NOT NULL)");
 
+            entity.HasIndex(e => e.ForecastId, "IX_ActivityComments_ForecastId").HasFilter("([ForecastId] IS NOT NULL)");
+
             entity.HasIndex(e => e.InvoiceId, "IX_ActivityComments_InvoiceId").HasFilter("([InvoiceId] IS NOT NULL)");
 
             entity.HasIndex(e => e.VendorBillId, "IX_ActivityComments_VendorBillId").HasFilter("([VendorBillId] IS NOT NULL)");
@@ -228,6 +260,10 @@ public partial class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull);
 
             entity.HasOne(d => d.ExpenseRequest).WithMany(p => p.ActivityComments).HasForeignKey(d => d.ExpenseRequestId);
+
+            entity.HasOne(d => d.Forecast).WithMany(p => p.ActivityComments)
+                .HasForeignKey(d => d.ForecastId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(d => d.Invoice).WithMany(p => p.ActivityComments).HasForeignKey(d => d.InvoiceId);
 
@@ -269,6 +305,82 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(d => d.OrganizationId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Announcements_Organizations");
+        });
+
+        modelBuilder.Entity<App>(entity =>
+        {
+            entity.HasIndex(e => e.Name, "UQ_Apps_Name").IsUnique();
+
+            entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
+            entity.Property(e => e.Name).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<Asset>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Assets__3214EC0759012825");
+
+            entity.ToTable("Assets", "qhrms");
+
+            entity.HasIndex(e => new { e.AssetCode, e.OrganizationId }, "UQ_Assets_AssetCode_Org").IsUnique();
+
+            entity.Property(e => e.AssetCode).HasMaxLength(50);
+            entity.Property(e => e.Brand).HasMaxLength(100);
+            entity.Property(e => e.BusinessUnit).HasMaxLength(100);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getutcdate())");
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.Location).HasMaxLength(200);
+            entity.Property(e => e.Model).HasMaxLength(100);
+            entity.Property(e => e.Notes).HasMaxLength(1000);
+            entity.Property(e => e.PurchaseCost).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.SerialNumber).HasMaxLength(100);
+            entity.Property(e => e.Status)
+                .HasMaxLength(20)
+                .HasDefaultValue("Available");
+
+            entity.HasOne(d => d.AssetType).WithMany(p => p.Assets)
+                .HasForeignKey(d => d.AssetTypeId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__Assets__AssetTyp__6D823440");
+
+            entity.HasOne(d => d.AssignedToNavigation).WithMany(p => p.Assets)
+                .HasForeignKey(d => d.AssignedTo)
+                .HasConstraintName("FK__Assets__Assigned__6F6A7CB2");
+        });
+
+        modelBuilder.Entity<AssetHistory>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__AssetHis__3214EC077901C9D2");
+
+            entity.ToTable("AssetHistory", "qhrms");
+
+            entity.Property(e => e.Action).HasMaxLength(50);
+            entity.Property(e => e.ActionAt).HasDefaultValueSql("(getutcdate())");
+            entity.Property(e => e.Notes).HasMaxLength(500);
+
+            entity.HasOne(d => d.ActionByNavigation).WithMany(p => p.AssetHistoryActionByNavigations)
+                .HasForeignKey(d => d.ActionBy)
+                .HasConstraintName("FK__AssetHist__Actio__770B9E7A");
+
+            entity.HasOne(d => d.Asset).WithMany(p => p.AssetHistories)
+                .HasForeignKey(d => d.AssetId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__AssetHist__Asset__742F31CF");
+
+            entity.HasOne(d => d.Employee).WithMany(p => p.AssetHistoryEmployees)
+                .HasForeignKey(d => d.EmployeeId)
+                .HasConstraintName("FK__AssetHist__Emplo__75235608");
+        });
+
+        modelBuilder.Entity<AssetType>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__AssetTyp__3214EC07774B727F");
+
+            entity.ToTable("AssetTypes", "qhrms");
+
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getutcdate())");
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.Name).HasMaxLength(100);
         });
 
         modelBuilder.Entity<Attachment>(entity =>
@@ -337,6 +449,35 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.PerformedBy).WithMany(p => p.AuditLogs)
                 .HasForeignKey(d => d.PerformedById)
                 .HasConstraintName("FK_AuditLogs_PerformedBy");
+        });
+
+        modelBuilder.Entity<AuthSession>(entity =>
+        {
+            entity.HasKey(e => e.SessionId);
+
+            entity.ToTable("auth_sessions");
+
+            entity.HasIndex(e => e.ExpiresAt, "IX_auth_sessions_expires_at");
+
+            entity.HasIndex(e => e.UserOid, "IX_auth_sessions_user_oid");
+
+            entity.Property(e => e.SessionId)
+                .ValueGeneratedNever()
+                .HasColumnName("session_id");
+            entity.Property(e => e.AccessTokenExpiry).HasColumnName("access_token_expiry");
+            entity.Property(e => e.AzureAccessToken).HasColumnName("azure_access_token");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Email)
+                .HasMaxLength(256)
+                .HasColumnName("email");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.RefreshToken).HasColumnName("refresh_token");
+            entity.Property(e => e.UserOid)
+                .HasMaxLength(36)
+                .IsUnicode(false)
+                .HasColumnName("user_oid");
         });
 
         modelBuilder.Entity<BusinessUnit>(entity =>
@@ -501,6 +642,39 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("FK_Designations_Organizations");
         });
 
+        modelBuilder.Entity<DocumentCategory>(entity =>
+        {
+            entity.ToTable("DocumentCategories", "qhrms");
+
+            entity.HasIndex(e => e.Code, "UQ_DocumentCategories_Code").IsUnique();
+
+            entity.Property(e => e.Code).HasMaxLength(50);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.Name).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<DocumentType>(entity =>
+        {
+            entity.ToTable("DocumentTypes", "qhrms");
+
+            entity.HasIndex(e => new { e.OrganizationId, e.IsActive, e.DisplayOrder }, "IX_DocumentTypes_OrganizationId_IsActive");
+
+            entity.HasIndex(e => new { e.OrganizationId, e.Code }, "UQ_DocumentTypes_OrganizationId_Code").IsUnique();
+
+            entity.Property(e => e.Code).HasMaxLength(50);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.Name).HasMaxLength(100);
+
+            entity.HasOne(d => d.Category).WithMany(p => p.DocumentTypes)
+                .HasForeignKey(d => d.CategoryId)
+                .HasConstraintName("FK_DocumentTypes_DocumentCategories");
+
+            entity.HasOne(d => d.Organization).WithMany(p => p.DocumentTypes)
+                .HasForeignKey(d => d.OrganizationId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_DocumentTypes_Organizations");
+        });
+
         modelBuilder.Entity<EmailTemplate>(entity =>
         {
             entity.HasIndex(e => new { e.OrganizationId, e.TemplateKey }, "IX_EmailTemplates_OrganizationId_TemplateKey").IsUnique();
@@ -565,6 +739,41 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("FK_EmployeeBankDetails_Employees");
         });
 
+        modelBuilder.Entity<EmployeeDocument>(entity =>
+        {
+            entity.ToTable("EmployeeDocuments", "qhrms");
+
+            entity.HasIndex(e => new { e.EmployeeId, e.DocumentTypeId }, "IX_EmployeeDocuments_EmployeeId_DocumentTypeId").HasFilter("([IsDeleted]=(0))");
+
+            entity.Property(e => e.Id).HasDefaultValueSql("(newsequentialid())");
+            entity.Property(e => e.BlobName).HasMaxLength(1024);
+            entity.Property(e => e.ContentType).HasMaxLength(255);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
+            entity.Property(e => e.FileName).HasMaxLength(512);
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(sysutcdatetime())");
+            entity.Property(e => e.Url).HasMaxLength(2048);
+
+            entity.HasOne(d => d.DocumentType).WithMany(p => p.EmployeeDocuments)
+                .HasForeignKey(d => d.DocumentTypeId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_EmployeeDocuments_DocumentTypes");
+
+            entity.HasOne(d => d.Employee).WithMany(p => p.EmployeeDocumentEmployees)
+                .HasForeignKey(d => d.EmployeeId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_EmployeeDocuments_Employees");
+
+            entity.HasOne(d => d.Organization).WithMany(p => p.EmployeeDocuments)
+                .HasForeignKey(d => d.OrganizationId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_EmployeeDocuments_Organizations");
+
+            entity.HasOne(d => d.UploadedByEmployee).WithMany(p => p.EmployeeDocumentUploadedByEmployees)
+                .HasForeignKey(d => d.UploadedByEmployeeId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_EmployeeDocuments_UploadedBy");
+        });
+
         modelBuilder.Entity<EmployeeIdconfig>(entity =>
         {
             entity.ToTable("EmployeeIDConfigs", "qhrms");
@@ -601,6 +810,20 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.Employee).WithOne(p => p.EmployeeOrganizationContext)
                 .HasForeignKey<EmployeeOrganizationContext>(d => d.EmployeeId)
                 .HasConstraintName("FK_employee_org_ctx_employee");
+        });
+
+        modelBuilder.Entity<EmployeeProfileExtension>(entity =>
+        {
+            entity.HasKey(e => e.EmployeeId);
+
+            entity.ToTable("EmployeeProfileExtensions", "qhrms");
+
+            entity.Property(e => e.EmployeeId).ValueGeneratedNever();
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(sysutcdatetime())");
+
+            entity.HasOne(d => d.Employee).WithOne(p => p.EmployeeProfileExtension)
+                .HasForeignKey<EmployeeProfileExtension>(d => d.EmployeeId)
+                .HasConstraintName("FK_EmployeeProfileExtensions_Employees");
         });
 
         modelBuilder.Entity<EmployeeRole>(entity =>
@@ -748,6 +971,8 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => e.EmployeeId, "IX_ExpenseRequests_EmployeeId");
 
+            entity.HasIndex(e => e.ForecastId, "IX_ExpenseRequests_ForecastId").HasFilter("([ForecastId] IS NOT NULL)");
+
             entity.HasIndex(e => new { e.OrganizationId, e.ExpenseCode }, "IX_ExpenseRequests_OrganizationId_ExpenseCode").IsUnique();
 
             entity.HasIndex(e => new { e.OrganizationId, e.Status, e.CreatedAt }, "IX_ExpenseRequests_OrganizationId_Status_CreatedAt");
@@ -764,6 +989,8 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.Employee).WithMany(p => p.ExpenseRequests)
                 .HasForeignKey(d => d.EmployeeId)
                 .OnDelete(DeleteBehavior.ClientSetNull);
+
+            entity.HasOne(d => d.Forecast).WithMany(p => p.ExpenseRequests).HasForeignKey(d => d.ForecastId);
         });
 
         modelBuilder.Entity<FocusArea>(entity =>
@@ -776,6 +1003,44 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(d => d.OrganizationId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_FocusAreas_Organizations");
+        });
+
+        modelBuilder.Entity<Forecast>(entity =>
+        {
+            entity.ToTable("Forecasts", "finance");
+
+            entity.HasIndex(e => e.CreatedByEmployeeId, "IX_Forecasts_CreatedByEmployeeId");
+
+            entity.HasIndex(e => new { e.OrganizationId, e.Status, e.CreatedAt }, "IX_Forecasts_OrganizationId_Status_CreatedAt");
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.ExpectedAmount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Status).HasMaxLength(20);
+            entity.Property(e => e.Title).HasMaxLength(200);
+
+            entity.HasOne(d => d.CreatedByEmployee).WithMany(p => p.Forecasts)
+                .HasForeignKey(d => d.CreatedByEmployeeId)
+                .OnDelete(DeleteBehavior.ClientSetNull);
+        });
+
+        modelBuilder.Entity<Gender>(entity =>
+        {
+            entity.ToTable("Genders", "qhrms");
+
+            entity.HasIndex(e => e.Name, "UQ_Genders_Name").IsUnique();
+
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.Name).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<GenderPronoun>(entity =>
+        {
+            entity.ToTable("GenderPronouns", "qhrms");
+
+            entity.HasIndex(e => e.Name, "UQ_GenderPronouns_Name").IsUnique();
+
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.Name).HasMaxLength(100);
         });
 
         modelBuilder.Entity<GeneratedLetter>(entity =>
@@ -940,6 +1205,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Status).HasMaxLength(20);
             entity.Property(e => e.SubTotal).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.TaxAmount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Tds)
+                .HasColumnType("decimal(18, 2)")
+                .HasColumnName("TDS");
             entity.Property(e => e.Total).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.TotalGst)
                 .HasColumnType("decimal(18, 2)")
@@ -1148,6 +1416,16 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("FK_Locations_Organizations");
         });
 
+        modelBuilder.Entity<MaritalStatus>(entity =>
+        {
+            entity.ToTable("MaritalStatuses", "qhrms");
+
+            entity.HasIndex(e => e.Name, "UQ_MaritalStatuses_Name").IsUnique();
+
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.Name).HasMaxLength(100);
+        });
+
         modelBuilder.Entity<MaterialRequest>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK_QSCM_MaterialRequests");
@@ -1215,7 +1493,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Fax).HasMaxLength(20);
             entity.Property(e => e.IfscCode).HasMaxLength(20);
             entity.Property(e => e.Industry).HasMaxLength(100);
-            entity.Property(e => e.SwiftCode).HasMaxLength(20);
             entity.Property(e => e.LogoUrl).HasMaxLength(2048);
             entity.Property(e => e.OrgName).HasMaxLength(200);
             entity.Property(e => e.PaymentAddress).HasMaxLength(300);
@@ -1223,6 +1500,7 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.PostalCode).HasMaxLength(20);
             entity.Property(e => e.State).HasMaxLength(100);
             entity.Property(e => e.SubName).HasMaxLength(200);
+            entity.Property(e => e.SwiftCode).HasMaxLength(20);
             entity.Property(e => e.Website).HasMaxLength(256);
             entity.Property(e => e.ZohoAuthorizationEndpoint).HasMaxLength(512);
             entity.Property(e => e.ZohoClientId).HasMaxLength(256);
@@ -1261,6 +1539,7 @@ public partial class AppDbContext : DbContext
             entity.HasIndex(e => new { e.OrganizationId, e.ShortName }, "IX_PaymentTerms_OrganizationId_ShortName").IsUnique();
 
             entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.Description).HasMaxLength(500);
             entity.Property(e => e.Name).HasMaxLength(100);
             entity.Property(e => e.ShortName).HasMaxLength(30);
         });
@@ -1395,15 +1674,22 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("POLineItems", "qscm");
 
+            entity.HasIndex(e => e.GstconfigId, "IX_QSCM_POLineItems_GSTConfigId");
+
             entity.HasIndex(e => e.PurchaseOrderId, "IX_QSCM_POLineItems_PurchaseOrderId");
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newsequentialid())");
             entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
+            entity.Property(e => e.GstconfigId).HasColumnName("GSTConfigId");
             entity.Property(e => e.Quantity).HasColumnType("decimal(18, 4)");
             entity.Property(e => e.Unit).HasMaxLength(50);
             entity.Property(e => e.UnitPrice).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(sysutcdatetime())");
+
+            entity.HasOne(d => d.Gstconfig).WithMany(p => p.PolineItems)
+                .HasForeignKey(d => d.GstconfigId)
+                .HasConstraintName("FK_QSCM_POLineItems_TaxConfigurations_GSTConfigId");
 
             entity.HasOne(d => d.PurchaseOrder).WithMany(p => p.PolineItems)
                 .HasForeignKey(d => d.PurchaseOrderId)
@@ -1424,11 +1710,14 @@ public partial class AppDbContext : DbContext
                 .IsUnique()
                 .HasFilter("([IsDeleted]=(0))");
 
+            entity.HasIndex(e => e.TaxConfigId, "IX_QSCM_PurchaseOrders_TaxConfigId");
+
             entity.Property(e => e.Id).HasDefaultValueSql("(newsequentialid())");
             entity.Property(e => e.BuyerCompanyName).HasMaxLength(300);
             entity.Property(e => e.ConfidentialityClause).HasDefaultValue("");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
             entity.Property(e => e.DeliveryInstallationTerms).HasDefaultValue("");
+            entity.Property(e => e.DiscountPercent).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.PaymentMode).HasMaxLength(50);
             entity.Property(e => e.PaymentTerms).HasMaxLength(50);
             entity.Property(e => e.PaymentTermsText).HasDefaultValue("");
@@ -1438,13 +1727,20 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Ponumber)
                 .HasMaxLength(50)
                 .HasColumnName("PONumber");
+            entity.Property(e => e.Rounding).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.ScopeOfServices).HasDefaultValue("");
             entity.Property(e => e.SignedPdfUrl).HasMaxLength(2000);
             entity.Property(e => e.Status).HasMaxLength(50);
             entity.Property(e => e.SubTotal).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Tdsamount)
+                .HasColumnType("decimal(18, 2)")
+                .HasColumnName("TDSAmount");
             entity.Property(e => e.TerminationClause).HasDefaultValue("");
             entity.Property(e => e.TestingAcceptanceClause).HasDefaultValue("");
             entity.Property(e => e.Total).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.TotalGst)
+                .HasColumnType("decimal(18, 2)")
+                .HasColumnName("TotalGST");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(sysutcdatetime())");
             entity.Property(e => e.VendorEmail).HasMaxLength(256);
             entity.Property(e => e.VendorName).HasMaxLength(300);
@@ -1466,6 +1762,14 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey<PurchaseOrder>(d => d.RequestId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_QSCM_PurchaseOrders_MaterialRequests_RequestId");
+
+            entity.HasOne(d => d.TaxConfig).WithMany(p => p.PurchaseOrders)
+                .HasForeignKey(d => d.TaxConfigId)
+                .HasConstraintName("FK_QSCM_PurchaseOrders_TaxConfigurations_TaxConfigId");
+
+            entity.HasOne(d => d.VendorBill).WithMany(p => p.PurchaseOrders)
+                .HasForeignKey(d => d.VendorBillId)
+                .HasConstraintName("FK_QSCM_PurchaseOrders_VendorBills_VendorBillId");
         });
 
         modelBuilder.Entity<QhrmsemployeeRole>(entity =>
@@ -1542,6 +1846,8 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.SelectedByNavigation).WithMany(p => p.QuotationSelectedByNavigations)
                 .HasForeignKey(d => d.SelectedBy)
                 .HasConstraintName("FK_QSCM_Quotations_Employees_SelectedBy");
+
+            entity.HasOne(d => d.Vendor).WithMany(p => p.Quotations).HasForeignKey(d => d.VendorId);
         });
 
         modelBuilder.Entity<RefreshToken>(entity =>
@@ -1572,6 +1878,10 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => e.ExpenseRequestId, "IX_RequestDocuments_ExpenseRequestId").HasFilter("([ExpenseRequestId] IS NOT NULL)");
 
+            entity.HasIndex(e => e.ForecastId, "IX_RequestDocuments_ForecastId").HasFilter("([ForecastId] IS NOT NULL)");
+
+            entity.HasIndex(e => e.InvoiceId, "IX_RequestDocuments_InvoiceId").HasFilter("([InvoiceId] IS NOT NULL)");
+
             entity.HasIndex(e => new { e.OrganizationId, e.CreatedAt }, "IX_RequestDocuments_OrganizationId_CreatedAt");
 
             entity.HasIndex(e => e.UploadedByEmployeeId, "IX_RequestDocuments_UploadedByEmployeeId");
@@ -1587,6 +1897,14 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(d => d.ExpenseRequestId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            entity.HasOne(d => d.Forecast).WithMany(p => p.RequestDocuments)
+                .HasForeignKey(d => d.ForecastId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(d => d.Invoice).WithMany(p => p.RequestDocuments)
+                .HasForeignKey(d => d.InvoiceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             entity.HasOne(d => d.UploadedByEmployee).WithMany(p => p.RequestDocuments)
                 .HasForeignKey(d => d.UploadedByEmployeeId)
                 .OnDelete(DeleteBehavior.ClientSetNull);
@@ -1594,6 +1912,32 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.VendorBill).WithMany(p => p.RequestDocuments)
                 .HasForeignKey(d => d.VendorBillId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RequestDocument1>(entity =>
+        {
+            entity.ToTable("RequestDocuments", "pm");
+
+            entity.HasIndex(e => e.EngagementId, "IX_RequestDocuments_EngagementId").HasFilter("([EngagementId] IS NOT NULL)");
+
+            entity.HasIndex(e => new { e.OrganizationId, e.CreatedAt }, "IX_RequestDocuments_OrganizationId_CreatedAt");
+
+            entity.HasIndex(e => e.UploadedByEmployeeId, "IX_RequestDocuments_UploadedByEmployeeId");
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.ContentType).HasMaxLength(200);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getutcdate())");
+            entity.Property(e => e.FileName).HasMaxLength(260);
+            entity.Property(e => e.FileUrl).HasMaxLength(2048);
+
+            entity.HasOne(d => d.Engagement).WithMany(p => p.RequestDocument1s)
+                .HasForeignKey(d => d.EngagementId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_RequestDocuments_Engagements_EngagementId");
+
+            entity.HasOne(d => d.UploadedByEmployee).WithMany(p => p.RequestDocument1s)
+                .HasForeignKey(d => d.UploadedByEmployeeId)
+                .OnDelete(DeleteBehavior.ClientSetNull);
         });
 
         modelBuilder.Entity<ResignationRequest>(entity =>
@@ -1650,6 +1994,46 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey<Resource>(d => d.EmployeeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_pm_resources_employees");
+        });
+
+        modelBuilder.Entity<ResourceAllocation>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK_pm_resource_allocations");
+
+            entity.ToTable("resource_allocations", "pm");
+
+            entity.HasIndex(e => e.EngagementId, "IX_pm_resource_allocations_engagement_id");
+
+            entity.HasIndex(e => e.ResourceId, "IX_pm_resource_allocations_resource_id");
+
+            entity.HasIndex(e => new { e.ResourceId, e.EngagementId }, "UQ_pm_resource_allocations_resource_engagement").IsUnique();
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("(newid())")
+                .HasColumnName("id");
+            entity.Property(e => e.AllocPct).HasColumnName("alloc_pct");
+            entity.Property(e => e.Billable)
+                .HasDefaultValue(true)
+                .HasColumnName("billable");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasColumnName("created_at");
+            entity.Property(e => e.EndDate).HasColumnName("end_date");
+            entity.Property(e => e.EngagementId).HasColumnName("engagement_id");
+            entity.Property(e => e.ResourceId).HasColumnName("resource_id");
+            entity.Property(e => e.StartDate).HasColumnName("start_date");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Engagement).WithMany(p => p.ResourceAllocations)
+                .HasForeignKey(d => d.EngagementId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_pm_resource_allocations_engagements");
+
+            entity.HasOne(d => d.Resource).WithMany(p => p.ResourceAllocations)
+                .HasForeignKey(d => d.ResourceId)
+                .HasConstraintName("FK_pm_resource_allocations_resources");
         });
 
         modelBuilder.Entity<RevenuePoint>(entity =>
@@ -1713,6 +2097,8 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<Role>(entity =>
         {
+            entity.HasIndex(e => e.Code, "IX_Roles_Code").IsUnique();
+
             entity.HasIndex(e => e.Code, "UQ_Roles_Code").IsUnique();
 
             entity.Property(e => e.Code)
@@ -1722,6 +2108,10 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(100)
                 .IsUnicode(false);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
+
+            entity.HasOne(d => d.App).WithMany(p => p.Roles)
+                .HasForeignKey(d => d.AppId)
+                .HasConstraintName("FK_Roles_Apps");
         });
 
         modelBuilder.Entity<SalaryStructure>(entity =>
@@ -1755,6 +2145,16 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(d => d.SalaryStructureId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_SalaryStructureComponents_SalaryStructures");
+        });
+
+        modelBuilder.Entity<Salutation>(entity =>
+        {
+            entity.ToTable("Salutations", "qhrms");
+
+            entity.HasIndex(e => e.Name, "UQ_Salutations_Name").IsUnique();
+
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.Name).HasMaxLength(100);
         });
 
         modelBuilder.Entity<ScmAuditLog>(entity =>

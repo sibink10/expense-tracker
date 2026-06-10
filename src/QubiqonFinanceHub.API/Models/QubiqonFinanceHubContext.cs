@@ -39,6 +39,8 @@ public partial class QubiqonFinanceHubContext : DbContext
 
     public virtual DbSet<EmployeeRole> EmployeeRoles { get; set; }
 
+    public virtual DbSet<EmployeeRole1> EmployeeRoles1 { get; set; }
+
     public virtual DbSet<Engagement> Engagements { get; set; }
 
     public virtual DbSet<ExpenseRequest> ExpenseRequests { get; set; }
@@ -290,6 +292,28 @@ public partial class QubiqonFinanceHubContext : DbContext
 
         modelBuilder.Entity<EmployeeRole>(entity =>
         {
+            entity.ToTable("EmployeeRoles", "finance");
+
+            entity.HasIndex(e => e.EmployeeId, "IX_EmployeeRoles_EmployeeId").IsUnique();
+
+            entity.HasIndex(e => e.RoleId, "IX_EmployeeRoles_RoleId");
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(sysutcdatetime())");
+
+            entity.HasOne(d => d.Employee).WithOne(p => p.EmployeeRole)
+                .HasForeignKey<EmployeeRole>(d => d.EmployeeId)
+                .OnDelete(DeleteBehavior.ClientSetNull);
+
+            entity.HasOne(d => d.Role).WithMany(p => p.EmployeeRoles)
+                .HasForeignKey(d => d.RoleId)
+                .OnDelete(DeleteBehavior.ClientSetNull);
+        });
+
+        modelBuilder.Entity<EmployeeRole1>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("PK_pm_employee_roles");
 
             entity.ToTable("employee_roles", "pm");
@@ -318,8 +342,8 @@ public partial class QubiqonFinanceHubContext : DbContext
                 .HasDefaultValueSql("(getutcdate())")
                 .HasColumnName("updated_at");
 
-            entity.HasOne(d => d.Employee).WithOne(p => p.EmployeeRole)
-                .HasForeignKey<EmployeeRole>(d => d.EmployeeId)
+            entity.HasOne(d => d.Employee).WithOne(p => p.EmployeeRole1)
+                .HasForeignKey<EmployeeRole1>(d => d.EmployeeId)
                 .HasConstraintName("FK_pm_employee_roles_employees");
         });
 
@@ -604,7 +628,6 @@ public partial class QubiqonFinanceHubContext : DbContext
             entity.HasIndex(e => e.EmployeeId, "UQ_pm_resources_employee_id").IsUnique();
 
             entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.Allocations).HasColumnName("allocations");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getutcdate())")
                 .HasColumnName("created_at");

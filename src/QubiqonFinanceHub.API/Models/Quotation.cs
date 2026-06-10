@@ -41,6 +41,8 @@ public partial class Quotation
 
     public bool IsDeleted { get; set; }
 
+    public Guid? VendorId { get; set; }
+
     public virtual Employee CreatedBy { get; set; } = null!;
 
     public virtual ICollection<PurchaseOrder> PurchaseOrders { get; set; } = new List<PurchaseOrder>();
@@ -48,4 +50,6 @@ public partial class Quotation
     public virtual MaterialRequest Request { get; set; } = null!;
 
     public virtual Employee? SelectedByNavigation { get; set; }
+
+    public virtual Vendor? Vendor { get; set; }
 }

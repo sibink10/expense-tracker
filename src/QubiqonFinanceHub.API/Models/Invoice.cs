@@ -65,11 +65,15 @@ public partial class Invoice
 
     public DateTime? SignedAt { get; set; }
 
+    public decimal Tds { get; set; }
+
     public virtual ICollection<ActivityComment> ActivityComments { get; set; } = new List<ActivityComment>();
 
     public virtual Client Client { get; set; } = null!;
 
     public virtual ICollection<InvoiceLineItem> InvoiceLineItems { get; set; } = new List<InvoiceLineItem>();
+
+    public virtual ICollection<RequestDocument> RequestDocuments { get; set; } = new List<RequestDocument>();
 
     public virtual TaxConfiguration? TaxConfig { get; set; }
 }

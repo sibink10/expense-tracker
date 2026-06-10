@@ -69,6 +69,20 @@ public partial class PurchaseOrder
 
     public bool IsDeleted { get; set; }
 
+    public DateTime? DeliveredDate { get; set; }
+
+    public Guid? VendorBillId { get; set; }
+
+    public decimal DiscountPercent { get; set; }
+
+    public decimal Rounding { get; set; }
+
+    public Guid? TaxConfigId { get; set; }
+
+    public decimal Tdsamount { get; set; }
+
+    public decimal TotalGst { get; set; }
+
     public virtual Employee CreatedBy { get; set; } = null!;
 
     public virtual ICollection<PolineItem> PolineItems { get; set; } = new List<PolineItem>();
@@ -76,4 +90,8 @@ public partial class PurchaseOrder
     public virtual Quotation Quotation { get; set; } = null!;
 
     public virtual MaterialRequest Request { get; set; } = null!;
+
+    public virtual TaxConfiguration? TaxConfig { get; set; }
+
+    public virtual VendorBill? VendorBill { get; set; }
 }

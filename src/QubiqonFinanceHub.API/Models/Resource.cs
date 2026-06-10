@@ -15,8 +15,6 @@ public partial class Resource
 
     public double Rate { get; set; }
 
-    public string Allocations { get; set; } = null!;
-
     public Guid EmployeeId { get; set; }
 
     public Guid? CreatedById { get; set; }
@@ -28,6 +26,8 @@ public partial class Resource
     public virtual Employee? CreatedBy { get; set; }
 
     public virtual Employee Employee { get; set; } = null!;
+
+    public virtual ICollection<ResourceAllocation> ResourceAllocations { get; set; } = new List<ResourceAllocation>();
 
     public virtual ICollection<Timesheet> Timesheets { get; set; } = new List<Timesheet>();
 }

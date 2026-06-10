@@ -23,11 +23,15 @@ public partial class ActivityComment
 
     public DateTime CreatedAt { get; set; }
 
+    public Guid? ForecastId { get; set; }
+
     public virtual AdvancePayment? AdvancePayment { get; set; }
 
     public virtual Employee CommentByEmployee { get; set; } = null!;
 
     public virtual ExpenseRequest? ExpenseRequest { get; set; }
+
+    public virtual Forecast? Forecast { get; set; }
 
     public virtual Invoice? Invoice { get; set; }
 

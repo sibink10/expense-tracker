@@ -27,5 +27,9 @@ public partial class PolineItem
 
     public bool IsDeleted { get; set; }
 
+    public Guid? GstconfigId { get; set; }
+
+    public virtual TaxConfiguration? Gstconfig { get; set; }
+
     public virtual PurchaseOrder PurchaseOrder { get; set; } = null!;
 }

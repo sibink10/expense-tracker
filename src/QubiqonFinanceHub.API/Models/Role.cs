@@ -13,7 +13,13 @@ public partial class Role
 
     public bool IsActive { get; set; }
 
-    public virtual ICollection<EmployeeRole1> EmployeeRole1s { get; set; } = new List<EmployeeRole1>();
+    public Guid? AppId { get; set; }
+
+    public virtual App? App { get; set; }
+
+    public virtual ICollection<EmployeeRole> EmployeeRoles { get; set; } = new List<EmployeeRole>();
+
+    public virtual ICollection<QhrmsemployeeRole> QhrmsemployeeRoles { get; set; } = new List<QhrmsemployeeRole>();
 
     public virtual ICollection<QscmemployeeRole> QscmemployeeRoles { get; set; } = new List<QscmemployeeRole>();
 }

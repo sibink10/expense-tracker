@@ -41,13 +41,9 @@ public partial class Organization
 
     public bool UseSeparatePaymentAddress { get; set; }
 
-    public string? AccountHolderName { get; set; }
-
     public string? BankName { get; set; }
 
     public string? IfscCode { get; set; }
-
-    public string? SwiftCode { get; set; }
 
     public string? AccountNumber { get; set; }
 
@@ -55,27 +51,31 @@ public partial class Organization
 
     public string? ZohoSignEmail { get; set; }
 
+    public string? ZohoAuthorizationEndpoint { get; set; }
+
     public string? ZohoClientId { get; set; }
 
     public string? ZohoClientSecret { get; set; }
 
     public string? ZohoCode { get; set; }
 
-    public string? ZohoScope { get; set; }
-
     public string? ZohoDataCenter { get; set; }
-
-    public string? ZohoAuthorizationEndpoint { get; set; }
-
-    public string? ZohoTokenEndpoint { get; set; }
-
-    public string? ZohoSignApiBaseUrl { get; set; }
-
-    public string? ZohoRedirectUri { get; set; }
 
     public string? ZohoHomePage { get; set; }
 
+    public string? ZohoRedirectUri { get; set; }
+
     public string? ZohoRefreshToken { get; set; }
+
+    public string? ZohoScope { get; set; }
+
+    public string? ZohoSignApiBaseUrl { get; set; }
+
+    public string? ZohoTokenEndpoint { get; set; }
+
+    public string? AccountHolderName { get; set; }
+
+    public string? SwiftCode { get; set; }
 
     public virtual ICollection<Announcement> Announcements { get; set; } = new List<Announcement>();
 
@@ -87,7 +87,11 @@ public partial class Organization
 
     public virtual ICollection<Designation> Designations { get; set; } = new List<Designation>();
 
+    public virtual ICollection<DocumentType> DocumentTypes { get; set; } = new List<DocumentType>();
+
     public virtual ICollection<EmailTemplate> EmailTemplates { get; set; } = new List<EmailTemplate>();
+
+    public virtual ICollection<EmployeeDocument> EmployeeDocuments { get; set; } = new List<EmployeeDocument>();
 
     public virtual ICollection<EmployeeIdconfig> EmployeeIdconfigs { get; set; } = new List<EmployeeIdconfig>();
 
