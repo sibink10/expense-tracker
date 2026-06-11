@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { C, R } from "../../shared/theme";
-import { BILL_ACCOUNTS, BILL_PAYMENT_PRIORITY, BILL_PAYMENT_PRIORITY_OPTIONS, EVENTS, MODAL_T, PAY_TERMS } from "../../shared/constants";
+import { BILL_PAYMENT_PRIORITY, BILL_PAYMENT_PRIORITY_OPTIONS, EVENTS, MODAL_T, PAY_TERMS } from "../../shared/constants";
 import { addDays, fmtCur, round2, aggregateLineGstRows, formatTdsOptionLabel, formatTdsSummarySnippet, downloadFromSasUrl, buildDownloadFilename } from "../../shared/utils";
 import { Inp, Btn, Alert, Mdl, MultiFileUp, MobileHScroll } from "../ui";
 import DecimalLineInput from "../DecimalLineInput";
 import { useAppContext } from "../../context/AppContext";
 import { updateBill, uploadVendorBill, removeBillDocument, getBillDocument } from "../../shared/api/bill";
 import { getTaxConfigs } from "../../shared/api/taxConfig";
+import { getAccounts } from "../../shared/api/accounts";
 import type { Bill, BillLineItem, TaxConfig, UploadedDocument } from "../../types";
 
 const cellCompact = { marginBottom: 0 };
@@ -29,11 +30,22 @@ const defaultItemRow = (): BillItemRow => ({
   gstConfigId: "",
 });
 
-function toItemRow(li: BillLineItem): BillItemRow {
+type AccountOption = { v: string; l: string };
+
+function resolveAccountShortName(account: string, accountOptions: AccountOption[]): string {
+  if (!account) return "";
+  const byName = accountOptions.find((x) => x.l === account);
+  if (byName) return byName.v;
+  const byShort = accountOptions.find((x) => x.v === account);
+  if (byShort) return byShort.v;
+  return account;
+}
+
+function toItemRow(li: BillLineItem, accountOptions: AccountOption[]): BillItemRow {
   return {
     id: crypto.randomUUID(),
     description: li.description,
-    account: li.account ?? "",
+    account: resolveAccountShortName(li.account ?? "", accountOptions),
     quantity: li.quantity,
     rate: li.rate,
     gstConfigId: li.gstConfigId ?? "",
@@ -73,8 +85,20 @@ export default function BillEditModal() {
   const [gstOptions, setGstOptions] = useState<TaxConfig[]>([]);
   const [tdsOptions, setTdsOptions] = useState<TaxConfig[]>([]);
   const [tdsLoading, setTdsLoading] = useState(true);
+  const [accountOptions, setAccountOptions] = useState<AccountOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getAccounts()
+      .then((items) => {
+        const active = items.filter((x) => x.isActive);
+        if (active.length > 0) {
+          setAccountOptions(active.map((x) => ({ v: x.shortName, l: x.name })));
+        }
+      })
+      .catch(() => setAccountOptions([]));
+  }, []);
 
   useEffect(() => {
     getTaxConfigs()
@@ -98,12 +122,12 @@ export default function BillEditModal() {
       setRounding(String(bill.rounding ?? 0));
       setDocuments(bill.documents ?? []);
       if (bill.lineItems && bill.lineItems.length > 0) {
-        setItems(bill.lineItems.map(toItemRow));
+        setItems(bill.lineItems.map((li) => toItemRow(li, accountOptions)));
       } else {
         setItems([defaultItemRow()]);
       }
     }
-  }, [bill]);
+  }, [bill, accountOptions]);
 
   const addItemRow = () => setItems((prev) => [...prev, defaultItemRow()]);
   const removeItemRow = (id: string) => setItems((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : prev));
@@ -125,7 +149,16 @@ export default function BillEditModal() {
   const tdsRate = tx?.rate || 0;
   const tdsA = Math.round((totalBeforeTds * tdsRate) / 100);
 
-  const accountOpts = [{ v: "", l: "Select Account" }, ...BILL_ACCOUNTS.map((a) => ({ v: a.v, l: a.l }))];
+  const extraAccountOpts = items
+    .map((r) => r.account)
+    .filter((a): a is string => !!a && !accountOptions.some((o) => o.v === a))
+    .filter((a, i, arr) => arr.indexOf(a) === i)
+    .map((v) => ({ v, l: v }));
+  const accountOpts = [
+    { v: "", l: "Select Account" },
+    ...(accountOptions.length > 0 ? accountOptions : []),
+    ...extraAccountOpts,
+  ];
   const gstOpts = [{ v: "", l: "Select Tax" }, ...gstOptions.map((g) => ({ v: g.id, l: `${g.name} [${g.rate}%]` }))];
 
   const handleDocumentDownload = async (documentId: string, fileName: string) => {
@@ -175,11 +208,12 @@ export default function BillEditModal() {
     try {
       const billDate = new Date(bd).toISOString();
       const dueDate = due ? new Date(due).toISOString() : billDate;
+      const accountNameByShortName = new Map(accountOptions.map((x) => [x.v, x.l]));
       const validItems = items
         .filter((it) => it.description.trim() && it.quantity > 0 && it.rate >= 0)
         .map((it) => ({
           description: it.description.trim(),
-          account: it.account || undefined,
+          account: it.account ? accountNameByShortName.get(it.account) ?? it.account : undefined,
           quantity: it.quantity,
           rate: it.rate,
           gstConfigId: it.gstConfigId || undefined,
