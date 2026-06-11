@@ -2201,7 +2201,7 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Id).ValueGeneratedNever();
             entity.Property(e => e.Name).HasMaxLength(200);
             entity.Property(e => e.Rate).HasColumnType("decimal(5, 2)");
-            entity.Property(e => e.Section).HasMaxLength(20);
+            entity.Property(e => e.Section).HasMaxLength(100);
             entity.Property(e => e.SubType).HasMaxLength(20);
             entity.Property(e => e.Type).HasMaxLength(10);
 

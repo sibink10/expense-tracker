@@ -470,7 +470,7 @@ public class TaxConfiguration
     public TaxType Type { get; set; }
     [Required, MaxLength(200)] public string Name { get; set; } = "";
     [Column(TypeName = "decimal(5,2)")] public decimal Rate { get; set; }
-    [MaxLength(20)] public string? Section { get; set; }
+    [MaxLength(100)] public string? Section { get; set; }
     [MaxLength(20)] public string? SubType { get; set; } // IGST, CGST+SGST, SEZ
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

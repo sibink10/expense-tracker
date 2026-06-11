@@ -7,6 +7,7 @@ import type { TaxConfig } from "../../../types";
 import { EVENTS, MODAL_T } from "../../../shared/constants";
 
 const CLIENT_TAX_TYPE = "ClientTax";
+const SECTION_MAX_LENGTH = 100;
 
 export default function TaxConfigEditModal() {
   const { mdl, setMdl, t } = useAppContext();
@@ -39,6 +40,10 @@ export default function TaxConfigEditModal() {
     const r = parseFloat(rate);
     if (isNaN(r) || r < 0) {
       setError("Rate must be a valid number");
+      return;
+    }
+    if (section.trim().length > SECTION_MAX_LENGTH) {
+      setError(`Section must be ${SECTION_MAX_LENGTH} characters or fewer`);
       return;
     }
     setLoading(true);
@@ -78,7 +83,7 @@ export default function TaxConfigEditModal() {
       />
       <Inp label="Name" value={name} onChange={(e) => setName(e.target.value)} req ph="e.g. Professional Fees" />
       <Inp label="Rate (%)" type="number" value={rate} onChange={(e) => setRate(e.target.value)} req min="0" ph="0" />
-      <Inp label="Section" value={section} onChange={(e) => setSection(e.target.value)} ph="e.g. 194 J" />
+      <Inp label="Section" value={section} onChange={(e) => setSection(e.target.value)} maxLength={SECTION_MAX_LENGTH} ph="e.g. Section 393(1) SI5(i)" />
       <Inp label="Sub type" value={subType} onChange={(e) => setSubType(e.target.value)} ph="Optional" />
       {error && <Alert sx={{ marginBottom: "12px" }}>{error}</Alert>}
       <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>

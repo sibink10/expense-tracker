@@ -209,6 +209,7 @@ public class FinanceHubDbContext : DbContext
             e.ToTable("TaxConfigurations", DbSchemas.Finance);
             e.HasIndex(x => new { x.OrganizationId, x.Type, x.IsActive });
             e.Property(x => x.Type).HasConversion<string>().HasMaxLength(10);
+            e.Property(x => x.Section).HasMaxLength(100);
         });
 
         // ─── Activity Comment ───────────────────────

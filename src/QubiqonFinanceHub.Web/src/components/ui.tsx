@@ -70,6 +70,7 @@ export interface InpProps {
   disabled?: boolean;
   opts?: InpOpt[];
   hint?: string;
+  maxLength?: number;
   style?: CSSProperties;
   controlSx?: CSSProperties;
   endAdornment?: ReactNode;
@@ -88,6 +89,7 @@ export const Inp: React.FC<InpProps> = ({
   disabled,
   opts,
   hint,
+  maxLength,
   endAdornment,
   style: sx,
   controlSx,
@@ -173,6 +175,7 @@ export const Inp: React.FC<InpProps> = ({
         required={req}
         placeholder={ph}
         disabled={disabled}
+        maxLength={maxLength}
         rows={2}
         style={{
           width: "100%",
@@ -205,6 +208,7 @@ export const Inp: React.FC<InpProps> = ({
           max={type === "password" ? undefined : max}
           placeholder={ph}
           disabled={disabled}
+          maxLength={maxLength}
           autoComplete={type === "password" ? "off" : undefined}
           inputMode={type === "password" ? "numeric" : undefined}
           spellCheck={type === "password" ? false : undefined}
