@@ -287,7 +287,7 @@ export default function BillListPage({ pendingOnly, hideHeader }: { pendingOnly?
           hidden={hideHeader}
           tableBodyMarginTop={hideHeader ? undefined : listSectionTableBodyMarginTop}
           className="list-page-header"
-          title="Vendor bills"
+          title="Vendor Bills"
           icon={<ReceiptText size={24} strokeWidth={1.8} color={C.primary} />}
           search={
             <CollapsibleSearch

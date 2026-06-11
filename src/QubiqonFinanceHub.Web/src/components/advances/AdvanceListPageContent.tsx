@@ -290,7 +290,7 @@ export default function AdvanceListPageContent({
         <ListPageHeader
           hidden={hideHeader}
           tableBodyMarginTop={useSectionTableSpacing ? listSectionTableBodyMarginTop : undefined}
-          title="Advance requests"
+          title="Advance Requests"
           icon={<BanknoteArrowUp size={24} strokeWidth={1.8} color={C.primary} />}
           search={
             <CollapsibleSearch

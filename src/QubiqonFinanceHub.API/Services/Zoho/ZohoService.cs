@@ -311,6 +311,7 @@ public class ZohoService : IZohoService
 
         var signerName = string.IsNullOrWhiteSpace(org.SubName) ? org.OrgName : org.SubName!;
         var pdfBytes = await pdfGenerator.GenerateAsync(invoiceId, cancellationToken);
+        var placement = InvoiceSignaturePlacementResolver.Resolve(pdfBytes);
 
         var createBody = await PostSignCreateRequestAsync(
             inv.InvoiceCode,
@@ -329,7 +330,7 @@ public class ZohoService : IZohoService
             throw new InvalidOperationException("Could not read action_id and document_id from Zoho create response.");
 
         await PutSignRequestFieldsAsync(
-            parsed.RequestId!, actionId, documentId, signerEmail, signerName, cancellationToken);
+            parsed.RequestId!, actionId, documentId, signerEmail, signerName, placement, cancellationToken);
         await PostSignRequestSubmitAsync(parsed.RequestId!, cancellationToken);
 
         var zohoStatus = TryReadRequestStatusFromBody(createBody) ?? "inprogress";
@@ -914,6 +915,7 @@ public class ZohoService : IZohoService
         string documentId,
         string signerEmail,
         string signerName,
+        InvoiceSignaturePlacement placement,
         CancellationToken cancellationToken)
     {
         // Zoho PUT /requests/{id} expects fields grouped under image_fields and x_coord/y_coord (not x_value/y_value).
@@ -925,11 +927,11 @@ public class ZohoService : IZohoService
             ["document_id"] = documentId,
             ["action_id"] = actionId,
             ["is_mandatory"] = true,
-            ["x_coord"] = 419,
-            ["y_coord"] = 760,
-            ["abs_width"] = 115,
-            ["abs_height"] = 20,
-            ["page_no"] = 0,
+            ["x_coord"] = placement.XCoord,
+            ["y_coord"] = placement.YCoord,
+            ["abs_width"] = placement.AbsWidth,
+            ["abs_height"] = placement.AbsHeight,
+            ["page_no"] = placement.PageNo,
             ["description_tooltip"] = "Authorized Signature"
         };
 

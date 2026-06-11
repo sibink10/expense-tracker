@@ -16,8 +16,6 @@ public sealed class InvoicePdfDocument : IDocument
     private static readonly Color Border    = Color.FromHex("#E5E7EB");
 
     private const float ContentPadding = 16f;
-    private const float SignatureBlockHeight = 55f;
-    private const float SignatureBottomReserve = SignatureBlockHeight + 12f;
 
     public InvoicePdfDocument(InvoicePdfModel model) => _m = model;
 
@@ -34,23 +32,13 @@ public sealed class InvoicePdfDocument : IDocument
             page.Content()
                 .Border(1).BorderColor(Border)
                 .Padding(ContentPadding)
-                .Layers(layers =>
+                .Column(col =>
                 {
-                    layers.PrimaryLayer()
-                        .PaddingBottom(SignatureBottomReserve)
-                        .Column(col =>
-                        {
-                            col.Item().Element(ComposeHeader);
-                            col.Item().PaddingTop(12).Element(ComposeMeta);
-                            col.Item().PaddingTop(8).Element(ComposeBillTo);
-                            col.Item().PaddingTop(8).Element(ComposeLineItems);
-                            col.Item().PaddingTop(12).Element(ComposeFooter);
-                        });
-
-                    layers.Layer()
-                        .AlignBottom()
-                        .AlignRight()
-                        .Element(ComposeSignature);
+                    col.Item().Element(ComposeHeader);
+                    col.Item().PaddingTop(12).Element(ComposeMeta);
+                    col.Item().PaddingTop(8).Element(ComposeBillTo);
+                    col.Item().PaddingTop(8).Element(ComposeLineItems);
+                    col.Item().PaddingTop(12).Element(ComposeFooter);
                 });
         });
     }
@@ -240,7 +228,7 @@ public sealed class InvoicePdfDocument : IDocument
             .BorderBottom(1).BorderColor(Border)
             .Padding(6);
 
-    // ── 5. FOOTER (notes, totals, bank — signature is at page bottom via Extend) ─
+    // ── 5. FOOTER (notes, totals, bank — signature follows in content column) ─
     private void ComposeFooter(IContainer container)
     {
         container.Column(footer =>
@@ -308,6 +296,8 @@ public sealed class InvoicePdfDocument : IDocument
                     });
                 });
             }
+
+            footer.Item().PaddingTop(12).AlignRight().Element(ComposeSignature);
         });
     }
 
@@ -315,7 +305,9 @@ public sealed class InvoicePdfDocument : IDocument
     {
         container.Width(150).Column(sig =>
         {
-            sig.Item().Height(36);
+            sig.Item().Height(36).AlignRight().AlignMiddle()
+                .Text(InvoiceSignaturePlacementResolver.SignAnchorToken)
+                .FontSize(1).FontColor(Colors.White);
             sig.Item().LineHorizontal(1).LineColor(Navy);
             sig.Item().PaddingTop(4).AlignCenter()
                 .Text("Authorized Signature").FontSize(7).SemiBold().FontColor(Navy);

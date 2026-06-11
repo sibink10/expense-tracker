@@ -193,7 +193,7 @@ export default function AdminPaymentTermsPage() {
   return (
       <ListPageHeader
         className="list-page-header"
-        title="Payment terms"
+        title="Payment Terms"
         icon={<Clock size={24} strokeWidth={1.8} color={C.primary} />}
         actions={
           <>

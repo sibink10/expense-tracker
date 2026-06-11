@@ -261,7 +261,7 @@ export default function ExpenseListPageContent({
         <ListPageHeader
           hidden={hideHeader}
           tableBodyMarginTop={useSectionTableSpacing ? listSectionTableBodyMarginTop : undefined}
-          title="Expense requests"
+          title="Expense Requests"
           icon={<ReceiptText size={24} strokeWidth={1.8} color={C.primary} />}
           search={
             <CollapsibleSearch

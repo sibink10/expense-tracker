@@ -182,7 +182,7 @@ export default function AdminTaxPage() {
   return (
       <ListPageHeader
         className="list-page-header"
-        title="Tax config"
+        title="Tax Config"
         icon={<BadgePercent size={24} strokeWidth={1.8} color={C.primary} />}
         actions={
           <>

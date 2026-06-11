@@ -512,7 +512,7 @@ export default function InvoicesPage() {
   return (
       <ListPageHeader
         className="list-page-header"
-        title="Client invoices"
+        title="Client Invoices"
         icon={<HandCoins size={24} strokeWidth={1.8} color={C.primary} />}
         search={
           <CollapsibleSearch

@@ -202,7 +202,7 @@ export default function ForecastListPageContent({
         <ListPageHeader
           hidden={hideHeader}
           tableBodyMarginTop={useSectionTableSpacing ? listSectionTableBodyMarginTop : undefined}
-          title="Forecast management"
+          title="Forecast Management"
           icon={<Target size={24} strokeWidth={1.8} color={C.primary} />}
           search={<CollapsibleSearch value={search} onChange={setSearch} placeholder="Search forecasts..." />}
           addAction={
