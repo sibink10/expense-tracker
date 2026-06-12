@@ -19,7 +19,8 @@ public sealed class AzureTokenResult
 
 public class AzureOAuthTokenClient(IHttpClientFactory httpClientFactory, IConfiguration config) : IAzureOAuthTokenClient
 {
-    private const string Scope = "openid profile email offline_access";
+    private string OAuthScope =>
+        $"api://{config["ServerApp:ClientId"]}/access_as_user offline_access openid profile email";
 
     public Task<AzureTokenResult> ExchangeAuthorizationCodeAsync(string code, string redirectUri, CancellationToken ct = default) =>
         RequestTokenAsync(new Dictionary<string, string>
@@ -27,7 +28,7 @@ public class AzureOAuthTokenClient(IHttpClientFactory httpClientFactory, IConfig
             ["grant_type"] = "authorization_code",
             ["code"] = code,
             ["redirect_uri"] = redirectUri,
-            ["scope"] = Scope
+            ["scope"] = OAuthScope
         }, ct);
 
     public Task<AzureTokenResult> RefreshAsync(string refreshToken, CancellationToken ct = default) =>
@@ -35,7 +36,7 @@ public class AzureOAuthTokenClient(IHttpClientFactory httpClientFactory, IConfig
         {
             ["grant_type"] = "refresh_token",
             ["refresh_token"] = refreshToken,
-            ["scope"] = Scope
+            ["scope"] = OAuthScope
         }, ct);
 
     private async Task<AzureTokenResult> RequestTokenAsync(Dictionary<string, string> fields, CancellationToken ct)

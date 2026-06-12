@@ -81,7 +81,7 @@ public class GlobalAuthService : IGlobalAuthService
             ["response_type"] = "code",
             ["redirect_uri"] = callbackUrl,
             ["response_mode"] = "query",
-            ["scope"] = $"api://{serverClientId}/access_as_user",
+            ["scope"] = $"api://{serverClientId}/access_as_user offline_access openid profile email",
             ["state"] = state,
         };
 

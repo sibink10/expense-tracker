@@ -17,23 +17,25 @@ public class QubiqonSessionMiddleware(
             {
                 try
                 {
-                    session = await tokenRefresh.EnsureFreshAzureTokensAsync(session, context.RequestAborted);
+                    var forceRefresh = session.AccessTokenExpiry <= DateTime.UtcNow;
+                    session = await tokenRefresh.EnsureFreshAzureTokensAsync(
+                        session,
+                        context.RequestAborted,
+                        forceRefresh: forceRefresh);
                 }
                 catch (UnauthorizedAccessException)
                 {
-                    session = null;
+                    // Keep the session in context so downstream services can attempt refresh
+                    // or return a clear session-expired error instead of "no session".
                 }
 
-                if (session != null)
+                context.Items[SessionContextKeys.AuthSession] = session;
+                context.Items[SessionContextKeys.SessionUser] = new SessionUser
                 {
-                    context.Items[SessionContextKeys.AuthSession] = session;
-                    context.Items[SessionContextKeys.SessionUser] = new SessionUser
-                    {
-                        SessionId = session.SessionId,
-                        UserOid = session.UserOid,
-                        Email = session.Email
-                    };
-                }
+                    SessionId = session.SessionId,
+                    UserOid = session.UserOid,
+                    Email = session.Email
+                };
             }
         }
 

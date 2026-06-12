@@ -2,7 +2,7 @@ namespace QubiqonFinanceHub.API.Auth.Shared;
 
 public interface IAzureTokenRefreshService
 {
-    Task<AuthSession> EnsureFreshAzureTokensAsync(AuthSession session, CancellationToken ct = default);
+    Task<AuthSession> EnsureFreshAzureTokensAsync(AuthSession session, CancellationToken ct = default, bool forceRefresh = false);
 }
 
 public class AzureTokenRefreshService(
@@ -10,9 +10,9 @@ public class AzureTokenRefreshService(
     IAzureOAuthTokenClient tokenClient,
     ILogger<AzureTokenRefreshService> log) : IAzureTokenRefreshService
 {
-    public async Task<AuthSession> EnsureFreshAzureTokensAsync(AuthSession session, CancellationToken ct = default)
+    public async Task<AuthSession> EnsureFreshAzureTokensAsync(AuthSession session, CancellationToken ct = default, bool forceRefresh = false)
     {
-        if (session.AccessTokenExpiry > DateTime.UtcNow.AddMinutes(5))
+        if (!forceRefresh && session.AccessTokenExpiry > DateTime.UtcNow.AddMinutes(5))
             return session;
 
         try

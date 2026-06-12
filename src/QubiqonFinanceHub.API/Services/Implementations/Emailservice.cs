@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using Microsoft.Identity.Client;
 using Microsoft.EntityFrameworkCore;
 using QubiqonFinanceHub.API.Auth.Shared;
@@ -19,6 +20,9 @@ public class EmailService : IEmailService
     private readonly ILogger<EmailService> _log;
     private readonly IConfiguration _config;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IAzureTokenRefreshService _tokenRefresh;
+    private readonly IAuthSessionStore _sessionStore;
+    private readonly GlobalAuthOptions _globalAuthOptions;
     private readonly HttpClient _httpClient;
 
     public EmailService(
@@ -28,7 +32,10 @@ public class EmailService : IEmailService
         IStorageService storage,
         ILogger<EmailService> log,
         IConfiguration config,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        IAzureTokenRefreshService tokenRefresh,
+        IAuthSessionStore sessionStore,
+        IOptions<GlobalAuthOptions> globalAuthOptions)
     {
         _db = db;
         _httpContext = httpContext;
@@ -37,6 +44,9 @@ public class EmailService : IEmailService
         _log = log;
         _config = config;
         _httpClientFactory = httpClientFactory;
+        _tokenRefresh = tokenRefresh;
+        _sessionStore = sessionStore;
+        _globalAuthOptions = globalAuthOptions.Value;
         _httpClient = httpClientFactory.CreateClient("GraphClient");
     }
 
@@ -78,13 +88,9 @@ public class EmailService : IEmailService
             }
             else
             {
-                var session = _httpContext.HttpContext!.Items[SessionContextKeys.AuthSession] as AuthSession;
-                if (session == null || string.IsNullOrEmpty(session.AzureAccessToken))
-                    throw new InvalidOperationException("No active session found for delegated email.");
+                var session = await ResolveAuthSessionForDelegatedEmailAsync();
+                var graphToken = await GetGraphTokenOnBehalfOfWithRefreshAsync(session);
 
-                var graphToken = await GetGraphTokenOnBehalfOfAsync(session.AzureAccessToken);
-
-                // 5. Send via Graph API (delegated flow)
                 await SendViaGraphAsync(
                     toEmail,
                     ccEmails,
@@ -527,6 +533,57 @@ public class EmailService : IEmailService
 
             _ => null
         };
+    }
+
+    private async Task<AuthSession> ResolveAuthSessionForDelegatedEmailAsync()
+    {
+        var httpContext = _httpContext.HttpContext
+            ?? throw new InvalidOperationException("No active session found for delegated email.");
+
+        var session = httpContext.Items[SessionContextKeys.AuthSession] as AuthSession;
+
+        if (session == null
+            && httpContext.Request.Cookies.TryGetValue(_globalAuthOptions.CookieName, out var raw)
+            && Guid.TryParse(raw, out var sessionId))
+        {
+            session = await _sessionStore.GetValidSessionAsync(sessionId, httpContext.RequestAborted);
+        }
+
+        if (session == null)
+            throw new InvalidOperationException("No active session found for delegated email.");
+
+        var forceRefresh = session.AccessTokenExpiry <= DateTime.UtcNow;
+        session = await _tokenRefresh.EnsureFreshAzureTokensAsync(
+            session,
+            httpContext.RequestAborted,
+            forceRefresh: forceRefresh);
+
+        httpContext.Items[SessionContextKeys.AuthSession] = session;
+        return session;
+    }
+
+    private async Task<string> GetGraphTokenOnBehalfOfWithRefreshAsync(AuthSession session)
+    {
+        try
+        {
+            return await GetGraphTokenOnBehalfOfAsync(session.AzureAccessToken);
+        }
+        catch (MsalServiceException ex) when (IsExpiredUserAssertionError(ex))
+        {
+            session = await _tokenRefresh.EnsureFreshAzureTokensAsync(session, CancellationToken.None, forceRefresh: true);
+            _httpContext.HttpContext!.Items[SessionContextKeys.AuthSession] = session;
+            return await GetGraphTokenOnBehalfOfAsync(session.AzureAccessToken);
+        }
+    }
+
+    private static bool IsExpiredUserAssertionError(MsalServiceException ex)
+    {
+        if (string.Equals(ex.ErrorCode, "invalid_grant", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        var message = ex.Message;
+        return message.Contains("AADSTS500133", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("expired", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<string> GetGraphTokenOnBehalfOfAsync(string userToken)
