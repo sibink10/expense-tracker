@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
-import { Pencil } from "lucide-react";
 import { C } from "../../shared/theme";
-import { Av, Btn } from "../ui";
+import { Av } from "../ui";
 import "./detail-modal.css";
 
 const EMPTY = "—";
@@ -174,34 +173,6 @@ export function DetailTable({
           ))}
         </div>
       ))}
-    </div>
-  );
-}
-
-export function DetailModalFooter({
-  onEdit,
-  onClose,
-  editVariant = "primary",
-  editLabel = "Edit",
-}: {
-  onEdit?: () => void;
-  onClose: () => void;
-  editVariant?: "primary" | "vendor" | "invoice";
-  editLabel?: string;
-}) {
-  return (
-    <div className="detail-modal-footer">
-      <Btn v="secondary" onClick={onClose}>
-        Close
-      </Btn>
-      {onEdit && (
-        <Btn v={editVariant} onClick={onEdit}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-            <Pencil size={14} strokeWidth={2.25} aria-hidden />
-            {editLabel}
-          </span>
-        </Btn>
-      )}
     </div>
   );
 }

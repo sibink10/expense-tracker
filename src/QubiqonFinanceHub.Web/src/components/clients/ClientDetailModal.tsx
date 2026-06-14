@@ -7,7 +7,6 @@ import {
   DetailEntityHero,
   DetailField,
   DetailGrid,
-  DetailModalFooter,
   DetailModalSurface,
   DetailPill,
   DetailSection,
@@ -28,7 +27,7 @@ export default function ClientDetailModal({ client: c }: Props) {
   const heroSub = [c.gstin, c.email].filter(Boolean).join(" · ") || c.contact || undefined;
 
   return (
-    <Mdl open close={() => setMdl(null)} title={c.name} subtitle="Client" w>
+    <Mdl open close={() => setMdl(null)} title={c.name} subtitle="Client" w onEdit={openEdit}>
       <DetailModalSurface>
       <DetailEntityHero
         name={c.name}
@@ -65,7 +64,6 @@ export default function ClientDetailModal({ client: c }: Props) {
         />
       </DetailSection>
 
-      <DetailModalFooter onEdit={openEdit} onClose={() => setMdl(null)} editVariant="invoice" />
       </DetailModalSurface>
     </Mdl>
   );

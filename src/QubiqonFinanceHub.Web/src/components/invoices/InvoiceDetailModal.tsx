@@ -15,7 +15,6 @@ import {
 } from "../../shared/api/invoice";
 import { sendZohoDocument } from "../../shared/api/zoho";
 import InvoiceDocument from "../InvoiceDocument";
-import { EditIcon } from "../icons";
 import { EVENTS, INV_S, MODAL_T, ROLES } from "../../shared/constants";
 import { IndianRupee, RefreshCw, Send, Signature, X } from "lucide-react";
 
@@ -279,7 +278,22 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
   };
 
   return (
-    <Mdl open close={() => setMdl(null)} title={inv.id} w zIndex={INVOICE_MODAL_Z_INDEX} detail={false}>
+    <Mdl
+      open
+      close={() => setMdl(null)}
+      title={inv.id}
+      w
+      zIndex={INVOICE_MODAL_Z_INDEX}
+      detail={false}
+      onEdit={
+        canEdit
+          ? () => {
+              setMdl(null);
+              navigate(`/invoices/edit/${inv.apiId}`);
+            }
+          : undefined
+      }
+    >
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       {signingRelated && (
         <div
@@ -351,34 +365,7 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
       </MobileHScroll>
 
       <CLog comments={inv.comments} />
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-        <div>
-          {canEdit && (
-            <button
-              type="button"
-              onClick={() => {
-                setMdl(null);
-                navigate(`/invoices/edit/${inv.apiId}`);
-              }}
-              title="Edit"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "36px",
-                height: "36px",
-                padding: 0,
-                border: "none",
-                borderRadius: R.control,
-                background: "rgba(37, 99, 235, 0.1)",
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              <EditIcon size={20} color="#2563eb" />
-            </button>
-          )}
-        </div>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "flex-end" }}>
           {renderWorkflowAction()}
           {canSync && !needsSignedPdfSync && (
@@ -401,10 +388,6 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
             ) : (
               "Download"
             )}
-          </Btn>
-          <Btn v="secondary" onClick={() => setMdl(null)}>
-            <X size={14} strokeWidth={1.9} />
-            Close
           </Btn>
         </div>
       </div>

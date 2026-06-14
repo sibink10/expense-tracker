@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Plus, Send, Target, X } from "lucide-react";
+import { Ban, Check, Send, Target, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
   Badge,
   Btn,
   CollapsibleSearch,
+  EditActionButton,
   Empty,
   Filter,
   ListPageHeader,
@@ -12,13 +13,14 @@ import {
   Tbl,
   useNavPageAdd,
 } from "../ui";
-import { C, listSectionTableBodyMarginTop, listTableCardStyle, workflowTableActionStyle } from "../../shared/theme";
-import { approveForecast, cancelForecast, getForecastsMapped, rejectForecast, submitForecast } from "../../shared/api/forecast";
+import { C, listSectionTableBodyMarginTop, listTableCardStyle, tableIconButtonSx, workflowTableActionStyle } from "../../shared/theme";
+import { approveForecast, getForecastsMapped, rejectForecast, submitForecast } from "../../shared/api/forecast";
 import type { Forecast } from "../../types";
 import { useAppContext } from "../../context/AppContext";
-import { ROLES } from "../../shared/constants";
+import { EVENTS, MODAL_T, ROLES } from "../../shared/constants";
+import { canEditForecastRequest } from "../../shared/expensePermissions";
 
-const STATUS_OPTIONS = ["all", "Draft", "Submitted", "Approved", "Rejected", "Cancelled"];
+const STATUS_OPTIONS = ["all", "Submitted", "Approved", "Rejected", "Cancelled"];
 
 function formatMoney(value: number) {
   return `₹${value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
@@ -37,7 +39,7 @@ export default function ForecastListPageContent({
 }) {
   const useSectionTableSpacing = Boolean(isRequest || (!hideHeader && !pendingOnly));
   const navigate = useNavigate();
-  const { t, is, user } = useAppContext();
+  const { t, is, user, setMdl } = useAppContext();
   const [data, setData] = useState<Forecast[]>([]);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState(pendingOnly ? "Submitted" : "all");
@@ -74,6 +76,12 @@ export default function ForecastListPageContent({
     load();
   }, [load]);
 
+  useEffect(() => {
+    const handler = () => load();
+    window.addEventListener(EVENTS.FORECASTS_REFRESH, handler);
+    return () => window.removeEventListener(EVENTS.FORECASTS_REFRESH, handler);
+  }, [load]);
+
   const canReview = is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN);
 
   const rows = useMemo(
@@ -91,6 +99,16 @@ export default function ForecastListPageContent({
           {
             v: (
               <div style={{ display: "flex", gap: "6px", justifyContent: "center", flexWrap: "nowrap", minHeight: 36, alignItems: "center", overflowX: "auto", width: "100%" }}>
+                {canEditForecastRequest(forecast, user) && (
+                  <EditActionButton
+                    sx={tableIconButtonSx(C.actionEditBg)}
+                    disabled={!!actionLoading}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/forecasts/${forecast.id}/edit`);
+                    }}
+                  />
+                )}
                 {forecast.status === "Draft" && (
                   <Btn
                     sm
@@ -119,20 +137,13 @@ export default function ForecastListPageContent({
                     v="ghost"
                     sx={workflowTableActionStyle(C.danger, C.dangerBg)}
                     disabled={!!actionLoading}
-                    onClick={async (e) => {
+                    onClick={(e) => {
                       e.stopPropagation();
-                      setActionLoading("cancel");
-                      try {
-                        await cancelForecast(forecast.id);
-                        t("Forecast cancelled");
-                        load();
-                      } finally {
-                        setActionLoading(null);
-                      }
+                      setMdl({ t: MODAL_T.FORECAST_CANCEL_CONFIRM, d: forecast });
                     }}
                   >
-                    <X size={14} />
-                    {actionLoading === "cancel" ? "Cancelling..." : "Cancel"}
+                    <Ban size={14} />
+                    Cancel
                   </Btn>
                 )}
                 {canReview && forecast.status === "Submitted" && forecast.createdByEmployeeId !== user?.id && (
@@ -187,7 +198,7 @@ export default function ForecastListPageContent({
           },
         ],
       })),
-    [canReview, data, load, navigate, t, user],
+    [actionLoading, canReview, data, navigate, setMdl, t, user],
   );
 
   const onSortChange = (nextSort: string) => {

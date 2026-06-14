@@ -236,7 +236,7 @@ export default function ExpenseListPageContent({
                       </Btn>
                     )}
                     {canCancelExpenseRow && (
-                      <Btn sm v="ghost" sx={workflowTableActionStyle(C.muted, C.surface)} onClick={() => setMdl({ t: MODAL_T.EXP_CANCEL_CONFIRM, d: e })}>
+                      <Btn sm v="ghost" sx={workflowTableActionStyle(C.danger, C.dangerBg)} onClick={() => setMdl({ t: MODAL_T.EXP_CANCEL_CONFIRM, d: e })}>
                         <Ban size={13} strokeWidth={1.9} />
                         Cancel
                       </Btn>

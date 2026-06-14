@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { ArrowLeft, Check, Download, Edit, Eye, ReceiptText, Send, Target, X } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Ban, Check, Download, Edit, Eye, ReceiptText, Send, Target, X } from "lucide-react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Alert, Badge, Btn, CLog, Empty, Mdl, IconActionButton, PageShell } from "../ui";
 import { C, R } from "../../shared/theme";
-import { approveForecast, cancelForecast, getForecastById, getForecastDocument, rejectForecast, submitForecast } from "../../shared/api/forecast";
+import { approveForecast, getForecastById, getForecastDocument, rejectForecast, submitForecast } from "../../shared/api/forecast";
 import { getExpenseById } from "../../shared/api/expense";
 import type { Forecast, UploadedDocument } from "../../types";
 import { useAppContext } from "../../context/AppContext";
-import { ROLES } from "../../shared/constants";
+import { EVENTS, MODAL_T, ROLES } from "../../shared/constants";
+import { canEditForecastRequest } from "../../shared/expensePermissions";
 import { resolveExpenseDeepLink } from "../../shared/deepLinkModal";
 import { buildDownloadFilename, downloadFromSasUrl } from "../../shared/utils";
 
@@ -27,7 +28,16 @@ function Field({ label, value }: { label: string; value: ReactNode }) {
 
 export default function ForecastDetailPageContent() {
   const { id } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
+
+  const goBack = () => {
+    if (location.key !== "default") {
+      navigate(-1);
+    } else {
+      navigate("/forecasts");
+    }
+  };
   const { t, is, user, exps, setMdl } = useAppContext();
   const [forecast, setForecast] = useState<Forecast | null>(null);
   const [loading, setLoading] = useState(false);
@@ -56,9 +66,16 @@ export default function ForecastDetailPageContent() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    const handler = () => load();
+    window.addEventListener(EVENTS.FORECASTS_REFRESH, handler);
+    return () => window.removeEventListener(EVENTS.FORECASTS_REFRESH, handler);
+  }, [load]);
+
   const isSubmitter = !!forecast && forecast.createdByEmployeeId === user?.id;
   const canReview = (is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN)) && !isSubmitter;
   const canCancel = forecast?.status === "Submitted" && isSubmitter;
+  const canEdit = !!forecast && canEditForecastRequest(forecast, user);
 
   const viewDocument = async (document: UploadedDocument) => {
     if (!forecast) return;
@@ -117,18 +134,6 @@ export default function ForecastDetailPageContent() {
     try {
       await approveForecast(forecast.id);
       t("Forecast approved");
-      load();
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const cancel = async () => {
-    if (!forecast) return;
-    setActionLoading("cancel");
-    try {
-      await cancelForecast(forecast.id);
-      t("Forecast cancelled");
       load();
     } finally {
       setActionLoading(null);
@@ -198,16 +203,18 @@ export default function ForecastDetailPageContent() {
           </div>
         </div>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <Btn v="secondary" onClick={() => navigate("/forecasts")} sx={{ borderRadius: R.control }}>
+          <Btn v="secondary" onClick={goBack} sx={{ borderRadius: R.control }}>
             <ArrowLeft size={14} />
             Back
           </Btn>
+          {canEdit && (
+            <Btn v="secondary" onClick={() => navigate(`/forecasts/${forecast.id}/edit`)} sx={{ borderRadius: R.control }} disabled={!!actionLoading}>
+              <Edit size={14} />
+              Edit
+            </Btn>
+          )}
           {forecast.status === "Draft" && (
             <>
-              <Btn v="secondary" onClick={() => navigate(`/forecasts/${forecast.id}/edit`)} sx={{ borderRadius: R.control }} disabled={!!actionLoading}>
-                <Edit size={14} />
-                Edit
-              </Btn>
               <Btn onClick={submit} sx={{ borderRadius: R.control }} disabled={!!actionLoading}>
                 <Send size={14} />
                 {actionLoading === "submit" ? "Submitting..." : "Submit"}
@@ -215,9 +222,14 @@ export default function ForecastDetailPageContent() {
             </>
           )}
           {canCancel && (
-            <Btn v="danger" onClick={cancel} sx={{ borderRadius: R.control }} disabled={!!actionLoading}>
-              <X size={14} />
-              {actionLoading === "cancel" ? "Cancelling..." : "Cancel"}
+            <Btn
+              v="danger"
+              onClick={() => setMdl({ t: MODAL_T.FORECAST_CANCEL_CONFIRM, d: forecast })}
+              sx={{ borderRadius: R.control }}
+              disabled={!!actionLoading}
+            >
+              <Ban size={14} />
+              Cancel
             </Btn>
           )}
           {canReview && forecast.status === "Submitted" && (

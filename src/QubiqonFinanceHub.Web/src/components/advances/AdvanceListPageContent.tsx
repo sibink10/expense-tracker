@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   BanknoteArrowUp,
+  Ban,
   ChevronLeft,
   ChevronRight,
   Check,
@@ -9,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import type { Advance } from "../../types";
-import { C, R, listSectionTableBodyMarginTop, listTableCardStyle, workflowTableActionStyle } from "../../shared/theme";
+import { C, R, listSectionTableBodyMarginTop, listTableCardStyle, tableIconButtonSx, workflowTableActionStyle } from "../../shared/theme";
 import { ADV_S, EVENTS, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur, nextListSort } from "../../shared/utils";
 import {
@@ -21,13 +22,14 @@ import {
   CollapsibleSearch,
   ListPageHeader,
   ListPageAddButton,
+  EditActionButton,
   OverflowStatusTabs,
   useNavPageAdd,
   type TblCol,
 } from "../ui";
 import { useAppContext } from "../../context/AppContext";
 import { getAdvancesMyMapped } from "../../shared/api/advance";
-import { advanceRaisedByCurrentUser, canCancelAdvanceRequest } from "../../shared/expensePermissions";
+import { advanceRaisedByCurrentUser, canCancelAdvanceRequest, canEditAdvanceRequest } from "../../shared/expensePermissions";
 
 const STATUS_TABS = [
   { label: "All", value: "" },
@@ -153,6 +155,7 @@ export default function AdvanceListPageContent({
 
   const rows = data.map((a) => {
     const canCancelAdvanceRow = canCancelAdvanceRequest(a, user);
+    const canEditAdvanceRow = canEditAdvanceRequest(a, user);
     const canSelfApprove = advanceRaisedByCurrentUser(a, user);
     const balanceDue = a.amt - (a.paidAmount ?? 0);
 
@@ -243,6 +246,15 @@ export default function AdvanceListPageContent({
                           Disburse
                         </Btn>
                       )}
+                    {canEditAdvanceRow && (
+                      <EditActionButton
+                        sx={tableIconButtonSx(C.actionEditBg)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMdl({ t: MODAL_T.ADV_EDIT, d: a });
+                        }}
+                      />
+                    )}
                     {canCancelAdvanceRow && (
                       <Btn
                         sm
@@ -253,7 +265,7 @@ export default function AdvanceListPageContent({
                           setMdl({ t: MODAL_T.ADV_CANCEL_CONFIRM, d: a });
                         }}
                       >
-                        <X size={13} strokeWidth={1.9} />
+                        <Ban size={13} strokeWidth={1.9} />
                         Cancel
                       </Btn>
                     )}

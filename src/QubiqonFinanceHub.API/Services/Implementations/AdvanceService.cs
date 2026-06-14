@@ -350,6 +350,98 @@ public class AdvanceService : IAdvanceService
         return (await GetByIdAsync(id))!;
     }
 
+    public async Task<AdvanceDto> UpdateAsync(Guid id, UpdateAdvanceRequest dto)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var currentEmployee = await _tenant.GetCurrentEmployeeAsync();
+
+        var advance = await _db.AdvancePayments
+            .Include(x => x.Employee)
+            .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Advance not found");
+
+        if (advance.Status == AdvanceStatus.Cancelled)
+            throw new InvalidOperationException("A cancelled advance cannot be edited.");
+
+        if (advance.EmployeeId != currentEmployee.Id)
+            throw new UnauthorizedAccessException("Only the person who raised this request can edit.");
+
+        if (advance.Status != AdvanceStatus.Pending && advance.Status != AdvanceStatus.Rejected)
+            throw new InvalidOperationException("This advance cannot be edited in its current status.");
+
+        if (dto.Amount <= 0)
+            throw new InvalidOperationException("Amount must be greater than 0.");
+
+        if (string.IsNullOrWhiteSpace(dto.Purpose))
+            throw new InvalidOperationException("Purpose is required.");
+
+        var balanceSetting = await _db.OrganizationSettings
+            .FirstOrDefaultAsync(s => s.OrganizationId == orgId && s.Key == "balanceCap");
+
+        decimal balanceCap = balanceSetting != null ? decimal.Parse(balanceSetting.Value) : 0;
+
+        if (dto.Amount > balanceCap)
+            throw new InvalidOperationException($"Requested amount exceeds available balance (₹{balanceCap:N2}).");
+
+        var wasRejected = advance.Status == AdvanceStatus.Rejected;
+
+        advance.Amount = dto.Amount;
+        advance.Purpose = dto.Purpose.Trim();
+        if (wasRejected)
+            advance.Status = AdvanceStatus.Pending;
+
+        _db.ActivityComments.Add(new ActivityComment
+        {
+            Id = Guid.NewGuid(),
+            AdvancePaymentId = id,
+            CommentByEmployeeId = currentEmployee.Id,
+            Text = wasRejected
+                ? $"Rejected advance updated and resubmitted. Amount: ₹{dto.Amount:N2}."
+                : $"Advance updated. Amount: ₹{dto.Amount:N2}.",
+            ActionType = CommentActionType.General
+        });
+
+        await _db.SaveChangesAsync();
+
+        if (wasRejected)
+        {
+            var reviewers = await _db.Employees
+                .Where(e => e.OrganizationId == orgId &&
+                            e.IsActive &&
+                            !e.IsDelete &&
+                            !string.IsNullOrWhiteSpace(e.Email) &&
+                            e.Role == UserRole.Approver)
+                .Select(e => e.Email)
+                .Distinct()
+                .ToListAsync();
+
+            if (reviewers.Count > 0)
+            {
+                await _email.SendNotificationAsync(
+                    Constants.EmailTemplateKeys.AdvanceSubmitted,
+                    new Dictionary<string, string>
+                    {
+                        ["link_type"] = "approve",
+                        ["entity_type"] = "advance",
+                        ["entity_api_id"] = advance.Id.ToString(),
+                        ["employee_name"] = advance.Employee.FullName,
+                        ["advance_id"] = advance.AdvanceCode,
+                        ["purpose"] = advance.Purpose,
+                        ["amount"] = $"₹{advance.Amount:N2}",
+                        ["request_date"] = advance.CreatedAt.ToString("dd MMM yyyy"),
+                        ["submitted_by"] = currentEmployee.FullName,
+                        ["submission_notes"] = "",
+                        ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
+                    },
+                    string.Join(",", reviewers));
+            }
+        }
+
+        _log.LogInformation("Advance {Code} updated by {Employee}", advance.AdvanceCode, currentEmployee.FullName);
+
+        return (await GetByIdAsync(id))!;
+    }
+
     public async Task<AdvanceDisburseValidationDto> ValidateDisburseAsync(Guid id, decimal paidAmount)
     {
         var orgId = await _tenant.GetCurrentOrganizationId();

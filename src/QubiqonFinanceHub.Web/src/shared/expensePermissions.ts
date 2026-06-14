@@ -1,5 +1,5 @@
 import { EXP_S, ADV_S } from "./constants";
-import type { Advance, AppUser, Expense } from "../types";
+import type { Advance, AppUser, Expense, Forecast } from "../types";
 
 function normId(v: string | number | undefined | null): string {
   return String(v ?? "").trim().toLowerCase();
@@ -105,6 +105,28 @@ export function canCancelAdvanceByStatus(status: string): boolean {
 /** Advance cancel: raiser only, and only while status is Pending. */
 export function canCancelAdvanceRequest(a: Advance, user: AppUser | null | undefined): boolean {
   return canCancelAdvanceByStatus(a.status) && advanceRaisedByCurrentUser(a, user);
+}
+
+/** Matches API `AdvanceStatus.Pending` or `Rejected` — editable by raiser only. */
+export function canEditAdvanceByStatus(status: string): boolean {
+  const s = status.trim();
+  return s === ADV_S.PENDING || s === ADV_S.REJECTED;
+}
+
+/** Advance edit: raiser only, while Pending or Rejected. */
+export function canEditAdvanceRequest(a: Advance, user: AppUser | null | undefined): boolean {
+  return canEditAdvanceByStatus(a.status) && advanceRaisedByCurrentUser(a, user);
+}
+
+/** Matches API `ForecastStatus.Submitted` or `Rejected` — editable by creator only. */
+export function canEditForecastByStatus(status: string): boolean {
+  const s = status.trim();
+  return s === "Submitted" || s === "Rejected";
+}
+
+/** Forecast edit: creator only, while Submitted or Rejected. */
+export function canEditForecastRequest(forecast: Forecast, user: AppUser | null | undefined): boolean {
+  return canEditForecastByStatus(forecast.status) && forecast.createdByEmployeeId === user?.id;
 }
 
 /** “My” expenses for lists: mock uses `empId`; API uses employee Guid vs `user.id`. */

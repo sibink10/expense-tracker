@@ -251,6 +251,7 @@ public record ForecastDto(
 //  ADVANCE
 // ═══════════════════════════════════════════════════
 public record CreateAdvanceRequest(decimal Amount, string Purpose);
+public record UpdateAdvanceRequest(decimal Amount, string Purpose);
 public record AdvanceDto(Guid Id, string AdvanceCode, Guid EmployeeId, string EmployeeName, string Department, decimal Amount, decimal PaidAmount, string Purpose, string Status, string? PaymentReference, DateTime CreatedAt, List<CommentDto> Comments);
 
 // ═══════════════════════════════════════════════════

@@ -10,7 +10,6 @@ import {
   expenseUserIsSubmitterOrBeneficiary,
 } from "../../shared/expensePermissions";
 import { Btn, Badge, Mdl, CLog, Inp, MultiFileUp, Alert, MODAL_Z_INDEX } from "../ui";
-import { EditIcon } from "../icons";
 import { useAppContext } from "../../context/AppContext";
 import { getApiErrorMessage } from "../../shared/api/client";
 import { updateExpenseForm, uploadExpenseBill, getExpenseBill, getExpenseDocument, removeExpenseDocument, cancelExpense } from "../../shared/api/expense";
@@ -206,7 +205,13 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
   const canUpdate = amt.trim() !== "" && pur.trim() !== "" && billDate !== "";
 
   return (
-    <Mdl open close={() => setMdl(null)} title={e.id} w>
+    <Mdl
+      open
+      close={() => setMdl(null)}
+      title={e.id}
+      w
+      onEdit={canEditExpenseFieldsUi && !editing ? () => setEditing(true) : undefined}
+    >
       <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap", marginBottom: "16px" }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: "10px", color: C.muted }}>Employee</div>
@@ -424,31 +429,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
 
       <CLog comments={e.comments} />
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-        <div>
-          {canEditExpenseFieldsUi && !editing && (
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              title="Edit"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "36px",
-                height: "36px",
-                padding: 0,
-                border: "none",
-                borderRadius: R.control,
-                background: "rgba(37, 99, 235, 0.1)",
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              <EditIcon size={20} color="#2563eb" />
-            </button>
-          )}
-        </div>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
           {canEditExpenseFieldsUi && editing && (
             <>
@@ -499,7 +480,6 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
               </Btn>
             </>
           )}
-          {!editing && <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>}
         </div>
       </div>
     </Mdl>

@@ -351,6 +351,6 @@ export interface EmailData {
 
 export interface ModalData {
   t?: typeof MODAL_T[keyof typeof MODAL_T] | null;
-  d?: Expense | Bill | Advance | Invoice | Vendor | Client | TaxConfig;
+  d?: Expense | Bill | Advance | Invoice | Vendor | Client | TaxConfig | Forecast;
   it?: ItemType;
 }

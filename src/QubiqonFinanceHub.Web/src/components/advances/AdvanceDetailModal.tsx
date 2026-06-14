@@ -2,7 +2,7 @@ import { useState } from "react";
 import { C } from "../../shared/theme";
 import { ADV_S, EVENTS, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur } from "../../shared/utils";
-import { advanceRaisedByCurrentUser, canCancelAdvanceRequest } from "../../shared/expensePermissions";
+import { advanceRaisedByCurrentUser, canCancelAdvanceRequest, canEditAdvanceRequest } from "../../shared/expensePermissions";
 import { Btn, Badge, Mdl, CLog } from "../ui";
 import { getApiErrorMessage } from "../../shared/api/client";
 import { cancelAdvance } from "../../shared/api/advance";
@@ -26,9 +26,22 @@ export default function AdvanceDetailModal({ advance: a, previousAdvances: hist 
   const [cancelLoading, setCancelLoading] = useState(false);
   const isCancelled = a.status === ADV_S.CANCELLED;
   const canCancelAdvance = !isCancelled && canCancelAdvanceRequest(a, user);
+  const canEditAdvance = canEditAdvanceRequest(a, user);
+
+  const openEdit = () => {
+    setMdl(null);
+    setTimeout(() => setMdl({ t: MODAL_T.ADV_EDIT, d: a }), 50);
+  };
 
   return (
-    <Mdl open close={() => setMdl(null)} title={a.id} subtitle="Advance" w>
+    <Mdl
+      open
+      close={() => setMdl(null)}
+      title={a.id}
+      subtitle="Advance"
+      w
+      onEdit={canEditAdvance ? openEdit : undefined}
+    >
       <DetailModalSurface>
       <DetailSection title="General information">
         <DetailGrid>
@@ -105,7 +118,6 @@ export default function AdvanceDetailModal({ advance: a, previousAdvances: hist 
             <Btn v="danger" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: MODAL_T.REJECT, d: a, it: ITEM_T.ADVANCE }), 50); }}>Reject</Btn>
           </>
         )}
-        <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>
       </div>
     </Mdl>
   );

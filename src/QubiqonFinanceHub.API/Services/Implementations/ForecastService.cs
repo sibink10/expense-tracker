@@ -84,8 +84,13 @@ public class ForecastService : IForecastService
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Forecast not found");
 
-        if (forecast.Status != ForecastStatus.Draft)
-            throw new InvalidOperationException("Only draft forecasts can be edited.");
+        if (forecast.CreatedByEmployeeId != emp.Id)
+            throw new UnauthorizedAccessException("Only the person who raised this forecast can edit.");
+
+        if (forecast.Status != ForecastStatus.Submitted && forecast.Status != ForecastStatus.Rejected)
+            throw new InvalidOperationException("This forecast cannot be edited in its current status.");
+
+        var wasRejected = forecast.Status == ForecastStatus.Rejected;
 
         forecast.Title = dto.Title.Trim();
         forecast.Purpose = dto.Purpose.Trim();
@@ -95,6 +100,9 @@ public class ForecastService : IForecastService
         forecast.Notes = string.IsNullOrWhiteSpace(dto.Notes) ? null : dto.Notes.Trim();
         forecast.UpdatedAt = DateTime.UtcNow;
 
+        if (wasRejected)
+            forecast.Status = ForecastStatus.Submitted;
+
         var documents = await UploadDocumentsAsync(orgId, forecast.Id, emp.Id, ResolveUploadedFiles(dto.SupportingDocuments, dto.SupportingDocument));
         _db.RequestDocuments.AddRange(documents);
 
@@ -103,12 +111,22 @@ public class ForecastService : IForecastService
             Id = Guid.NewGuid(),
             ForecastId = forecast.Id,
             CommentByEmployeeId = emp.Id,
-            Text = "Forecast updated.",
-            ActionType = CommentActionType.General,
+            Text = wasRejected ? "Rejected forecast updated and resubmitted." : "Forecast updated.",
+            ActionType = wasRejected ? CommentActionType.Submitted : CommentActionType.General,
             CreatedAt = DateTime.UtcNow
         });
 
         await _db.SaveChangesAsync();
+
+        if (wasRejected)
+        {
+            var reviewers = await GetReviewerEmailsAsync(orgId, UserRole.Approver);
+            if (reviewers.Count > 0)
+            {
+                await _email.SendNotificationAsync(Constants.EmailTemplateKeys.ForecastSubmitted, BuildEmailVars(forecast, emp, "approve"), string.Join(",", reviewers));
+            }
+        }
+
         return (await GetByIdAsync(id))!;
     }
 

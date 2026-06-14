@@ -143,6 +143,16 @@ export async function createAdvance(payload: CreateAdvancePayload): Promise<unkn
   return data;
 }
 
+export interface UpdateAdvancePayload {
+  amount: number;
+  purpose: string;
+}
+
+export async function updateAdvance(id: string, payload: UpdateAdvancePayload): Promise<unknown> {
+  const { data } = await apiClient.put(`/advances/${id}`, payload);
+  return data;
+}
+
 export async function approveAdvance(id: string, comments?: string): Promise<unknown> {
   const { data } = await apiClient.post(`/advances/${id}/approve`, { comments });
   return data;

@@ -7,7 +7,6 @@ import {
   DetailField,
   DetailFieldBlock,
   DetailGrid,
-  DetailModalFooter,
   DetailModalSurface,
   DetailPill,
   DetailSection,
@@ -29,7 +28,7 @@ export default function VendorDetailModal({ vendor: v }: Props) {
   const heroSub = [v.gstin, v.email].filter(Boolean).join(" · ") || v.ph || undefined;
 
   return (
-    <Mdl open close={() => setMdl(null)} title={v.name} subtitle="Vendor" w>
+    <Mdl open close={() => setMdl(null)} title={v.name} subtitle="Vendor" w onEdit={openEdit}>
       <DetailModalSurface>
       <DetailEntityHero
         name={v.name}
@@ -66,7 +65,6 @@ export default function VendorDetailModal({ vendor: v }: Props) {
         </DetailSection>
       )}
 
-      <DetailModalFooter onEdit={openEdit} onClose={() => setMdl(null)} editVariant="vendor" />
       </DetailModalSurface>
     </Mdl>
   );

@@ -5,7 +5,6 @@ import { MODAL_T } from "../../../shared/constants";
 import {
   DetailField,
   DetailGrid,
-  DetailModalFooter,
   DetailModalSurface,
   DetailPill,
   DetailSection,
@@ -23,8 +22,13 @@ interface Props {
 export default function TaxConfigDetailModal({ tax }: Props) {
   const { setMdl } = useAppContext();
 
+  const openEdit = () => {
+    setMdl(null);
+    setTimeout(() => setMdl({ t: MODAL_T.TAX_CONFIG_EDIT, d: tax }), 50);
+  };
+
   return (
-    <Mdl open close={() => setMdl(null)} title={tax.name} subtitle="Tax configuration" w>
+    <Mdl open close={() => setMdl(null)} title={tax.name} subtitle="Tax configuration" w onEdit={openEdit}>
       <DetailModalSurface>
       <DetailSection title="General information">
         <DetailGrid>
@@ -41,14 +45,6 @@ export default function TaxConfigDetailModal({ tax }: Props) {
         </DetailStatusRow>
       </DetailSection>
 
-      <DetailModalFooter
-        onEdit={() => {
-          setMdl(null);
-          setTimeout(() => setMdl({ t: MODAL_T.TAX_CONFIG_EDIT, d: tax }), 50);
-        }}
-        onClose={() => setMdl(null)}
-        editLabel="Edit"
-      />
       </DetailModalSurface>
     </Mdl>
   );

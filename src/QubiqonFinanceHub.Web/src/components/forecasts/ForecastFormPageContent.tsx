@@ -6,13 +6,14 @@ import { Alert, Btn, Inp, MultiFileUp, PageShell } from "../ui";
 import { C, R } from "../../shared/theme";
 import { createForecastForm, getForecastById, updateForecastForm } from "../../shared/api/forecast";
 import { useAppContext } from "../../context/AppContext";
+import { canEditForecastRequest } from "../../shared/expensePermissions";
 
 const GRID_BREAKPOINT = 680;
 
 export default function ForecastFormPageContent() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { t } = useAppContext();
+  const { t, user } = useAppContext();
   const editing = Boolean(id);
   const [narrow, setNarrow] = useState(typeof window !== "undefined" && window.innerWidth < GRID_BREAKPOINT);
   const [title, setTitle] = useState("");
@@ -23,6 +24,7 @@ export default function ForecastFormPageContent() {
   const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
+  const [editAllowed, setEditAllowed] = useState(!editing);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -37,7 +39,18 @@ export default function ForecastFormPageContent() {
     setLoading(true);
     getForecastById(id)
       .then((forecast) => {
-        if (!alive || !forecast) return;
+        if (!alive) return;
+        if (!forecast) {
+          setError("Forecast not found");
+          setEditAllowed(false);
+          return;
+        }
+        if (!canEditForecastRequest(forecast, user)) {
+          setError("This forecast cannot be edited");
+          setEditAllowed(false);
+          return;
+        }
+        setEditAllowed(true);
         setTitle(forecast.title);
         setPurpose(forecast.purpose);
         setDescription(forecast.description);
@@ -45,12 +58,15 @@ export default function ForecastFormPageContent() {
         setExpectedExpenseDate(forecast.expectedExpenseDate);
         setNotes(forecast.notes ?? "");
       })
-      .catch(() => setError("Could not load forecast"))
+      .catch(() => {
+        setError("Could not load forecast");
+        setEditAllowed(false);
+      })
       .finally(() => alive && setLoading(false));
     return () => {
       alive = false;
     };
-  }, [id]);
+  }, [id, user]);
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -59,7 +75,8 @@ export default function ForecastFormPageContent() {
     purpose.trim() !== "" &&
     Number(expectedAmount) > 0 &&
     expectedExpenseDate !== "" &&
-    !loading;
+    !loading &&
+    editAllowed;
 
   const save = async () => {
     if (!canSave) return;
@@ -93,13 +110,13 @@ export default function ForecastFormPageContent() {
   return (
     <PageShell
       header={
-        <h1 style={{ display: "flex", alignItems: "center", gap: "8px", margin: 0, color: C.text, fontSize: narrow ? "18px" : "24px", fontWeight: 600 }}>
+        <h1 style={{ display: "flex", alignItems: "center", gap: "8px", margin: "0 0 20px", color: C.text, fontSize: narrow ? "18px" : "24px", fontWeight: 600 }}>
           <Target size={narrow ? 18 : 22} color={C.text} strokeWidth={1.8} />
           {editing ? "Edit forecast" : "Create forecast"}
         </h1>
       }
     >
-      <div style={{ background: "#fff", borderRadius: R.control, padding: narrow ? "16px" : "20px", boxShadow: "-5px -2px 108.5px 0px #00024914" }}>
+      <div style={{ background: "#fff", borderRadius: R.control, padding: narrow ? "16px" : "20px", boxShadow: "0px 2px 3px 0px #253EA70A" }}>
         <Inp label="Forecast title" value={title} onChange={(e) => setTitle(e.target.value)} req controlSx={{ borderRadius: R.control }} />
         <div style={gridStyle}>
           <Inp label="Expected amount (₹)" type="number" value={expectedAmount} onChange={(e) => setExpectedAmount(e.target.value)} req min="1" controlSx={{ borderRadius: R.control }} />

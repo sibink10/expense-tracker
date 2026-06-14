@@ -56,6 +56,7 @@ public interface IForecastService
 public interface IAdvanceService
 {
     Task<AdvanceDto> CreateAsync(CreateAdvanceRequest dto);
+    Task<AdvanceDto> UpdateAsync(Guid id, UpdateAdvanceRequest dto);
     Task<AdvanceDto?> GetByIdAsync(Guid id);
     Task<PaginatedResult<AdvanceDto>> ListAsync(FilterParams filters, bool myOnly = false);
     Task<AdvanceDto> ApproveAsync(Guid id, ApproveRequest dto);

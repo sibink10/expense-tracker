@@ -740,6 +740,8 @@ export const Mdl: React.FC<{
   /** Small label above title (e.g. "Client", "Vendor") */
   subtitle?: string;
   onBack?: () => void;
+  /** Renders a pencil icon in the header, before the close button */
+  onEdit?: () => void;
   children: ReactNode;
 }> = ({
   open,
@@ -751,6 +753,7 @@ export const Mdl: React.FC<{
   detail = true,
   subtitle,
   onBack,
+  onEdit,
   children,
 }) => {
   if (!open) return null;
@@ -838,25 +841,37 @@ export const Mdl: React.FC<{
               </h2>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={close}
-            aria-label="Close"
-            className={detail ? "detail-mdl-icon-btn" : undefined}
-            style={
-              detail
-                ? undefined
-                : {
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    fontSize: "16px",
-                    color: C.muted,
-                  }
-            }
-          >
-            {detail ? <X size={18} strokeWidth={2} /> : "✕"}
-          </button>
+          <div className="detail-mdl-header__actions">
+            {onEdit && (
+              <button
+                type="button"
+                onClick={onEdit}
+                aria-label="Edit"
+                className="detail-mdl-icon-btn detail-mdl-icon-btn--edit"
+              >
+                <Pencil size={18} strokeWidth={2} />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={close}
+              aria-label="Close"
+              className={detail ? "detail-mdl-icon-btn" : undefined}
+              style={
+                detail
+                  ? undefined
+                  : {
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "16px",
+                      color: C.muted,
+                    }
+              }
+            >
+              {detail ? <X size={18} strokeWidth={2} /> : "✕"}
+            </button>
+          </div>
         </div>
         <InModalContext.Provider value={true}>
           <div

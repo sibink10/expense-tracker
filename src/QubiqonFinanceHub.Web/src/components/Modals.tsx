@@ -4,6 +4,7 @@ import InvPayModal from "./invoices/InvPayModal";
 import ExpenseApproveModal from "./expenses/ExpenseApproveModal";
 import AdvanceApproveModal from "./advances/AdvanceApproveModal";
 import RequestAdvanceModal from "./advances/RequestAdvanceModal";
+import EditAdvanceModal from "./advances/EditAdvanceModal";
 import BillApproveModal from "./bills/BillApproveModal";
 import BillEditModal from "./bills/BillEditModal";
 import AdvanceDisburseModal from "./advances/AdvanceDisburseModal";
@@ -28,7 +29,11 @@ export default function Modals() {
 
   if (!mdl) return null;
 
-  if (mdl.t === MODAL_T.EXP_CANCEL_CONFIRM || mdl.t === MODAL_T.ADV_CANCEL_CONFIRM) {
+  if (
+    mdl.t === MODAL_T.EXP_CANCEL_CONFIRM ||
+    mdl.t === MODAL_T.ADV_CANCEL_CONFIRM ||
+    mdl.t === MODAL_T.FORECAST_CANCEL_CONFIRM
+  ) {
     return <CancelRequestConfirmModal />;
   }
   if (mdl.t === MODAL_T.REJECT) return <RejectModal />;
@@ -36,6 +41,7 @@ export default function Modals() {
   if (mdl.t === MODAL_T.INV_PAY) return <InvPayModal />;
   if (mdl.t === MODAL_T.EXP_APPROVE) return <ExpenseApproveModal />;
   if (mdl.t === MODAL_T.ADV_REQUEST) return <RequestAdvanceModal />;
+  if (mdl.t === MODAL_T.ADV_EDIT) return <EditAdvanceModal />;
   if (mdl.t === MODAL_T.ADV_APPROVE) return <AdvanceApproveModal />;
   if (mdl.t === MODAL_T.BILL_APPROVE) return <BillApproveModal />;
   if (mdl.t === MODAL_T.BILL_EDIT) return <BillEditModal />;

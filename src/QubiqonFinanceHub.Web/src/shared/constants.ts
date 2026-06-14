@@ -128,7 +128,9 @@ export const MODAL_T = {
   ADV_DISBURSE: "adv-disburse",
   ADV_CANCEL_CONFIRM: "adv-cancel-confirm",
   ADV_REQUEST: "adv-request",
+  ADV_EDIT: "adv-edit",
   ADV_DETAIL: "adv-detail",
+  FORECAST_CANCEL_CONFIRM: "forecast-cancel-confirm",
 } as const;
 
 export const ITEM_T = {
@@ -147,6 +149,7 @@ export const EVENTS = {
   TAX_CONFIG_REFRESH: "tax-config-refresh",
   CATEGORIES_REFRESH: "categories-refresh",
   PAYMENT_TERMS_REFRESH: "payment-terms-refresh",
+  FORECASTS_REFRESH: "forecasts-refresh",
   ACCOUNTS_REFRESH: "accounts-refresh",
   EMPLOYEES_REFRESH: "employees-refresh",
 } as const;

@@ -3,7 +3,6 @@ import { C, R } from "../../shared/theme";
 import { BILL_S, EVENTS, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur, fmtQty, formatTdsDetailParen, downloadFromSasUrl, buildDownloadFilename, daysOverdueFromDueYmd } from "../../shared/utils";
 import { Av, Btn, Badge, Mdl, CLog, MODAL_Z_INDEX, MobileHScroll } from "../ui";
-import { EditIcon } from "../icons";
 import { useAppContext } from "../../context/AppContext";
 import { getBillAttachment, getBillDocument, removeBillDocument, approveBill } from "../../shared/api/bill";
 import type { Bill } from "../../types";
@@ -116,6 +115,11 @@ export default function BillDetailModal({ bill: b }: Props) {
   const canEdit =
     b.status !== BILL_S.PAID && (is(ROLES.ADMIN) || is(ROLES.FINANCE) || user?.name === b.byName);
 
+  const openEdit = () => {
+    setMdl(null);
+    setTimeout(() => setMdl({ t: MODAL_T.BILL_EDIT, d: b }), 50);
+  };
+
   // Derive summary values from line items (matching create form)
   const hasLineItems = b.lineItems && b.lineItems.length > 0;
   const subTotal = hasLineItems
@@ -129,7 +133,14 @@ export default function BillDetailModal({ bill: b }: Props) {
   const roundingVal = b.rounding ?? 0;
 
   return (
-    <Mdl open close={() => setMdl(null)} title={b.vendorBillNumber || b.id} w maxWidth="960px">
+    <Mdl
+      open
+      close={() => setMdl(null)}
+      title={b.vendorBillNumber || b.id}
+      w
+      maxWidth="960px"
+      onEdit={canEdit ? openEdit : undefined}
+    >
       <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", alignItems: "center", marginBottom: "16px" }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: "10px", color: C.muted, marginBottom: "2px" }}>Vendor</div>
@@ -348,31 +359,7 @@ export default function BillDetailModal({ bill: b }: Props) {
         <div style={{ padding: "8px 12px", background: C.successBg, borderRadius: R.control, marginBottom: "12px", fontSize: "11px" }}>✓ Paid — Ref: <strong>{b.paidRef}</strong></div>
       )}
       <CLog comments={b.comments} />
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-        <div>
-          {canEdit && (
-            <button
-              type="button"
-              onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: MODAL_T.BILL_EDIT, d: b }), 50); }}
-              title="Edit"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "36px",
-                height: "36px",
-                padding: 0,
-                border: "none",
-                borderRadius: R.control,
-                background: "rgba(37, 99, 235, 0.1)",
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              <EditIcon size={20} color="#2563eb" />
-            </button>
-          )}
-        </div>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
         {(is(ROLES.APPROVER) || is(ROLES.FINANCE) || is(ROLES.ADMIN)) && b.status === BILL_S.SUBMITTED && (
           <>
@@ -383,7 +370,6 @@ export default function BillDetailModal({ bill: b }: Props) {
         {(is(ROLES.FINANCE) || is(ROLES.ADMIN)) && (b.status === BILL_S.APPROVED || b.status === BILL_S.OVERDUE || b.status === BILL_S.PARTIALLY_PAID) && (
           <Btn v="vendor" onClick={() => { setMdl(null); setTimeout(() => setMdl({ t: MODAL_T.PAY, d: b, it: ITEM_T.BILL }), 50); }}>Pay</Btn>
         )}
-        <Btn v="secondary" onClick={() => setMdl(null)}>Close</Btn>
         </div>
       </div>
 

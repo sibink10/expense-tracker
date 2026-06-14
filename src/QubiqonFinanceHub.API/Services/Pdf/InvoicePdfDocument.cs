@@ -305,7 +305,7 @@ public sealed class InvoicePdfDocument : IDocument
     {
         container.Width(150).Column(sig =>
         {
-            sig.Item().Height(36).AlignRight().AlignMiddle()
+            sig.Item().Height(36).AlignRight().AlignTop()
                 .Text(InvoiceSignaturePlacementResolver.SignAnchorToken)
                 .FontSize(1).FontColor(Colors.White);
             sig.Item().LineHorizontal(1).LineColor(Navy);
