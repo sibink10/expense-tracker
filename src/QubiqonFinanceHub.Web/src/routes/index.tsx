@@ -27,6 +27,8 @@ import AdminGstPage from "../pages/admin/gst/AdminGstPage";
 import AdminEmailPage from "../pages/admin/email/AdminEmailPage";
 import AdminCategoriesPage from "../pages/admin/categories/AdminCategoriesPage";
 import AdminPaymentTermsPage from "../pages/admin/payment-terms/AdminPaymentTermsPage";
+import AdminGstTreatmentsPage from "../pages/admin/gst-treatments/AdminGstTreatmentsPage";
+import AdminPlaceOfSupplyPage from "../pages/admin/place-of-supply/AdminPlaceOfSupplyPage";
 import AdminAccountsPage from "../pages/admin/accounts/AdminAccountsPage";
 import ZohoSignPage from "../pages/admin/zoho-sign/ZohoSignPage";
 import NotFoundPage from "../pages/not-found/NotFoundPage";
@@ -74,6 +76,8 @@ export const router = createBrowserRouter([
       { path: "admin/tax", element: <AdminTaxPage /> },
       { path: "admin/gst", element: <AdminGstPage /> },
       { path: "admin/categories", element: <AdminCategoriesPage /> },
+      { path: "admin/gst-treatments", element: <AdminGstTreatmentsPage /> },
+      { path: "admin/place-of-supply", element: <AdminPlaceOfSupplyPage /> },
       { path: "admin/payment-terms", element: <AdminPaymentTermsPage /> },
       { path: "admin/accounts", element: <AdminAccountsPage /> },
       { path: "admin/email", element: <AdminEmailPage /> },

@@ -7,16 +7,16 @@ import PhoneInputField, { isValidPhoneNumber } from "../PhoneInputField";
 import { countryNameToPhoneCountry } from "../../shared/countryPhoneDefault";
 import { isOptionalPhoneValid } from "../../shared/phoneUtils";
 import { createClient } from "../../shared/api/clients";
-import { getTaxConfigs } from "../../shared/api/taxConfig";
+import { getClientFormOptions } from "../../shared/api/clientFormOptions";
+import type { GstTreatmentOption, PaymentTermOption } from "../../shared/api/clientFormOptions";
+import type { PlaceOfSupplyOption } from "../../shared/gstFinance";
 import { isEmailValid } from "../../shared/utils";
 import { useAppContext } from "../../context/AppContext";
 import { COUNTRY_OPTS, CURRENCY_OPTS, getCurrencyByCountry } from "../../shared/countries";
-import type { TaxConfig } from "../../types";
+import ClientGstFinanceSection, { type ClientGstFinanceValues } from "./ClientGstFinanceSection";
 import { ROLES } from "../../shared/constants";
 
 const GRID_BREAKPOINT = 600;
-const CLIENT_TAX_TYPE = "ClientTax";
-const isClientTaxType = (type?: string) => (type || "").replace(/\s+/g, "").toLowerCase() === "clienttax";
 
 export default function AddClientPage() {
   const navigate = useNavigate();
@@ -30,14 +30,22 @@ export default function AddClientPage() {
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [country, setCountry] = useState("");
   const [currency, setCurrency] = useState("INR");
-  const [taxType, setTaxType] = useState("");
-  const [gstin, setGstin] = useState("");
+  const [gstFinance, setGstFinance] = useState<ClientGstFinanceValues>({
+    isTaxable: true,
+    gstTreatmentId: "",
+    gstin: "",
+    placeOfSupplyCode: "",
+    pan: "",
+    paymentTermsId: "",
+  });
   const [customerType, setCustomerType] = useState<"Business" | "Individual">("Business");
   const [shippingAddress, setShippingAddress] = useState("");
   const [billingAddress, setBillingAddress] = useState("");
   const [sameAddress, setSameAddress] = useState(false);
-  const [clientTaxOptions, setClientTaxOptions] = useState<TaxConfig[]>([]);
-  const [taxLoading, setTaxLoading] = useState(true);
+  const [gstTreatments, setGstTreatments] = useState<GstTreatmentOption[]>([]);
+  const [placeOfSupply, setPlaceOfSupply] = useState<PlaceOfSupplyOption[]>([]);
+  const [paymentTerms, setPaymentTerms] = useState<PaymentTermOption[]>([]);
+  const [optionsLoading, setOptionsLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -58,30 +66,31 @@ export default function AddClientPage() {
 
   useEffect(() => {
     let cancelled = false;
-    setTaxLoading(true);
-    getTaxConfigs()
-      .then((configs) => {
+    setOptionsLoading(true);
+    getClientFormOptions()
+      .then((opts) => {
         if (cancelled) return;
-        const clientTaxes = configs.filter((config) => config.isActive && isClientTaxType(config.type));
-        setClientTaxOptions(clientTaxes);
-        setTaxType((current) =>
-          current && clientTaxes.some((config) => config.name === current)
-            ? current
-            : ""
-        );
+        setGstTreatments(opts.gstTreatments);
+        setPlaceOfSupply(opts.placeOfSupply);
+        setPaymentTerms(opts.paymentTerms);
       })
       .catch(() => {
         if (cancelled) return;
-        setClientTaxOptions([]);
-        setTaxType("");
+        setGstTreatments([]);
+        setPlaceOfSupply([]);
+        setPaymentTerms([]);
       })
       .finally(() => {
-        if (!cancelled) setTaxLoading(false);
+        if (!cancelled) setOptionsLoading(false);
       });
     return () => {
       cancelled = true;
     };
   }, []);
+
+  const patchGstFinance = (patch: Partial<ClientGstFinanceValues>) => {
+    setGstFinance((current) => ({ ...current, ...patch }));
+  };
 
   const submit = async () => {
     setEmailError(null);
@@ -94,7 +103,7 @@ export default function AddClientPage() {
       setPhoneError("Enter a valid phone number for the selected country");
       return;
     }
-    if (!name.trim() || !email.trim() || !contactPerson.trim() || !taxType.trim() || !shippingAddress.trim() || !(sameAddress ? shippingAddress.trim() : billingAddress.trim())) return;
+    if (!name.trim() || !email.trim() || !contactPerson.trim() || !shippingAddress.trim() || !(sameAddress ? shippingAddress.trim() : billingAddress.trim())) return;
 
     setLoading(true);
     setError(null);
@@ -106,8 +115,12 @@ export default function AddClientPage() {
         phone: phone?.trim() ?? "",
         country: country.trim(),
         currency: currency.trim() || "INR",
-        taxType: taxType.trim() || null,
-        gstin: gstin.trim(),
+        isTaxable: gstFinance.isTaxable,
+        gstTreatmentId: gstFinance.gstTreatmentId || null,
+        gstin: gstFinance.gstin.trim(),
+        placeOfSupplyCode: gstFinance.placeOfSupplyCode || null,
+        pan: gstFinance.pan.trim() || null,
+        paymentTermsId: gstFinance.paymentTermsId || null,
         shippingAddress: shippingAddress.trim(),
         billingAddress: sameAddress ? shippingAddress.trim() : billingAddress.trim(),
         customerType,
@@ -133,7 +146,6 @@ export default function AddClientPage() {
     name.trim() &&
     email.trim() &&
     contactPerson.trim() &&
-    taxType.trim() &&
     shippingAddress.trim() &&
     (sameAddress ? shippingAddress.trim() : billingAddress.trim()) &&
     isEmailValid(email) &&
@@ -263,25 +275,18 @@ export default function AddClientPage() {
               </label>
             </div>
           </div>
-          <Inp
-            label="Tax type"
-            type="select"
-            value={taxType}
-            onChange={(e) => setTaxType(e.target.value)}
-            req
-            disabled={taxLoading}
-            opts={
-              clientTaxOptions.length > 0
-                ? [
-                    { v: "", l: "Select tax config" },
-                    ...clientTaxOptions.map((config) => ({ v: config.name, l: `${config.name} (${config.rate}%)` })),
-                  ]
-                : [{ v: "", l: taxLoading ? "Loading..." : "No client tax configs" }]
-            }
-            style={cellStyle}
-            controlSx={controlStyle}
+
+          <ClientGstFinanceSection
+            values={gstFinance}
+            onChange={patchGstFinance}
+            gstTreatments={gstTreatments}
+            placeOfSupply={placeOfSupply}
+            paymentTerms={paymentTerms}
+            optionsLoading={optionsLoading}
+            onGetTaxpayerDetails={() => t("Coming soon")}
+            controlStyle={controlStyle}
+            narrow={narrow}
           />
-          <Inp label="GSTIN" value={gstin} onChange={(e) => setGstin(e.target.value)} ph="GST number" style={cellStyle} controlSx={controlStyle} />
 
           <div style={{ ...fullWidth, marginTop: "8px" }}>
             <div style={{ fontSize: "11px", fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "10px" }}>

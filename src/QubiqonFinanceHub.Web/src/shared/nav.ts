@@ -73,6 +73,8 @@ export function buildNav(_cfg?: { advEnabled?: boolean }): NavSection[] {
       items: [
         { path: "/admin/tax", l: "Tax Config", i: "", r: [ROLES.ADMIN] as UserRole[] },
         { path: "/admin/categories", l: "Categories", i: "", r: [ROLES.ADMIN] as UserRole[] },
+        { path: "/admin/gst-treatments", l: "GST Treatments", i: "", r: [ROLES.ADMIN] as UserRole[] },
+        { path: "/admin/place-of-supply", l: "Place of Supply", i: "", r: [ROLES.ADMIN] as UserRole[] },
         { path: "/admin/accounts", l: "Accounts", i: "", r: [ROLES.ADMIN] as UserRole[] },
         { path: "/admin/payment-terms", l: "Payment Terms", i: "", r: [ROLES.ADMIN] as UserRole[] },
       ],

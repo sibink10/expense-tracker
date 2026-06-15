@@ -25,6 +25,10 @@ export default function ClientDetailModal({ client: c }: Props) {
   };
 
   const heroSub = [c.gstin, c.email].filter(Boolean).join(" · ") || c.contact || undefined;
+  const taxStatus = c.isTaxable === false ? "Non-taxable" : "Taxable";
+  const placeOfSupplyDisplay = c.placeOfSupplyName
+    ? (c.placeOfSupplyCode ? `${c.placeOfSupplyCode} — ${c.placeOfSupplyName}` : c.placeOfSupplyName)
+    : c.placeOfSupplyCode;
 
   return (
     <Mdl open close={() => setMdl(null)} title={c.name} subtitle="Client" w onEdit={openEdit}>
@@ -41,10 +45,14 @@ export default function ClientDetailModal({ client: c }: Props) {
         }
       />
 
-      <DetailSection title="General information">
+      <DetailSection title="GST & finance">
         <DetailGrid>
-          <DetailField label="GSTIN" value={c.gstin} />
-          <DetailField label="Tax type" value={c.taxType} />
+          <DetailField label="Tax status" value={taxStatus} />
+          <DetailField label="GST treatment" value={c.gstTreatmentName} />
+          <DetailField label="GSTIN / UIN" value={c.gstin} />
+          <DetailField label="Place of supply" value={placeOfSupplyDisplay} />
+          <DetailField label="PAN" value={c.pan} />
+          <DetailField label="Payment terms" value={c.paymentTermsName} />
           <DetailField label="Country" value={c.country} />
         </DetailGrid>
       </DetailSection>

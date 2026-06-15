@@ -8,9 +8,9 @@ export const INIT_VENDORS: Vendor[] = [
 ];
 
 export const INIT_CLIENTS: Client[] = [
-  { id: "C001", name: "Huddlesmith", contact: "Karim Kurji", email: "karim@huddlesmith.com", phone: "", country: "Canada", currency: "USD", addr: "3421 Concession Rd 5, ON L0B 1M0, Clarington", gstin: "", taxType: "SEZ" },
-  { id: "C002", name: "TechVista Solutions", contact: "Ramesh Gupta", email: "accounts@techvista.in", phone: "", country: "India", currency: "INR", addr: "Koramangala, Bangalore 560034", gstin: "29TVSSL4567M1ZQ", taxType: "Domestic" },
-  { id: "C003", name: "Nordic Digital AS", contact: "Lars Eriksen", email: "billing@nordicdigital.no", phone: "", country: "Norway", currency: "EUR", addr: "Storgata 15, 0184 Oslo", gstin: "", taxType: "Export" },
+  { id: "C001", name: "Huddlesmith", contact: "Karim Kurji", email: "karim@huddlesmith.com", phone: "", country: "Canada", currency: "USD", addr: "3421 Concession Rd 5, ON L0B 1M0, Clarington", gstin: "", isTaxable: true },
+  { id: "C002", name: "TechVista Solutions", contact: "Ramesh Gupta", email: "accounts@techvista.in", phone: "", country: "India", currency: "INR", addr: "Koramangala, Bangalore 560034", gstin: "29TVSSL4567M1ZQ", isTaxable: true, placeOfSupplyCode: "29", placeOfSupplyName: "Karnataka" },
+  { id: "C003", name: "Nordic Digital AS", contact: "Lars Eriksen", email: "billing@nordicdigital.no", phone: "", country: "Norway", currency: "EUR", addr: "Storgata 15, 0184 Oslo", gstin: "", isTaxable: false },
 ];
 
 export const INIT_EXPENSES: Expense[] = [

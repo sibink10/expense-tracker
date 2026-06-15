@@ -32,6 +32,8 @@ public class FinanceHubDbContext : DbContext
     public DbSet<CodeSequence> CodeSequences => Set<CodeSequence>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<PaymentTerm> PaymentTerms => Set<PaymentTerm>();
+    public DbSet<GstTreatment> GstTreatments => Set<GstTreatment>();
+    public DbSet<PlaceOfSupply> PlaceOfSupply => Set<PlaceOfSupply>();
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<CurrencyRatesCache> CurrencyRatesCaches => Set<CurrencyRatesCache>();
     public DbSet<AuthSession> AuthSessions => Set<AuthSession>();
@@ -183,11 +185,34 @@ public class FinanceHubDbContext : DbContext
             e.HasOne(x => x.GSTConfig).WithMany().HasForeignKey(x => x.GSTConfigId).OnDelete(DeleteBehavior.Restrict);
         });
 
+        b.Entity<GstTreatment>(e => {
+            e.ToTable("GstTreatments", DbSchemas.Dbo);
+            e.HasIndex(x => x.Code).IsUnique();
+        });
+
+        b.Entity<PlaceOfSupply>(e => {
+            e.ToTable("PlaceOfSupply", DbSchemas.Dbo);
+            e.Property(x => x.PlaceOfSupplyCode).HasMaxLength(2).IsUnicode(false);
+        });
+
         // ─── Client ─────────────────────────────────
         b.Entity<Client>(e => {
             e.ToTable("Clients", DbSchemas.Finance);
             e.HasIndex(x => x.OrganizationId);
-            e.Property(x => x.TaxType).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.IsTaxable).HasDefaultValue(true);
+            e.Property(x => x.PlaceOfSupplyCode).HasMaxLength(2).IsUnicode(false);
+            e.HasOne(x => x.GstTreatment)
+                .WithMany()
+                .HasForeignKey(x => x.GstTreatmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.PlaceOfSupply)
+                .WithMany()
+                .HasForeignKey(x => x.PlaceOfSupplyCode)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.PaymentTerm)
+                .WithMany()
+                .HasForeignKey(x => x.PaymentTermsId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // ─── Invoice ────────────────────────────────

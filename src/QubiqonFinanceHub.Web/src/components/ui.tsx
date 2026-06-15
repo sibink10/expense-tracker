@@ -1448,6 +1448,7 @@ export {
   ListPageAddButton,
   OverflowStatusTabs,
   TableToolbarRefresh,
+  ListPagination,
   useNavPageAdd,
 } from "./list-toolbar";
 export type {
@@ -1456,6 +1457,7 @@ export type {
   ListPageAddButtonProps,
   StatusTab,
   OverflowStatusTabsProps,
+  ListPaginationProps,
 } from "./list-toolbar";
 
 export const CLog: React.FC<{ comments: ActivityComment[] }> = ({ comments }) =>

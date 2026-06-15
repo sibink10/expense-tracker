@@ -364,11 +364,15 @@ public record CreateClientRequest(
     string Email,
     string Country,
     string Currency,
-    string TaxType,
+    bool IsTaxable,
     string CustomerType,
     string? ContactPerson,
     string? Phone,
-    string? GSTIN,
+    string? Gstin,
+    Guid? GstTreatmentId,
+    string? PlaceOfSupplyCode,
+    string? Pan,
+    Guid? PaymentTermsId,
     string? BillingAddress,
     string? ShippingAddress
 );
@@ -377,14 +381,17 @@ public record UpdateClientRequest(
     string? Email,
     string? Country,
     string? Currency,
-    string? TaxType,
+    bool? IsTaxable,
     string? CustomerType,
     string? ContactPerson,
     string? Phone,
-    string? GSTIN,
+    string? Gstin,
+    Guid? GstTreatmentId,
+    string? PlaceOfSupplyCode,
+    string? Pan,
+    Guid? PaymentTermsId,
     string? BillingAddress,
     string? ShippingAddress
-
 );
 public record ClientDto(
     Guid Id,
@@ -392,15 +399,30 @@ public record ClientDto(
     string Email,
     string Country,
     string Currency,
-    string TaxType,
+    bool IsTaxable,
     string CustomerType,
     string? ContactPerson,
     string? Phone,
-    string? GSTIN,
+    string? Gstin,
+    Guid? GstTreatmentId,
+    string? GstTreatmentName,
+    string? PlaceOfSupplyCode,
+    string? PlaceOfSupplyName,
+    string? Pan,
+    Guid? PaymentTermsId,
+    string? PaymentTermsName,
     string? BillingAddress,
     string? ShippingAddress,
     bool IsActive,
     DateTime CreatedAt
+);
+public record GstTreatmentOptionDto(Guid Id, string Code, string Name, string? Description);
+public record PlaceOfSupplyOptionDto(string Code, string Name, string CountryCode, string CountryName, bool IsUnionTerritory);
+public record PaymentTermOptionDto(Guid Id, string Name, string ShortName, int Days, string? Description);
+public record ClientFormOptionsDto(
+    List<GstTreatmentOptionDto> GstTreatments,
+    List<PlaceOfSupplyOptionDto> PlaceOfSupply,
+    List<PaymentTermOptionDto> PaymentTerms
 );
 
 // ═══════════════════════════════════════════════════
@@ -566,9 +588,23 @@ public record UpdateCategoryRequest(string Name, bool IsActive);
 // ═══════════════════════════════════════════════════
 //  PAYMENT TERMS
 // ═══════════════════════════════════════════════════
-public record PaymentTermDto(Guid Id, string Name, string ShortName, int Days, bool IsActive);
-public record CreatePaymentTermRequest(string Name, string ShortName, int Days);
-public record UpdatePaymentTermRequest(string Name, string ShortName, int Days, bool IsActive);
+public record PaymentTermDto(Guid Id, string Name, string ShortName, int Days, bool IsActive, string? Description = null);
+public record CreatePaymentTermRequest(string Name, string ShortName, int Days, string? Description = null);
+public record UpdatePaymentTermRequest(string Name, string ShortName, int Days, bool IsActive, string? Description = null);
+
+// ═══════════════════════════════════════════════════
+//  GST TREATMENTS
+// ═══════════════════════════════════════════════════
+public record GstTreatmentDto(Guid Id, string Code, string Name, string? Description, bool IsActive);
+public record CreateGstTreatmentRequest(string Code, string Name, string? Description);
+public record UpdateGstTreatmentRequest(string Code, string Name, string? Description, bool IsActive);
+
+// ═══════════════════════════════════════════════════
+//  PLACE OF SUPPLY
+// ═══════════════════════════════════════════════════
+public record PlaceOfSupplyDto(string Code, string Name, string CountryCode, string CountryName, bool IsUnionTerritory);
+public record CreatePlaceOfSupplyRequest(string Code, string Name, string CountryCode, string CountryName, bool IsUnionTerritory);
+public record UpdatePlaceOfSupplyRequest(string Name, string CountryCode, string CountryName, bool IsUnionTerritory);
 
 // ═══════════════════════════════════════════════════
 //  ACCOUNTS

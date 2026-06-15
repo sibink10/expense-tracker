@@ -17,6 +17,27 @@ public class PaymentTermService : IPaymentTermService
         _tenant = tenant;
     }
 
+    public async Task<PaginatedResult<PaymentTermDto>> ListAsync(FilterParams f)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var q = _db.PaymentTerms.AsNoTracking().Where(x => x.OrganizationId == orgId);
+
+        if (!string.IsNullOrWhiteSpace(f.Search))
+        {
+            var s = f.Search.ToLower();
+            q = q.Where(x =>
+                x.Name.ToLower().Contains(s) ||
+                x.ShortName.ToLower().Contains(s));
+        }
+
+        var total = await q.CountAsync();
+        q = ApplySorting(q, f);
+        var items = await q.Skip((f.Page - 1) * f.PageSize).Take(f.PageSize)
+            .Select(x => ToDto(x))
+            .ToListAsync();
+        return new PaginatedResult<PaymentTermDto>(items, total, f.Page, f.PageSize);
+    }
+
     public async Task<List<PaymentTermDto>> GetAllAsync()
     {
         var orgId = await _tenant.GetCurrentOrganizationId();
@@ -120,5 +141,18 @@ public class PaymentTermService : IPaymentTermService
         return ToDto(entity);
     }
 
-    private static PaymentTermDto ToDto(PaymentTerm x) => new(x.Id, x.Name, x.ShortName, x.Days, x.IsActive);
+    private static IQueryable<PaymentTerm> ApplySorting(IQueryable<PaymentTerm> q, FilterParams f)
+    {
+        var desc = f.Desc;
+        return (f.SortBy?.ToLowerInvariant()) switch
+        {
+            "shortname" => desc ? q.OrderByDescending(x => x.ShortName) : q.OrderBy(x => x.ShortName),
+            "days" => desc ? q.OrderByDescending(x => x.Days) : q.OrderBy(x => x.Days),
+            "isactive" => desc ? q.OrderByDescending(x => x.IsActive) : q.OrderBy(x => x.IsActive),
+            _ => desc ? q.OrderByDescending(x => x.Name) : q.OrderBy(x => x.Name)
+        };
+    }
+
+    private static PaymentTermDto ToDto(PaymentTerm x) =>
+        new(x.Id, x.Name, x.ShortName, x.Days, x.IsActive, null);
 }

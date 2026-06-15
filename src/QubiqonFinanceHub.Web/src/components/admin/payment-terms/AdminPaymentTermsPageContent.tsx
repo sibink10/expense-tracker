@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, CirclePlus, Clock } from "lucide-react";
+import { CirclePlus, Clock } from "lucide-react";
 import {
   Btn,
   CollapsibleSearch,
   EditActionButton,
   Empty,
   ListPageHeader,
+  ListPagination,
   Spinner,
   TableToolbarRefresh,
   Toggle,
@@ -14,7 +15,12 @@ import {
 } from "../../ui";
 import PaymentTermFormModal from "./PaymentTermFormModal";
 import { useAppContext } from "../../../context/AppContext";
-import { type PaymentTerm, createPaymentTerm, getPaymentTerms, updatePaymentTerm } from "../../../shared/api";
+import {
+  type PaymentTerm,
+  createPaymentTerm,
+  getPaymentTermsPaged,
+  updatePaymentTerm,
+} from "../../../shared/api/paymentTerms";
 import { C, R, tableIconButtonSx } from "../../../shared/theme";
 
 type Mode = "add" | "edit";
@@ -28,6 +34,8 @@ export default function AdminPaymentTermsPage() {
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -38,20 +46,34 @@ export default function AdminPaymentTermsPage() {
   const [days, setDays] = useState("30");
 
   useEffect(() => {
-    setLoading(true);
-    getPaymentTerms()
-      .then((res) => setItems(res))
-      .catch(() => setItems([]))
-      .finally(() => setLoading(false));
-  }, [refreshKey]);
-
-  useEffect(() => {
     const timer = window.setTimeout(() => {
-      setDebouncedSearch(searchInput.trim().toLowerCase());
+      setDebouncedSearch(searchInput.trim());
       setPage(1);
     }, 300);
     return () => window.clearTimeout(timer);
   }, [searchInput]);
+
+  useEffect(() => {
+    setLoading(true);
+    getPaymentTermsPaged({
+      page,
+      pageSize: PAGE_SIZE,
+      search: debouncedSearch || undefined,
+      sortBy: "Name",
+      desc: false,
+    })
+      .then((res) => {
+        setItems(res.items);
+        setTotalCount(res.totalCount);
+        setTotalPages(res.totalPages);
+      })
+      .catch(() => {
+        setItems([]);
+        setTotalCount(0);
+        setTotalPages(0);
+      })
+      .finally(() => setLoading(false));
+  }, [page, debouncedSearch, refreshKey]);
 
   const submitDisabled = useMemo(
     () => !name.trim() || !shortName.trim() || Number.isNaN(Number(days)) || Number(days) < 0 || submitLoading,
@@ -118,24 +140,7 @@ export default function AdminPaymentTermsPage() {
     }
   };
 
-  const filteredItems = useMemo(() => {
-    if (!debouncedSearch) return items;
-    return items.filter((item) =>
-      [item.name, item.shortName, String(item.days), item.isActive ? "Active" : "Inactive"]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(debouncedSearch))
-    );
-  }, [debouncedSearch, items]);
-
-  const totalCount = filteredItems.length;
-  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-  const startIndex = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE;
-  const endIndex = totalCount === 0 ? 0 : Math.min(startIndex + PAGE_SIZE, totalCount);
-  const pageItems = filteredItems.slice(startIndex, endIndex);
-
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
+  const displayTotalPages = Math.max(totalPages, 1);
 
   const centeredColSx = { textAlign: "center" as const, verticalAlign: "middle" as const };
   const cols: TblCol[] = [
@@ -146,22 +151,14 @@ export default function AdminPaymentTermsPage() {
     { label: "Actions", sx: centeredColSx },
   ];
 
-  const rows = pageItems.map((item) => ({
+  const rows = items.map((item) => ({
     _cells: [
       { v: <span style={{ fontWeight: 600, color: C.primary }}>{item.name}</span> },
       { v: item.shortName },
       { v: item.days, sx: centeredColSx },
       {
         v: (
-          <span
-            style={{
-              minHeight: 36,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              verticalAlign: "middle",
-            }}
-          >
+          <span style={{ minHeight: 36, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
             <Toggle checked={item.isActive} onChange={(next) => handleToggle(item, next)} />
           </span>
         ),
@@ -169,20 +166,8 @@ export default function AdminPaymentTermsPage() {
       },
       {
         v: (
-          <span
-            style={{
-              minHeight: 36,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
-              verticalAlign: "middle",
-            }}
-          >
-            <EditActionButton
-              sx={tableIconButtonSx(C.actionEditBg)}
-              onClick={() => openEdit(item)}
-            />
+          <span style={{ minHeight: 36, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+            <EditActionButton sx={tableIconButtonSx(C.actionEditBg)} onClick={() => openEdit(item)} />
           </span>
         ),
         sx: centeredColSx,
@@ -191,17 +176,14 @@ export default function AdminPaymentTermsPage() {
   }));
 
   return (
+    <>
       <ListPageHeader
         className="list-page-header"
         title="Payment Terms"
         icon={<Clock size={24} strokeWidth={1.8} color={C.primary} />}
         actions={
           <>
-            <CollapsibleSearch
-              value={searchInput}
-              onChange={setSearchInput}
-              placeholder="Search payment terms..."
-            />
+            <CollapsibleSearch value={searchInput} onChange={setSearchInput} placeholder="Search payment terms..." />
             <Btn v="primary" onClick={openAdd} sx={{ borderRadius: R.control, boxShadow: C.cardShadow }}>
               <CirclePlus size={15} strokeWidth={1.8} />
               <span className="admin-payment-terms-add-label">Add payment term</span>
@@ -209,169 +191,47 @@ export default function AdminPaymentTermsPage() {
           </>
         }
       >
-      <style>{`
-        @media (max-width: 640px) {
-          .list-page-header {
-            justify-content: center;
-            flex-wrap: nowrap;
-          }
-
-          .admin-payment-terms-add-label {
-            display: none;
-          }
-
-          .admin-payment-terms-table-card {
-            margin-top: 20px;
-          }
-        }
-      `}</style>
-      <div
-        className="admin-payment-terms-table-card"
-        style={{
-          background: C.white,
-          borderRadius: R.control,
-          padding: "14px 16px 16px",
-          marginTop: "26px",
-          boxShadow: C.cardShadow,
-        }}
-      >
-        <TableToolbarRefresh
-          onRefresh={() => setRefreshKey((k) => k + 1)}
-          refreshDisabled={loading}
-          refreshAriaLabel="Refresh payment terms"
-        />
-
-        <Tbl
-          cols={cols}
-          rows={loading ? [] : rows}
-          bodyFallback={
-            loading ? (
-              <div
-                style={{
-                  minHeight: "460px",
-                  padding: "42px 16px",
-                  textAlign: "center",
-                  color: C.muted,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxSizing: "border-box",
-                }}
-              >
-                <Spinner size={28} />
-                <div style={{ marginTop: "10px", fontSize: "13px", fontWeight: 600, color: C.primary }}>
-                  Loading payment terms...
-                </div>
-                <div style={{ marginTop: "3px", fontSize: "12px" }}>Fetching payment term list.</div>
-              </div>
-            ) : rows.length === 0 ? (
-              <Empty
-                icon={<Clock size={38} strokeWidth={1.6} />}
-                title={debouncedSearch ? "No payment terms found" : "No payment terms"}
-                sub={debouncedSearch ? "Try a different search term." : "Create payment terms to define due dates."}
-              />
-            ) : null
-          }
-          headerSx={{
-            fontFamily: "'Manrope', sans-serif",
-            fontSize: "14px",
-            fontWeight: 600,
-            lineHeight: "100%",
-            letterSpacing: 0,
-            whiteSpace: "nowrap",
-            verticalAlign: "middle",
-          }}
-          cellSx={{
-            fontFamily: "'Inter', sans-serif",
-            fontSize: "13px",
-            fontWeight: 400,
-            lineHeight: "100%",
-            letterSpacing: 0,
-            whiteSpace: "nowrap",
-            verticalAlign: "middle",
-          }}
-        />
         <div
           style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: "8px",
-            marginTop: "10px",
-            flexWrap: "wrap",
+            background: C.white,
+            borderRadius: R.control,
+            padding: "14px 16px 16px",
+            marginTop: "26px",
+            boxShadow: C.cardShadow,
           }}
         >
-          <span style={{ fontSize: "12px", color: C.muted, fontFamily: "'Inter', sans-serif", lineHeight: 1 }}>
-            Showing {totalCount === 0 ? 0 : startIndex + 1}-{endIndex} of {totalCount}
-          </span>
-          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "8px" }}>
-            <button
-              type="button"
-              disabled={loading || page <= 1}
-              onClick={() => {
-                if (loading || page <= 1) return;
-                setPage((p) => Math.max(1, p - 1));
-              }}
-              style={{
-                width: 73,
-                height: 28,
-                borderRadius: R.control,
-                padding: "4px 8px",
-                gap: "4px",
-                border: `1px solid ${C.subtleBorder}`,
-                background: C.white,
-                color: C.primary,
-                opacity: loading || page <= 1 ? 0.45 : 1,
-                cursor: loading || page <= 1 ? "not-allowed" : "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontFamily: "'Inter', sans-serif",
-                fontSize: "12px",
-                fontWeight: 500,
-                lineHeight: 1,
-              }}
-            >
-              <ChevronLeft size={14} strokeWidth={1.9} style={{ flexShrink: 0 }} />
-              Prev
-            </button>
-            <span style={{ fontSize: "12px", color: C.muted, fontFamily: "'Inter', sans-serif", lineHeight: 1 }}>
-              Page {page} of {totalPages}
-            </span>
-            <button
-              type="button"
-              disabled={loading || page >= totalPages}
-              onClick={() => {
-                if (loading || page >= totalPages) return;
-                setPage((p) => Math.min(totalPages, p + 1));
-              }}
-              style={{
-                width: 73,
-                height: 28,
-                borderRadius: R.control,
-                padding: "4px 8px",
-                gap: "4px",
-                border: `1px solid ${C.subtleBorder}`,
-                background: C.white,
-                color: C.primary,
-                opacity: loading || page >= totalPages ? 0.45 : 1,
-                cursor: loading || page >= totalPages ? "not-allowed" : "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontFamily: "'Inter', sans-serif",
-                fontSize: "12px",
-                fontWeight: 500,
-                lineHeight: 1,
-              }}
-            >
-              Next
-              <ChevronRight size={14} strokeWidth={1.9} style={{ flexShrink: 0 }} />
-            </button>
-          </div>
+          <TableToolbarRefresh
+            onRefresh={() => setRefreshKey((k) => k + 1)}
+            refreshDisabled={loading}
+            refreshAriaLabel="Refresh payment terms"
+          />
+          <Tbl
+            cols={cols}
+            rows={loading ? [] : rows}
+            bodyFallback={
+              loading ? (
+                <div style={{ minHeight: 200, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                  <Spinner size={28} />
+                </div>
+              ) : rows.length === 0 ? (
+                <Empty
+                  icon={<Clock size={38} strokeWidth={1.6} />}
+                  title={debouncedSearch ? "No payment terms found" : "No payment terms"}
+                  sub={debouncedSearch ? "Try a different search term." : "Create payment terms to define due dates."}
+                />
+              ) : null
+            }
+          />
+          <ListPagination
+            page={page}
+            totalCount={totalCount}
+            pageSize={PAGE_SIZE}
+            totalPages={displayTotalPages}
+            loading={loading}
+            onPageChange={setPage}
+          />
         </div>
-      </div>
+      </ListPageHeader>
 
       <PaymentTermFormModal
         open={modalOpen}
@@ -388,6 +248,6 @@ export default function AdminPaymentTermsPage() {
         onClose={() => setModalOpen(false)}
         onSubmit={handleSubmit}
       />
-    </ListPageHeader>
+    </>
   );
 }

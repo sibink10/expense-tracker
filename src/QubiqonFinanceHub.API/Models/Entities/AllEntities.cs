@@ -383,7 +383,14 @@ public class Client
     [MaxLength(20)] public string? Phone { get; set; }
     [MaxLength(100)] public string Country { get; set; } = "India";
     [MaxLength(3)] public string Currency { get; set; } = "INR";
-    public string TaxType { get; set; } = "";
+    public bool IsTaxable { get; set; } = true;
+    public Guid? GstTreatmentId { get; set; }
+    [ForeignKey(nameof(GstTreatmentId))] public GstTreatment? GstTreatment { get; set; }
+    [MaxLength(2)] public string? PlaceOfSupplyCode { get; set; }
+    [ForeignKey(nameof(PlaceOfSupplyCode))] public PlaceOfSupply? PlaceOfSupply { get; set; }
+    [MaxLength(10)] public string? Pan { get; set; }
+    public Guid? PaymentTermsId { get; set; }
+    [ForeignKey(nameof(PaymentTermsId))] public PaymentTerm? PaymentTerm { get; set; }
     [MaxLength(20)] public string? GSTIN { get; set; }
     [MaxLength(500)] public string? Address { get; set; }
     public bool IsActive { get; set; } = true;
@@ -533,6 +540,32 @@ public class Category
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+}
+
+// ═══════════════════════════════════════════════════
+//  GST TREATMENT (shared lookup)
+// ═══════════════════════════════════════════════════
+public class GstTreatment
+{
+    [Key] public Guid Id { get; set; }
+    [Required, MaxLength(30)] public string Code { get; set; } = "";
+    [Required, MaxLength(100)] public string Name { get; set; } = "";
+    [MaxLength(500)] public string? Description { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+// ═══════════════════════════════════════════════════
+//  PLACE OF SUPPLY (shared lookup)
+// ═══════════════════════════════════════════════════
+public class PlaceOfSupply
+{
+    [Key, MaxLength(2)] public string PlaceOfSupplyCode { get; set; } = "";
+    [Required, MaxLength(100)] public string PlaceOfSupplyName { get; set; } = "";
+    [MaxLength(3)] public string CountryCode { get; set; } = "IN";
+    [MaxLength(100)] public string CountryName { get; set; } = "India";
+    public bool IsUnionTerritory { get; set; }
 }
 
 // ═══════════════════════════════════════════════════

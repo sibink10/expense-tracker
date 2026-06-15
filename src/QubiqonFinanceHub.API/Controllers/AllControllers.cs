@@ -321,6 +321,7 @@ public class ClientsController(IClientService svc) : ControllerBase
 {
     [HttpPost] public async Task<IActionResult> Create([FromBody] CreateClientRequest dto) => Ok(await svc.CreateAsync(dto));
     [HttpPut("{id:guid}")] public async Task<IActionResult> Update(Guid id, [FromBody] UpdateClientRequest dto) => Ok(await svc.UpdateAsync(id, dto));
+    [HttpGet("form-options")] public async Task<IActionResult> FormOptions() => Ok(await svc.GetFormOptionsAsync());
     [HttpGet("{id:guid}")] public async Task<IActionResult> GetById(Guid id) { var r = await svc.GetByIdAsync(id); return r != null ? Ok(r) : NotFound(); }
     [HttpGet] public async Task<IActionResult> List([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
     [HttpDelete("{id:guid}")] public async Task<IActionResult> Delete(Guid id) { await svc.DeleteAsync(id); return NoContent(); }
@@ -498,7 +499,7 @@ public class CategoryController(ICategoryService svc) : ControllerBase
 public class PaymentTermsController(IPaymentTermService svc) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> List() => Ok(await svc.GetAllAsync());
+    public async Task<IActionResult> List([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
@@ -522,6 +523,62 @@ public class PaymentTermsController(IPaymentTermService svc) : ControllerBase
 
     [HttpPost("{id:guid}/toggle"), Authorize(Roles = "Admin")]
     public async Task<IActionResult> Toggle(Guid id) => Ok(await svc.ToggleActiveAsync(id));
+}
+
+// ═══════════════════════════════════════════════════
+//  GST TREATMENTS
+// ═══════════════════════════════════════════════════
+[ApiController, Route("api/gst-treatments"), Authorize(Roles = "Admin")]
+public class GstTreatmentsController(IGstTreatmentService svc) : ControllerBase
+{
+    [HttpGet]
+    public async Task<IActionResult> List([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
+
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        var r = await svc.GetByIdAsync(id);
+        return r != null ? Ok(r) : NotFound();
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateGstTreatmentRequest dto) => Ok(await svc.CreateAsync(dto));
+
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateGstTreatmentRequest dto) => Ok(await svc.UpdateAsync(id, dto));
+
+    [HttpPost("{id:guid}/toggle")]
+    public async Task<IActionResult> Toggle(Guid id) => Ok(await svc.ToggleActiveAsync(id));
+}
+
+// ═══════════════════════════════════════════════════
+//  PLACE OF SUPPLY
+// ═══════════════════════════════════════════════════
+[ApiController, Route("api/place-of-supply"), Authorize(Roles = "Admin")]
+public class PlaceOfSupplyController(IPlaceOfSupplyService svc) : ControllerBase
+{
+    [HttpGet]
+    public async Task<IActionResult> List([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));
+
+    [HttpGet("{code}")]
+    public async Task<IActionResult> GetByCode(string code)
+    {
+        var r = await svc.GetByCodeAsync(code);
+        return r != null ? Ok(r) : NotFound();
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreatePlaceOfSupplyRequest dto) => Ok(await svc.CreateAsync(dto));
+
+    [HttpPut("{code}")]
+    public async Task<IActionResult> Update(string code, [FromBody] UpdatePlaceOfSupplyRequest dto) => Ok(await svc.UpdateAsync(code, dto));
+
+    [HttpDelete("{code}")]
+    public async Task<IActionResult> Delete(string code)
+    {
+        await svc.DeleteAsync(code);
+        return NoContent();
+    }
 }
 
 // ══════════════════════════════════════════════════

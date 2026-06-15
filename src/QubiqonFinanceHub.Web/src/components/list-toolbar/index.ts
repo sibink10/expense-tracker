@@ -7,3 +7,5 @@ export type { ListPageAddButtonProps } from "./ListPageAddButton";
 export { useNavPageAdd } from "./useNavPageAdd";
 export { default as OverflowStatusTabs, TableToolbarRefresh } from "./OverflowStatusTabs";
 export type { StatusTab, OverflowStatusTabsProps } from "./OverflowStatusTabs";
+export { default as ListPagination } from "./ListPagination";
+export type { ListPaginationProps } from "./ListPagination";

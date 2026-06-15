@@ -9,8 +9,15 @@ export interface ApiClient {
   phone: string;
   country: string;
   currency: string;
-  taxType: string | null;
+  isTaxable: boolean;
   gstin: string;
+  gstTreatmentId?: string | null;
+  gstTreatmentName?: string | null;
+  placeOfSupplyCode?: string | null;
+  placeOfSupplyName?: string | null;
+  pan?: string | null;
+  paymentTermsId?: string | null;
+  paymentTermsName?: string | null;
   address?: string;
   customerType?: string;
   shippingAddress?: string;
@@ -28,7 +35,14 @@ function mapApiClientToApp(item: ApiClient): Client {
     currency: item.currency || "",
     addr: item.billingAddress ?? item.shippingAddress ?? item.address ?? "",
     gstin: item.gstin || "",
-    taxType: item.taxType || "",
+    isTaxable: item.isTaxable ?? true,
+    gstTreatmentId: item.gstTreatmentId ?? undefined,
+    gstTreatmentName: item.gstTreatmentName ?? undefined,
+    placeOfSupplyCode: item.placeOfSupplyCode ?? undefined,
+    placeOfSupplyName: item.placeOfSupplyName ?? undefined,
+    pan: item.pan ?? undefined,
+    paymentTermsId: item.paymentTermsId ?? undefined,
+    paymentTermsName: item.paymentTermsName ?? undefined,
     customerType: item.customerType,
     shippingAddress: item.shippingAddress,
     billingAddress: item.billingAddress,
@@ -100,8 +114,12 @@ export interface ClientPayload {
   phone: string;
   country: string;
   currency: string;
-  taxType: string | null;
+  isTaxable: boolean;
   gstin: string;
+  gstTreatmentId?: string | null;
+  placeOfSupplyCode?: string | null;
+  pan?: string | null;
+  paymentTermsId?: string | null;
   shippingAddress: string;
   billingAddress: string;
   customerType: string;

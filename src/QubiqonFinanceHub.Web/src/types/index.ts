@@ -266,7 +266,14 @@ export interface Client {
   /** @deprecated use billingAddress / shippingAddress */
   addr?: string;
   gstin: string;
-  taxType: string;
+  isTaxable?: boolean;
+  gstTreatmentId?: string;
+  gstTreatmentName?: string;
+  placeOfSupplyCode?: string;
+  placeOfSupplyName?: string;
+  pan?: string;
+  paymentTermsId?: string;
+  paymentTermsName?: string;
   customerType?: string;
   shippingAddress?: string;
   billingAddress?: string;

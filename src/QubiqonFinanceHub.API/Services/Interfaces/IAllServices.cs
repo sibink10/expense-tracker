@@ -93,6 +93,7 @@ public interface IVendorBillService
 
 public interface IClientService
 {
+    Task<ClientFormOptionsDto> GetFormOptionsAsync();
     Task<ClientDto> CreateAsync(CreateClientRequest dto);
     Task<ClientDto> UpdateAsync(Guid id, UpdateClientRequest dto);
     Task<ClientDto?> GetByIdAsync(Guid id);
@@ -199,12 +200,31 @@ public interface ICategoryService
 
 public interface IPaymentTermService
 {
+    Task<PaginatedResult<PaymentTermDto>> ListAsync(FilterParams f);
     Task<List<PaymentTermDto>> GetAllAsync();
     Task<PaymentTermDto?> GetByIdAsync(Guid id);
     Task<PaymentTermDto> CreateAsync(CreatePaymentTermRequest dto);
     Task<PaymentTermDto> UpdateAsync(Guid id, UpdatePaymentTermRequest dto);
     Task DeleteAsync(Guid id);
     Task<PaymentTermDto> ToggleActiveAsync(Guid id);
+}
+
+public interface IGstTreatmentService
+{
+    Task<PaginatedResult<GstTreatmentDto>> ListAsync(FilterParams f);
+    Task<GstTreatmentDto?> GetByIdAsync(Guid id);
+    Task<GstTreatmentDto> CreateAsync(CreateGstTreatmentRequest dto);
+    Task<GstTreatmentDto> UpdateAsync(Guid id, UpdateGstTreatmentRequest dto);
+    Task<GstTreatmentDto> ToggleActiveAsync(Guid id);
+}
+
+public interface IPlaceOfSupplyService
+{
+    Task<PaginatedResult<PlaceOfSupplyDto>> ListAsync(FilterParams f);
+    Task<PlaceOfSupplyDto?> GetByCodeAsync(string code);
+    Task<PlaceOfSupplyDto> CreateAsync(CreatePlaceOfSupplyRequest dto);
+    Task<PlaceOfSupplyDto> UpdateAsync(string code, UpdatePlaceOfSupplyRequest dto);
+    Task DeleteAsync(string code);
 }
 
 public interface IAccountService

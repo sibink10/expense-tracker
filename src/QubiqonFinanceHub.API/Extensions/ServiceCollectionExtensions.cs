@@ -44,6 +44,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IEmployeeService, EmployeeService>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IPaymentTermService, PaymentTermService>();
+        services.AddScoped<IGstTreatmentService, GstTreatmentService>();
+        services.AddScoped<IPlaceOfSupplyService, PlaceOfSupplyService>();
         services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<IOrganizationSettingsService, OrganizationSettingsService>();
         services.AddScoped<IExcelUploadService, ExcelUploadService>();
