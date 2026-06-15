@@ -9,6 +9,7 @@ import DecimalLineInput from "../DecimalLineInput";
 import { AsyncSelectInput } from "../AsyncSelectInput";
 import { createInvoice } from "../../shared/api/invoice";
 import { getClients } from "../../shared/api/clients";
+import { getPaymentTerms, type PaymentTerm } from "../../shared/api/paymentTerms";
 import { getTaxConfigs } from "../../shared/api/taxConfig";
 import { useAppContext } from "../../context/AppContext";
 import type { Client, TaxConfig } from "../../types";
@@ -36,6 +37,8 @@ export default function InvoiceAddPage() {
   const [taxConfigId, setTaxConfigId] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [paymentTerms, setPaymentTerms] = useState("net30");
+  const [paymentTermOptions, setPaymentTermOptions] = useState<Array<{ v: string; l: string; d: number }>>(PAY_TERMS);
+  const [paymentTermsCatalog, setPaymentTermsCatalog] = useState<PaymentTerm[]>([]);
   const [purchaseOrder, setPurchaseOrder] = useState("");
   const [notes, setNotes] = useState("");
   const [sendImmediately, setSendImmediately] = useState(false);
@@ -46,7 +49,7 @@ export default function InvoiceAddPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [narrow, setNarrow] = useState(typeof window !== "undefined" && window.innerWidth < GRID_BREAKPOINT);
 
-  const dueDate = addDays(invoiceDate, PAY_TERMS.find((x) => x.v === paymentTerms)?.d ?? 30);
+  const dueDate = addDays(invoiceDate, paymentTermOptions.find((x) => x.v === paymentTerms)?.d ?? 30);
 
   useEffect(() => {
     const onResize = () => setNarrow(window.innerWidth < GRID_BREAKPOINT);
@@ -96,6 +99,49 @@ export default function InvoiceAddPage() {
       })
       .finally(() => setTaxLoading(false));
   }, []);
+
+  useEffect(() => {
+    getPaymentTerms()
+      .then((items) => {
+        const active = items.filter((x) => x.isActive);
+        if (active.length > 0) {
+          setPaymentTermsCatalog(active);
+          setPaymentTermOptions(active.map((x) => ({ v: x.shortName, l: x.name, d: x.days })));
+        }
+      })
+      .catch(() => {
+        setPaymentTermsCatalog([]);
+        setPaymentTermOptions(PAY_TERMS);
+      });
+  }, []);
+
+  const applyClientDefaults = useCallback(
+    (client: Client | undefined) => {
+      if (!client) return;
+      if (client.currency) setCurrency(client.currency);
+      if (client.paymentTermsId) {
+        const term = paymentTermsCatalog.find((t) => t.id === client.paymentTermsId);
+        if (term?.shortName) setPaymentTerms(term.shortName);
+      }
+    },
+    [paymentTermsCatalog]
+  );
+
+  const resolveClientAndApplyDefaults = useCallback(
+    async (id: string) => {
+      let client = clients.find((x) => x.id === id);
+      if (!client) {
+        try {
+          const all = await getClients();
+          client = all.find((x) => x.id === id);
+        } catch {
+          return;
+        }
+      }
+      applyClientDefaults(client);
+    },
+    [clients, applyClientDefaults]
+  );
 
   const addLineItem = () => {
     setLineItems((prev) => [...prev, { ...defaultLineItem }]);
@@ -264,8 +310,7 @@ export default function InvoiceAddPage() {
               value={clientId}
               onChange={(val) => {
                 setClientId(val);
-                const c = clients.find((x) => x.id === val);
-                if (c?.currency) setCurrency(c.currency);
+                void resolveClientAndApplyDefaults(val);
               }}
               loadOptions={loadClientOptions}
               disabled={clientsLoading || loading}
@@ -479,7 +524,7 @@ export default function InvoiceAddPage() {
             type="select"
             value={paymentTerms}
             onChange={(e) => setPaymentTerms(e.target.value)}
-            opts={PAY_TERMS.map((x) => ({ v: x.v, l: x.l }))}
+            opts={paymentTermOptions.map((x) => ({ v: x.v, l: x.l }))}
             style={cellStyle}
             controlSx={controlStyle}
           />
