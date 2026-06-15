@@ -22,7 +22,15 @@ public class ClientService : IClientService
         var gstTreatments = await _db.GstTreatments.AsNoTracking()
             .Where(x => x.IsActive)
             .OrderBy(x => x.Name)
-            .Select(x => new GstTreatmentOptionDto(x.Id, x.Code, x.Name, x.Description))
+            .Select(x => new GstTreatmentOptionDto(
+                x.Id,
+                x.Code,
+                x.Name,
+                x.Description,
+                x.ShowGstin,
+                x.ShowPlaceOfSupply,
+                x.ShowTaxPreference,
+                x.ShowPan))
             .ToListAsync();
 
         var placeOfSupply = await _db.PlaceOfSupply.AsNoTracking()
@@ -53,12 +61,28 @@ public class ClientService : IClientService
         if (await NameExistsAsync(orgId, nameTrim, excludeId: null))
             throw new InvalidOperationException("A client with this name already exists.");
 
-        var gstin = ClientGstValidation.NormalizeGstin(dto.Gstin);
-        var pan = ClientGstValidation.NormalizePan(dto.Pan);
-        var placeOfSupplyCode = dto.PlaceOfSupplyCode?.Trim()
-            ?? ClientGstValidation.StateCodeFromTaxId(gstin);
+        var treatmentFlags = await GetTreatmentFlagsAsync(dto.GstTreatmentId);
+        var gstin = treatmentFlags?.ShowGstin == true
+            ? ClientGstValidation.NormalizeGstin(dto.Gstin)
+            : null;
+        var pan = treatmentFlags?.ShowPan == true
+            ? ClientGstValidation.NormalizePan(dto.Pan)
+            : null;
+        var placeOfSupplyCode = treatmentFlags?.ShowPlaceOfSupply == true
+            ? (dto.PlaceOfSupplyCode?.Trim() ?? ClientGstValidation.StateCodeFromTaxId(gstin))
+            : null;
+        var taxExemptionReason = treatmentFlags?.ShowTaxPreference == true && !dto.IsTaxable
+            ? ClientGstValidation.NormalizeTaxExemptionReason(dto.TaxExemptionReason)
+            : null;
 
-        ClientGstValidation.Validate(dto.IsTaxable, dto.GstTreatmentId, gstin, placeOfSupplyCode, pan);
+        ClientGstValidation.Validate(
+            dto.IsTaxable,
+            dto.GstTreatmentId,
+            gstin,
+            placeOfSupplyCode,
+            pan,
+            taxExemptionReason,
+            treatmentFlags);
         await ValidateForeignKeysAsync(orgId, dto.GstTreatmentId, placeOfSupplyCode, dto.PaymentTermsId);
 
         var client = new Client
@@ -70,6 +94,7 @@ public class ClientService : IClientService
             Country = dto.Country,
             Currency = dto.Currency,
             IsTaxable = dto.IsTaxable,
+            TaxExemptionReason = taxExemptionReason,
             GstTreatmentId = dto.GstTreatmentId,
             PlaceOfSupplyCode = placeOfSupplyCode,
             Pan = pan,
@@ -110,7 +135,6 @@ public class ClientService : IClientService
         if (dto.Email != null) client.Email = dto.Email;
         if (dto.Country != null) client.Country = dto.Country;
         if (dto.Currency != null) client.Currency = dto.Currency;
-        if (dto.IsTaxable.HasValue) client.IsTaxable = dto.IsTaxable.Value;
         if (dto.CustomerType != null) client.CustomerType = Enum.Parse<CustomerType>(dto.CustomerType, true);
         if (dto.ContactPerson != null) client.ContactPerson = dto.ContactPerson;
         if (dto.Phone != null) client.Phone = dto.Phone;
@@ -118,36 +142,57 @@ public class ClientService : IClientService
         if (dto.ShippingAddress != null) client.ShippingAddress = dto.ShippingAddress;
 
         var isTaxable = dto.IsTaxable ?? client.IsTaxable;
-        var gstTreatmentId = dto.IsTaxable.HasValue ? dto.GstTreatmentId : (dto.GstTreatmentId ?? client.GstTreatmentId);
-        var gstin = dto.Gstin != null ? ClientGstValidation.NormalizeGstin(dto.Gstin) : client.GSTIN;
-        var pan = dto.Pan != null ? ClientGstValidation.NormalizePan(dto.Pan) : client.Pan;
-        var placeOfSupplyCode = dto.PlaceOfSupplyCode != null
-            ? (string.IsNullOrWhiteSpace(dto.PlaceOfSupplyCode) ? null : dto.PlaceOfSupplyCode.Trim())
-            : (dto.Gstin != null ? ClientGstValidation.StateCodeFromTaxId(gstin) : client.PlaceOfSupplyCode);
-        var paymentTermsId = dto.IsTaxable.HasValue ? dto.PaymentTermsId : (dto.PaymentTermsId ?? client.PaymentTermsId);
+        var gstTreatmentId = dto.GstTreatmentId ?? client.GstTreatmentId;
+        var treatmentFlags = await GetTreatmentFlagsAsync(gstTreatmentId);
 
-        if (dto.IsTaxable.HasValue)
+        var gstin = dto.Gstin != null
+            ? (treatmentFlags?.ShowGstin == true ? ClientGstValidation.NormalizeGstin(dto.Gstin) : null)
+            : (treatmentFlags?.ShowGstin == true ? client.GSTIN : null);
+        var pan = dto.Pan != null
+            ? (treatmentFlags?.ShowPan == true ? ClientGstValidation.NormalizePan(dto.Pan) : null)
+            : (treatmentFlags?.ShowPan == true ? client.Pan : null);
+        var placeOfSupplyCode = dto.PlaceOfSupplyCode != null
+            ? (treatmentFlags?.ShowPlaceOfSupply == true
+                ? (string.IsNullOrWhiteSpace(dto.PlaceOfSupplyCode) ? null : dto.PlaceOfSupplyCode.Trim())
+                : null)
+            : (dto.Gstin != null && treatmentFlags?.ShowPlaceOfSupply == true
+                ? ClientGstValidation.StateCodeFromTaxId(gstin)
+                : (treatmentFlags?.ShowPlaceOfSupply == true ? client.PlaceOfSupplyCode : null));
+        var paymentTermsId = dto.PaymentTermsId ?? client.PaymentTermsId;
+        var taxExemptionReason = dto.TaxExemptionReason != null
+            ? (treatmentFlags?.ShowTaxPreference == true && !isTaxable
+                ? ClientGstValidation.NormalizeTaxExemptionReason(dto.TaxExemptionReason)
+                : null)
+            : (treatmentFlags?.ShowTaxPreference == true && !isTaxable
+                ? client.TaxExemptionReason
+                : null);
+
+        if (dto.IsTaxable.HasValue && isTaxable)
+            taxExemptionReason = null;
+
+        if (dto.IsTaxable.HasValue || dto.GstTreatmentId != null || dto.Gstin != null ||
+            dto.PlaceOfSupplyCode != null || dto.Pan != null || dto.PaymentTermsId != null ||
+            dto.TaxExemptionReason != null)
         {
-            ClientGstValidation.Validate(isTaxable, gstTreatmentId, gstin, placeOfSupplyCode, pan);
+            ClientGstValidation.Validate(
+                isTaxable,
+                gstTreatmentId,
+                gstin,
+                placeOfSupplyCode,
+                pan,
+                taxExemptionReason,
+                treatmentFlags);
             await ValidateForeignKeysAsync(orgId, gstTreatmentId, placeOfSupplyCode, paymentTermsId);
-            client.IsTaxable = isTaxable;
-            client.GstTreatmentId = gstTreatmentId;
-            client.GSTIN = gstin;
-            client.PlaceOfSupplyCode = placeOfSupplyCode;
-            client.Pan = pan;
-            client.PaymentTermsId = paymentTermsId;
-        }
-        else if (dto.GstTreatmentId != null || dto.Gstin != null || dto.PlaceOfSupplyCode != null || dto.Pan != null || dto.PaymentTermsId != null)
-        {
-            gstTreatmentId = dto.GstTreatmentId ?? client.GstTreatmentId;
-            paymentTermsId = dto.PaymentTermsId ?? client.PaymentTermsId;
-            ClientGstValidation.Validate(isTaxable, gstTreatmentId, gstin, placeOfSupplyCode, pan);
-            await ValidateForeignKeysAsync(orgId, gstTreatmentId, placeOfSupplyCode, paymentTermsId);
+
+            if (dto.IsTaxable.HasValue) client.IsTaxable = isTaxable;
             if (dto.GstTreatmentId != null) client.GstTreatmentId = dto.GstTreatmentId;
-            if (dto.Gstin != null) client.GSTIN = gstin;
-            if (dto.PlaceOfSupplyCode != null || dto.Gstin != null) client.PlaceOfSupplyCode = placeOfSupplyCode;
-            if (dto.Pan != null) client.Pan = pan;
+            if (dto.Gstin != null || dto.GstTreatmentId != null) client.GSTIN = gstin;
+            if (dto.PlaceOfSupplyCode != null || dto.Gstin != null || dto.GstTreatmentId != null)
+                client.PlaceOfSupplyCode = placeOfSupplyCode;
+            if (dto.Pan != null || dto.GstTreatmentId != null) client.Pan = pan;
             if (dto.PaymentTermsId != null) client.PaymentTermsId = dto.PaymentTermsId;
+            if (dto.TaxExemptionReason != null || dto.IsTaxable.HasValue || dto.GstTreatmentId != null)
+                client.TaxExemptionReason = taxExemptionReason;
         }
 
         client.UpdatedAt = DateTime.UtcNow;
@@ -198,6 +243,19 @@ public class ClientService : IClientService
         client.IsDelete = true;
         client.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+    }
+
+    private async Task<GstTreatmentFieldFlags?> GetTreatmentFlagsAsync(Guid? gstTreatmentId)
+    {
+        if (!gstTreatmentId.HasValue) return null;
+        var treatment = await _db.GstTreatments.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == gstTreatmentId.Value);
+        if (treatment == null) return null;
+        return new GstTreatmentFieldFlags(
+            treatment.ShowGstin,
+            treatment.ShowPlaceOfSupply,
+            treatment.ShowTaxPreference,
+            treatment.ShowPan);
     }
 
     private async Task<bool> NameExistsAsync(Guid orgId, string nameTrim, Guid? excludeId)
@@ -256,6 +314,7 @@ public class ClientService : IClientService
                 c.Pan,
                 c.PaymentTermsId,
                 c.PaymentTerm != null ? c.PaymentTerm.Name : null,
+                c.TaxExemptionReason,
                 c.BillingAddress,
                 c.ShippingAddress,
                 c.IsActive,
@@ -281,6 +340,7 @@ public class ClientService : IClientService
         c.Pan,
         c.PaymentTermsId,
         null,
+        c.TaxExemptionReason,
         c.BillingAddress,
         c.ShippingAddress,
         c.IsActive,

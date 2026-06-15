@@ -18,6 +18,7 @@ export interface ApiClient {
   pan?: string | null;
   paymentTermsId?: string | null;
   paymentTermsName?: string | null;
+  taxExemptionReason?: string | null;
   address?: string;
   customerType?: string;
   shippingAddress?: string;
@@ -43,6 +44,7 @@ function mapApiClientToApp(item: ApiClient): Client {
     pan: item.pan ?? undefined,
     paymentTermsId: item.paymentTermsId ?? undefined,
     paymentTermsName: item.paymentTermsName ?? undefined,
+    taxExemptionReason: item.taxExemptionReason ?? undefined,
     customerType: item.customerType,
     shippingAddress: item.shippingAddress,
     billingAddress: item.billingAddress,
@@ -120,6 +122,7 @@ export interface ClientPayload {
   placeOfSupplyCode?: string | null;
   pan?: string | null;
   paymentTermsId?: string | null;
+  taxExemptionReason?: string | null;
   shippingAddress: string;
   billingAddress: string;
   customerType: string;

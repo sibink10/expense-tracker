@@ -25,7 +25,7 @@ export default function ClientDetailModal({ client: c }: Props) {
   };
 
   const heroSub = [c.gstin, c.email].filter(Boolean).join(" · ") || c.contact || undefined;
-  const taxStatus = c.isTaxable === false ? "Non-taxable" : "Taxable";
+  const taxPreference = c.isTaxable === false ? "Tax exempt" : "Taxable";
   const placeOfSupplyDisplay = c.placeOfSupplyName
     ? (c.placeOfSupplyCode ? `${c.placeOfSupplyCode} — ${c.placeOfSupplyName}` : c.placeOfSupplyName)
     : c.placeOfSupplyCode;
@@ -47,7 +47,8 @@ export default function ClientDetailModal({ client: c }: Props) {
 
       <DetailSection title="GST & finance">
         <DetailGrid>
-          <DetailField label="Tax status" value={taxStatus} />
+          <DetailField label="Tax preference" value={taxPreference} />
+          {c.isTaxable === false && <DetailField label="Exemption reason" value={c.taxExemptionReason} />}
           <DetailField label="GST treatment" value={c.gstTreatmentName} />
           <DetailField label="GSTIN / UIN" value={c.gstin} />
           <DetailField label="Place of supply" value={placeOfSupplyDisplay} />

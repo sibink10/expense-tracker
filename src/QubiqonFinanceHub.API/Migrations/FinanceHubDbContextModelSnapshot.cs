@@ -351,6 +351,10 @@ namespace QubiqonFinanceHub.API.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
 
+                    b.Property<string>("TaxExemptionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -734,6 +738,18 @@ namespace QubiqonFinanceHub.API.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("ShowGstin")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowPan")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowPlaceOfSupply")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowTaxPreference")
+                        .HasColumnType("bit");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");

@@ -384,6 +384,7 @@ public class Client
     [MaxLength(100)] public string Country { get; set; } = "India";
     [MaxLength(3)] public string Currency { get; set; } = "INR";
     public bool IsTaxable { get; set; } = true;
+    [MaxLength(500)] public string? TaxExemptionReason { get; set; }
     public Guid? GstTreatmentId { get; set; }
     [ForeignKey(nameof(GstTreatmentId))] public GstTreatment? GstTreatment { get; set; }
     [MaxLength(2)] public string? PlaceOfSupplyCode { get; set; }
@@ -551,6 +552,10 @@ public class GstTreatment
     [Required, MaxLength(30)] public string Code { get; set; } = "";
     [Required, MaxLength(100)] public string Name { get; set; } = "";
     [MaxLength(500)] public string? Description { get; set; }
+    public bool ShowGstin { get; set; } = true;
+    public bool ShowPlaceOfSupply { get; set; } = true;
+    public bool ShowTaxPreference { get; set; } = true;
+    public bool ShowPan { get; set; } = true;
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

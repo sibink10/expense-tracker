@@ -274,6 +274,7 @@ export interface Client {
   pan?: string;
   paymentTermsId?: string;
   paymentTermsName?: string;
+  taxExemptionReason?: string;
   customerType?: string;
   shippingAddress?: string;
   billingAddress?: string;

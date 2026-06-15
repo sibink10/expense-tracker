@@ -6,6 +6,10 @@ export interface GstTreatmentOption {
   code: string;
   name: string;
   description?: string | null;
+  showGstin: boolean;
+  showPlaceOfSupply: boolean;
+  showTaxPreference: boolean;
+  showPan: boolean;
 }
 
 export interface PaymentTermOption {
@@ -24,8 +28,15 @@ export interface ClientFormOptions {
 
 export async function getClientFormOptions(): Promise<ClientFormOptions> {
   const { data } = await apiClient.get<ClientFormOptions>("/clients/form-options");
+  const normalizeTreatment = (t: GstTreatmentOption): GstTreatmentOption => ({
+    ...t,
+    showGstin: t.showGstin ?? true,
+    showPlaceOfSupply: t.showPlaceOfSupply ?? true,
+    showTaxPreference: t.showTaxPreference ?? true,
+    showPan: t.showPan ?? true,
+  });
   return {
-    gstTreatments: data.gstTreatments ?? [],
+    gstTreatments: (data.gstTreatments ?? []).map(normalizeTreatment),
     placeOfSupply: data.placeOfSupply ?? [],
     paymentTerms: data.paymentTerms ?? [],
   };

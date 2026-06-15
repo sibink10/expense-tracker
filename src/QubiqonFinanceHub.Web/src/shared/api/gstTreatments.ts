@@ -6,6 +6,10 @@ export interface GstTreatment {
   name: string;
   description?: string | null;
   isActive: boolean;
+  showGstin: boolean;
+  showPlaceOfSupply: boolean;
+  showTaxPreference: boolean;
+  showPan: boolean;
 }
 
 export interface PagedGstTreatmentsResponse {
@@ -29,6 +33,10 @@ export interface CreateGstTreatmentPayload {
   code: string;
   name: string;
   description?: string | null;
+  showGstin?: boolean;
+  showPlaceOfSupply?: boolean;
+  showTaxPreference?: boolean;
+  showPan?: boolean;
 }
 
 export interface UpdateGstTreatmentPayload {
@@ -36,6 +44,10 @@ export interface UpdateGstTreatmentPayload {
   name: string;
   description?: string | null;
   isActive: boolean;
+  showGstin: boolean;
+  showPlaceOfSupply: boolean;
+  showTaxPreference: boolean;
+  showPan: boolean;
 }
 
 export async function getGstTreatmentsPaged(params: GetGstTreatmentsParams = {}): Promise<PagedGstTreatmentsResponse> {
@@ -49,7 +61,13 @@ export async function getGstTreatmentsPaged(params: GetGstTreatmentsParams = {})
     },
   });
   return {
-    items: data.items ?? [],
+    items: (data.items ?? []).map((item) => ({
+      ...item,
+      showGstin: item.showGstin ?? true,
+      showPlaceOfSupply: item.showPlaceOfSupply ?? true,
+      showTaxPreference: item.showTaxPreference ?? true,
+      showPan: item.showPan ?? true,
+    })),
     totalCount: data.totalCount ?? 0,
     page: data.page ?? params.page ?? 1,
     pageSize: data.pageSize ?? params.pageSize ?? 10,

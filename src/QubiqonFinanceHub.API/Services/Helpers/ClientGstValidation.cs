@@ -2,6 +2,12 @@ using System.Text.RegularExpressions;
 
 namespace QubiqonFinanceHub.API.Services.Helpers;
 
+public record GstTreatmentFieldFlags(
+    bool ShowGstin,
+    bool ShowPlaceOfSupply,
+    bool ShowTaxPreference,
+    bool ShowPan);
+
 public static class ClientGstValidation
 {
     private static readonly Regex GstinRegex = new(@"^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$", RegexOptions.Compiled);
@@ -21,10 +27,28 @@ public static class ClientGstValidation
     public static string? NormalizePan(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim().ToUpperInvariant();
 
-    public static void Validate(bool isTaxable, Guid? gstTreatmentId, string? gstin, string? placeOfSupplyCode, string? pan)
+    public static string? NormalizeTaxExemptionReason(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    public static void Validate(
+        bool isTaxable,
+        Guid? gstTreatmentId,
+        string? gstin,
+        string? placeOfSupplyCode,
+        string? pan,
+        string? taxExemptionReason,
+        GstTreatmentFieldFlags? treatmentFlags = null)
     {
-        if (gstTreatmentId.HasValue && string.IsNullOrWhiteSpace(gstin))
-            throw new InvalidOperationException("GSTIN/UIN is required when GST treatment is selected.");
+        var flags = treatmentFlags ?? new GstTreatmentFieldFlags(true, true, true, true);
+
+        if (flags.ShowTaxPreference && !isTaxable)
+        {
+            if (string.IsNullOrWhiteSpace(taxExemptionReason))
+                throw new InvalidOperationException("Exemption reason is required when tax preference is tax exempt.");
+        }
+
+        if (gstTreatmentId.HasValue && flags.ShowGstin && string.IsNullOrWhiteSpace(gstin))
+            throw new InvalidOperationException("GSTIN/UIN is required for the selected GST treatment.");
 
         var normalizedGstin = NormalizeGstin(gstin);
         if (!string.IsNullOrEmpty(normalizedGstin))
@@ -32,14 +56,12 @@ public static class ClientGstValidation
             if (normalizedGstin.Length == 15 && !GstinRegex.IsMatch(normalizedGstin))
                 throw new InvalidOperationException("Invalid GSTIN format.");
 
-            if (string.IsNullOrWhiteSpace(placeOfSupplyCode))
+            if (flags.ShowPlaceOfSupply && string.IsNullOrWhiteSpace(placeOfSupplyCode))
                 throw new InvalidOperationException("Place of supply is required when GSTIN/UIN is provided.");
         }
 
         var normalizedPan = NormalizePan(pan);
         if (!string.IsNullOrEmpty(normalizedPan) && !PanRegex.IsMatch(normalizedPan))
             throw new InvalidOperationException("Invalid PAN format.");
-
-        _ = isTaxable;
     }
 }

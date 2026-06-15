@@ -53,6 +53,10 @@ public class GstTreatmentService : IGstTreatmentService
             Code = code,
             Name = name,
             Description = dto.Description?.Trim(),
+            ShowGstin = dto.ShowGstin,
+            ShowPlaceOfSupply = dto.ShowPlaceOfSupply,
+            ShowTaxPreference = dto.ShowTaxPreference,
+            ShowPan = dto.ShowPan,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -78,6 +82,10 @@ public class GstTreatmentService : IGstTreatmentService
         entity.Name = name;
         entity.Description = dto.Description?.Trim();
         entity.IsActive = dto.IsActive;
+        entity.ShowGstin = dto.ShowGstin;
+        entity.ShowPlaceOfSupply = dto.ShowPlaceOfSupply;
+        entity.ShowTaxPreference = dto.ShowTaxPreference;
+        entity.ShowPan = dto.ShowPan;
         entity.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return ToDto(entity);
@@ -105,5 +113,14 @@ public class GstTreatmentService : IGstTreatmentService
     }
 
     private static GstTreatmentDto ToDto(GstTreatment x) =>
-        new(x.Id, x.Code, x.Name, x.Description, x.IsActive);
+        new(
+            x.Id,
+            x.Code,
+            x.Name,
+            x.Description,
+            x.IsActive,
+            x.ShowGstin,
+            x.ShowPlaceOfSupply,
+            x.ShowTaxPreference,
+            x.ShowPan);
 }

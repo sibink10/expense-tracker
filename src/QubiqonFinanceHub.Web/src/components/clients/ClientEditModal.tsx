@@ -30,6 +30,7 @@ export default function ClientEditModal() {
     placeOfSupplyCode: "",
     pan: "",
     paymentTermsId: "",
+    taxExemptionReason: "",
   });
   const [customerType, setCustomerType] = useState<"Business" | "Individual">("Business");
   const [shippingAddress, setShippingAddress] = useState("");
@@ -88,6 +89,7 @@ export default function ClientEditModal() {
         placeOfSupplyCode: c.placeOfSupplyCode || "",
         pan: c.pan || "",
         paymentTermsId: c.paymentTermsId || "",
+        taxExemptionReason: c.taxExemptionReason || "",
       });
       setCustomerType((c.customerType === "Individual" ? "Individual" : "Business") as "Business" | "Individual");
       setShippingAddress(c.shippingAddress ?? c.addr ?? "");
@@ -136,6 +138,7 @@ export default function ClientEditModal() {
         placeOfSupplyCode: gstFinance.placeOfSupplyCode || null,
         pan: gstFinance.pan.trim() || null,
         paymentTermsId: gstFinance.paymentTermsId || null,
+        taxExemptionReason: gstFinance.taxExemptionReason.trim() || null,
         shippingAddress: shippingAddress.trim(),
         billingAddress: sameAddress ? shippingAddress.trim() : billingAddress.trim(),
         customerType,

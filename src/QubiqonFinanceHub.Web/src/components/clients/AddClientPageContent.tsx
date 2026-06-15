@@ -37,6 +37,7 @@ export default function AddClientPage() {
     placeOfSupplyCode: "",
     pan: "",
     paymentTermsId: "",
+    taxExemptionReason: "",
   });
   const [customerType, setCustomerType] = useState<"Business" | "Individual">("Business");
   const [shippingAddress, setShippingAddress] = useState("");
@@ -121,6 +122,7 @@ export default function AddClientPage() {
         placeOfSupplyCode: gstFinance.placeOfSupplyCode || null,
         pan: gstFinance.pan.trim() || null,
         paymentTermsId: gstFinance.paymentTermsId || null,
+        taxExemptionReason: gstFinance.taxExemptionReason.trim() || null,
         shippingAddress: shippingAddress.trim(),
         billingAddress: sameAddress ? shippingAddress.trim() : billingAddress.trim(),
         customerType,

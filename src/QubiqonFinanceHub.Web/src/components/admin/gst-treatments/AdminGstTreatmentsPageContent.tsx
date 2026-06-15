@@ -28,6 +28,38 @@ import { C, R, tableIconButtonSx } from "../../../shared/theme";
 
 const PAGE_SIZE = 10;
 
+const DEFAULT_FLAGS = {
+  showGstin: true,
+  showPlaceOfSupply: true,
+  showTaxPreference: true,
+  showPan: true,
+};
+
+function FlagCell({ value }: { value: boolean }) {
+  return (
+    <span style={{ fontSize: "12px", fontWeight: 600, color: value ? C.accent : C.muted }}>
+      {value ? "Yes" : "No"}
+    </span>
+  );
+}
+
+function FieldFlagCheckbox({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "13px", color: C.text }}>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      {label}
+    </label>
+  );
+}
+
 export default function AdminGstTreatmentsPageContent() {
   const { t } = useAppContext();
   const [items, setItems] = useState<GstTreatment[]>([]);
@@ -44,6 +76,10 @@ export default function AdminGstTreatmentsPageContent() {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [showGstin, setShowGstin] = useState(true);
+  const [showPlaceOfSupply, setShowPlaceOfSupply] = useState(true);
+  const [showTaxPreference, setShowTaxPreference] = useState(true);
+  const [showPan, setShowPan] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitLoading, setSubmitLoading] = useState(false);
 
@@ -76,12 +112,20 @@ export default function AdminGstTreatmentsPageContent() {
     [code, name, submitLoading]
   );
 
+  const resetFlags = () => {
+    setShowGstin(DEFAULT_FLAGS.showGstin);
+    setShowPlaceOfSupply(DEFAULT_FLAGS.showPlaceOfSupply);
+    setShowTaxPreference(DEFAULT_FLAGS.showTaxPreference);
+    setShowPan(DEFAULT_FLAGS.showPan);
+  };
+
   const openAdd = () => {
     setMode("add");
     setEditingId(null);
     setCode("");
     setName("");
     setDescription("");
+    resetFlags();
     setError(null);
     setModalOpen(true);
   };
@@ -92,9 +136,20 @@ export default function AdminGstTreatmentsPageContent() {
     setCode(item.code);
     setName(item.name);
     setDescription(item.description || "");
+    setShowGstin(item.showGstin);
+    setShowPlaceOfSupply(item.showPlaceOfSupply);
+    setShowTaxPreference(item.showTaxPreference);
+    setShowPan(item.showPan);
     setError(null);
     setModalOpen(true);
   };
+
+  const flagPayload = () => ({
+    showGstin,
+    showPlaceOfSupply,
+    showTaxPreference,
+    showPan,
+  });
 
   const handleSubmit = async () => {
     setSubmitLoading(true);
@@ -104,6 +159,7 @@ export default function AdminGstTreatmentsPageContent() {
         code: code.trim(),
         name: name.trim(),
         description: description.trim() || null,
+        ...flagPayload(),
       };
       if (mode === "add") {
         await createGstTreatment(payload);
@@ -129,6 +185,10 @@ export default function AdminGstTreatmentsPageContent() {
         name: item.name,
         description: item.description,
         isActive: next,
+        showGstin: item.showGstin,
+        showPlaceOfSupply: item.showPlaceOfSupply,
+        showTaxPreference: item.showTaxPreference,
+        showPan: item.showPan,
       });
       setRefreshKey((k) => k + 1);
     } catch {
@@ -144,13 +204,25 @@ export default function AdminGstTreatmentsPageContent() {
   const displayTotalPages = Math.max(totalPages, 1);
 
   const centeredColSx = { textAlign: "center" as const, verticalAlign: "middle" as const };
-  const cols: TblCol[] = ["Code", "Name", "Description", { label: "Status", sx: centeredColSx }, { label: "Actions", sx: centeredColSx }];
+  const cols: TblCol[] = [
+    "Code",
+    "Name",
+    { label: "GSTIN", sx: centeredColSx },
+    { label: "POS", sx: centeredColSx },
+    { label: "Tax pref.", sx: centeredColSx },
+    { label: "PAN", sx: centeredColSx },
+    { label: "Status", sx: centeredColSx },
+    { label: "Actions", sx: centeredColSx },
+  ];
 
   const rows = items.map((item) => ({
     _cells: [
       { v: <span style={{ fontWeight: 600, color: C.primary }}>{item.code}</span> },
       { v: item.name },
-      { v: item.description || "—" },
+      { v: <FlagCell value={item.showGstin} />, sx: centeredColSx },
+      { v: <FlagCell value={item.showPlaceOfSupply} />, sx: centeredColSx },
+      { v: <FlagCell value={item.showTaxPreference} />, sx: centeredColSx },
+      { v: <FlagCell value={item.showPan} />, sx: centeredColSx },
       {
         v: (
           <span style={{ minHeight: 36, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
@@ -207,6 +279,18 @@ export default function AdminGstTreatmentsPageContent() {
         <Inp label="Code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} req ph="REGISTERED" />
         <Inp label="Name" value={name} onChange={(e) => setName(e.target.value)} req ph="Registered" />
         <Inp label="Description" type="textarea" value={description} onChange={(e) => setDescription(e.target.value)} ph="Optional description" />
+        <div style={{ marginBottom: "14px" }}>
+          <div style={{ fontSize: "12px", fontWeight: 600, color: C.primary, marginBottom: "8px" }}>Client form fields</div>
+          <div style={{ display: "grid", gap: "8px", padding: "10px 12px", background: C.surface, borderRadius: R.control, border: `1px solid ${C.border}` }}>
+            <FieldFlagCheckbox label="GSTIN / UIN" checked={showGstin} onChange={setShowGstin} />
+            <FieldFlagCheckbox label="Place of supply" checked={showPlaceOfSupply} onChange={setShowPlaceOfSupply} />
+            <FieldFlagCheckbox label="Tax preference" checked={showTaxPreference} onChange={setShowTaxPreference} />
+            <FieldFlagCheckbox label="PAN" checked={showPan} onChange={setShowPan} />
+          </div>
+          <div style={{ fontSize: "11px", color: C.muted, marginTop: "6px" }}>
+            Fields shown on the client form when this treatment is selected.
+          </div>
+        </div>
         {error && <Alert>{error}</Alert>}
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
           <Btn onClick={handleSubmit} disabled={submitDisabled}>{submitLoading ? "Saving..." : "Save"}</Btn>

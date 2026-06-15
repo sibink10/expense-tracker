@@ -373,6 +373,7 @@ public record CreateClientRequest(
     string? PlaceOfSupplyCode,
     string? Pan,
     Guid? PaymentTermsId,
+    string? TaxExemptionReason,
     string? BillingAddress,
     string? ShippingAddress
 );
@@ -390,6 +391,7 @@ public record UpdateClientRequest(
     string? PlaceOfSupplyCode,
     string? Pan,
     Guid? PaymentTermsId,
+    string? TaxExemptionReason,
     string? BillingAddress,
     string? ShippingAddress
 );
@@ -411,12 +413,22 @@ public record ClientDto(
     string? Pan,
     Guid? PaymentTermsId,
     string? PaymentTermsName,
+    string? TaxExemptionReason,
     string? BillingAddress,
     string? ShippingAddress,
     bool IsActive,
     DateTime CreatedAt
 );
-public record GstTreatmentOptionDto(Guid Id, string Code, string Name, string? Description);
+public record GstTreatmentOptionDto(
+    Guid Id,
+    string Code,
+    string Name,
+    string? Description,
+    bool ShowGstin,
+    bool ShowPlaceOfSupply,
+    bool ShowTaxPreference,
+    bool ShowPan
+);
 public record PlaceOfSupplyOptionDto(string Code, string Name, string CountryCode, string CountryName, bool IsUnionTerritory);
 public record PaymentTermOptionDto(Guid Id, string Name, string ShortName, int Days, string? Description);
 public record ClientFormOptionsDto(
@@ -595,9 +607,33 @@ public record UpdatePaymentTermRequest(string Name, string ShortName, int Days, 
 // ═══════════════════════════════════════════════════
 //  GST TREATMENTS
 // ═══════════════════════════════════════════════════
-public record GstTreatmentDto(Guid Id, string Code, string Name, string? Description, bool IsActive);
-public record CreateGstTreatmentRequest(string Code, string Name, string? Description);
-public record UpdateGstTreatmentRequest(string Code, string Name, string? Description, bool IsActive);
+public record GstTreatmentDto(
+    Guid Id,
+    string Code,
+    string Name,
+    string? Description,
+    bool IsActive,
+    bool ShowGstin,
+    bool ShowPlaceOfSupply,
+    bool ShowTaxPreference,
+    bool ShowPan);
+public record CreateGstTreatmentRequest(
+    string Code,
+    string Name,
+    string? Description,
+    bool ShowGstin = true,
+    bool ShowPlaceOfSupply = true,
+    bool ShowTaxPreference = true,
+    bool ShowPan = true);
+public record UpdateGstTreatmentRequest(
+    string Code,
+    string Name,
+    string? Description,
+    bool IsActive,
+    bool ShowGstin,
+    bool ShowPlaceOfSupply,
+    bool ShowTaxPreference,
+    bool ShowPan);
 
 // ═══════════════════════════════════════════════════
 //  PLACE OF SUPPLY

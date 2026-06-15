@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Receipt, ShieldCheck } from "lucide-react";
+import { Receipt } from "lucide-react";
 import { C, R } from "../../shared/theme";
 import { Inp } from "../ui";
 import type { GstTreatmentOption, PaymentTermOption } from "../../shared/api/clientFormOptions";
@@ -20,6 +20,7 @@ export interface ClientGstFinanceValues {
   placeOfSupplyCode: string;
   pan: string;
   paymentTermsId: string;
+  taxExemptionReason: string;
 }
 
 interface Props {
@@ -31,8 +32,24 @@ interface Props {
   optionsLoading?: boolean;
   onGetTaxpayerDetails?: () => void;
   controlStyle?: React.CSSProperties;
-  /** When omitted, section tracks viewport width internally. */
   narrow?: boolean;
+}
+
+function buildTreatmentPatch(
+  treatmentId: string,
+  treatments: GstTreatmentOption[]
+): Partial<ClientGstFinanceValues> {
+  const treatment = treatments.find((t) => t.id === treatmentId);
+  const patch: Partial<ClientGstFinanceValues> = { gstTreatmentId: treatmentId };
+  if (!treatment) return patch;
+  if (!treatment.showGstin) patch.gstin = "";
+  if (!treatment.showPlaceOfSupply) patch.placeOfSupplyCode = "";
+  if (!treatment.showPan) patch.pan = "";
+  if (!treatment.showTaxPreference) {
+    patch.isTaxable = true;
+    patch.taxExemptionReason = "";
+  }
+  return patch;
 }
 
 export default function ClientGstFinanceSection({
@@ -42,7 +59,6 @@ export default function ClientGstFinanceSection({
   placeOfSupply,
   paymentTerms,
   optionsLoading = false,
-  onGetTaxpayerDetails,
   controlStyle = { borderRadius: R.control },
   narrow: narrowProp,
 }: Props) {
@@ -58,9 +74,21 @@ export default function ClientGstFinanceSection({
     return () => window.removeEventListener("resize", onResize);
   }, [narrowProp]);
 
-  const showGstin = !!values.gstTreatmentId;
+  const selectedTreatment = gstTreatments.find((t) => t.id === values.gstTreatmentId);
+  const showGstinField = !!selectedTreatment?.showGstin;
+  const showPlaceOfSupplyField = !!selectedTreatment?.showPlaceOfSupply;
+  const showTaxPreferenceField = !!selectedTreatment?.showTaxPreference;
+  const showPanField = !!selectedTreatment?.showPan;
+
   const fullWidth = { gridColumn: "1 / -1" as const };
   const fieldStyle = { marginBottom: 0 };
+  const pairRowStyle: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: narrow ? "1fr" : "1fr 1fr",
+    gap: FIELD_GAP,
+    gridColumn: "1 / -1",
+    alignItems: "start",
+  };
 
   const handleGstinChange = (next: string) => {
     const patch: Partial<ClientGstFinanceValues> = { gstin: next };
@@ -69,12 +97,129 @@ export default function ClientGstFinanceSection({
     onChange(patch);
   };
 
+  const handleTreatmentChange = (treatmentId: string) => {
+    onChange(buildTreatmentPatch(treatmentId, gstTreatments));
+  };
+
   const gridStyle: React.CSSProperties = {
     display: "grid",
     gridTemplateColumns: narrow ? "1fr" : "1fr 1fr",
     gap: FIELD_GAP,
     alignItems: "start",
   };
+
+  const gstTreatmentField = (
+    <Inp
+      label="GST treatment"
+      type="select"
+      value={values.gstTreatmentId}
+      onChange={(e) => handleTreatmentChange(e.target.value)}
+      disabled={optionsLoading}
+      opts={[
+        { v: "", l: optionsLoading ? "Loading..." : "Select GST treatment" },
+        ...gstTreatments.map((t) => ({ v: t.id, l: t.name })),
+      ]}
+      style={fieldStyle}
+      controlSx={controlStyle}
+    />
+  );
+
+  const gstinField = showGstinField ? (
+    <Inp
+      label="GSTIN / UIN"
+      value={values.gstin}
+      onChange={(e) => handleGstinChange(e.target.value)}
+      ph="GSTIN or UIN"
+      style={fieldStyle}
+      controlSx={controlStyle}
+    />
+  ) : null;
+
+  const paymentTermsField = (
+    <Inp
+      label="Payment terms"
+      type="select"
+      value={values.paymentTermsId}
+      onChange={(e) => onChange({ paymentTermsId: e.target.value })}
+      disabled={optionsLoading}
+      opts={[
+        { v: "", l: optionsLoading ? "Loading..." : "Select payment terms" },
+        ...paymentTerms.map((p) => ({ v: p.id, l: `${p.name} (${p.days} days)` })),
+      ]}
+      style={fieldStyle}
+      controlSx={controlStyle}
+    />
+  );
+
+  const placeOfSupplyField = showPlaceOfSupplyField ? (
+    <Inp
+      label="Place of supply"
+      type="select"
+      value={values.placeOfSupplyCode}
+      onChange={(e) => onChange({ placeOfSupplyCode: e.target.value })}
+      disabled={optionsLoading}
+      opts={[
+        { v: "", l: optionsLoading ? "Loading..." : "Select place of supply" },
+        ...placeOfSupply.map((p) => ({ v: p.code, l: `${p.code} — ${p.name}` })),
+      ]}
+      style={fieldStyle}
+      controlSx={controlStyle}
+    />
+  ) : null;
+
+  const taxPreferenceBlock = showTaxPreferenceField ? (
+    <div style={{ ...fullWidth, minWidth: 0 }}>
+      <div style={{ fontSize: "12px", fontWeight: 600, color: C.primary, marginBottom: "8px" }}>Tax preference</div>
+      <div
+        style={{
+          display: "inline-flex",
+          flexWrap: "wrap",
+          gap: "16px",
+          alignItems: "center",
+          width: "fit-content",
+          maxWidth: "100%",
+          padding: "10px 14px",
+          background: C.white,
+          borderRadius: R.control,
+          border: `1px solid ${C.subtleBorder}`,
+          boxSizing: "border-box",
+        }}
+      >
+        <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "13px", color: C.text }}>
+          <input
+            type="radio"
+            name="isTaxable"
+            checked={values.isTaxable}
+            onChange={() => onChange({ isTaxable: true, taxExemptionReason: "" })}
+          />
+          Taxable
+        </label>
+        <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "13px", color: C.text }}>
+          <input
+            type="radio"
+            name="isTaxable"
+            checked={!values.isTaxable}
+            onChange={() => onChange({ isTaxable: false })}
+          />
+          Tax exempt
+        </label>
+      </div>
+      {!values.isTaxable && (
+        <div style={{ marginTop: "10px" }}>
+          <Inp
+            label="Exemption reason"
+            type="textarea"
+            value={values.taxExemptionReason}
+            onChange={(e) => onChange({ taxExemptionReason: e.target.value })}
+            ph="Reason for tax exemption"
+            req
+            style={fieldStyle}
+            controlSx={controlStyle}
+          />
+        </div>
+      )}
+    </div>
+  ) : null;
 
   return (
     <div
@@ -115,15 +260,7 @@ export default function ClientGstFinanceSection({
           <Receipt size={15} strokeWidth={2} />
         </span>
         <div>
-          <div
-            style={{
-              fontSize: "13px",
-              fontWeight: 700,
-              color: C.primary,
-              letterSpacing: "-0.01em",
-              lineHeight: 1.2,
-            }}
-          >
+          <div style={{ fontSize: "13px", fontWeight: 700, color: C.primary, letterSpacing: "-0.01em", lineHeight: 1.2 }}>
             GST &amp; finance
           </div>
           <div style={{ fontSize: "11px", color: C.muted, marginTop: "2px" }}>
@@ -133,194 +270,51 @@ export default function ClientGstFinanceSection({
       </div>
 
       <div style={gridStyle}>
-        <div style={{ ...fullWidth, width: "fit-content", maxWidth: "100%" }}>
-          <div style={{ fontSize: "12px", fontWeight: 600, color: C.primary, marginBottom: "8px" }}>Tax status</div>
-          <div
-            style={{
-              display: "inline-flex",
-              flexWrap: "wrap",
-              gap: "16px",
-              alignItems: "center",
-              width: "fit-content",
-              maxWidth: "100%",
-              padding: "10px 14px",
-              background: C.white,
-              borderRadius: R.control,
-              border: `1px solid ${C.subtleBorder}`,
-              boxSizing: "border-box",
-            }}
-          >
-            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "13px", color: C.text }}>
-              <input
-                type="radio"
-                name="isTaxable"
-                checked={values.isTaxable}
-                onChange={() => onChange({ isTaxable: true })}
+        {narrow ? (
+          <>
+            {gstTreatmentField}
+            {gstinField}
+            {paymentTermsField}
+            {placeOfSupplyField}
+            {taxPreferenceBlock}
+            {showPanField && (
+              <Inp
+                label="PAN"
+                value={values.pan}
+                onChange={(e) => onChange({ pan: e.target.value.toUpperCase() })}
+                ph="Permanent Account Number"
+                style={fieldStyle}
+                controlSx={controlStyle}
               />
-              Taxable
-            </label>
-            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "13px", color: C.text }}>
-              <input
-                type="radio"
-                name="isTaxable"
-                checked={!values.isTaxable}
-                onChange={() => onChange({ isTaxable: false })}
-              />
-              Non-taxable
-            </label>
-          </div>
-        </div>
-
-        <Inp
-          label="GST treatment"
-          type="select"
-          value={values.gstTreatmentId}
-          onChange={(e) => onChange({ gstTreatmentId: e.target.value })}
-          disabled={optionsLoading}
-          opts={[
-            { v: "", l: optionsLoading ? "Loading..." : "Select GST treatment" },
-            ...gstTreatments.map((t) => ({ v: t.id, l: t.name })),
-          ]}
-          style={{ ...fieldStyle, ...(showGstin && !narrow ? fullWidth : {}) }}
-          controlSx={controlStyle}
-        />
-
-        {!showGstin && (
-          <Inp
-            label="Payment terms"
-            type="select"
-            value={values.paymentTermsId}
-            onChange={(e) => onChange({ paymentTermsId: e.target.value })}
-            disabled={optionsLoading}
-            opts={[
-              { v: "", l: optionsLoading ? "Loading..." : "Select payment terms" },
-              ...paymentTerms.map((p) => ({ v: p.id, l: `${p.name} (${p.days} days)` })),
-            ]}
-            style={fieldStyle}
-            controlSx={controlStyle}
-          />
-        )}
-
-        {showGstin && (
-          <div style={{ marginBottom: 0, minWidth: 0 }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: "12px",
-                fontWeight: 600,
-                color: C.primary,
-                marginBottom: "4px",
-              }}
-            >
-              GSTIN / UIN
-            </label>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "stretch",
-                borderRadius: R.control,
-                overflow: "hidden",
-                border: `1.5px solid ${C.border}`,
-                background: C.white,
-                ...controlStyle,
-              }}
-            >
-              <input
-                type="text"
-                value={values.gstin}
-                onChange={(e) => handleGstinChange(e.target.value)}
-                placeholder="GSTIN or UIN"
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  border: "none",
-                  outline: "none",
-                  padding: "8px 12px",
-                  fontSize: "13px",
-                  fontFamily: "'Inter', 'Manrope', sans-serif",
-                  background: "transparent",
-                  boxSizing: "border-box",
-                }}
-              />
-              <button
-                type="button"
-                title="Validate GSTIN"
-                onClick={onGetTaxpayerDetails}
-                disabled={!onGetTaxpayerDetails || !values.gstin.trim()}
-                style={{
-                  flexShrink: 0,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "6px",
-                  padding: narrow ? "0 12px" : "0 14px",
-                  border: "none",
-                  borderLeft: `1.5px solid ${C.border}`,
-                  background: C.successBg,
-                  color: C.accent,
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  fontFamily: "'Inter', 'Manrope', sans-serif",
-                  cursor: !onGetTaxpayerDetails || !values.gstin.trim() ? "not-allowed" : "pointer",
-                  opacity: !onGetTaxpayerDetails || !values.gstin.trim() ? 0.55 : 1,
-                  transition: "background 0.15s ease, color 0.15s ease",
-                  whiteSpace: "nowrap",
-                }}
-                onMouseEnter={(e) => {
-                  if (e.currentTarget.disabled) return;
-                  e.currentTarget.style.background = C.accent;
-                  e.currentTarget.style.color = C.white;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = C.successBg;
-                  e.currentTarget.style.color = C.accent;
-                }}
-              >
-                <ShieldCheck size={14} strokeWidth={2.25} />
-                {!narrow && "Validate"}
-              </button>
+            )}
+          </>
+        ) : (
+          <>
+            <div style={pairRowStyle}>
+              {gstTreatmentField}
+              {showGstinField ? gstinField : paymentTermsField}
             </div>
-          </div>
+
+            {(showGstinField || showPlaceOfSupplyField) && (
+              <div style={pairRowStyle}>
+                {showGstinField && paymentTermsField}
+                {showPlaceOfSupplyField && placeOfSupplyField}
+              </div>
+            )}
+
+            {taxPreferenceBlock}
+            {showPanField && (
+              <Inp
+                label="PAN"
+                value={values.pan}
+                onChange={(e) => onChange({ pan: e.target.value.toUpperCase() })}
+                ph="Permanent Account Number"
+                style={fieldStyle}
+                controlSx={controlStyle}
+              />
+            )}
+          </>
         )}
-
-        {showGstin && (
-          <Inp
-            label="Payment terms"
-            type="select"
-            value={values.paymentTermsId}
-            onChange={(e) => onChange({ paymentTermsId: e.target.value })}
-            disabled={optionsLoading}
-            opts={[
-              { v: "", l: optionsLoading ? "Loading..." : "Select payment terms" },
-              ...paymentTerms.map((p) => ({ v: p.id, l: `${p.name} (${p.days} days)` })),
-            ]}
-            style={fieldStyle}
-            controlSx={controlStyle}
-          />
-        )}
-
-        <Inp
-          label="Place of supply"
-          type="select"
-          value={values.placeOfSupplyCode}
-          onChange={(e) => onChange({ placeOfSupplyCode: e.target.value })}
-          disabled={optionsLoading}
-          opts={[
-            { v: "", l: optionsLoading ? "Loading..." : "Select place of supply" },
-            ...placeOfSupply.map((p) => ({ v: p.code, l: `${p.code} — ${p.name}` })),
-          ]}
-          style={fieldStyle}
-          controlSx={controlStyle}
-        />
-
-        <Inp
-          label="PAN"
-          value={values.pan}
-          onChange={(e) => onChange({ pan: e.target.value.toUpperCase() })}
-          ph="Permanent Account Number"
-          style={fieldStyle}
-          controlSx={controlStyle}
-        />
       </div>
     </div>
   );
