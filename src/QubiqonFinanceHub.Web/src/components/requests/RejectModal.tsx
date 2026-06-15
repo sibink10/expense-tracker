@@ -4,7 +4,8 @@ import { useAppContext } from "../../context/AppContext";
 import { rejectExpense } from "../../shared/api/expense";
 import { rejectAdvance } from "../../shared/api/advance";
 import { rejectBill } from "../../shared/api/bill";
-import type { Expense, Bill, Advance, ItemType } from "../../types";
+import { rejectForecast } from "../../shared/api/forecast";
+import type { Expense, Bill, Advance, Forecast, ItemType } from "../../types";
 import { EVENTS, ITEM_T } from "../../shared/constants";
 
 export default function RejectModal() {
@@ -14,10 +15,11 @@ export default function RejectModal() {
   const [error, setError] = useState<string | null>(null);
 
   if (!mdl?.d || !mdl.it) return null;
-  const d = mdl.d as Expense | Bill | Advance;
+  const d = mdl.d as Expense | Bill | Advance | Forecast;
   const isExpense = mdl.it === ITEM_T.EXPENSE;
   const isAdvance = mdl.it === ITEM_T.ADVANCE;
   const isBill = mdl.it === ITEM_T.BILL;
+  const isForecast = mdl.it === ITEM_T.FORECAST;
 
   const handleReject = async () => {
     if (isExpense) {
@@ -62,8 +64,21 @@ export default function RejectModal() {
       } finally {
         setLoading(false);
       }
+    } else if (isForecast) {
+      const f = d as Forecast;
+      setLoading(true);
+      setError(null);
+      try {
+        await rejectForecast(f.id, r);
+        setMdl(null);
+        window.dispatchEvent(new CustomEvent(EVENTS.FORECASTS_REFRESH));
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to reject");
+      } finally {
+        setLoading(false);
+      }
     } else {
-      reject(d, mdl.it as ItemType, r);
+      reject(d as Expense | Bill | Advance, mdl.it as ItemType, r);
     }
   };
 

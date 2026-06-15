@@ -4,11 +4,11 @@ import { ArrowLeft, Ban, Check, Download, Edit, Eye, ReceiptText, Send, Target, 
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Alert, Badge, Btn, CLog, Empty, Mdl, IconActionButton, PageShell } from "../ui";
 import { C, R } from "../../shared/theme";
-import { approveForecast, getForecastById, getForecastDocument, rejectForecast, submitForecast } from "../../shared/api/forecast";
+import { approveForecast, getForecastById, getForecastDocument, submitForecast } from "../../shared/api/forecast";
 import { getExpenseById } from "../../shared/api/expense";
 import type { Forecast, UploadedDocument } from "../../types";
 import { useAppContext } from "../../context/AppContext";
-import { EVENTS, MODAL_T, ROLES } from "../../shared/constants";
+import { EVENTS, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { canEditForecastRequest } from "../../shared/expensePermissions";
 import { resolveExpenseDeepLink } from "../../shared/deepLinkModal";
 import { buildDownloadFilename, downloadFromSasUrl } from "../../shared/utils";
@@ -140,20 +140,6 @@ export default function ForecastDetailPageContent() {
     }
   };
 
-  const reject = async () => {
-    if (!forecast) return;
-    const reason = window.prompt("Rejection reason");
-    if (!reason?.trim()) return;
-    setActionLoading("reject");
-    try {
-      await rejectForecast(forecast.id, reason.trim());
-      t("Forecast rejected");
-      load();
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
   const openRelatedExpense = async (expenseId: string, expenseCode: string) => {
     const existing = exps.find((expense) => expense.apiId === expenseId || expense.id === expenseCode || expense.id === expenseId);
     if (existing) {
@@ -238,9 +224,14 @@ export default function ForecastDetailPageContent() {
                 <Check size={14} />
                 {actionLoading === "approve" ? "Approving..." : "Approve"}
               </Btn>
-              <Btn v="danger" onClick={reject} sx={{ borderRadius: R.control }} disabled={!!actionLoading}>
+              <Btn
+                v="danger"
+                onClick={() => setMdl({ t: MODAL_T.REJECT, d: forecast, it: ITEM_T.FORECAST })}
+                sx={{ borderRadius: R.control }}
+                disabled={!!actionLoading}
+              >
                 <X size={14} />
-                {actionLoading === "reject" ? "Rejecting..." : "Reject"}
+                Reject
               </Btn>
             </>
           )}

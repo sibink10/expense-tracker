@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import type { Expense } from "../../types";
-import { C, R, listSectionTableBodyMarginTop, listTableCardStyle, workflowTableActionStyle } from "../../shared/theme";
+import { C, R, listSectionTableBodyMarginTop, listTableCardStyle, tableIconButtonSx, workflowTableActionStyle } from "../../shared/theme";
 import { EVENTS, EXPENSE_PAY_DISABLED_NO_BILL_TOOLTIP, EXP_S, EXP_STATUS, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { fmtCur, nextListSort } from "../../shared/utils";
 import {
@@ -23,12 +23,13 @@ import {
   ListPageHeader,
   ListPageAddButton,
   OverflowStatusTabs,
+  EditActionButton,
   useNavPageAdd,
   type TblCol,
 } from "../ui";
 import { useAppContext } from "../../context/AppContext";
 import { getExpensesMapped } from "../../shared/api/expense";
-import { canCancelExpenseRequest, expenseUserIsSubmitterOrBeneficiary } from "../../shared/expensePermissions";
+import { canCancelExpenseRequest, canEditExpenseRequest, expenseUserIsSubmitterOrBeneficiary } from "../../shared/expensePermissions";
 
 const STATUS_TABS = [
   { label: "All", value: "" },
@@ -165,6 +166,7 @@ export default function ExpenseListPageContent({
         e.status === EXP_S.APPROVED ||
         e.status === EXP_S.AWAITING_BILL);
     const canCancelExpenseRow = canCancelExpenseRequest(e, user);
+    const canEditExpenseRow = canEditExpenseRequest(e, user);
     const canSelfApprove = expenseUserIsSubmitterOrBeneficiary(e, user);
 
     return {
@@ -234,6 +236,12 @@ export default function ExpenseListPageContent({
                         <IndianRupee size={13} strokeWidth={1.9} />
                         Pay
                       </Btn>
+                    )}
+                    {canEditExpenseRow && (
+                      <EditActionButton
+                        sx={tableIconButtonSx(C.actionEditBg)}
+                        onClick={() => setMdl({ t: MODAL_T.EXP_DETAIL, d: e, edit: true })}
+                      />
                     )}
                     {canCancelExpenseRow && (
                       <Btn sm v="ghost" sx={workflowTableActionStyle(C.danger, C.dangerBg)} onClick={() => setMdl({ t: MODAL_T.EXP_CANCEL_CONFIRM, d: e })}>

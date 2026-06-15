@@ -137,6 +137,7 @@ export const ITEM_T = {
   EXPENSE: "expense",
   BILL: "bill",
   ADVANCE: "advance",
+  FORECAST: "forecast",
 } as const;
 
 export const EVENTS = {

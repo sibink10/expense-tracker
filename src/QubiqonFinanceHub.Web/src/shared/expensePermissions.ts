@@ -97,6 +97,11 @@ export function canCancelExpenseRequest(e: Expense, user: AppUser | null | undef
   return canCancelExpenseByStatus(e.status) && expenseRaisedByCurrentUser(e, user);
 }
 
+/** Expense edit: raiser only, while fields are still editable (pending or rejected). */
+export function canEditExpenseRequest(e: Expense, user: AppUser | null | undefined): boolean {
+  return canEditExpenseFields(e.status) && expenseRaisedByCurrentUser(e, user);
+}
+
 /** Matches API `AdvanceStatus.Pending` only. */
 export function canCancelAdvanceByStatus(status: string): boolean {
   return status.trim() === ADV_S.PENDING;

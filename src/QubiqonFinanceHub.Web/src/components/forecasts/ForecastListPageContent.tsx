@@ -14,10 +14,10 @@ import {
   useNavPageAdd,
 } from "../ui";
 import { C, listSectionTableBodyMarginTop, listTableCardStyle, tableIconButtonSx, workflowTableActionStyle } from "../../shared/theme";
-import { approveForecast, getForecastsMapped, rejectForecast, submitForecast } from "../../shared/api/forecast";
+import { approveForecast, getForecastsMapped, submitForecast } from "../../shared/api/forecast";
 import type { Forecast } from "../../types";
 import { useAppContext } from "../../context/AppContext";
-import { EVENTS, MODAL_T, ROLES } from "../../shared/constants";
+import { EVENTS, ITEM_T, MODAL_T, ROLES } from "../../shared/constants";
 import { canEditForecastRequest } from "../../shared/expensePermissions";
 
 const STATUS_OPTIONS = ["all", "Submitted", "Approved", "Rejected", "Cancelled"];
@@ -173,22 +173,13 @@ export default function ForecastListPageContent({
                       v="ghost"
                       sx={workflowTableActionStyle(C.danger, C.dangerBg)}
                       disabled={!!actionLoading}
-                      onClick={async (e) => {
+                      onClick={(e) => {
                         e.stopPropagation();
-                        const reason = window.prompt("Rejection reason");
-                        if (!reason?.trim()) return;
-                        setActionLoading("reject");
-                        try {
-                          await rejectForecast(forecast.id, reason.trim());
-                          t("Forecast rejected");
-                          load();
-                        } finally {
-                          setActionLoading(null);
-                        }
+                        setMdl({ t: MODAL_T.REJECT, d: forecast, it: ITEM_T.FORECAST });
                       }}
                     >
                       <X size={14} />
-                      {actionLoading === "reject" ? "Rejecting..." : "Reject"}
+                      Reject
                     </Btn>
                   </>
                 )}

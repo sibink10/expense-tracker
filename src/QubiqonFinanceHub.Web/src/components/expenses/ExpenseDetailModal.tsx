@@ -20,7 +20,7 @@ interface Props {
 }
 
 export default function ExpenseDetailModal({ expense: e }: Props) {
-  const { setMdl, is, t, user } = useAppContext();
+  const { mdl, setMdl, is, t, user } = useAppContext();
 
   const patchExpenseInModal = (next: Expense) => {
     setMdl((prev) =>
@@ -55,7 +55,7 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
   const canPay = canShowPay && hasBill;
   const showBillUploadPanel = !cancelled && canShowApprovedBillUploadPanel(e.status, hasBill);
 
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(mdl?.edit === true);
   const [amt, setAmt] = useState(String(e.amt));
   const [pur, setPur] = useState(e.purpose);
   const [billDate, setBillDate] = useState(e.billDate ?? "");
@@ -71,13 +71,13 @@ export default function ExpenseDetailModal({ expense: e }: Props) {
 
   const expenseKey = e.apiId ?? e.id;
   useEffect(() => {
-    setEditing(false);
+    setEditing(mdl?.edit === true);
     setError(null);
     setAmt(String(e.amt));
     setPur(e.purpose);
     setBillDate(e.billDate ?? "");
     setBillFilesRaw([]);
-  }, [expenseKey, e.status]);
+  }, [expenseKey, e.status, mdl?.edit, e.amt, e.purpose, e.billDate]);
 
   const openBillView = async (documentId?: string, fileName?: string) => {
     const id = e.apiId ?? e.id;
