@@ -44,7 +44,6 @@ function buildTreatmentPatch(
   if (!treatment) return patch;
   if (!treatment.showGstin) patch.gstin = "";
   if (!treatment.showPlaceOfSupply) patch.placeOfSupplyCode = "";
-  if (!treatment.showPan) patch.pan = "";
   if (!treatment.showTaxPreference) {
     patch.isTaxable = true;
     patch.taxExemptionReason = "";
@@ -78,7 +77,7 @@ export default function ClientGstFinanceSection({
   const showGstinField = !!selectedTreatment?.showGstin;
   const showPlaceOfSupplyField = !!selectedTreatment?.showPlaceOfSupply;
   const showTaxPreferenceField = !!selectedTreatment?.showTaxPreference;
-  const showPanField = !!selectedTreatment?.showPan;
+  const panRequired = !!selectedTreatment?.showPan;
 
   const fullWidth = { gridColumn: "1 / -1" as const };
   const fieldStyle = { marginBottom: 0 };
@@ -166,6 +165,18 @@ export default function ClientGstFinanceSection({
       controlSx={controlStyle}
     />
   ) : null;
+
+  const panField = (
+    <Inp
+      label="PAN"
+      value={values.pan}
+      onChange={(e) => onChange({ pan: e.target.value.toUpperCase() })}
+      ph="Permanent Account Number"
+      req={panRequired}
+      style={fieldStyle}
+      controlSx={controlStyle}
+    />
+  );
 
   const taxPreferenceBlock = showTaxPreferenceField ? (
     <div style={{ ...fullWidth, minWidth: 0 }}>
@@ -277,42 +288,30 @@ export default function ClientGstFinanceSection({
             {paymentTermsField}
             {placeOfSupplyField}
             {taxPreferenceBlock}
-            {showPanField && (
-              <Inp
-                label="PAN"
-                value={values.pan}
-                onChange={(e) => onChange({ pan: e.target.value.toUpperCase() })}
-                ph="Permanent Account Number"
-                style={fieldStyle}
-                controlSx={controlStyle}
-              />
-            )}
+            {panField}
           </>
         ) : (
           <>
-            <div style={pairRowStyle}>
-              {gstTreatmentField}
-              {showGstinField ? gstinField : paymentTermsField}
-            </div>
-
-            {(showGstinField || showPlaceOfSupplyField) && (
+            {showGstinField ? (
+              <>
+                <div style={pairRowStyle}>
+                  {gstTreatmentField}
+                  {gstinField}
+                </div>
+                <div style={pairRowStyle}>
+                  {paymentTermsField}
+                  {placeOfSupplyField}
+                </div>
+              </>
+            ) : (
               <div style={pairRowStyle}>
-                {showGstinField && paymentTermsField}
-                {showPlaceOfSupplyField && placeOfSupplyField}
+                {gstTreatmentField}
+                {paymentTermsField}
               </div>
             )}
 
             {taxPreferenceBlock}
-            {showPanField && (
-              <Inp
-                label="PAN"
-                value={values.pan}
-                onChange={(e) => onChange({ pan: e.target.value.toUpperCase() })}
-                ph="Permanent Account Number"
-                style={fieldStyle}
-                controlSx={controlStyle}
-              />
-            )}
+            {panField}
           </>
         )}
       </div>

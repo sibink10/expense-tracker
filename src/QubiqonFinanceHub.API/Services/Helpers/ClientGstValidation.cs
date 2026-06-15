@@ -61,6 +61,9 @@ public static class ClientGstValidation
         }
 
         var normalizedPan = NormalizePan(pan);
+        if (gstTreatmentId.HasValue && flags.ShowPan && string.IsNullOrWhiteSpace(normalizedPan))
+            throw new InvalidOperationException("PAN is required for the selected GST treatment.");
+
         if (!string.IsNullOrEmpty(normalizedPan) && !PanRegex.IsMatch(normalizedPan))
             throw new InvalidOperationException("Invalid PAN format.");
     }

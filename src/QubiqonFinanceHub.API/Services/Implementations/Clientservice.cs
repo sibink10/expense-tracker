@@ -65,9 +65,7 @@ public class ClientService : IClientService
         var gstin = treatmentFlags?.ShowGstin == true
             ? ClientGstValidation.NormalizeGstin(dto.Gstin)
             : null;
-        var pan = treatmentFlags?.ShowPan == true
-            ? ClientGstValidation.NormalizePan(dto.Pan)
-            : null;
+        var pan = ClientGstValidation.NormalizePan(dto.Pan);
         var placeOfSupplyCode = treatmentFlags?.ShowPlaceOfSupply == true
             ? (dto.PlaceOfSupplyCode?.Trim() ?? ClientGstValidation.StateCodeFromTaxId(gstin))
             : null;
@@ -149,8 +147,8 @@ public class ClientService : IClientService
             ? (treatmentFlags?.ShowGstin == true ? ClientGstValidation.NormalizeGstin(dto.Gstin) : null)
             : (treatmentFlags?.ShowGstin == true ? client.GSTIN : null);
         var pan = dto.Pan != null
-            ? (treatmentFlags?.ShowPan == true ? ClientGstValidation.NormalizePan(dto.Pan) : null)
-            : (treatmentFlags?.ShowPan == true ? client.Pan : null);
+            ? ClientGstValidation.NormalizePan(dto.Pan)
+            : client.Pan;
         var placeOfSupplyCode = dto.PlaceOfSupplyCode != null
             ? (treatmentFlags?.ShowPlaceOfSupply == true
                 ? (string.IsNullOrWhiteSpace(dto.PlaceOfSupplyCode) ? null : dto.PlaceOfSupplyCode.Trim())

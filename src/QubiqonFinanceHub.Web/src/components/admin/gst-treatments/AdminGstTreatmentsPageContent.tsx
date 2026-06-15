@@ -210,7 +210,7 @@ export default function AdminGstTreatmentsPageContent() {
     { label: "GSTIN", sx: centeredColSx },
     { label: "POS", sx: centeredColSx },
     { label: "Tax pref.", sx: centeredColSx },
-    { label: "PAN", sx: centeredColSx },
+    { label: "PAN req.", sx: centeredColSx },
     { label: "Status", sx: centeredColSx },
     { label: "Actions", sx: centeredColSx },
   ];
@@ -285,10 +285,10 @@ export default function AdminGstTreatmentsPageContent() {
             <FieldFlagCheckbox label="GSTIN / UIN" checked={showGstin} onChange={setShowGstin} />
             <FieldFlagCheckbox label="Place of supply" checked={showPlaceOfSupply} onChange={setShowPlaceOfSupply} />
             <FieldFlagCheckbox label="Tax preference" checked={showTaxPreference} onChange={setShowTaxPreference} />
-            <FieldFlagCheckbox label="PAN" checked={showPan} onChange={setShowPan} />
+            <FieldFlagCheckbox label="PAN (required)" checked={showPan} onChange={setShowPan} />
           </div>
           <div style={{ fontSize: "11px", color: C.muted, marginTop: "6px" }}>
-            Fields shown on the client form when this treatment is selected.
+            Fields shown on the client form when this treatment is selected. PAN is always shown; this flag makes it mandatory.
           </div>
         </div>
         {error && <Alert>{error}</Alert>}
