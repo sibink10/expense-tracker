@@ -147,7 +147,6 @@ export default function ClientGstFinanceSection({
       value={values.businessLegalName}
       onChange={(e) => onChange({ businessLegalName: e.target.value })}
       ph="Registered legal name"
-      req
       style={fieldStyle}
       controlSx={controlStyle}
     />
@@ -159,7 +158,6 @@ export default function ClientGstFinanceSection({
       value={values.businessTradeName}
       onChange={(e) => onChange({ businessTradeName: e.target.value })}
       ph="Trading / brand name"
-      req
       style={fieldStyle}
       controlSx={controlStyle}
     />

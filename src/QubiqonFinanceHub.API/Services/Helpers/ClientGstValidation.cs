@@ -73,11 +73,5 @@ public static class ClientGstValidation
 
         if (!string.IsNullOrEmpty(normalizedPan) && !PanRegex.IsMatch(normalizedPan))
             throw new InvalidOperationException("Invalid PAN format.");
-
-        if (gstTreatmentId.HasValue && flags.ShowBusinessLegalName && string.IsNullOrWhiteSpace(businessLegalName))
-            throw new InvalidOperationException("Business legal name is required for the selected GST treatment.");
-
-        if (gstTreatmentId.HasValue && flags.ShowBusinessTradeName && string.IsNullOrWhiteSpace(businessTradeName))
-            throw new InvalidOperationException("Business trade name is required for the selected GST treatment.");
     }
 }

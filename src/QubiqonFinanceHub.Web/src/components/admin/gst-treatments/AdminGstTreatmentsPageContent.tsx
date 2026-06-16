@@ -302,8 +302,8 @@ export default function AdminGstTreatmentsPageContent() {
             <FieldFlagCheckbox label="Place of supply" checked={showPlaceOfSupply} onChange={setShowPlaceOfSupply} />
             <FieldFlagCheckbox label="Tax preference" checked={showTaxPreference} onChange={setShowTaxPreference} />
             <FieldFlagCheckbox label="PAN (required)" checked={showPan} onChange={setShowPan} />
-            <FieldFlagCheckbox label="Business legal name (required)" checked={showBusinessLegalName} onChange={setShowBusinessLegalName} />
-            <FieldFlagCheckbox label="Business trade name (required)" checked={showBusinessTradeName} onChange={setShowBusinessTradeName} />
+            <FieldFlagCheckbox label="Business legal name" checked={showBusinessLegalName} onChange={setShowBusinessLegalName} />
+            <FieldFlagCheckbox label="Business trade name" checked={showBusinessTradeName} onChange={setShowBusinessTradeName} />
           </div>
           <div style={{ fontSize: "11px", color: C.muted, marginTop: "6px" }}>
             Fields shown on the client form when this treatment is selected. PAN is always shown; this flag makes it mandatory.
