@@ -48,6 +48,9 @@ public static class ClientGstValidation
     {
         var flags = treatmentFlags ?? new GstTreatmentFieldFlags(true, true, true, true, false, false);
 
+        if (!gstTreatmentId.HasValue)
+            throw new InvalidOperationException("GST treatment is required.");
+
         if (flags.ShowTaxPreference && !isTaxable)
         {
             if (string.IsNullOrWhiteSpace(taxExemptionReason))

@@ -106,7 +106,7 @@ export default function AddClientPage() {
       setPhoneError("Enter a valid phone number for the selected country");
       return;
     }
-    if (!name.trim() || !email.trim() || !contactPerson.trim() || !shippingAddress.trim() || !(sameAddress ? shippingAddress.trim() : billingAddress.trim())) return;
+    if (!name.trim() || !email.trim() || !contactPerson.trim() || !shippingAddress.trim() || !(sameAddress ? shippingAddress.trim() : billingAddress.trim()) || !gstFinance.gstTreatmentId) return;
 
     setLoading(true);
     setError(null);
@@ -154,6 +154,7 @@ export default function AddClientPage() {
     contactPerson.trim() &&
     shippingAddress.trim() &&
     (sameAddress ? shippingAddress.trim() : billingAddress.trim()) &&
+    gstFinance.gstTreatmentId &&
     isEmailValid(email) &&
     isOptionalPhoneValid(phone);
 

@@ -124,7 +124,7 @@ export default function ClientEditModal() {
       setPhoneError("Enter a valid phone number for the selected country");
       return;
     }
-    if (!name.trim() || !email.trim() || !contactPerson.trim()) return;
+    if (!name.trim() || !email.trim() || !contactPerson.trim() || !gstFinance.gstTreatmentId) return;
 
     setLoading(true);
     setError(null);
@@ -245,6 +245,7 @@ export default function ClientEditModal() {
             !name.trim() ||
             !email.trim() ||
             !contactPerson.trim() ||
+            !gstFinance.gstTreatmentId ||
             !isEmailValid(email) ||
             !isOptionalPhoneValid(phone) ||
             loading

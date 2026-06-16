@@ -120,6 +120,7 @@ export default function ClientGstFinanceSection({
       value={values.gstTreatmentId}
       onChange={(e) => handleTreatmentChange(e.target.value)}
       disabled={optionsLoading}
+      req
       opts={[
         { v: "", l: optionsLoading ? "Loading..." : "Select GST treatment" },
         ...gstTreatments.map((t) => ({ v: t.id, l: t.name })),
