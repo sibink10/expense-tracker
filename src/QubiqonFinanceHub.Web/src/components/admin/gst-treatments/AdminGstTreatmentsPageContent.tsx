@@ -33,6 +33,8 @@ const DEFAULT_FLAGS = {
   showPlaceOfSupply: true,
   showTaxPreference: true,
   showPan: true,
+  showBusinessLegalName: false,
+  showBusinessTradeName: false,
 };
 
 function FlagCell({ value }: { value: boolean }) {
@@ -80,6 +82,8 @@ export default function AdminGstTreatmentsPageContent() {
   const [showPlaceOfSupply, setShowPlaceOfSupply] = useState(true);
   const [showTaxPreference, setShowTaxPreference] = useState(true);
   const [showPan, setShowPan] = useState(true);
+  const [showBusinessLegalName, setShowBusinessLegalName] = useState(false);
+  const [showBusinessTradeName, setShowBusinessTradeName] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitLoading, setSubmitLoading] = useState(false);
 
@@ -117,6 +121,8 @@ export default function AdminGstTreatmentsPageContent() {
     setShowPlaceOfSupply(DEFAULT_FLAGS.showPlaceOfSupply);
     setShowTaxPreference(DEFAULT_FLAGS.showTaxPreference);
     setShowPan(DEFAULT_FLAGS.showPan);
+    setShowBusinessLegalName(DEFAULT_FLAGS.showBusinessLegalName);
+    setShowBusinessTradeName(DEFAULT_FLAGS.showBusinessTradeName);
   };
 
   const openAdd = () => {
@@ -140,6 +146,8 @@ export default function AdminGstTreatmentsPageContent() {
     setShowPlaceOfSupply(item.showPlaceOfSupply);
     setShowTaxPreference(item.showTaxPreference);
     setShowPan(item.showPan);
+    setShowBusinessLegalName(item.showBusinessLegalName);
+    setShowBusinessTradeName(item.showBusinessTradeName);
     setError(null);
     setModalOpen(true);
   };
@@ -149,6 +157,8 @@ export default function AdminGstTreatmentsPageContent() {
     showPlaceOfSupply,
     showTaxPreference,
     showPan,
+    showBusinessLegalName,
+    showBusinessTradeName,
   });
 
   const handleSubmit = async () => {
@@ -189,6 +199,8 @@ export default function AdminGstTreatmentsPageContent() {
         showPlaceOfSupply: item.showPlaceOfSupply,
         showTaxPreference: item.showTaxPreference,
         showPan: item.showPan,
+        showBusinessLegalName: item.showBusinessLegalName,
+        showBusinessTradeName: item.showBusinessTradeName,
       });
       setRefreshKey((k) => k + 1);
     } catch {
@@ -211,6 +223,8 @@ export default function AdminGstTreatmentsPageContent() {
     { label: "POS", sx: centeredColSx },
     { label: "Tax pref.", sx: centeredColSx },
     { label: "PAN req.", sx: centeredColSx },
+    { label: "Legal name", sx: centeredColSx },
+    { label: "Trade name", sx: centeredColSx },
     { label: "Status", sx: centeredColSx },
     { label: "Actions", sx: centeredColSx },
   ];
@@ -223,6 +237,8 @@ export default function AdminGstTreatmentsPageContent() {
       { v: <FlagCell value={item.showPlaceOfSupply} />, sx: centeredColSx },
       { v: <FlagCell value={item.showTaxPreference} />, sx: centeredColSx },
       { v: <FlagCell value={item.showPan} />, sx: centeredColSx },
+      { v: <FlagCell value={item.showBusinessLegalName} />, sx: centeredColSx },
+      { v: <FlagCell value={item.showBusinessTradeName} />, sx: centeredColSx },
       {
         v: (
           <span style={{ minHeight: 36, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
@@ -286,6 +302,8 @@ export default function AdminGstTreatmentsPageContent() {
             <FieldFlagCheckbox label="Place of supply" checked={showPlaceOfSupply} onChange={setShowPlaceOfSupply} />
             <FieldFlagCheckbox label="Tax preference" checked={showTaxPreference} onChange={setShowTaxPreference} />
             <FieldFlagCheckbox label="PAN (required)" checked={showPan} onChange={setShowPan} />
+            <FieldFlagCheckbox label="Business legal name (required)" checked={showBusinessLegalName} onChange={setShowBusinessLegalName} />
+            <FieldFlagCheckbox label="Business trade name (required)" checked={showBusinessTradeName} onChange={setShowBusinessTradeName} />
           </div>
           <div style={{ fontSize: "11px", color: C.muted, marginTop: "6px" }}>
             Fields shown on the client form when this treatment is selected. PAN is always shown; this flag makes it mandatory.

@@ -57,6 +57,8 @@ public class GstTreatmentService : IGstTreatmentService
             ShowPlaceOfSupply = dto.ShowPlaceOfSupply,
             ShowTaxPreference = dto.ShowTaxPreference,
             ShowPan = dto.ShowPan,
+            ShowBusinessLegalName = dto.ShowBusinessLegalName,
+            ShowBusinessTradeName = dto.ShowBusinessTradeName,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -86,6 +88,8 @@ public class GstTreatmentService : IGstTreatmentService
         entity.ShowPlaceOfSupply = dto.ShowPlaceOfSupply;
         entity.ShowTaxPreference = dto.ShowTaxPreference;
         entity.ShowPan = dto.ShowPan;
+        entity.ShowBusinessLegalName = dto.ShowBusinessLegalName;
+        entity.ShowBusinessTradeName = dto.ShowBusinessTradeName;
         entity.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return ToDto(entity);
@@ -122,5 +126,7 @@ public class GstTreatmentService : IGstTreatmentService
             x.ShowGstin,
             x.ShowPlaceOfSupply,
             x.ShowTaxPreference,
-            x.ShowPan);
+            x.ShowPan,
+            x.ShowBusinessLegalName,
+            x.ShowBusinessTradeName);
 }

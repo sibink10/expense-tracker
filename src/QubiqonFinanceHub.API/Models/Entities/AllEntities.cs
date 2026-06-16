@@ -393,6 +393,8 @@ public class Client
     public Guid? PaymentTermsId { get; set; }
     [ForeignKey(nameof(PaymentTermsId))] public PaymentTerm? PaymentTerm { get; set; }
     [MaxLength(20)] public string? GSTIN { get; set; }
+    [MaxLength(300)] public string? BusinessLegalName { get; set; }
+    [MaxLength(300)] public string? BusinessTradeName { get; set; }
     [MaxLength(500)] public string? Address { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -556,6 +558,8 @@ public class GstTreatment
     public bool ShowPlaceOfSupply { get; set; } = true;
     public bool ShowTaxPreference { get; set; } = true;
     public bool ShowPan { get; set; } = true;
+    public bool ShowBusinessLegalName { get; set; }
+    public bool ShowBusinessTradeName { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

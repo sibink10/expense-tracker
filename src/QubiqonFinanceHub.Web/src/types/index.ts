@@ -272,6 +272,8 @@ export interface Client {
   placeOfSupplyCode?: string;
   placeOfSupplyName?: string;
   pan?: string;
+  businessLegalName?: string;
+  businessTradeName?: string;
   paymentTermsId?: string;
   paymentTermsName?: string;
   taxExemptionReason?: string;

@@ -50,6 +50,8 @@ export default function ClientDetailModal({ client: c }: Props) {
           <DetailField label="Tax preference" value={taxPreference} />
           {c.isTaxable === false && <DetailField label="Exemption reason" value={c.taxExemptionReason} />}
           <DetailField label="GST treatment" value={c.gstTreatmentName} />
+          <DetailField label="Business legal name" value={c.businessLegalName} />
+          <DetailField label="Business trade name" value={c.businessTradeName} />
           <DetailField label="GSTIN / UIN" value={c.gstin} />
           <DetailField label="Place of supply" value={placeOfSupplyDisplay} />
           <DetailField label="PAN" value={c.pan} />

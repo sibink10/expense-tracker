@@ -10,6 +10,8 @@ export interface GstTreatment {
   showPlaceOfSupply: boolean;
   showTaxPreference: boolean;
   showPan: boolean;
+  showBusinessLegalName: boolean;
+  showBusinessTradeName: boolean;
 }
 
 export interface PagedGstTreatmentsResponse {
@@ -37,6 +39,8 @@ export interface CreateGstTreatmentPayload {
   showPlaceOfSupply?: boolean;
   showTaxPreference?: boolean;
   showPan?: boolean;
+  showBusinessLegalName?: boolean;
+  showBusinessTradeName?: boolean;
 }
 
 export interface UpdateGstTreatmentPayload {
@@ -48,6 +52,8 @@ export interface UpdateGstTreatmentPayload {
   showPlaceOfSupply: boolean;
   showTaxPreference: boolean;
   showPan: boolean;
+  showBusinessLegalName: boolean;
+  showBusinessTradeName: boolean;
 }
 
 export async function getGstTreatmentsPaged(params: GetGstTreatmentsParams = {}): Promise<PagedGstTreatmentsResponse> {
@@ -67,6 +73,8 @@ export async function getGstTreatmentsPaged(params: GetGstTreatmentsParams = {})
       showPlaceOfSupply: item.showPlaceOfSupply ?? true,
       showTaxPreference: item.showTaxPreference ?? true,
       showPan: item.showPan ?? true,
+      showBusinessLegalName: item.showBusinessLegalName ?? false,
+      showBusinessTradeName: item.showBusinessTradeName ?? false,
     })),
     totalCount: data.totalCount ?? 0,
     page: data.page ?? params.page ?? 1,

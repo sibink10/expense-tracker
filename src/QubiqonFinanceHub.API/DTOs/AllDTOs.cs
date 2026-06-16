@@ -372,6 +372,8 @@ public record CreateClientRequest(
     Guid? GstTreatmentId,
     string? PlaceOfSupplyCode,
     string? Pan,
+    string? BusinessLegalName,
+    string? BusinessTradeName,
     Guid? PaymentTermsId,
     string? TaxExemptionReason,
     string? BillingAddress,
@@ -390,6 +392,8 @@ public record UpdateClientRequest(
     Guid? GstTreatmentId,
     string? PlaceOfSupplyCode,
     string? Pan,
+    string? BusinessLegalName,
+    string? BusinessTradeName,
     Guid? PaymentTermsId,
     string? TaxExemptionReason,
     string? BillingAddress,
@@ -411,6 +415,8 @@ public record ClientDto(
     string? PlaceOfSupplyCode,
     string? PlaceOfSupplyName,
     string? Pan,
+    string? BusinessLegalName,
+    string? BusinessTradeName,
     Guid? PaymentTermsId,
     string? PaymentTermsName,
     string? TaxExemptionReason,
@@ -427,7 +433,9 @@ public record GstTreatmentOptionDto(
     bool ShowGstin,
     bool ShowPlaceOfSupply,
     bool ShowTaxPreference,
-    bool ShowPan
+    bool ShowPan,
+    bool ShowBusinessLegalName,
+    bool ShowBusinessTradeName
 );
 public record PlaceOfSupplyOptionDto(string Code, string Name, string CountryCode, string CountryName, bool IsUnionTerritory);
 public record PaymentTermOptionDto(Guid Id, string Name, string ShortName, int Days, string? Description);
@@ -616,7 +624,9 @@ public record GstTreatmentDto(
     bool ShowGstin,
     bool ShowPlaceOfSupply,
     bool ShowTaxPreference,
-    bool ShowPan);
+    bool ShowPan,
+    bool ShowBusinessLegalName,
+    bool ShowBusinessTradeName);
 public record CreateGstTreatmentRequest(
     string Code,
     string Name,
@@ -624,7 +634,9 @@ public record CreateGstTreatmentRequest(
     bool ShowGstin = true,
     bool ShowPlaceOfSupply = true,
     bool ShowTaxPreference = true,
-    bool ShowPan = true);
+    bool ShowPan = true,
+    bool ShowBusinessLegalName = false,
+    bool ShowBusinessTradeName = false);
 public record UpdateGstTreatmentRequest(
     string Code,
     string Name,
@@ -633,7 +645,9 @@ public record UpdateGstTreatmentRequest(
     bool ShowGstin,
     bool ShowPlaceOfSupply,
     bool ShowTaxPreference,
-    bool ShowPan);
+    bool ShowPan,
+    bool ShowBusinessLegalName,
+    bool ShowBusinessTradeName);
 
 // ═══════════════════════════════════════════════════
 //  PLACE OF SUPPLY

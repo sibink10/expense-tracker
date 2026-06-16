@@ -6,7 +6,9 @@ public record GstTreatmentFieldFlags(
     bool ShowGstin,
     bool ShowPlaceOfSupply,
     bool ShowTaxPreference,
-    bool ShowPan);
+    bool ShowPan,
+    bool ShowBusinessLegalName,
+    bool ShowBusinessTradeName);
 
 public static class ClientGstValidation
 {
@@ -30,6 +32,9 @@ public static class ClientGstValidation
     public static string? NormalizeTaxExemptionReason(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
+    public static string? NormalizeBusinessName(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
     public static void Validate(
         bool isTaxable,
         Guid? gstTreatmentId,
@@ -37,9 +42,11 @@ public static class ClientGstValidation
         string? placeOfSupplyCode,
         string? pan,
         string? taxExemptionReason,
+        string? businessLegalName,
+        string? businessTradeName,
         GstTreatmentFieldFlags? treatmentFlags = null)
     {
-        var flags = treatmentFlags ?? new GstTreatmentFieldFlags(true, true, true, true);
+        var flags = treatmentFlags ?? new GstTreatmentFieldFlags(true, true, true, true, false, false);
 
         if (flags.ShowTaxPreference && !isTaxable)
         {
@@ -66,5 +73,11 @@ public static class ClientGstValidation
 
         if (!string.IsNullOrEmpty(normalizedPan) && !PanRegex.IsMatch(normalizedPan))
             throw new InvalidOperationException("Invalid PAN format.");
+
+        if (gstTreatmentId.HasValue && flags.ShowBusinessLegalName && string.IsNullOrWhiteSpace(businessLegalName))
+            throw new InvalidOperationException("Business legal name is required for the selected GST treatment.");
+
+        if (gstTreatmentId.HasValue && flags.ShowBusinessTradeName && string.IsNullOrWhiteSpace(businessTradeName))
+            throw new InvalidOperationException("Business trade name is required for the selected GST treatment.");
     }
 }

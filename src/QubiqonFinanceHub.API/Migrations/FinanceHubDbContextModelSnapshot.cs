@@ -308,6 +308,14 @@ namespace QubiqonFinanceHub.API.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("BusinessLegalName")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("BusinessTradeName")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
                     b.Property<string>("ContactPerson")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -740,6 +748,12 @@ namespace QubiqonFinanceHub.API.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<bool>("ShowGstin")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowBusinessLegalName")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowBusinessTradeName")
                         .HasColumnType("bit");
 
                     b.Property<bool>("ShowPan")

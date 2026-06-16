@@ -18,6 +18,19 @@
       }
     },
     {
+      "label": "Build & Deploy (stage branch)",
+      "type": "shell",
+      "command": "npm run build:stage && npx @azure/static-web-apps-cli deploy ./dist --deployment-token 905f1cad58040984dd8a15634cb3874f92c0fb72d46ab11b57bd6c74b510a65507-ebce4375-999c-4251-b723-1fa90034acf500030150b41c2f00 --env production",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
       "label": "Build & Deploy (dev branch)",
       "type": "shell",
       "command": "npm run build:dev && npx @azure/static-web-apps-cli deploy ./dist --deployment-token f1832a9931ed001a91ec7e76ea2d8d5f584c490f6c9ac44521f995a43093d52301-25a770ea-d734-4368-bea4-9764bb73106500002210b267d000 --env production",

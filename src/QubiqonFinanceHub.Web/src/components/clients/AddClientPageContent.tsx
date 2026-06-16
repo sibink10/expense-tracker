@@ -38,6 +38,8 @@ export default function AddClientPage() {
     pan: "",
     paymentTermsId: "",
     taxExemptionReason: "",
+    businessLegalName: "",
+    businessTradeName: "",
   });
   const [customerType, setCustomerType] = useState<"Business" | "Individual">("Business");
   const [shippingAddress, setShippingAddress] = useState("");
@@ -121,6 +123,8 @@ export default function AddClientPage() {
         gstin: gstFinance.gstin.trim(),
         placeOfSupplyCode: gstFinance.placeOfSupplyCode || null,
         pan: gstFinance.pan.trim() || null,
+        businessLegalName: gstFinance.businessLegalName.trim() || null,
+        businessTradeName: gstFinance.businessTradeName.trim() || null,
         paymentTermsId: gstFinance.paymentTermsId || null,
         taxExemptionReason: gstFinance.taxExemptionReason.trim() || null,
         shippingAddress: shippingAddress.trim(),

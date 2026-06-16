@@ -10,6 +10,8 @@ export interface GstTreatmentOption {
   showPlaceOfSupply: boolean;
   showTaxPreference: boolean;
   showPan: boolean;
+  showBusinessLegalName: boolean;
+  showBusinessTradeName: boolean;
 }
 
 export interface PaymentTermOption {
@@ -34,6 +36,8 @@ export async function getClientFormOptions(): Promise<ClientFormOptions> {
     showPlaceOfSupply: t.showPlaceOfSupply ?? true,
     showTaxPreference: t.showTaxPreference ?? true,
     showPan: t.showPan ?? true,
+    showBusinessLegalName: t.showBusinessLegalName ?? false,
+    showBusinessTradeName: t.showBusinessTradeName ?? false,
   });
   return {
     gstTreatments: (data.gstTreatments ?? []).map(normalizeTreatment),

@@ -8,6 +8,7 @@ export default defineConfig({
     host: true,
     port: 3000,
     allowedHosts: [
+      'stage-finance.qubiqon.io',
       'dev-finance.qubiqon.io',
       'project-management-dev.qubiqon.io',
       'supply-dev.qubiqon.io',

@@ -21,6 +21,8 @@ export interface ClientGstFinanceValues {
   pan: string;
   paymentTermsId: string;
   taxExemptionReason: string;
+  businessLegalName: string;
+  businessTradeName: string;
 }
 
 interface Props {
@@ -44,6 +46,8 @@ function buildTreatmentPatch(
   if (!treatment) return patch;
   if (!treatment.showGstin) patch.gstin = "";
   if (!treatment.showPlaceOfSupply) patch.placeOfSupplyCode = "";
+  if (!treatment.showBusinessLegalName) patch.businessLegalName = "";
+  if (!treatment.showBusinessTradeName) patch.businessTradeName = "";
   if (!treatment.showTaxPreference) {
     patch.isTaxable = true;
     patch.taxExemptionReason = "";
@@ -77,6 +81,8 @@ export default function ClientGstFinanceSection({
   const showGstinField = !!selectedTreatment?.showGstin;
   const showPlaceOfSupplyField = !!selectedTreatment?.showPlaceOfSupply;
   const showTaxPreferenceField = !!selectedTreatment?.showTaxPreference;
+  const showBusinessLegalNameField = !!selectedTreatment?.showBusinessLegalName;
+  const showBusinessTradeNameField = !!selectedTreatment?.showBusinessTradeName;
   const panRequired = !!selectedTreatment?.showPan;
 
   const fullWidth = { gridColumn: "1 / -1" as const };
@@ -129,10 +135,43 @@ export default function ClientGstFinanceSection({
       value={values.gstin}
       onChange={(e) => handleGstinChange(e.target.value)}
       ph="GSTIN or UIN"
+      req
       style={fieldStyle}
       controlSx={controlStyle}
     />
   ) : null;
+
+  const businessLegalNameField = showBusinessLegalNameField ? (
+    <Inp
+      label="Business legal name"
+      value={values.businessLegalName}
+      onChange={(e) => onChange({ businessLegalName: e.target.value })}
+      ph="Registered legal name"
+      req
+      style={fieldStyle}
+      controlSx={controlStyle}
+    />
+  ) : null;
+
+  const businessTradeNameField = showBusinessTradeNameField ? (
+    <Inp
+      label="Business trade name"
+      value={values.businessTradeName}
+      onChange={(e) => onChange({ businessTradeName: e.target.value })}
+      ph="Trading / brand name"
+      req
+      style={fieldStyle}
+      controlSx={controlStyle}
+    />
+  ) : null;
+
+  const businessNamesRow =
+    showBusinessLegalNameField || showBusinessTradeNameField ? (
+      <div style={pairRowStyle}>
+        {showBusinessLegalNameField ? businessLegalNameField : <div />}
+        {showBusinessTradeNameField ? businessTradeNameField : showBusinessLegalNameField ? <div /> : null}
+      </div>
+    ) : null;
 
   const paymentTermsField = (
     <Inp
@@ -285,6 +324,8 @@ export default function ClientGstFinanceSection({
           <>
             {gstTreatmentField}
             {gstinField}
+            {businessLegalNameField}
+            {businessTradeNameField}
             {paymentTermsField}
             {placeOfSupplyField}
             {taxPreferenceBlock}
@@ -298,16 +339,20 @@ export default function ClientGstFinanceSection({
                   {gstTreatmentField}
                   {gstinField}
                 </div>
+                {businessNamesRow}
                 <div style={pairRowStyle}>
                   {paymentTermsField}
                   {placeOfSupplyField}
                 </div>
               </>
             ) : (
-              <div style={pairRowStyle}>
-                {gstTreatmentField}
-                {paymentTermsField}
-              </div>
+              <>
+                <div style={pairRowStyle}>
+                  {gstTreatmentField}
+                  {paymentTermsField}
+                </div>
+                {businessNamesRow}
+              </>
             )}
 
             {taxPreferenceBlock}
