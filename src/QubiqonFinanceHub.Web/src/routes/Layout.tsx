@@ -3,6 +3,8 @@ import {
   BanknoteArrowUp,
   BriefcaseBusiness,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   CirclePlus,
   FolderKanban,
@@ -55,6 +57,17 @@ const navIcons = {
 type NavIconKey = keyof typeof navIcons;
 const SIDEBAR_THEME = "#064e3b";
 const SIDEBAR_ACTIVE_BG = "#ECFDF5";
+const SIDEBAR_WIDTH_EXPANDED = 260;
+const SIDEBAR_WIDTH_COLLAPSED = 56;
+const SIDEBAR_COLLAPSED_KEY = "qfh.sidebarCollapsed";
+
+function readSidebarCollapsed(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
 
 function SidebarIcon({ name, color }: { name?: string; color: string }) {
   const Icon = navIcons[(name as NavIconKey) || "dashboard"] ?? CirclePlus;
@@ -79,7 +92,10 @@ export default function Layout() {
   const [orgOpen, setOrgOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  const sidebarNavRef = useRef<HTMLElement>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
+  const [navPopover, setNavPopover] = useState<string | null>(null);
   const [openSection, setOpenSection] = useState<string | null | undefined>(undefined);
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth < 768 : false,
@@ -124,6 +140,38 @@ export default function Layout() {
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, [profileOpen]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed));
+    } catch {
+      // ignore storage errors
+    }
+  }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    setNavPopover(null);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!navPopover && !orgOpen) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      if (sidebarNavRef.current?.contains(event.target as Node)) return;
+      setNavPopover(null);
+      setOrgOpen(false);
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [navPopover, orgOpen]);
+
+  useEffect(() => {
+    if (!navPopover) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setNavPopover(null);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [navPopover]);
+
   const nav = buildNav(cfg);
   const visibleNav = nav
     .map((sec) => ({
@@ -134,7 +182,12 @@ export default function Layout() {
     }))
     .filter((sec) => sec.items.length > 0);
 
-  const sidebarWidth = 260;
+  const isCollapsedDesktop = sidebarCollapsed && !isMobile;
+  const effectiveSidebarWidth = isMobile
+    ? SIDEBAR_WIDTH_EXPANDED
+    : sidebarCollapsed
+      ? SIDEBAR_WIDTH_COLLAPSED
+      : SIDEBAR_WIDTH_EXPANDED;
   const role = user.role as UserRole;
   const isPathActive = (path: string, end?: boolean) =>
     end ? location.pathname === path : location.pathname === path || location.pathname.startsWith(`${path}/`);
@@ -150,6 +203,70 @@ export default function Layout() {
     setOpenSection(activeGroup?.s ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
+
+  const renderSubNavItems = (items: typeof visibleNav[number]["items"]) =>
+    items.map((item) => {
+      const canAdd = item.addPath && (item.addRoles ?? item.r).includes(role);
+      const itemActive = isItemActive(item);
+      return (
+        <NavLink
+          key={item.path}
+          to={item.path}
+          end={item.end}
+          className={() => `nav-link nav-sub-link${itemActive ? " active" : ""}`}
+          onClick={() => {
+            if (isMobile) setSidebarOpen(false);
+            setNavPopover(null);
+          }}
+          style={() => ({
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            minHeight: "30px",
+            padding: "8px 8px",
+            borderRadius: SIDEBAR_R.control,
+            color: itemActive ? "#fff" : C.muted,
+            cursor: "pointer",
+            fontSize: "12px",
+            fontWeight: itemActive ? 600 : 500,
+            fontFamily: "'Inter', 'Manrope', sans-serif",
+            textDecoration: "none",
+            transition: "all 0.15s",
+          })}
+          role="menuitem"
+        >
+          <span style={{ flex: 1 }}>{item.l}</span>
+          {canAdd && (
+            <button
+              type="button"
+              className="nav-add-btn"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleAddPath(item.addPath!);
+                if (isMobile) setSidebarOpen(false);
+                setNavPopover(null);
+              }}
+              style={{
+                padding: 0,
+                border: "none",
+                color: "inherit",
+                cursor: "pointer",
+                borderRadius: SIDEBAR_R.control,
+                lineHeight: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              title={`Add ${item.l.toLowerCase()}`}
+              aria-label={`Add ${item.l.toLowerCase()}`}
+            >
+              <CirclePlus size={12} />
+            </button>
+          )}
+        </NavLink>
+      );
+    });
 
   const organizationSummary = (
     <div
@@ -196,16 +313,23 @@ export default function Layout() {
   );
 
   const organizationSelector = (
-    <div style={{ position: "relative", width: "100%" }}>
+    <div style={{ position: "relative", width: isCollapsedDesktop ? "auto" : "100%" }}>
       <button
         type="button"
-        onClick={() => orgs.length > 0 && setOrgOpen((v) => !v)}
+        onClick={() => {
+          if (orgs.length === 0) return;
+          setNavPopover(null);
+          setOrgOpen((v) => !v);
+        }}
+        title={isCollapsedDesktop ? activeOrg?.orgName || "Qubiqon" : undefined}
         style={{
           display: "flex",
           alignItems: "center",
+          justifyContent: isCollapsedDesktop ? "center" : undefined,
           gap: "8px",
-          width: "100%",
-          padding: "8px",
+          width: isCollapsedDesktop ? "40px" : "100%",
+          margin: isCollapsedDesktop ? "0 auto" : undefined,
+          padding: isCollapsedDesktop ? "6px" : "8px",
           borderRadius: SIDEBAR_R.control,
           border: `1px solid ${C.border}`,
           background: C.surface,
@@ -235,23 +359,27 @@ export default function Layout() {
             </span>
           )}
         </div>
-        <div style={{ textAlign: "left", flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: "12px", fontWeight: 700, color: C.primary, lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {activeOrg?.orgName || "Qubiqon"}
-          </div>
-          <div style={{ fontSize: "9px", color: C.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {activeOrg?.subName || "Finance Hub"}
-          </div>
-        </div>
-        {orgs.length > 0 && <ChevronDown size={14} color={C.muted} />}
+        {!isCollapsedDesktop && (
+          <>
+            <div style={{ textAlign: "left", flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: "12px", fontWeight: 700, color: C.primary, lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {activeOrg?.orgName || "Qubiqon"}
+              </div>
+              <div style={{ fontSize: "9px", color: C.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {activeOrg?.subName || "Finance Hub"}
+              </div>
+            </div>
+            {orgs.length > 0 && <ChevronDown size={14} color={C.muted} />}
+          </>
+        )}
       </button>
       {orgOpen && orgs.length > 0 && (
         <div
           style={{
             position: "absolute",
-            bottom: "calc(100% + 4px)",
-            left: 0,
-            right: 0,
+            ...(isCollapsedDesktop
+              ? { left: "calc(100% + 6px)", bottom: 0, width: "220px" }
+              : { bottom: "calc(100% + 4px)", left: 0, right: 0 }),
             background: "#fff",
             borderRadius: SIDEBAR_R.panel,
             border: `1px solid ${C.border}`,
@@ -379,22 +507,64 @@ export default function Layout() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          {isMobile && (
+          {isMobile ? (
             <button
               type="button"
               onClick={() => {
                 setSidebarOpen((v) => !v);
                 setOrgOpen(false);
               }}
+              aria-expanded={sidebarOpen}
+              aria-label={sidebarOpen ? "Close menu" : "Open menu"}
               style={{
-                border: "none",
-                background: "transparent",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "34px",
+                height: "34px",
+                border: `1px solid ${C.successBg}`,
+                borderRadius: SIDEBAR_R.control,
+                background: SIDEBAR_ACTIVE_BG,
+                color: SIDEBAR_THEME,
                 cursor: "pointer",
-                fontSize: "18px",
-                padding: "4px",
+                flexShrink: 0,
               }}
             >
-              <Menu size={18} />
+              <Menu size={18} strokeWidth={2} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setSidebarCollapsed((v) => {
+                  if (!v) setNavPopover(null);
+                  return !v;
+                });
+                setOrgOpen(false);
+              }}
+              aria-expanded={!sidebarCollapsed}
+              aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "20px",
+                height: "20px",
+                padding: 0,
+                border: `1px solid ${C.successBg}`,
+                borderRadius: "50%",
+                background: SIDEBAR_ACTIVE_BG,
+                color: SIDEBAR_THEME,
+                cursor: "pointer",
+                flexShrink: 0,
+                boxShadow: "0 1px 6px rgba(33,146,104,0.16)",
+              }}
+            >
+              {sidebarCollapsed ? (
+                <ChevronRight size={12} strokeWidth={2.4} />
+              ) : (
+                <ChevronLeft size={12} strokeWidth={2.4} />
+              )}
             </button>
           )}
           {organizationSummary}
@@ -572,22 +742,24 @@ export default function Layout() {
               />
             )}
             <nav
+              ref={sidebarNavRef}
               className="app-sidebar"
               style={{
                 position: "fixed",
                 top: 50,
                 left: 0,
                 height: "calc(100vh - 50px)",
-                width: sidebarWidth,
+                width: effectiveSidebarWidth,
                 background: "#fff",
                 borderRight: `1px solid ${C.border}`,
                 padding: "8px",
-                overflowY: "auto",
+                overflowY: isCollapsedDesktop ? "visible" : "auto",
+                overflowX: isCollapsedDesktop ? "visible" : "hidden",
                 overscrollBehavior: "contain",
                 zIndex: isMobile ? 100 : 10,
-                transform: isMobile && !sidebarOpen ? `translateX(-${sidebarWidth}px)` : "translateX(0)",
-                transition: "transform 0.24s ease",
-                willChange: isMobile ? "transform" : undefined,
+                transform: isMobile && !sidebarOpen ? `translateX(-${SIDEBAR_WIDTH_EXPANDED}px)` : "translateX(0)",
+                transition: "width 0.22s ease, transform 0.24s ease",
+                willChange: isMobile ? "transform" : "width",
                 pointerEvents: isMobile && !sidebarOpen ? "none" : "auto",
               }}
             >
@@ -612,6 +784,47 @@ export default function Layout() {
                 if (directItem) {
                   const canAdd = directItem.addPath && (directItem.addRoles ?? directItem.r).includes(role);
                   const directActive = isItemActive(directItem);
+
+                  if (isCollapsedDesktop) {
+                    return (
+                      <div
+                        key={sec.s}
+                        style={{
+                          position: "relative",
+                          marginBottom: "4px",
+                          borderLeft: directActive ? `2px solid ${SIDEBAR_THEME}` : "2px solid transparent",
+                          transition: "border-color 0.2s ease",
+                        }}
+                      >
+                        <NavLink
+                          to={directItem.path}
+                          end={directItem.end}
+                          title={sec.s}
+                          className={() => `nav-link nav-main-link${directActive ? " active" : ""}`}
+                          style={() => ({
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            minHeight: "32px",
+                            padding: "7px 4px",
+                            borderRadius: 0,
+                            color: directActive ? SIDEBAR_THEME : C.primary,
+                            cursor: "pointer",
+                            fontSize: "13px",
+                            fontWeight: directActive ? 600 : 500,
+                            width: "100%",
+                            fontFamily: "'Inter', 'Manrope', sans-serif",
+                            transition: "all 0.15s",
+                            textDecoration: "none",
+                            boxSizing: "border-box",
+                          })}
+                        >
+                          <SidebarIcon name={sec.i} color={directActive ? SIDEBAR_THEME : C.primary} />
+                        </NavLink>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div
                       key={sec.s}
@@ -683,6 +896,87 @@ export default function Layout() {
                   );
                 }
 
+                if (isCollapsedDesktop) {
+                  const popoverOpen = navPopover === sec.s;
+                  return (
+                    <div
+                      key={sec.s}
+                      style={{
+                        position: "relative",
+                        marginBottom: "4px",
+                        borderLeft: active ? `2px solid ${SIDEBAR_THEME}` : "2px solid transparent",
+                        transition: "border-color 0.2s ease",
+                      }}
+                    >
+                      <button
+                        type="button"
+                        className="nav-group-btn"
+                        title={sec.s}
+                        aria-expanded={popoverOpen}
+                        aria-haspopup="menu"
+                        onClick={() => {
+                          setOrgOpen(false);
+                          setNavPopover(popoverOpen ? null : sec.s);
+                        }}
+                        style={{
+                          width: "100%",
+                          minHeight: "32px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: "7px 4px",
+                          border: "none",
+                          borderRadius: 0,
+                          background: active ? SIDEBAR_ACTIVE_BG : "transparent",
+                          color: active ? SIDEBAR_THEME : C.primary,
+                          cursor: "pointer",
+                          fontSize: "13px",
+                          fontWeight: active ? 600 : 500,
+                          fontFamily: "'Inter', 'Manrope', sans-serif",
+                          transition: "all 0.15s",
+                        }}
+                      >
+                        <SidebarIcon name={sec.i} color={active ? SIDEBAR_THEME : C.primary} />
+                      </button>
+                      {popoverOpen && (
+                        <div
+                          role="menu"
+                          style={{
+                            position: "absolute",
+                            left: "calc(100% + 6px)",
+                            top: 0,
+                            minWidth: "200px",
+                            background: "#fff",
+                            borderRadius: SIDEBAR_R.panel,
+                            border: `1px solid ${C.border}`,
+                            boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
+                            padding: "6px 4px",
+                            zIndex: 200,
+                            maxHeight: "320px",
+                            overflowY: "auto",
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: "12px",
+                              fontWeight: 700,
+                              color: C.primary,
+                              padding: "6px 8px 8px",
+                              borderBottom: `1px solid ${C.border}`,
+                              marginBottom: "4px",
+                            }}
+                          >
+                            {sec.s}
+                          </div>
+                          <div style={{ display: "grid", gap: "4px" }}>
+                            {renderSubNavItems(sec.items)}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
                 return (
                   <div
                     key={sec.s}
@@ -741,63 +1035,7 @@ export default function Layout() {
                     >
                       <div style={{ overflow: "hidden" }}>
                         <div style={{ display: "grid", gap: "4px", padding: expanded ? "5px 0 2px 28px" : "0 0 0 28px", transition: "padding 0.22s ease" }}>
-                        {sec.items.map((item) => {
-                          const canAdd = item.addPath && (item.addRoles ?? item.r).includes(role);
-                          const itemActive = isItemActive(item);
-                          return (
-                            <NavLink
-                              key={item.path}
-                              to={item.path}
-                              end={item.end}
-                              className={() => `nav-link nav-sub-link${itemActive ? " active" : ""}`}
-                              onClick={() => isMobile && setSidebarOpen(false)}
-                              style={() => ({
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "6px",
-                                minHeight: "30px",
-                                padding: "8px 8px",
-                                borderRadius: SIDEBAR_R.control,
-                                color: itemActive ? "#fff" : C.muted,
-                                cursor: "pointer",
-                                fontSize: "12px",
-                                fontWeight: itemActive ? 600 : 500,
-                                fontFamily: "'Inter', 'Manrope', sans-serif",
-                                textDecoration: "none",
-                                transition: "all 0.15s",
-                              })}
-                            >
-                              <span style={{ flex: 1 }}>{item.l}</span>
-                              {canAdd && (
-                                <button
-                                  type="button"
-                                  className="nav-add-btn"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleAddPath(item.addPath!);
-                                    if (isMobile) setSidebarOpen(false);
-                                  }}
-                                  style={{
-                                    padding: 0,
-                                    border: "none",
-                                    color: "inherit",
-                                    cursor: "pointer",
-                                    borderRadius: SIDEBAR_R.control,
-                                    lineHeight: 0,
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                  }}
-                                  title={`Add ${item.l.toLowerCase()}`}
-                                  aria-label={`Add ${item.l.toLowerCase()}`}
-                                >
-                                  <CirclePlus size={12} />
-                                </button>
-                              )}
-                            </NavLink>
-                          );
-                        })}
+                        {renderSubNavItems(sec.items)}
                         </div>
                       </div>
                     </div>
@@ -828,7 +1066,8 @@ export default function Layout() {
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",
-            marginLeft: !isMobile ? sidebarWidth : 0,
+            marginLeft: !isMobile ? effectiveSidebarWidth : 0,
+            transition: "margin-left 0.22s ease",
           }}
         >
           <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", width: "100%" }}>
