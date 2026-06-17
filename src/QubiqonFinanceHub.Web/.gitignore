@@ -2,3 +2,6 @@
 .env.example
 node_modules
 .vscode
+env/.env.development
+env/.env.staging
+env/.env.production

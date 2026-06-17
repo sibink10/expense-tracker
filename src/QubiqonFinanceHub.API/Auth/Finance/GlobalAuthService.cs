@@ -3,13 +3,9 @@ using System.Text;
 using System.Text.Json;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using QubiqonFinanceHub.API.Auth.Shared;
-using QubiqonFinanceHub.API.Data;
-using QubiqonFinanceHub.API.Models.Entities;
-using QubiqonFinanceHub.API.Models.Enums;
 
 namespace QubiqonFinanceHub.API.Auth.Finance;
 
@@ -28,24 +24,24 @@ public interface IGlobalAuthService
 
 public class GlobalAuthService : IGlobalAuthService
 {
-    private readonly FinanceHubDbContext _db;
     private readonly IAuthSessionStore _sessionStore;
     private readonly IAzureOAuthTokenClient _tokenClient;
+    private readonly IEmployeeProvisioningService _employeeProvisioning;
     private readonly IConfiguration _config;
     private readonly GlobalAuthOptions _options;
     private readonly IWebHostEnvironment _environment;
 
     public GlobalAuthService(
-        FinanceHubDbContext db,
         IAuthSessionStore sessionStore,
         IAzureOAuthTokenClient tokenClient,
+        IEmployeeProvisioningService employeeProvisioning,
         IConfiguration config,
         IOptions<GlobalAuthOptions> options,
         IWebHostEnvironment environment)
     {
-        _db = db;
         _sessionStore = sessionStore;
         _tokenClient = tokenClient;
+        _employeeProvisioning = employeeProvisioning;
         _config = config;
         _options = options.Value;
         _environment = environment;
@@ -188,7 +184,7 @@ public class GlobalAuthService : IGlobalAuthService
             ?? "";
         var name = jwt.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? email;
 
-        await EnsureEmployeeAsync(oid, email, name, ct);
+        await _employeeProvisioning.EnsureEmployeeAsync(oid, email, name, ct);
 
         var session = new AuthSession
         {
@@ -237,35 +233,6 @@ public class GlobalAuthService : IGlobalAuthService
             opts.Domain = _options.CookieDomain;
 
         response.Cookies.Delete(_options.CookieName, opts);
-    }
-
-    private async Task EnsureEmployeeAsync(string oid, string email, string name, CancellationToken ct)
-    {
-        var emp = await _db.Employees.FirstOrDefaultAsync(e => e.EntraObjectId == oid, ct);
-        if (emp != null) return;
-
-        var seedOrg = await _db.Organizations
-            .Where(o => o.IsActive)
-            .OrderBy(o => o.OrgName)
-            .FirstOrDefaultAsync(ct);
-
-        if (seedOrg == null)
-            throw new InvalidOperationException("No active organization found for user provisioning.");
-
-        emp = new Employee
-        {
-            Id = Guid.TryParse(oid, out var parsedId) ? parsedId : Guid.NewGuid(),
-            OrganizationId = seedOrg.Id,
-            EntraObjectId = oid,
-            FullName = name,
-            Email = email,
-            Role = UserRole.Employee,
-            IsActive = true,
-            IsDelete = false,
-            CreatedAt = DateTime.UtcNow
-        };
-        _db.Employees.Add(emp);
-        await _db.SaveChangesAsync(ct);
     }
 
     private string Sign(string payloadB64)

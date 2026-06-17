@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Select, { type StylesConfig } from "react-select";
 import { ChevronLeft, ChevronRight, RefreshCw, Search, UserRoundX, Users } from "lucide-react";
 import { C, R, listTableBodyMarginTop, listTableCardStyle, tableIconButtonSx } from "../../shared/theme";
 import "../list-toolbar/list-toolbar.css";
@@ -9,6 +10,69 @@ import { useAppContext } from "../../context/AppContext";
 import { getEmployeeRoles, getEmployees, saveEmployee, toggleEmployee, deleteEmployee, type Employee, type EmployeeRole } from "../../shared/api/employees";
 import { nextListSort } from "../../shared/utils";
 
+type RoleFilterOption = { value: string; label: string };
+
+const roleFilterSelectStyles: StylesConfig<RoleFilterOption, false> = {
+  container: (base) => ({
+    ...base,
+    flex: "0 1 180px",
+    minWidth: 140,
+    maxWidth: "100%",
+    width: "100%",
+  }),
+  control: (base) => ({
+    ...base,
+    minHeight: "34px",
+    borderRadius: R.control,
+    borderColor: C.border,
+    boxShadow: "none",
+    fontSize: 12,
+    fontFamily: "'Inter', 'Manrope', sans-serif",
+    cursor: "pointer",
+    width: "100%",
+  }),
+  valueContainer: (base) => ({
+    ...base,
+    padding: "0 10px",
+  }),
+  singleValue: (base) => ({
+    ...base,
+    color: C.primary,
+    fontWeight: 500,
+  }),
+  placeholder: (base) => ({
+    ...base,
+    color: C.muted,
+  }),
+  indicatorSeparator: () => ({ display: "none" }),
+  dropdownIndicator: (base) => ({
+    ...base,
+    color: C.muted,
+    padding: "0 8px",
+  }),
+  menu: (base) => ({
+    ...base,
+    borderRadius: R.control,
+    boxShadow: C.cardShadow,
+    overflow: "hidden",
+    zIndex: 30,
+  }),
+  menuList: (base) => ({
+    ...base,
+    paddingTop: 4,
+    paddingBottom: 4,
+  }),
+  option: (base, state) => ({
+    ...base,
+    fontSize: 12,
+    fontFamily: "'Inter', 'Manrope', sans-serif",
+    color: C.primary,
+    fontWeight: state.isSelected ? 600 : 400,
+    backgroundColor: state.isSelected ? C.successBg : state.isFocused ? C.surface : C.white,
+    cursor: "pointer",
+  }),
+};
+
 export default function EmployeesPage() {
   const { t, user } = useAppContext();
   const isCurrentUser = (emp: Employee) =>
@@ -17,6 +81,7 @@ export default function EmployeesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [sortBy, setSortBy] = useState("FullName");
@@ -57,11 +122,19 @@ export default function EmployeesPage() {
   const load = (
     pageArg = page,
     searchArg = search,
+    roleArg = roleFilter,
     sb: string = sortBy,
     sd: boolean = sortDesc
   ) => {
     setLoading(true);
-    void getEmployees({ page: pageArg, pageSize, search: searchArg || undefined, sortBy: sb, desc: sd })
+    void getEmployees({
+      page: pageArg,
+      pageSize,
+      search: searchArg || undefined,
+      role: roleArg || undefined,
+      sortBy: sb,
+      desc: sd,
+    })
       .then((res) => {
         setEmployees(res.items);
         setPage(res.page);
@@ -74,8 +147,19 @@ export default function EmployeesPage() {
     const n = nextListSort(key, sortBy, sortDesc);
     setSortBy(n.sortBy);
     setSortDesc(n.desc);
-    load(1, search, n.sortBy, n.desc);
+    load(1, search, roleFilter, n.sortBy, n.desc);
   };
+
+  const roleFilterOptions = useMemo<RoleFilterOption[]>(
+    () => [
+      { value: "", label: "All roles" },
+      ...roles.map((role) => ({ value: role.code, label: role.displayName })),
+    ],
+    [roles]
+  );
+
+  const selectedRoleFilter =
+    roleFilterOptions.find((option) => option.value === roleFilter) ?? roleFilterOptions[0];
 
   useEffect(() => {
     load(1, "");
@@ -91,11 +175,18 @@ export default function EmployeesPage() {
   useEffect(() => {
     const handle = setTimeout(() => {
       setPage(1);
-      load(1, search, sortBy, sortDesc);
+      load(1, search, roleFilter, sortBy, sortDesc);
     }, 400);
     return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
+
+  // Reload when role filter changes
+  useEffect(() => {
+    setPage(1);
+    load(1, search, roleFilter, sortBy, sortDesc);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roleFilter]);
 
   const rowsSource = employees;
 
@@ -240,13 +331,19 @@ export default function EmployeesPage() {
 
           .employees-table-controls {
             justify-content: center;
-            flex-wrap: nowrap;
+            flex-wrap: wrap;
           }
 
           .employees-table-search {
             flex: 0 1 260px;
             min-width: 0;
             max-width: 100% !important;
+          }
+
+          .employees-table-role-filter {
+            flex: 0 1 180px;
+            min-width: 140px;
+            max-width: 100%;
           }
         }
       `}</style>
@@ -288,11 +385,23 @@ export default function EmployeesPage() {
               <Search size={16} strokeWidth={2} />
             </span>
           </div>
+          <div className="employees-table-role-filter">
+            <Select<RoleFilterOption, false>
+              aria-label="Filter by role"
+              value={selectedRoleFilter}
+              onChange={(option) => setRoleFilter((option ?? roleFilterOptions[0]).value)}
+              options={roleFilterOptions}
+              isSearchable={false}
+              isDisabled={rolesLoading}
+              placeholder={rolesLoading ? "Loading roles..." : "All roles"}
+              styles={roleFilterSelectStyles}
+            />
+          </div>
           <button
             type="button"
             aria-label="Refresh employees"
             title="Refresh employees"
-            onClick={() => load(page, search, sortBy, sortDesc)}
+            onClick={() => load(page, search, roleFilter, sortBy, sortDesc)}
             disabled={loading}
             style={{
               width: 32,
@@ -381,7 +490,7 @@ export default function EmployeesPage() {
               if (loading || page <= 1) return;
               const next = page - 1;
               setPage(next);
-              load(next, search, sortBy, sortDesc);
+              load(next, search, roleFilter, sortBy, sortDesc);
             }}
             style={{
               width: 73,
@@ -416,7 +525,7 @@ export default function EmployeesPage() {
               if (loading || page >= totalPages) return;
               const next = page + 1;
               setPage(next);
-              load(next, search, sortBy, sortDesc);
+              load(next, search, roleFilter, sortBy, sortDesc);
             }}
             style={{
               width: 73,

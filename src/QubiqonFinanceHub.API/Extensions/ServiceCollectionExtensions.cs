@@ -52,12 +52,15 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IGraphApiService, GraphApiService>();
 
         services.Configure<GlobalAuthOptions>(config.GetSection(GlobalAuthOptions.SectionName));
+        services.Configure<TrustedAppsOptions>(config.GetSection(TrustedAppsOptions.SectionName));
         services.AddScoped<IAuthSessionStore, AuthSessionStore>();
         services.AddScoped<IAzureOAuthTokenClient, AzureOAuthTokenClient>();
         services.AddScoped<IAzureTokenRefreshService, AzureTokenRefreshService>();
         services.AddScoped<IGlobalAuthService, GlobalAuthService>();
         services.AddScoped<IAppJwtService, AppJwtService>();
         services.AddScoped<IFinanceRoleResolver, FinanceRoleResolver>();
+        services.AddScoped<IEmployeeProvisioningService, EmployeeProvisioningService>();
+        services.AddSingleton<ITrustedAzureAccessTokenValidator, TrustedAzureAccessTokenValidator>();
 
         services.AddFluentValidationAutoValidation();
         return services;

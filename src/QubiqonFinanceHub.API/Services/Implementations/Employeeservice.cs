@@ -32,6 +32,18 @@ public class EmployeeService : IEmployeeService
             q = q.Where(e => e.FullName.ToLower().Contains(s) || e.Email.ToLower().Contains(s));
         }
 
+        if (!string.IsNullOrWhiteSpace(f.Role))
+        {
+            var roleCode = f.Role.Trim();
+            var roleCodeLower = roleCode.ToLower();
+            var hasEnum = Enum.TryParse<UserRole>(roleCode, true, out var enumRole);
+
+            q = q.Where(e =>
+                (e.FinanceRole != null && e.FinanceRole.Role != null
+                    && e.FinanceRole.Role.Code.ToLower() == roleCodeLower)
+                || (e.FinanceRole == null && hasEnum && e.Role == enumRole));
+        }
+
         var total = await q.CountAsync();
         q = q.ApplyEmployeeSorting(f);
         var items = await q.Skip((f.Page - 1) * f.PageSize).Take(f.PageSize).ToListAsync();

@@ -11,7 +11,7 @@ public record PaginatedResult<T>(List<T> Items, int TotalCount, int Page, int Pa
     public bool HasNext => Page < TotalPages;
 }
 
-public record FilterParams(int Page = 1, int PageSize = 20, string? Status = null, string? Search = null, string SortBy = "CreatedAt", bool Desc = true, string? PaymentPriority = null);
+public record FilterParams(int Page = 1, int PageSize = 20, string? Status = null, string? Search = null, string SortBy = "CreatedAt", bool Desc = true, string? PaymentPriority = null, string? Role = null);
 
 public record CommentDto(Guid Id, string By, string Text, string ActionType, DateTime CreatedAt);
 public record DocumentDto(Guid Id, string FileName, string? ContentType, long FileSizeBytes, DateTime UploadedAt);

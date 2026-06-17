@@ -24,6 +24,7 @@ builder.Host.UseSerilog();
 
 builder.Services.AddApplicationDatabase(builder.Configuration);
 Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler.DefaultInboundClaimTypeMap.Clear();
+System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 builder.Services.AddApplicationAuth(builder.Configuration);
 builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddApplicationCors(builder.Configuration);

@@ -11,7 +11,9 @@ public class GlobalAuthController(
     IGlobalAuthService globalAuth,
     IAppJwtService appJwt,
     IFinanceRoleResolver roleResolver,
-    IAuthSessionStore sessionStore) : ControllerBase
+    IAuthSessionStore sessionStore,
+    ITrustedAzureAccessTokenValidator trustedTokenValidator,
+    IEmployeeProvisioningService employeeProvisioning) : ControllerBase
 {
     [HttpGet("login")]
     [AllowAnonymous]
@@ -66,6 +68,63 @@ public class GlobalAuthController(
         return Ok(new { accessToken = token, expiresIn });
     }
 
+    [HttpPost("exchange")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Exchange(CancellationToken ct)
+    {
+        if (!TryGetBearerToken(Request.Headers.Authorization, out var azureToken))
+            return Unauthorized();
+
+        var validation = await trustedTokenValidator.ValidateAsync(azureToken, ct);
+        if (validation.Failure == TrustedTokenValidationFailure.NotJwt)
+        {
+            return Unauthorized(new
+            {
+                error = "opaque_access_token",
+                message =
+                    "The bearer token is not a JWT. App B must request a v2 access token for its own API " +
+                    "(scope api://{AppB-ClientId}/access_as_user) and set accessTokenAcceptedVersion: 2 " +
+                    "on the App B API app registration manifest. Send result.accessToken, not idToken."
+            });
+        }
+
+        if (validation.Principal == null)
+        {
+            return Unauthorized(new
+            {
+                error = "invalid_trusted_token",
+                message =
+                    "Token signature, audience, or required claims are invalid, or the tenant/app is not trusted."
+            });
+        }
+
+        var principal = validation.Principal;
+
+        var employee = await employeeProvisioning.FindByEntraObjectIdAsync(principal.Oid, ct);
+        if (employee == null)
+        {
+            return StatusCode(403, new
+            {
+                error = "user_not_found",
+                message = "User is not registered in Finance. Contact your administrator."
+            });
+        }
+
+        var role = await roleResolver.ResolveAsync(principal.Oid, ct);
+        if (role == null)
+        {
+            return StatusCode(403, new
+            {
+                error = "access_denied",
+                message = "User account is deactivated or not authorized for Finance."
+            });
+        }
+
+        var (token, expiresIn) = appJwt.CreateToken(
+            principal.Oid, principal.Email, role.Value.RoleName);
+        return Ok(new { accessToken = token, expiresIn });
+    }
+
     [HttpPost("logout")]
     [AllowAnonymous]
     public async Task<IActionResult> Logout(CancellationToken ct)
@@ -76,5 +135,19 @@ public class GlobalAuthController(
         var isLocalhost = globalAuth.IsLocalhostRedirectUri();
         globalAuth.ClearSessionCookie(Response, isLocalhost);
         return Ok();
+    }
+
+    private static bool TryGetBearerToken(string? authorizationHeader, out string token)
+    {
+        token = "";
+        if (string.IsNullOrWhiteSpace(authorizationHeader))
+            return false;
+
+        const string prefix = "Bearer ";
+        if (!authorizationHeader.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        token = authorizationHeader[prefix.Length..].Trim();
+        return !string.IsNullOrWhiteSpace(token);
     }
 }
