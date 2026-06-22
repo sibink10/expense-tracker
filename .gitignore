@@ -6,6 +6,7 @@ node_modules/
 dist/
 build/
 .env
+appsettings.Staging.json
 .env.local
 .DS_Store
 publish/

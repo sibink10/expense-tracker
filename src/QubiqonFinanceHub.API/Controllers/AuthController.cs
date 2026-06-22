@@ -51,6 +51,9 @@ public class AuthController(FinanceHubDbContext db) : ControllerBase
         if (emp.IsActive == false || emp.IsDelete == true)
             throw new Exception("You have been deactivated from the application or deleted from the application");
 
+        if (!emp.HasFinanceAccess)
+            return StatusCode(403, "You are not authorized to use Finance.");
+
         var homeOrgId = emp.OrganizationId;
         var activeOrgId = emp.OrganizationContext?.ActiveOrganizationId;
         var effectiveOrgId = OrganizationContextResolver.ResolveEffective(homeOrgId, activeOrgId);

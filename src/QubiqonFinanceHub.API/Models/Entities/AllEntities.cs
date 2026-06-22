@@ -151,6 +151,7 @@ public class Employee
     public UserRole Role { get; set; } = UserRole.Employee;
     public bool IsActive { get; set; } = true;
     public bool IsDelete { get; set; } = false;
+    public bool HasFinanceAccess { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 

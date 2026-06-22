@@ -186,6 +186,10 @@ public class GlobalAuthService : IGlobalAuthService
 
         await _employeeProvisioning.EnsureEmployeeAsync(oid, email, name, ct);
 
+        var emp = await _employeeProvisioning.FindByEntraObjectIdAsync(oid, ct);
+        if (emp == null || !emp.HasFinanceAccess)
+            throw new FinanceAccessDeniedException();
+
         var session = new AuthSession
         {
             SessionId = Guid.NewGuid(),

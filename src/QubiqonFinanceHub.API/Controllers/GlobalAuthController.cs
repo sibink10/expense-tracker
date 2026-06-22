@@ -45,7 +45,17 @@ public class GlobalAuthController(
             return BadRequest("Invalid or expired state.");
 
         var callbackUrl = globalAuth.GetOAuthRedirectUri();
-        var session = await globalAuth.CompleteOAuthCallbackAsync(code, callbackUrl, ct);
+
+        AuthSession session;
+        try
+        {
+            session = await globalAuth.CompleteOAuthCallbackAsync(code, callbackUrl, ct);
+        }
+        catch (FinanceAccessDeniedException)
+        {
+            var separator = returnUrl.Contains('?') ? "&" : "?";
+            return Redirect($"{returnUrl}{separator}authError=access_denied");
+        }
 
         var isLocalhost = globalAuth.IsLocalhostRedirectUri();
         globalAuth.SetSessionCookie(Response, session.SessionId, isLocalhost);

@@ -18,7 +18,7 @@ public class FinanceRoleResolver(FinanceHubDbContext db) : IFinanceRoleResolver
                 .ThenInclude(fr => fr.Role)
             .FirstOrDefaultAsync(e => e.EntraObjectId == userOid, ct);
 
-        if (emp == null || !emp.IsActive || emp.IsDelete)
+        if (emp == null || !emp.IsActive || emp.IsDelete || !emp.HasFinanceAccess)
             return null;
 
         if (emp.FinanceRole?.Role != null
