@@ -76,8 +76,16 @@ public partial class QubiqonFinanceHubContext : DbContext
     public virtual DbSet<VendorBillLineItem> VendorBillLineItems { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=tcp:qubiqon-finance-server.database.windows.net,1433;Initial Catalog=QubiqonFinanceHub;Persist Security Info=False;User ID=sqladmin;Password=Qubiqon@2026!;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;");
+    {
+        // When resolved via DI the options are supplied externally; only fall back
+        // to the environment for design-time (e.g. `dotnet ef`) use. Never hardcode
+        // the connection string here — it carries credentials.
+        if (!optionsBuilder.IsConfigured)
+            optionsBuilder.UseSqlServer(
+                Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+                ?? throw new InvalidOperationException(
+                    "Set the ConnectionStrings__DefaultConnection environment variable for design-time use."));
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
