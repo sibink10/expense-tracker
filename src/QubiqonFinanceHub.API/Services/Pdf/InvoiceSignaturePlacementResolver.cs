@@ -16,14 +16,14 @@ public static class InvoiceSignaturePlacementResolver
     public const string SignAnchorToken = "QFH_SIGN_ANCHOR";
 
     private const int DefaultAbsWidth = 115;
-    private const int DefaultAbsHeight = 36;
+    private const int DefaultAbsHeight = 24;
     private const int DefaultXCoord = 389;
     private const int DefaultYCoord = 760;
-    private const int SignatureXOffset = -30;
+    private const int SignatureXOffset = 0;
 
     // Layout constants matching ComposeSignature in InvoicePdfDocument.
-    private const int SignatureBlockWidth = 150;
-    private const int LabelPaddingTop = 4;
+    private const int SignatureBlockWidth = 115;
+    private const int LabelPaddingTop = 3;
     private const int SignatureLineHeight = 1;
 
     public static InvoiceSignaturePlacement Resolve(byte[] pdfBytes)
@@ -41,7 +41,7 @@ public static class InvoiceSignaturePlacementResolver
             {
                 return new InvoiceSignaturePlacement(
                     pageNo,
-                    ToXCoord(right),
+                    ToXCoordFromAnchor(left, right),
                     ToYCoordFromAnchorTop(page.Height, top),
                     DefaultAbsWidth,
                     DefaultAbsHeight);
@@ -66,8 +66,12 @@ public static class InvoiceSignaturePlacementResolver
             DefaultAbsHeight);
     }
 
-    private static int ToXCoord(double anchorRight) =>
-        Math.Max(0, (int)Math.Round(anchorRight - DefaultAbsWidth) + SignatureXOffset);
+    private static int ToXCoordFromAnchor(double anchorLeft, double anchorRight)
+    {
+        var anchorCenter = (anchorLeft + anchorRight) / 2.0;
+        var blockLeft = anchorCenter - SignatureBlockWidth / 2.0;
+        return Math.Max(0, (int)Math.Round(blockLeft) + SignatureXOffset);
+    }
 
     private static int ToYCoordFromAnchorTop(double pageHeight, double anchorTop) =>
         Math.Max(0, (int)Math.Round(pageHeight - anchorTop));
@@ -75,8 +79,8 @@ public static class InvoiceSignaturePlacementResolver
     private static int ToXCoordFromLabel(double labelLeft, double labelRight)
     {
         var labelCenter = (labelLeft + labelRight) / 2.0;
-        var blockRight = labelCenter + SignatureBlockWidth / 2.0;
-        return Math.Max(0, (int)Math.Round(blockRight - DefaultAbsWidth) + SignatureXOffset);
+        var blockLeft = labelCenter - SignatureBlockWidth / 2.0;
+        return Math.Max(0, (int)Math.Round(blockLeft) + SignatureXOffset);
     }
 
     private static int ToYCoordFromLabelTop(double pageHeight, double labelTop)

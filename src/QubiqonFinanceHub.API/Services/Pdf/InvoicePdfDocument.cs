@@ -228,7 +228,7 @@ public sealed class InvoicePdfDocument : IDocument
             .BorderBottom(1).BorderColor(Border)
             .Padding(6);
 
-    // ── 5. FOOTER (notes, totals, bank — signature follows in content column) ─
+    // ── 5. FOOTER (notes, totals, bank + signature side-by-side) ─────────────
     private void ComposeFooter(IContainer container)
     {
         container.Column(footer =>
@@ -275,42 +275,52 @@ public sealed class InvoicePdfDocument : IDocument
                 });
             });
 
-            // ── Row B: bank details only ───────────────────────────────────────
-            if (HasBankDetails())
+            // ── Row B: bank details (left) + authorized signature (right) ────
+            footer.Item().PaddingTop(16).ShowEntire().Row(row =>
             {
-                footer.Item().PaddingTop(16).Column(left =>
+                row.RelativeItem(1).PaddingRight(8).Element(c =>
                 {
-                    left.Item().PaddingBottom(6)
-                        .Text("Bank Account Details")
-                        .FontSize(7).Bold().FontColor(Muted);
-                    left.Item().Table(t =>
-                    {
-                        t.ColumnsDefinition(c => { c.RelativeColumn(1); c.RelativeColumn(1.4f); });
-                        BankRow(t, "Account Holder Name", _m.BankAccountName);
-                        BankRow(t, "Account Number", _m.BankAccountNumber);
-                        BankRow(t, "IFSC Code",      _m.IfscCode);
-                        BankRow(t, "Bank Name",      _m.BankName);
-                        BankRow(t, "Bank Address",   _m.BankAddress);
-                        if (!string.IsNullOrWhiteSpace(_m.SwiftCode))
-                            BankRow(t, "SWIFT Code", _m.SwiftCode);
-                    });
+                    if (HasBankDetails())
+                        c.Element(ComposeBankDetails);
                 });
-            }
 
-            footer.Item().PaddingTop(12).AlignRight().Element(ComposeSignature);
+                row.RelativeItem(1).PaddingLeft(8).AlignBottom().AlignCenter()
+                    .Element(ComposeSignature);
+            });
+        });
+    }
+
+    private void ComposeBankDetails(IContainer container)
+    {
+        container.Column(left =>
+        {
+            left.Item().PaddingBottom(6)
+                .Text("Bank Account Details")
+                .FontSize(7).Bold().FontColor(Muted);
+            left.Item().Table(t =>
+            {
+                t.ColumnsDefinition(c => { c.RelativeColumn(1); c.RelativeColumn(1.4f); });
+                BankRow(t, "Account Holder Name", _m.BankAccountName);
+                BankRow(t, "Account Number", _m.BankAccountNumber);
+                BankRow(t, "IFSC Code",      _m.IfscCode);
+                BankRow(t, "Bank Name",      _m.BankName);
+                BankRow(t, "Bank Address",   _m.BankAddress);
+                if (!string.IsNullOrWhiteSpace(_m.SwiftCode))
+                    BankRow(t, "SWIFT Code", _m.SwiftCode);
+            });
         });
     }
 
     private void ComposeSignature(IContainer container)
     {
-        container.Width(150).Column(sig =>
+        container.Width(115).Column(sig =>
         {
-            sig.Item().Height(36).AlignRight().AlignTop()
+            sig.Item().Height(24).AlignCenter().AlignTop()
                 .Text(InvoiceSignaturePlacementResolver.SignAnchorToken)
                 .FontSize(1).FontColor(Colors.White);
             sig.Item().LineHorizontal(1).LineColor(Navy);
-            sig.Item().PaddingTop(4).AlignCenter()
-                .Text("Authorized Signature").FontSize(7).SemiBold().FontColor(Navy);
+            sig.Item().PaddingTop(3).AlignCenter()
+                .Text("Authorized Signature").FontSize(6).SemiBold().FontColor(Navy);
         });
     }
 

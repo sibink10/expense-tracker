@@ -473,25 +473,60 @@ export default function InvoiceDocument({ invoice: inv, organization: org, hideS
           </div>
         </div>
       </div>
-      {hasBankDetails && (
-        <div style={{ margin: "22px 24px 28px" }}>
-          <div style={{ fontSize: "10px", color: docMuted, marginBottom: "6px" }}>Bank Account Details</div>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px" }}>
-            <tbody>
-              {bankRows.map(([label, value]) => (
-                <tr key={label}>
-                  <td style={{ width: "42%", padding: "7px 8px", border: `1px solid ${docBorder}`, color: docMuted }}>
-                    {label}
-                  </td>
-                  <td style={{ padding: "7px 8px", border: `1px solid ${docBorder}`, color: "#111827" }}>
-                    {value}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <div
+        style={{
+          display: "flex",
+          margin: "22px 24px 28px",
+          gap: "16px",
+          alignItems: "flex-end",
+        }}
+      >
+        <div style={{ flex: "1 1 50%", minWidth: 0 }}>
+          {hasBankDetails && (
+            <>
+              <div style={{ fontSize: "10px", color: docMuted, marginBottom: "6px" }}>Bank Account Details</div>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px" }}>
+                <tbody>
+                  {bankRows.map(([label, value]) => (
+                    <tr key={label}>
+                      <td style={{ width: "42%", padding: "7px 8px", border: `1px solid ${docBorder}`, color: docMuted }}>
+                        {label}
+                      </td>
+                      <td style={{ padding: "7px 8px", border: `1px solid ${docBorder}`, color: "#111827" }}>
+                        {value}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
         </div>
-      )}
+        <div
+          style={{
+            flex: "1 1 50%",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
+          <div style={{ width: "115px" }}>
+            <div style={{ height: "24px" }} />
+            <div style={{ borderTop: `1px solid ${docBlue}`, width: "100%" }} />
+            <div
+              style={{
+                marginTop: "3px",
+                fontSize: "8px",
+                fontWeight: 600,
+                color: docBlue,
+                textAlign: "center",
+              }}
+            >
+              Authorized Signature
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
