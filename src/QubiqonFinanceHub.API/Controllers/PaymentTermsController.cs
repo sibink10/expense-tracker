@@ -18,19 +18,19 @@ public class PaymentTermsController(IPaymentTermService svc) : ControllerBase
         return r != null ? Ok(r) : NotFound();
     }
 
-    [HttpPost, Authorize(Roles = "Admin")]
+    [HttpPost, Authorize(Roles = "Finance,Admin")]
     public async Task<IActionResult> Create([FromBody] CreatePaymentTermRequest dto) => Ok(await svc.CreateAsync(dto));
 
-    [HttpPut("{id:guid}"), Authorize(Roles = "Admin")]
+    [HttpPut("{id:guid}"), Authorize(Roles = "Finance,Admin")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePaymentTermRequest dto) => Ok(await svc.UpdateAsync(id, dto));
 
-    [HttpDelete("{id:guid}"), Authorize(Roles = "Admin")]
+    [HttpDelete("{id:guid}"), Authorize(Roles = "Finance,Admin")]
     public async Task<IActionResult> Delete(Guid id)
     {
         await svc.DeleteAsync(id);
         return NoContent();
     }
 
-    [HttpPost("{id:guid}/toggle"), Authorize(Roles = "Admin")]
+    [HttpPost("{id:guid}/toggle"), Authorize(Roles = "Finance,Admin")]
     public async Task<IActionResult> Toggle(Guid id) => Ok(await svc.ToggleActiveAsync(id));
 }

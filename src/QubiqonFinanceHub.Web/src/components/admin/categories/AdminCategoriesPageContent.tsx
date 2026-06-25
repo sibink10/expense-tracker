@@ -15,11 +15,13 @@ import {
 import CategoryFormModal from "./CategoryFormModal";
 import { getCategories, createCategory, toggleCategory, type Category } from "../../../shared/api";
 import { useAppContext } from "../../../context/AppContext";
+import { ROLES } from "../../../shared/constants";
 
 const PAGE_SIZE = 10;
 
 export default function AdminCategoriesPage() {
-  const { t } = useAppContext();
+  const { t, is } = useAppContext();
+  const canManage = is(ROLES.FINANCE) || is(ROLES.ADMIN);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -100,7 +102,7 @@ export default function AdminCategoriesPage() {
   const cols: TblCol[] = [
     "Name",
     { label: "Status", sx: centeredColSx },
-    { label: "Action", sx: centeredColSx },
+    ...(canManage ? [{ label: "Action", sx: centeredColSx } as TblCol] : []),
   ];
 
   const rows = pageItems.map((category) => ({
@@ -123,27 +125,31 @@ export default function AdminCategoriesPage() {
         ),
         sx: centeredColSx,
       },
-      {
-        v: (
-          <span
-            style={{
-              minHeight: 36,
-              display: "inline-flex",
-              gap: "8px",
-              alignItems: "center",
-              justifyContent: "center",
-              verticalAlign: "middle",
-            }}
-          >
-            <Toggle
-              checked={category.isActive}
-              disabled={togglingId === category.id}
-              onChange={() => void handleToggle(category.id)}
-            />
-          </span>
-        ),
-        sx: centeredColSx,
-      },
+      ...(canManage
+        ? [
+            {
+              v: (
+                <span
+                  style={{
+                    minHeight: 36,
+                    display: "inline-flex",
+                    gap: "8px",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    verticalAlign: "middle",
+                  }}
+                >
+                  <Toggle
+                    checked={category.isActive}
+                    disabled={togglingId === category.id}
+                    onChange={() => void handleToggle(category.id)}
+                  />
+                </span>
+              ),
+              sx: centeredColSx,
+            },
+          ]
+        : []),
     ],
   }));
 
@@ -159,18 +165,20 @@ export default function AdminCategoriesPage() {
               onChange={setSearchInput}
               placeholder="Search categories..."
             />
-            <Btn
-              v="primary"
-              onClick={() => {
-                setName("");
-                setError(null);
-                setModalOpen(true);
-              }}
-              sx={{ borderRadius: R.control, boxShadow: C.cardShadow }}
-            >
-              <CirclePlus size={15} strokeWidth={1.8} />
-              <span className="admin-categories-add-label">Add category</span>
-            </Btn>
+            {canManage && (
+              <Btn
+                v="primary"
+                onClick={() => {
+                  setName("");
+                  setError(null);
+                  setModalOpen(true);
+                }}
+                sx={{ borderRadius: R.control, boxShadow: C.cardShadow }}
+              >
+                <CirclePlus size={15} strokeWidth={1.8} />
+                <span className="admin-categories-add-label">Add category</span>
+              </Btn>
+            )}
           </>
         }
       >
@@ -338,15 +346,17 @@ export default function AdminCategoriesPage() {
         </div>
       </div>
 
-      <CategoryFormModal
-        open={modalOpen}
-        name={name}
-        error={error}
-        submitLoading={submitLoading}
-        setName={setName}
-        onClose={() => setModalOpen(false)}
-        onSubmit={handleAdd}
-      />
+      {canManage && (
+        <CategoryFormModal
+          open={modalOpen}
+          name={name}
+          error={error}
+          submitLoading={submitLoading}
+          setName={setName}
+          onClose={() => setModalOpen(false)}
+          onSubmit={handleAdd}
+        />
+      )}
     </ListPageHeader>
   );
 }

@@ -25,6 +25,7 @@ import {
   updateGstTreatment,
 } from "../../../shared/api/gstTreatments";
 import { C, R, tableIconButtonSx } from "../../../shared/theme";
+import { ROLES } from "../../../shared/constants";
 
 const PAGE_SIZE = 10;
 
@@ -63,7 +64,8 @@ function FieldFlagCheckbox({
 }
 
 export default function AdminGstTreatmentsPageContent() {
-  const { t } = useAppContext();
+  const { t, is } = useAppContext();
+  const canManage = is(ROLES.FINANCE) || is(ROLES.ADMIN);
   const [items, setItems] = useState<GstTreatment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -226,7 +228,7 @@ export default function AdminGstTreatmentsPageContent() {
     { label: "Legal name", sx: centeredColSx },
     { label: "Trade name", sx: centeredColSx },
     { label: "Status", sx: centeredColSx },
-    { label: "Actions", sx: centeredColSx },
+    ...(canManage ? [{ label: "Actions", sx: centeredColSx } as TblCol] : []),
   ];
 
   const rows = items.map((item) => ({
@@ -240,17 +242,34 @@ export default function AdminGstTreatmentsPageContent() {
       { v: <FlagCell value={item.showBusinessLegalName} />, sx: centeredColSx },
       { v: <FlagCell value={item.showBusinessTradeName} />, sx: centeredColSx },
       {
-        v: (
+        v: canManage ? (
           <span style={{ minHeight: 36, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
             <Toggle checked={item.isActive} onChange={(next) => handleToggle(item, next)} />
+          </span>
+        ) : (
+          <span
+            style={{
+              padding: "2px 8px",
+              borderRadius: R.control,
+              fontSize: "10px",
+              fontWeight: 600,
+              background: item.isActive ? C.successBg : C.surface,
+              color: item.isActive ? C.success : C.muted,
+            }}
+          >
+            {item.isActive ? "Active" : "Inactive"}
           </span>
         ),
         sx: centeredColSx,
       },
-      {
-        v: <EditActionButton sx={tableIconButtonSx(C.actionEditBg)} onClick={() => openEdit(item)} />,
-        sx: centeredColSx,
-      },
+      ...(canManage
+        ? [
+            {
+              v: <EditActionButton sx={tableIconButtonSx(C.actionEditBg)} onClick={() => openEdit(item)} />,
+              sx: centeredColSx,
+            },
+          ]
+        : []),
     ],
   }));
 
@@ -262,10 +281,12 @@ export default function AdminGstTreatmentsPageContent() {
         actions={
           <>
             <CollapsibleSearch value={searchInput} onChange={setSearchInput} placeholder="Search GST treatments..." />
-            <Btn v="primary" onClick={openAdd} sx={{ borderRadius: R.control }}>
-              <CirclePlus size={15} strokeWidth={1.8} />
-              Add treatment
-            </Btn>
+            {canManage && (
+              <Btn v="primary" onClick={openAdd} sx={{ borderRadius: R.control }}>
+                <CirclePlus size={15} strokeWidth={1.8} />
+                Add treatment
+              </Btn>
+            )}
           </>
         }
       >
@@ -291,7 +312,8 @@ export default function AdminGstTreatmentsPageContent() {
         </div>
       </ListPageHeader>
 
-      <Mdl open={modalOpen} close={() => !submitLoading && setModalOpen(false)} title={mode === "add" ? "Add GST treatment" : "Edit GST treatment"}>
+      {canManage && (
+        <Mdl open={modalOpen} close={() => !submitLoading && setModalOpen(false)} title={mode === "add" ? "Add GST treatment" : "Edit GST treatment"}>
         <Inp label="Code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} req ph="REGISTERED" />
         <Inp label="Name" value={name} onChange={(e) => setName(e.target.value)} req ph="Registered" />
         <Inp label="Description" type="textarea" value={description} onChange={(e) => setDescription(e.target.value)} ph="Optional description" />
@@ -315,6 +337,7 @@ export default function AdminGstTreatmentsPageContent() {
           <Btn v="secondary" onClick={() => setModalOpen(false)} disabled={submitLoading}>Cancel</Btn>
         </div>
       </Mdl>
+      )}
     </>
   );
 }

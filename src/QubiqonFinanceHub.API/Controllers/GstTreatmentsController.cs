@@ -5,7 +5,7 @@ using QubiqonFinanceHub.API.Services.Interfaces;
 
 namespace QubiqonFinanceHub.API.Controllers;
 
-[ApiController, Route("api/gst-treatments"), Authorize(Roles = "Admin")]
+[ApiController, Route("api/gst-treatments"), Authorize]
 public class GstTreatmentsController(IGstTreatmentService svc) : ControllerBase
 {
     [HttpGet]
@@ -18,12 +18,12 @@ public class GstTreatmentsController(IGstTreatmentService svc) : ControllerBase
         return r != null ? Ok(r) : NotFound();
     }
 
-    [HttpPost]
+    [HttpPost, Authorize(Roles = "Finance,Admin")]
     public async Task<IActionResult> Create([FromBody] CreateGstTreatmentRequest dto) => Ok(await svc.CreateAsync(dto));
 
-    [HttpPut("{id:guid}")]
+    [HttpPut("{id:guid}"), Authorize(Roles = "Finance,Admin")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateGstTreatmentRequest dto) => Ok(await svc.UpdateAsync(id, dto));
 
-    [HttpPost("{id:guid}/toggle")]
+    [HttpPost("{id:guid}/toggle"), Authorize(Roles = "Finance,Admin")]
     public async Task<IActionResult> Toggle(Guid id) => Ok(await svc.ToggleActiveAsync(id));
 }

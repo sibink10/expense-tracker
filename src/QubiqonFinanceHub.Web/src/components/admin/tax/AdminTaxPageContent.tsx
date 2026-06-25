@@ -16,14 +16,15 @@ import {
 import { getTaxConfigs, toggleTaxConfig } from "../../../shared/api/taxConfig";
 import { useAppContext } from "../../../context/AppContext";
 import type { TaxConfig } from "../../../types";
-import { EVENTS, MODAL_T } from "../../../shared/constants";
+import { EVENTS, MODAL_T, ROLES } from "../../../shared/constants";
 
 const CLIENT_TAX_TYPE = "ClientTax";
 const formatTaxType = (value?: string) => value === CLIENT_TAX_TYPE ? "Client Tax" : (value ?? "—");
 const PAGE_SIZE = 10;
 
 export default function AdminTaxPage() {
-  const { setMdl } = useAppContext();
+  const { setMdl, is } = useAppContext();
+  const canManage = is(ROLES.FINANCE) || is(ROLES.ADMIN);
   const [items, setItems] = useState<TaxConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -160,18 +161,22 @@ export default function AdminTaxPage() {
             >
               <Eye size={15} strokeWidth={1.9} />
             </Btn>
-            <EditActionButton
-              sx={tableIconButtonSx(C.actionEditBg)}
-              onClick={(e) => {
-                e.stopPropagation();
-                setMdl({ t: MODAL_T.TAX_CONFIG_EDIT, d: item });
-              }}
-            />
-            <Toggle
-              checked={item.isActive}
-              disabled={togglingId === item.id}
-              onChange={() => void handleToggle(item.id)}
-            />
+            {canManage && (
+              <>
+                <EditActionButton
+                  sx={tableIconButtonSx(C.actionEditBg)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMdl({ t: MODAL_T.TAX_CONFIG_EDIT, d: item });
+                  }}
+                />
+                <Toggle
+                  checked={item.isActive}
+                  disabled={togglingId === item.id}
+                  onChange={() => void handleToggle(item.id)}
+                />
+              </>
+            )}
           </span>
         ),
         sx: centeredColSx,
@@ -191,14 +196,16 @@ export default function AdminTaxPage() {
               onChange={setSearchInput}
               placeholder="Search tax configs..."
             />
-            <Btn
-              v="primary"
-              onClick={() => setMdl({ t: MODAL_T.TAX_CONFIG_ADD })}
-              sx={{ borderRadius: R.control, boxShadow: C.cardShadow }}
-            >
-              <CirclePlus size={15} strokeWidth={1.8} />
-              <span className="admin-tax-add-label">Add tax</span>
-            </Btn>
+            {canManage && (
+              <Btn
+                v="primary"
+                onClick={() => setMdl({ t: MODAL_T.TAX_CONFIG_ADD })}
+                sx={{ borderRadius: R.control, boxShadow: C.cardShadow }}
+              >
+                <CirclePlus size={15} strokeWidth={1.8} />
+                <span className="admin-tax-add-label">Add tax</span>
+              </Btn>
+            )}
           </>
         }
       >

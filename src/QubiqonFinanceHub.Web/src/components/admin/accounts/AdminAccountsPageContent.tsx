@@ -15,13 +15,15 @@ import {
 import AccountFormModal from "./AccountFormModal";
 import { useAppContext } from "../../../context/AppContext";
 import { type Account, createAccount, getAccounts, updateAccount } from "../../../shared/api";
+import { ROLES } from "../../../shared/constants";
 import { C, R, tableIconButtonSx } from "../../../shared/theme";
 
 type Mode = "add" | "edit";
 const PAGE_SIZE = 10;
 
 export default function AdminAccountsPage() {
-  const { t } = useAppContext();
+  const { t, is } = useAppContext();
+  const canManage = is(ROLES.FINANCE) || is(ROLES.ADMIN);
   const [items, setItems] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);

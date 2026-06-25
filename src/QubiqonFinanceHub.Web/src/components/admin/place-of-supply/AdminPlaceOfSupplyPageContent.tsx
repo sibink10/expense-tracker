@@ -25,11 +25,13 @@ import {
   updatePlaceOfSupply,
 } from "../../../shared/api/placeOfSupply";
 import { C, R, tableIconButtonSx } from "../../../shared/theme";
+import { ROLES } from "../../../shared/constants";
 
 const PAGE_SIZE = 10;
 
 export default function AdminPlaceOfSupplyPageContent() {
-  const { t } = useAppContext();
+  const { t, is } = useAppContext();
+  const canManage = is(ROLES.FINANCE) || is(ROLES.ADMIN);
   const [items, setItems] = useState<PlaceOfSupplyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -148,7 +150,13 @@ export default function AdminPlaceOfSupplyPageContent() {
   const displayTotalPages = Math.max(totalPages, 1);
 
   const centeredColSx = { textAlign: "center" as const, verticalAlign: "middle" as const };
-  const cols: TblCol[] = ["Code", "Name", "Country", { label: "UT", sx: centeredColSx }, { label: "Actions", sx: centeredColSx }];
+  const cols: TblCol[] = [
+    "Code",
+    "Name",
+    "Country",
+    { label: "UT", sx: centeredColSx },
+    ...(canManage ? [{ label: "Actions", sx: centeredColSx } as TblCol] : []),
+  ];
 
   const rows = items.map((item) => ({
     _cells: [
@@ -156,15 +164,19 @@ export default function AdminPlaceOfSupplyPageContent() {
       { v: item.name },
       { v: item.countryName },
       { v: item.isUnionTerritory ? "Yes" : "No", sx: centeredColSx },
-      {
-        v: (
-          <span style={{ display: "inline-flex", gap: 8, alignItems: "center", justifyContent: "center" }}>
-            <EditActionButton sx={tableIconButtonSx(C.actionEditBg)} onClick={() => openEdit(item)} />
-            <DeleteActionButton sx={tableIconButtonSx(C.actionDeleteBg)} onClick={() => handleDelete(item)} />
-          </span>
-        ),
-        sx: centeredColSx,
-      },
+      ...(canManage
+        ? [
+            {
+              v: (
+                <span style={{ display: "inline-flex", gap: 8, alignItems: "center", justifyContent: "center" }}>
+                  <EditActionButton sx={tableIconButtonSx(C.actionEditBg)} onClick={() => openEdit(item)} />
+                  <DeleteActionButton sx={tableIconButtonSx(C.actionDeleteBg)} onClick={() => handleDelete(item)} />
+                </span>
+              ),
+              sx: centeredColSx,
+            },
+          ]
+        : []),
     ],
   }));
 
@@ -176,10 +188,12 @@ export default function AdminPlaceOfSupplyPageContent() {
         actions={
           <>
             <CollapsibleSearch value={searchInput} onChange={setSearchInput} placeholder="Search places of supply..." />
-            <Btn v="primary" onClick={openAdd} sx={{ borderRadius: R.control }}>
-              <CirclePlus size={15} strokeWidth={1.8} />
-              Add place
-            </Btn>
+            {canManage && (
+              <Btn v="primary" onClick={openAdd} sx={{ borderRadius: R.control }}>
+                <CirclePlus size={15} strokeWidth={1.8} />
+                Add place
+              </Btn>
+            )}
           </>
         }
       >
@@ -205,7 +219,8 @@ export default function AdminPlaceOfSupplyPageContent() {
         </div>
       </ListPageHeader>
 
-      <Mdl open={modalOpen} close={() => !submitLoading && setModalOpen(false)} title={mode === "add" ? "Add place of supply" : "Edit place of supply"}>
+      {canManage && (
+        <Mdl open={modalOpen} close={() => !submitLoading && setModalOpen(false)} title={mode === "add" ? "Add place of supply" : "Edit place of supply"}>
         <Inp label="Code" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 2))} req ph="29" disabled={mode === "edit"} />
         <Inp label="Name" value={name} onChange={(e) => setName(e.target.value)} req ph="Karnataka" />
         <Inp label="Country code" value={countryCode} onChange={(e) => setCountryCode(e.target.value.toUpperCase())} req />
@@ -220,6 +235,7 @@ export default function AdminPlaceOfSupplyPageContent() {
           <Btn v="secondary" onClick={() => setModalOpen(false)} disabled={submitLoading}>Cancel</Btn>
         </div>
       </Mdl>
+      )}
     </>
   );
 }

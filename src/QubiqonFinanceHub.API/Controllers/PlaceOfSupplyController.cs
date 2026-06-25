@@ -5,7 +5,7 @@ using QubiqonFinanceHub.API.Services.Interfaces;
 
 namespace QubiqonFinanceHub.API.Controllers;
 
-[ApiController, Route("api/place-of-supply"), Authorize(Roles = "Admin")]
+[ApiController, Route("api/place-of-supply"), Authorize]
 public class PlaceOfSupplyController(IPlaceOfSupplyService svc) : ControllerBase
 {
     [HttpGet]
@@ -18,13 +18,13 @@ public class PlaceOfSupplyController(IPlaceOfSupplyService svc) : ControllerBase
         return r != null ? Ok(r) : NotFound();
     }
 
-    [HttpPost]
+    [HttpPost, Authorize(Roles = "Finance,Admin")]
     public async Task<IActionResult> Create([FromBody] CreatePlaceOfSupplyRequest dto) => Ok(await svc.CreateAsync(dto));
 
-    [HttpPut("{code}")]
+    [HttpPut("{code}"), Authorize(Roles = "Finance,Admin")]
     public async Task<IActionResult> Update(string code, [FromBody] UpdatePlaceOfSupplyRequest dto) => Ok(await svc.UpdateAsync(code, dto));
 
-    [HttpDelete("{code}")]
+    [HttpDelete("{code}"), Authorize(Roles = "Finance,Admin")]
     public async Task<IActionResult> Delete(string code)
     {
         await svc.DeleteAsync(code);
