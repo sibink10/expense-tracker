@@ -196,7 +196,7 @@ public sealed class InvoicePdfDocument : IDocument
                 HeaderCell("#", alignRight: false);
                 HeaderCell("Item & Description", alignRight: false);
                 HeaderCell("HSN/SAC", alignRight: false);
-                HeaderCell("Qty (hrs)", alignRight: true);
+                HeaderCell("Qty (hrs/days)", alignRight: true);
                 HeaderCell("Rate", alignRight: true);
                 HeaderCell("GST", alignRight: true);
                 HeaderCell("Total Amount", alignRight: true);

@@ -247,7 +247,7 @@ def generate_invoice(output_path, invoice=None, org=None):
     desc_style = ParagraphStyle('desc', parent=styles['Normal'], fontSize=8.5, leading=11, textColor=TEXT_GRAY)
     
     # Build table data
-    table_data = [["#", "Item & Description", "HSN/SAC", "Qty (hrs)", "Rate", "Total Amount"]]
+    table_data = [["#", "Item & Description", "HSN/SAC", "Qty (hrs/days)", "Rate", "Total Amount"]]
     
     for i, item in enumerate(inv["items"], 1):
         desc_para = Paragraph(item["desc"].replace("\n", "<br/>"), desc_style)
