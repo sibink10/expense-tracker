@@ -153,6 +153,20 @@ public class InvoiceService : IInvoiceService
         if (inv.Status != InvoiceStatus.Draft)
             throw new InvalidOperationException("Only draft invoices can be edited.");
 
+        var trimmedCode = dto.InvoiceCode?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(trimmedCode))
+            throw new ArgumentException("Invoice number is required.");
+        if (trimmedCode.Length > 30)
+            throw new ArgumentException("Invoice number must be 30 characters or fewer.");
+        if (!string.Equals(inv.InvoiceCode, trimmedCode, StringComparison.Ordinal))
+        {
+            var duplicate = await _db.Invoices.AnyAsync(x =>
+                x.OrganizationId == orgId && x.InvoiceCode == trimmedCode && x.Id != id);
+            if (duplicate)
+                throw new InvalidOperationException("Invoice number already exists.");
+            inv.InvoiceCode = trimmedCode;
+        }
+
         // ✅ Update basic fields
         inv.Currency = dto.Currency;
         inv.InvoiceDate = dto.InvoiceDate;
@@ -244,6 +258,35 @@ public class InvoiceService : IInvoiceService
 
         _log.LogInformation("Invoice {Code} updated", inv.InvoiceCode);
 
+        return (await GetByIdAsync(id))!;
+    }
+
+    public async Task<InvoiceDto> CancelAsync(Guid id)
+    {
+        var orgId = await _tenant.GetCurrentOrganizationId();
+        var emp = await _tenant.GetCurrentEmployeeAsync();
+        var inv = await _db.Invoices
+            .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+            ?? throw new KeyNotFoundException("Invoice not found");
+
+        if (inv.Status != InvoiceStatus.Draft)
+            throw new InvalidOperationException("Only draft invoices can be cancelled.");
+
+        inv.Status = InvoiceStatus.Cancelled;
+        inv.UpdatedAt = DateTime.UtcNow;
+
+        _db.ActivityComments.Add(new ActivityComment
+        {
+            Id = Guid.NewGuid(),
+            InvoiceId = id,
+            CommentByEmployeeId = emp.Id,
+            Text = "Invoice cancelled.",
+            ActionType = CommentActionType.Cancelled,
+        });
+
+        await _db.SaveChangesAsync();
+
+        _log.LogInformation("Invoice {Code} cancelled", inv.InvoiceCode);
         return (await GetByIdAsync(id))!;
     }
 
@@ -382,7 +425,7 @@ public class InvoiceService : IInvoiceService
         if (inv.Status == InvoiceStatus.Paid || inv.paidAmound >= inv.Total)
             throw new InvalidOperationException("Invoice is already fully paid.");
 
-        if (inv.Status is InvoiceStatus.Draft or InvoiceStatus.PendingSignature or InvoiceStatus.Signed or InvoiceStatus.SignatureFailed)
+        if (inv.Status is InvoiceStatus.Draft or InvoiceStatus.PendingSignature or InvoiceStatus.Signed or InvoiceStatus.SignatureFailed or InvoiceStatus.Cancelled)
             throw new InvalidOperationException("Complete signing and send the invoice to the client before recording payment.");
 
         if (!inv.SignedAt.HasValue && string.IsNullOrWhiteSpace(inv.SignedPdfUrl))

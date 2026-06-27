@@ -11,6 +11,8 @@ export {
   getInvoices,
   getInvoice,
   createInvoice,
+  updateInvoice,
+  cancelInvoice,
   markInvoicePaid,
   markInvoiceSent,
   getInvoiceZohoSignStatus,

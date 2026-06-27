@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Pencil } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { C, R } from "../../shared/theme";
 import { CURRENCIES, EVENTS, PAY_TERMS } from "../../shared/constants";
@@ -36,6 +37,7 @@ export default function InvoiceEditPage() {
   const [purchaseOrder, setPurchaseOrder] = useState("");
   const [notes, setNotes] = useState("");
   const [clientName, setClientName] = useState("");
+  const [invoiceCode, setInvoiceCode] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [taxLoading, setTaxLoading] = useState(true);
@@ -67,6 +69,7 @@ export default function InvoiceEditPage() {
           return;
         }
         setClientName(inv.cName);
+        setInvoiceCode(inv.id);
         setCurrency(inv.currency);
         setTaxConfigId(inv.taxConfigId ?? "");
         setInvoiceDate(inv.invDate || new Date().toISOString().split("T")[0]);
@@ -128,10 +131,14 @@ export default function InvoiceEditPage() {
     (it) => it.description.trim() && it.quantity > 0 && it.rate >= 0
   );
   const hasValidLineItems = validLineItems.length > 0;
-  const canSubmit = !!currency.trim() && !!invoiceDate && hasValidLineItems;
+  const canSubmit = !!invoiceCode.trim() && !!currency.trim() && !!invoiceDate && hasValidLineItems;
 
   const handleSubmit = async () => {
     setError(null);
+    if (!invoiceCode.trim()) {
+      setError("Invoice number is required");
+      return;
+    }
     if (!currency.trim()) {
       setError("Currency is required");
       return;
@@ -150,6 +157,7 @@ export default function InvoiceEditPage() {
     setError(null);
     try {
       await updateInvoice(id, {
+        invoiceCode: invoiceCode.trim(),
         currency,
         lineItems: validLineItems.map((it) => ({
           description: it.description.trim(),
@@ -205,8 +213,23 @@ export default function InvoiceEditPage() {
   return (
     <PageShell
       header={
-        <h1 style={{ fontSize: "20px", fontWeight: 700, margin: 0 }}>
-          <span style={{ color: C.invoice }}>✏️</span> Edit invoice
+        <h1
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            color: C.text,
+            fontFamily: "'Manrope', sans-serif",
+            fontSize: narrow ? "18px" : "24px",
+            fontWeight: 600,
+            letterSpacing: "-0.02em",
+            lineHeight: "100%",
+            margin: 0,
+            marginBottom: "16px",
+          }}
+        >
+          <Pencil size={narrow ? 18 : 22} color={C.text} strokeWidth={1.8} />
+          Edit invoice
         </h1>
       }
     >
@@ -217,7 +240,7 @@ export default function InvoiceEditPage() {
           padding: "20px",
           border: `1px solid ${C.border}`,
           width: "100%",
-          boxSizing: "border-box",
+          boxSizing: "border-box"
         }}
       >
         <div style={gridStyle}>
@@ -226,6 +249,14 @@ export default function InvoiceEditPage() {
             value={clientName}
             disabled
             ph="Client (read-only)"
+            style={cellStyle}
+          />
+          <Inp
+            label="Invoice number"
+            value={invoiceCode}
+            onChange={(e) => setInvoiceCode(e.target.value)}
+            req
+            ph="Invoice #"
             style={cellStyle}
           />
           <Inp

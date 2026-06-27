@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, type KeyboardEvent, type MouseEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
+  Ban,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -37,6 +38,7 @@ import {
   getInvoiceCounts,
   getInvoices,
   markInvoiceSent,
+  cancelInvoice,
   syncInvoiceSignedPdf,
   invoiceStatusForApi,
 } from "../../shared/api/invoice";
@@ -56,6 +58,7 @@ const INVOICE_STATUS_FILTER_OPTIONS: InvoiceStatusFilterOption[] = [
   { label: "Pending signature", value: INV_S.PENDING_SIGNATURE },
   { label: "Signed", value: INV_S.SIGNED },
   { label: "Signature failed", value: INV_S.SIGNATURE_FAILED },
+  { label: "Cancelled", value: INV_S.CANCELLED },
 ];
 
 const INVOICE_TAB_PRIMARY_VALUES = ["all", INV_S.DRAFT, INV_S.SENT, INV_S.PAID];
@@ -85,6 +88,8 @@ export default function InvoicesPage() {
   const [syncLoadingId, setSyncLoadingId] = useState<string | null>(null);
   const [zohoSignConfirm, setZohoSignConfirm] = useState<Invoice | null>(null);
   const [zohoSignLoading, setZohoSignLoading] = useState(false);
+  const [cancelConfirm, setCancelConfirm] = useState<Invoice | null>(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -254,6 +259,23 @@ export default function InvoicesPage() {
     }
   };
 
+  const handleConfirmCancel = async () => {
+    const inv = cancelConfirm;
+    if (!inv?.apiId) return;
+    setCancelLoading(true);
+    try {
+      await cancelInvoice(inv.apiId);
+      t("Invoice cancelled");
+      setCancelConfirm(null);
+      setRefreshKey((k) => k + 1);
+      window.dispatchEvent(new CustomEvent(EVENTS.INVOICES_REFRESH));
+    } catch (err: unknown) {
+      t(err instanceof Error ? err.message : "Could not cancel invoice", "error");
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
   const handleListDownload = async (inv: Invoice, e: MouseEvent) => {
     e.stopPropagation();
     setDownloadingId(inv.id);
@@ -273,7 +295,7 @@ export default function InvoicesPage() {
   const invoiceBalanceDue = (inv: Invoice) => Math.max(inv.total - (inv.paidAmound ?? 0), 0);
 
   const isPastDueUnpaid = (inv: Invoice) => {
-    if (invoiceBalanceDue(inv) <= 0.005 || inv.status === INV_S.PAID) return false;
+    if (invoiceBalanceDue(inv) <= 0.005 || inv.status === INV_S.PAID || inv.status === INV_S.CANCELLED) return false;
     const days = daysOverdueFromDueYmd(inv.due);
     return days != null && days >= 1;
   };
@@ -286,11 +308,13 @@ export default function InvoicesPage() {
   const showMarkPaidOnRow = (inv: Invoice) =>
     invoiceBalanceDue(inv) > 0.005 &&
     inv.status !== INV_S.DRAFT &&
+    inv.status !== INV_S.CANCELLED &&
     inv.status !== INV_S.PENDING_SIGNATURE &&
     inv.status !== INV_S.SIGNATURE_FAILED &&
     inv.status !== INV_S.SIGNED;
 
   const canEditInvoice = (inv: Invoice) => inv.status === INV_S.DRAFT && !!inv.apiId;
+  const canCancelInvoice = (inv: Invoice) => inv.status === INV_S.DRAFT && !!inv.apiId;
 
   const renderWorkflowAction = (inv: Invoice) => {
     if (!canSendInvoice) return null;
@@ -475,6 +499,20 @@ export default function InvoicesPage() {
                   navigate(`/invoices/edit/${inv.apiId}`);
                 }}
               />
+            )}
+            {canCancelInvoice(inv) && (
+              <Btn
+                sm
+                v="ghost"
+                sx={workflowTableActionStyle(C.danger, C.dangerBg)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCancelConfirm(inv);
+                }}
+              >
+                <Ban size={13} strokeWidth={1.9} />
+                Cancel
+              </Btn>
             )}
             <button
               type="button"
@@ -794,6 +832,27 @@ export default function InvoicesPage() {
             disabled={zohoSignLoading || !activeOrg?.zohoSignEmail}
           >
             {zohoSignLoading ? "Sending…" : "Send for signing"}
+          </Btn>
+        </div>
+      </Mdl>
+      <Mdl
+        open={!!cancelConfirm}
+        close={() => {
+          if (!cancelLoading) setCancelConfirm(null);
+        }}
+        title={`Cancel invoice ${cancelConfirm?.id ?? ""}?`}
+        zIndex={INVOICE_MODAL_Z_INDEX + 50}
+      >
+        <p style={{ fontSize: "13px", color: C.primary, margin: "0 0 16px", lineHeight: 1.5 }}>
+          This marks the invoice as <strong>Cancelled</strong>. It cannot be edited, sent for signing, or sent to the
+          client afterward.
+        </p>
+        <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", flexWrap: "wrap" }}>
+          <Btn v="secondary" onClick={() => setCancelConfirm(null)} disabled={cancelLoading}>
+            Keep invoice
+          </Btn>
+          <Btn v="danger" onClick={() => void handleConfirmCancel()} disabled={cancelLoading}>
+            {cancelLoading ? "Cancelling…" : "Yes, cancel invoice"}
           </Btn>
         </div>
       </Mdl>

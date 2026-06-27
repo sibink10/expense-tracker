@@ -299,6 +299,7 @@ const _b: Record<string, [string, string]> = {};
   [INV_S.PENDING_SIGNATURE, "#E0F2FE", "#0369A1"],
   [INV_S.SIGNED, "#DCFCE7", "#166534"],
   [INV_S.SIGNATURE_FAILED, "#FEE2E2", "#991B1B"],
+  [INV_S.CANCELLED, "#F1EFE8", "#5F5E5A"],
 ].forEach(([k, bg, fg]) => { _b[k as string] = [bg as string, fg as string]; });
 const BADGE_MAP = _b;
 const BADGE_LABELS: Record<string, string> = {

@@ -27,7 +27,7 @@ public static class InvoiceStatusRules
 
     /// <summary>Past due with open balance (any non-paid status). Used for list badge danger styling on pre-send rows.</summary>
     public static bool IsPastDueUnpaid(Invoice inv, DateTime utcTodayDate) =>
-        inv.Status != InvoiceStatus.Paid
+        inv.Status is not (InvoiceStatus.Paid or InvoiceStatus.Cancelled)
         && HasUnpaidBalance(inv)
         && inv.DueDate < utcTodayDate;
 
@@ -39,7 +39,7 @@ public static class InvoiceStatusRules
     /// <summary>Display status for API DTOs: Overdue only when receivable and past due; signing/draft keep stored status.</summary>
     public static string GetDisplayStatus(Invoice inv, DateTime utcTodayDate)
     {
-        if (IsSigningWorkflowStatus(inv.Status) || inv.Status == InvoiceStatus.Draft)
+        if (IsSigningWorkflowStatus(inv.Status) || inv.Status is InvoiceStatus.Draft or InvoiceStatus.Cancelled)
             return inv.Status.ToString();
 
         if (IsReceivableAndOverdue(inv, utcTodayDate))

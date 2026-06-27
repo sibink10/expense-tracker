@@ -130,7 +130,7 @@ export default function AdminSettingsPage() {
     border: "none",
     padding: "20px",
     background: "#fff",
-    boxShadow: "-5px -2px 108.5px 0px #00024914",
+    boxShadow: "rgba(15, 23, 42, 0.06) 0px 1px 4px",
     display: "flex",
     flexDirection: "column",
     gap: "12px",
@@ -207,6 +207,7 @@ export default function AdminSettingsPage() {
             lineHeight: "100%",
             letterSpacing: "-0.02em",
             color: "#242424",
+            marginBottom: "16px",
           }}
         >
           <Settings size={24} color="#242424" strokeWidth={1.9} /> Settings

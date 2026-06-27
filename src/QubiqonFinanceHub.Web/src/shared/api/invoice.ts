@@ -92,6 +92,7 @@ const STATUS_MAP: Record<string, string> = {
   PendingSignature: INV_S.PENDING_SIGNATURE,
   Signed: INV_S.SIGNED,
   SignatureFailed: INV_S.SIGNATURE_FAILED,
+  Cancelled: INV_S.CANCELLED,
 };
 
 function mapStatus(s: string): string {
@@ -280,6 +281,7 @@ export async function createInvoice(payload: CreateInvoicePayload): Promise<unkn
 }
 
 export interface UpdateInvoicePayload {
+  invoiceCode: string;
   currency: string;
   lineItems: CreateInvoiceLineItem[];
   taxConfigId: string | null;
@@ -301,6 +303,7 @@ export async function getInvoice(id: string): Promise<Invoice | null> {
 
 export async function updateInvoice(id: string, payload: UpdateInvoicePayload): Promise<unknown> {
   const { data } = await apiClient.put(`/invoices/${id}`, {
+    invoiceCode: payload.invoiceCode.trim(),
     currency: payload.currency,
     lineItems: payload.lineItems.map((li) => ({
       description: li.description,
@@ -317,6 +320,11 @@ export async function updateInvoice(id: string, payload: UpdateInvoicePayload): 
     notes: payload.notes || null,
   });
   return data;
+}
+
+export async function cancelInvoice(id: string): Promise<Invoice> {
+  const { data } = await apiClient.post<ApiInvoice>(`/invoices/${id}/cancel`);
+  return mapApiInvoiceToApp(data);
 }
 
 export interface MarkInvoicePaidPayload {

@@ -11,6 +11,7 @@ public class InvoicesController(IInvoiceService svc) : ControllerBase
 {
     [HttpPost] public async Task<IActionResult> Create([FromBody] CreateInvoiceRequest dto) => Ok(await svc.CreateAsync(dto));
     [HttpPut("{id:guid}")] public async Task<IActionResult> Update(Guid id, [FromBody] UpdateInvoiceRequest dto) => Ok(await svc.UpdateAsync(id, dto));
+    [HttpPost("{id:guid}/cancel")] public async Task<IActionResult> Cancel(Guid id) => Ok(await svc.CancelAsync(id));
     [HttpGet("{id:guid}")] public async Task<IActionResult> GetById(Guid id) { var r = await svc.GetByIdAsync(id); return r != null ? Ok(r) : NotFound(); }
     [HttpGet, Authorize(Roles = "Approver,Finance,Admin")]
     public async Task<IActionResult> List([FromQuery] FilterParams f) => Ok(await svc.ListAsync(f));

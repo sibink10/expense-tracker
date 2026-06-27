@@ -55,6 +55,7 @@ export const INV_S = {
   PENDING_SIGNATURE: "PendingSignature",
   SIGNED: "Signed",
   SIGNATURE_FAILED: "SignatureFailed",
+  CANCELLED: "Cancelled",
 } as const;
 
 /** Vendor bill: when finance should pay (stored as immediate | later). */

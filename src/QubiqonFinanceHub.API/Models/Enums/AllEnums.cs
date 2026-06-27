@@ -23,7 +23,8 @@ public enum InvoiceStatus
     Overdue = 5,
     PendingSignature = 6,
     Signed = 7,
-    SignatureFailed = 8
+    SignatureFailed = 8,
+    Cancelled = 9
 }
 
 public enum PaymentMethod { NEFT = 0, RTGS = 1, IMPS = 2, UPI = 3, Cheque = 4, BankTransfer = 5, Wire = 6 }

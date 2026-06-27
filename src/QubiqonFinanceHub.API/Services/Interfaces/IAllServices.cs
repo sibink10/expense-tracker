@@ -105,6 +105,7 @@ public interface IInvoiceService
 {
     Task<InvoiceDto> CreateAsync(CreateInvoiceRequest dto);
     Task<InvoiceDto> UpdateAsync(Guid id, UpdateInvoiceRequest dto);
+    Task<InvoiceDto> CancelAsync(Guid id);
     Task<InvoiceDto?> GetByIdAsync(Guid id);
     Task<PaginatedResult<InvoiceDto>> ListAsync(FilterParams filters);
     Task<InvoiceStatusCountsDto> GetStatusCountsAsync();

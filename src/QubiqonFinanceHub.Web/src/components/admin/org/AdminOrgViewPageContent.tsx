@@ -69,6 +69,7 @@ export default function AdminOrgViewPage() {
               lineHeight: "100%",
               letterSpacing: "-0.02em",
               color: "#242424",
+              marginBottom: "16px",
             }}
           >
             <Building2 size={24} color="#242424" strokeWidth={1.9} /> Organizations
@@ -107,7 +108,7 @@ export default function AdminOrgViewPage() {
                     border: "none",
                     padding: "14px 16px 12px",
                     background: "#fff",
-                    boxShadow: "-5px -2px 108.5px 0px #00024914",
+                    boxShadow: "rgba(15, 23, 42, 0.06) 0px 1px 4px",
                     display: "flex",
                     flexDirection: "column",
                     gap: "10px",
