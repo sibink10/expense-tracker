@@ -18,7 +18,6 @@ public class ClientService : IClientService
 
     public async Task<ClientFormOptionsDto> GetFormOptionsAsync()
     {
-        var orgId = await _tenant.GetCurrentOrganizationId();
         var gstTreatments = await _db.GstTreatments.AsNoTracking()
             .Where(x => x.IsActive)
             .OrderBy(x => x.Name)
@@ -46,7 +45,7 @@ public class ClientService : IClientService
             .ToListAsync();
 
         var paymentTerms = await _db.PaymentTerms.AsNoTracking()
-            .Where(x => x.OrganizationId == orgId && x.IsActive)
+            .Where(x => x.IsActive)
             .OrderBy(x => x.Name)
             .Select(x => new PaymentTermOptionDto(x.Id, x.Name, x.ShortName, x.Days, null))
             .ToListAsync();
@@ -314,7 +313,7 @@ public class ClientService : IClientService
         if (paymentTermsId.HasValue)
         {
             var ok = await _db.PaymentTerms.AnyAsync(x =>
-                x.Id == paymentTermsId.Value && x.OrganizationId == orgId && x.IsActive);
+                x.Id == paymentTermsId.Value && x.IsActive);
             if (!ok) throw new InvalidOperationException("Invalid payment terms.");
         }
     }

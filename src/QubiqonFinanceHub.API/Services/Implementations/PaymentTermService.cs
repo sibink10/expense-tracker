@@ -19,8 +19,7 @@ public class PaymentTermService : IPaymentTermService
 
     public async Task<PaginatedResult<PaymentTermDto>> ListAsync(FilterParams f)
     {
-        var orgId = await _tenant.GetCurrentOrganizationId();
-        var q = _db.PaymentTerms.AsNoTracking().Where(x => x.OrganizationId == orgId);
+        var q = _db.PaymentTerms.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(f.Search))
         {
@@ -40,9 +39,7 @@ public class PaymentTermService : IPaymentTermService
 
     public async Task<List<PaymentTermDto>> GetAllAsync()
     {
-        var orgId = await _tenant.GetCurrentOrganizationId();
         return await _db.PaymentTerms
-            .Where(x => x.OrganizationId == orgId)
             .OrderBy(x => x.Days)
             .ThenBy(x => x.Name)
             .Select(x => ToDto(x))
@@ -51,8 +48,7 @@ public class PaymentTermService : IPaymentTermService
 
     public async Task<PaymentTermDto?> GetByIdAsync(Guid id)
     {
-        var orgId = await _tenant.GetCurrentOrganizationId();
-        var entity = await _db.PaymentTerms.FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId);
+        var entity = await _db.PaymentTerms.FirstOrDefaultAsync(x => x.Id == id);
         return entity == null ? null : ToDto(entity);
     }
 
@@ -67,7 +63,6 @@ public class PaymentTermService : IPaymentTermService
         if (dto.Days < 0) throw new InvalidOperationException("Days must be 0 or more.");
 
         var exists = await _db.PaymentTerms.AnyAsync(x =>
-            x.OrganizationId == orgId &&
             (x.Name == name || x.ShortName == shortName) &&
             x.IsActive);
         if (exists) throw new InvalidOperationException("Payment term already exists.");
@@ -91,8 +86,7 @@ public class PaymentTermService : IPaymentTermService
 
     public async Task<PaymentTermDto> UpdateAsync(Guid id, UpdatePaymentTermRequest dto)
     {
-        var orgId = await _tenant.GetCurrentOrganizationId();
-        var entity = await _db.PaymentTerms.FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+        var entity = await _db.PaymentTerms.FirstOrDefaultAsync(x => x.Id == id)
             ?? throw new KeyNotFoundException("Payment term not found.");
 
         var name = dto.Name.Trim();
@@ -102,7 +96,6 @@ public class PaymentTermService : IPaymentTermService
         if (dto.Days < 0) throw new InvalidOperationException("Days must be 0 or more.");
 
         var exists = await _db.PaymentTerms.AnyAsync(x =>
-            x.OrganizationId == orgId &&
             x.Id != id &&
             (x.Name == name || x.ShortName == shortName) &&
             x.IsActive);
@@ -120,8 +113,7 @@ public class PaymentTermService : IPaymentTermService
 
     public async Task DeleteAsync(Guid id)
     {
-        var orgId = await _tenant.GetCurrentOrganizationId();
-        var entity = await _db.PaymentTerms.FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+        var entity = await _db.PaymentTerms.FirstOrDefaultAsync(x => x.Id == id)
             ?? throw new KeyNotFoundException("Payment term not found.");
 
         entity.IsActive = false;
@@ -131,8 +123,7 @@ public class PaymentTermService : IPaymentTermService
 
     public async Task<PaymentTermDto> ToggleActiveAsync(Guid id)
     {
-        var orgId = await _tenant.GetCurrentOrganizationId();
-        var entity = await _db.PaymentTerms.FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
+        var entity = await _db.PaymentTerms.FirstOrDefaultAsync(x => x.Id == id)
             ?? throw new KeyNotFoundException("Payment term not found.");
 
         entity.IsActive = !entity.IsActive;
