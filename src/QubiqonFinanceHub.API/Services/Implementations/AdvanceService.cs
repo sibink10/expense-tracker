@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Constants;
 using QubiqonFinanceHub.API.Models.Entities;
 using QubiqonFinanceHub.API.Models.Enums;
+using QubiqonFinanceHub.API.Services;
 using QubiqonFinanceHub.API.Services.Helpers;
 using QubiqonFinanceHub.API.Services.Interfaces;
 
@@ -16,9 +18,10 @@ public class AdvanceService : IAdvanceService
     private readonly ICodeGeneratorService _codeGen;
     private readonly IEmailService _email;
     private readonly ILogger<AdvanceService> _log;
+    private readonly EmailOptions _emailOptions;
 
-    public AdvanceService(FinanceHubDbContext db, ITenantService tenant, ICodeGeneratorService codeGen, IEmailService email, ILogger<AdvanceService> log)
-    { _db = db; _tenant = tenant; _codeGen = codeGen; _email = email; _log = log; }
+    public AdvanceService(FinanceHubDbContext db, ITenantService tenant, ICodeGeneratorService codeGen, IEmailService email, ILogger<AdvanceService> log, IOptions<EmailOptions> emailOptions)
+    { _db = db; _tenant = tenant; _codeGen = codeGen; _email = email; _log = log; _emailOptions = emailOptions.Value; }
 
     public async Task<AdvanceDto> CreateAsync(CreateAdvanceRequest dto)
     {
@@ -61,17 +64,8 @@ public class AdvanceService : IAdvanceService
         _db.AdvancePayments.Add(advance);
         await _db.SaveChangesAsync();
 
-        var reviewers = await _db.Employees
-            .Where(e => e.OrganizationId == orgId &&
-                        e.IsActive &&
-                        !e.IsDelete &&
-                        !string.IsNullOrWhiteSpace(e.Email) &&
-                        e.Role == UserRole.Approver)
-            .Select(e => e.Email)
-            .Distinct()
-            .ToListAsync();
-
-        if (reviewers.Count > 0)
+        var toEmail = _emailOptions.RequestNotificationTo?.Trim();
+        if (!string.IsNullOrWhiteSpace(toEmail))
         {
             await _email.SendNotificationAsync(
                 Constants.EmailTemplateKeys.AdvanceSubmitted,
@@ -89,7 +83,7 @@ public class AdvanceService : IAdvanceService
                     ["submission_notes"] = "",
                     ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
                 },
-                string.Join(",", reviewers));
+                toEmail);
         }
 
         _log.LogInformation("Advance {Code} created by {Employee}", code, emp.FullName);
@@ -405,17 +399,8 @@ public class AdvanceService : IAdvanceService
 
         if (wasRejected)
         {
-            var reviewers = await _db.Employees
-                .Where(e => e.OrganizationId == orgId &&
-                            e.IsActive &&
-                            !e.IsDelete &&
-                            !string.IsNullOrWhiteSpace(e.Email) &&
-                            e.Role == UserRole.Approver)
-                .Select(e => e.Email)
-                .Distinct()
-                .ToListAsync();
-
-            if (reviewers.Count > 0)
+            var resubmitToEmail = _emailOptions.RequestNotificationTo?.Trim();
+            if (!string.IsNullOrWhiteSpace(resubmitToEmail))
             {
                 await _email.SendNotificationAsync(
                     Constants.EmailTemplateKeys.AdvanceSubmitted,
@@ -433,7 +418,7 @@ public class AdvanceService : IAdvanceService
                         ["submission_notes"] = "",
                         ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
                     },
-                    string.Join(",", reviewers));
+                    resubmitToEmail);
             }
         }
 

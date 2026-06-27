@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Constants;
 using QubiqonFinanceHub.API.Models.Entities;
 using QubiqonFinanceHub.API.Models.Enums;
+using QubiqonFinanceHub.API.Services;
 using QubiqonFinanceHub.API.Services.Helpers;
 using QubiqonFinanceHub.API.Services.Interfaces;
 
@@ -17,11 +19,13 @@ public class ExpenseService : IExpenseService
     private readonly IEmailService _email;
     private readonly ILogger<ExpenseService> _log;
     private readonly IStorageService _storage;
+    private readonly EmailOptions _emailOptions;
 
-    public ExpenseService(FinanceHubDbContext db, ITenantService tenant, ICodeGeneratorService codeGen, IEmailService email, ILogger<ExpenseService> log, IStorageService storage)
+    public ExpenseService(FinanceHubDbContext db, ITenantService tenant, ICodeGeneratorService codeGen, IEmailService email, ILogger<ExpenseService> log, IStorageService storage, IOptions<EmailOptions> emailOptions)
     {
         _db = db; _tenant = tenant; _codeGen = codeGen; _email = email; _log = log;
         _storage = storage;
+        _emailOptions = emailOptions.Value;
     }
 
     public async Task<ExpenseDto> CreateAsync(CreateExpenseRequest dto)
@@ -72,17 +76,8 @@ public class ExpenseService : IExpenseService
         _db.ExpenseRequests.Add(expense);
         await _db.SaveChangesAsync();
 
-        var reviewers = await _db.Employees
-            .Where(e => e.OrganizationId == orgId &&
-                        e.IsActive &&
-                        !e.IsDelete &&
-                        !string.IsNullOrWhiteSpace(e.Email) &&
-                        e.Role == UserRole.Approver)
-            .Select(e => e.Email)
-            .Distinct()
-            .ToListAsync();
-
-        if (reviewers.Count > 0)
+        var toEmail = _emailOptions.RequestNotificationTo?.Trim();
+        if (!string.IsNullOrWhiteSpace(toEmail))
         {
             await _email.SendNotificationAsync(Constants.EmailTemplateKeys.ExpenseSubmitted,
                 new Dictionary<string, string>
@@ -99,7 +94,7 @@ public class ExpenseService : IExpenseService
                     ["submission_notes"] = "",
                     ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
                 },
-                string.Join(",", reviewers));
+                toEmail);
         }
 
         _log.LogInformation("Expense {Code} created by {Employee}", code, currentEmp.FullName);
@@ -248,20 +243,11 @@ public class ExpenseService : IExpenseService
 
         await _db.SaveChangesAsync();
 
-        // Rejected expense edited and resubmitted: notify approvers again.
+        // Rejected expense edited and resubmitted: notify bills inbox again.
         if (wasRejected)
         {
-            var reviewers = await _db.Employees
-                .Where(e => e.OrganizationId == orgId &&
-                            e.IsActive &&
-                            !e.IsDelete &&
-                            !string.IsNullOrWhiteSpace(e.Email) &&
-                            e.Role == UserRole.Approver)
-                .Select(e => e.Email)
-                .Distinct()
-                .ToListAsync();
-
-            if (reviewers.Count > 0)
+            var resubmitToEmail = _emailOptions.RequestNotificationTo?.Trim();
+            if (!string.IsNullOrWhiteSpace(resubmitToEmail))
             {
                 var targetEmp = await _db.Employees
                     .AsNoTracking()
@@ -282,7 +268,7 @@ public class ExpenseService : IExpenseService
                         ["submission_notes"] = "Resubmitted after edits.",
                         ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
                     },
-                    string.Join(",", reviewers));
+                    resubmitToEmail);
             }
         }
 

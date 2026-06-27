@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Constants;
 using QubiqonFinanceHub.API.Models.Entities;
 using QubiqonFinanceHub.API.Models.Enums;
+using QubiqonFinanceHub.API.Services;
 using QubiqonFinanceHub.API.Services.Interfaces;
 
 namespace QubiqonFinanceHub.API.Services.Implementations;
@@ -15,14 +17,16 @@ public class ForecastService : IForecastService
     private readonly IEmailService _email;
     private readonly IStorageService _storage;
     private readonly ILogger<ForecastService> _log;
+    private readonly EmailOptions _emailOptions;
 
-    public ForecastService(FinanceHubDbContext db, ITenantService tenant, IEmailService email, IStorageService storage, ILogger<ForecastService> log)
+    public ForecastService(FinanceHubDbContext db, ITenantService tenant, IEmailService email, IStorageService storage, ILogger<ForecastService> log, IOptions<EmailOptions> emailOptions)
     {
         _db = db;
         _tenant = tenant;
         _email = email;
         _storage = storage;
         _log = log;
+        _emailOptions = emailOptions.Value;
     }
 
     public async Task<ForecastDto> CreateAsync(CreateForecastRequest dto)
@@ -64,10 +68,10 @@ public class ForecastService : IForecastService
         _db.Forecasts.Add(forecast);
         await _db.SaveChangesAsync();
 
-        var reviewers = await GetReviewerEmailsAsync(orgId, UserRole.Approver);
-        if (reviewers.Count > 0)
+        var toEmail = _emailOptions.RequestNotificationTo?.Trim();
+        if (!string.IsNullOrWhiteSpace(toEmail))
         {
-            await _email.SendNotificationAsync(Constants.EmailTemplateKeys.ForecastSubmitted, BuildEmailVars(forecast, emp, "approve"), string.Join(",", reviewers));
+            await _email.SendNotificationAsync(Constants.EmailTemplateKeys.ForecastSubmitted, BuildEmailVars(forecast, emp, "approve"), toEmail);
         }
 
         _log.LogInformation("Forecast {ForecastId} created by {Employee}", forecast.Id, emp.FullName);
@@ -120,10 +124,10 @@ public class ForecastService : IForecastService
 
         if (wasRejected)
         {
-            var reviewers = await GetReviewerEmailsAsync(orgId, UserRole.Approver);
-            if (reviewers.Count > 0)
+            var resubmitToEmail = _emailOptions.RequestNotificationTo?.Trim();
+            if (!string.IsNullOrWhiteSpace(resubmitToEmail))
             {
-                await _email.SendNotificationAsync(Constants.EmailTemplateKeys.ForecastSubmitted, BuildEmailVars(forecast, emp, "approve"), string.Join(",", reviewers));
+                await _email.SendNotificationAsync(Constants.EmailTemplateKeys.ForecastSubmitted, BuildEmailVars(forecast, emp, "approve"), resubmitToEmail);
             }
         }
 
@@ -212,10 +216,10 @@ public class ForecastService : IForecastService
         });
         await _db.SaveChangesAsync();
 
-        var reviewers = await GetReviewerEmailsAsync(orgId, UserRole.Approver);
-        if (reviewers.Count > 0)
+        var toEmail = _emailOptions.RequestNotificationTo?.Trim();
+        if (!string.IsNullOrWhiteSpace(toEmail))
         {
-            await _email.SendNotificationAsync(Constants.EmailTemplateKeys.ForecastSubmitted, BuildEmailVars(forecast, emp, "approve"), string.Join(",", reviewers));
+            await _email.SendNotificationAsync(Constants.EmailTemplateKeys.ForecastSubmitted, BuildEmailVars(forecast, emp, "approve"), toEmail);
         }
 
         return (await GetByIdAsync(id))!;
@@ -389,13 +393,6 @@ public class ForecastService : IForecastService
 
         return documents;
     }
-
-    private async Task<List<string>> GetReviewerEmailsAsync(Guid orgId, UserRole role) =>
-        await _db.Employees
-            .Where(e => e.OrganizationId == orgId && e.IsActive && !e.IsDelete && !string.IsNullOrWhiteSpace(e.Email) && e.Role == role)
-            .Select(e => e.Email)
-            .Distinct()
-            .ToListAsync();
 
     private static Dictionary<string, string> BuildEmailVars(Forecast forecast, Employee actor, string linkType) => new()
     {

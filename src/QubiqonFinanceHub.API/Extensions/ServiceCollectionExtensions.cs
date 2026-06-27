@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using QubiqonFinanceHub.API.Auth.Finance;
 using QubiqonFinanceHub.API.Auth.Shared;
 using QubiqonFinanceHub.API.Data;
+using QubiqonFinanceHub.API.Services;
 using QubiqonFinanceHub.API.Services.Implementations;
 using QubiqonFinanceHub.API.Services.Interfaces;
 using QubiqonFinanceHub.API.Services.Pdf;
@@ -22,6 +23,7 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient("GraphClient");
         services.AddHttpClient("ZohoSignClient");
         services.Configure<ZohoOptions>(config.GetSection(ZohoOptions.SectionName));
+        services.Configure<EmailOptions>(config.GetSection(EmailOptions.SectionName));
         services.AddScoped<IZohoService, ZohoService>();
         services.AddScoped<ITenantService, TenantService>();
         services.AddScoped<ICodeGeneratorService, CodeGeneratorService>();
