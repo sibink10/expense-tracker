@@ -95,7 +95,7 @@ export default function AddExpensePage() {
       setConfirmOpen(false);
       setEmail({ to: "Approvers", subj: `New expense request from ${displayName}` });
       t("Expense submitted");
-      navigate("/expenses");
+      navigate("/requests/expenses");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to submit expense");
     } finally {
