@@ -18,6 +18,22 @@
       }
     },
     {
+      "label": "Build & Deploy (akumen production)",
+      "type": "shell",
+      "command": "npm run build && npx @azure/static-web-apps-cli deploy ./dist --deployment-token 7721d09307ce10ec55f746f4856ae28cad8eda8b6a604793a11fce599042902807-9d7e5f5b-bac1-486e-8cdb-43485c5089b1003220608536ac03 --env production",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
       "label": "Build & Deploy (stage branch)",
       "type": "shell",
       "command": "npm run build:stage && npx @azure/static-web-apps-cli deploy ./dist --deployment-token 905f1cad58040984dd8a15634cb3874f92c0fb72d46ab11b57bd6c74b510a65507-ebce4375-999c-4251-b723-1fa90034acf500030150b41c2f00 --env production",

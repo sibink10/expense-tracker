@@ -58,4 +58,23 @@
     <PackageReference Include="Humanizer" Version="2.14.1" />
   </ItemGroup>
 
+  <!-- Optional org-specific appsettings swap at publish (set EnableAppSettingsSwap in publish profile). -->
+  <ItemGroup>
+    <Content Update="appsettings.akumen.json">
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+    </Content>
+    <Content Update="appsettings.akumen.example.json">
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+  <Target Name="SwapAppSettingsOnPublish" AfterTargets="ComputeFilesToPublish" Condition="'$(EnableAppSettingsSwap)' == 'true' and '$(AppSettingsSourceFile)' != ''">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(ResolvedFileToPublish.RelativePath)' == 'appsettings.json' OR '%(ResolvedFileToPublish.RelativePath)' == '$(AppSettingsSourceFile)'" />
+      <ResolvedFileToPublish Include="$(MSBuildProjectDirectory)\$(AppSettingsSourceFile)">
+        <RelativePath>appsettings.json</RelativePath>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+
 </Project>
