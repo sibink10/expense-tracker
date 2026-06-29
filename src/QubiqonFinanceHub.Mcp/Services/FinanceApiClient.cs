@@ -21,20 +21,57 @@ public class FinanceApiClient(
     IMemoryCache cache)
 {
     private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions CamelCaseJson =
+        new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
     /// <summary>GET a Finance API path (relative to the configured base, e.g. "expenses/my") and return the raw JSON body.</summary>
     public async Task<string> GetJsonAsync(string path, CancellationToken ct)
     {
-        var token = await GetFinanceTokenAsync(ct);
-
         using var req = new HttpRequestMessage(HttpMethod.Get, path);
+        return await SendAsync(req, ct);
+    }
+
+    /// <summary>POST a JSON body (camelCase) to a Finance API path and return the raw JSON response body.</summary>
+    public async Task<string> PostJsonAsync(string path, object body, CancellationToken ct)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post, path)
+        {
+            Content = new StringContent(
+                JsonSerializer.Serialize(body, CamelCaseJson),
+                System.Text.Encoding.UTF8,
+                "application/json"),
+        };
+        return await SendAsync(req, ct);
+    }
+
+    /// <summary>
+    /// POST a multipart/form-data body to a Finance API path (for endpoints bound with [FromForm])
+    /// and return the raw JSON response body. Null/empty field values are omitted.
+    /// </summary>
+    public async Task<string> PostFormAsync(string path, IReadOnlyDictionary<string, string?> fields, CancellationToken ct)
+    {
+        var content = new MultipartFormDataContent();
+        foreach (var (key, value) in fields)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+                content.Add(new StringContent(value), key);
+        }
+
+        using var req = new HttpRequestMessage(HttpMethod.Post, path) { Content = content };
+        return await SendAsync(req, ct);
+    }
+
+    /// <summary>Attaches the Finance JWT, sends the request, and returns the body or throws on non-2xx.</summary>
+    private async Task<string> SendAsync(HttpRequestMessage req, CancellationToken ct)
+    {
+        var token = await GetFinanceTokenAsync(ct);
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         using var res = await http.SendAsync(req, ct);
         var body = await res.Content.ReadAsStringAsync(ct);
 
         if (!res.IsSuccessStatusCode)
-            throw new InvalidOperationException($"Finance API {(int)res.StatusCode} for GET {path}: {body}");
+            throw new InvalidOperationException($"Finance API {(int)res.StatusCode} for {req.Method} {req.RequestUri}: {body}");
 
         return body;
     }
