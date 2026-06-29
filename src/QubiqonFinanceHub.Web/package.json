@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "build:dev": "tsc -b && vite build --mode development",
     "build:stage": "tsc -b && vite build --mode staging",
+    "build:akumen": "tsc -b && vite build --mode akumen",
     "preview": "vite preview"
   },
   "dependencies": {

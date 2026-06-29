@@ -12,6 +12,10 @@ public class GraphApiController(IGraphApiService graphApiService) : ControllerBa
     [HttpGet("users")]
     public async Task<IActionResult> GetUsers(CancellationToken cancellationToken)
     {
+        if (!graphApiService.IsConfigured())
+            return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                new { message = "Microsoft Graph client credentials are not configured." });
+
         var users = await graphApiService.GetUsersAsync(cancellationToken);
         return Ok(users);
     }

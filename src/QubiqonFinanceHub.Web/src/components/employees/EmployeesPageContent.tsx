@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import Select, { type StylesConfig } from "react-select";
-import { ChevronLeft, ChevronRight, RefreshCw, Search, UserRoundX, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, CloudDownload, RefreshCw, Search, UserRoundX, Users } from "lucide-react";
 import { C, R, listTableBodyMarginTop, listTableCardStyle, tableIconButtonSx } from "../../shared/theme";
 import "../list-toolbar/list-toolbar.css";
 import { DeleteActionButton, EditActionButton, Empty, PageShell, Spinner, Tbl, Toggle, type TblCol } from "../ui";
 import EmployeeDeleteConfirmModal from "./EmployeeDeleteConfirmModal";
 import EmployeeFormModal from "./EmployeeFormModal";
 import { useAppContext } from "../../context/AppContext";
-import { getEmployeeRoles, getEmployees, saveEmployee, toggleEmployee, deleteEmployee, type Employee, type EmployeeRole } from "../../shared/api/employees";
+import { getEmployeeRoles, getEmployees, saveEmployee, toggleEmployee, deleteEmployee, pollEntraSyncJob, startEntraSync, type Employee, type EmployeeRole } from "../../shared/api/employees";
+import { ROLES } from "../../shared/constants";
 import { nextListSort } from "../../shared/utils";
 
 type RoleFilterOption = { value: string; label: string };
@@ -74,7 +75,7 @@ const roleFilterSelectStyles: StylesConfig<RoleFilterOption, false> = {
 };
 
 export default function EmployeesPage() {
-  const { t, user } = useAppContext();
+  const { t, user, is } = useAppContext();
   const isCurrentUser = (emp: Employee) =>
     (user.email || "").toLowerCase().trim() === (emp.email || "").toLowerCase().trim();
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -92,6 +93,8 @@ export default function EmployeesPage() {
   const [editing, setEditing] = useState<Employee | null>(null);
   const [roles, setRoles] = useState<EmployeeRole[]>([]);
   const [rolesLoading, setRolesLoading] = useState(false);
+  const [entraSyncing, setEntraSyncing] = useState(false);
+  const [entraSyncStatus, setEntraSyncStatus] = useState<string | null>(null);
   const [form, setForm] = useState({
     entraObjectId: "",
     name: "",
@@ -226,6 +229,37 @@ export default function EmployeesPage() {
       t("Failed to save employee");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleEntraSync = async () => {
+    if (entraSyncing) return;
+    setEntraSyncing(true);
+    setEntraSyncStatus("Starting sync from Microsoft Entra...");
+    try {
+      const { jobId } = await startEntraSync();
+      const job = await pollEntraSyncJob(jobId, (progress) => {
+        const total = progress.totalUsers != null ? ` / ${progress.totalUsers}` : "";
+        setEntraSyncStatus(
+          `Syncing: ${progress.processedUsers}${total} processed (${progress.created} created, ${progress.updated} updated)`
+        );
+      });
+      if (job.status === "completed") {
+        setEntraSyncStatus(
+          `Sync complete: ${job.created} created, ${job.updated} updated, ${job.skipped} skipped`
+        );
+        t(`Entra sync complete: ${job.created} created, ${job.updated} updated`);
+        load(1, search, roleFilter, sortBy, sortDesc);
+      } else {
+        setEntraSyncStatus(job.error ?? "Sync failed");
+        t(job.error ?? "Entra sync failed");
+      }
+    } catch {
+      setEntraSyncStatus("Failed to start Entra sync");
+      t("Failed to start Entra sync");
+    } finally {
+      setEntraSyncing(false);
+      setTimeout(() => setEntraSyncStatus(null), 8000);
     }
   };
 
@@ -402,7 +436,7 @@ export default function EmployeesPage() {
             aria-label="Refresh employees"
             title="Refresh employees"
             onClick={() => load(page, search, roleFilter, sortBy, sortDesc)}
-            disabled={loading}
+            disabled={loading || entraSyncing}
             style={{
               width: 32,
               height: 32,
@@ -410,8 +444,8 @@ export default function EmployeesPage() {
               borderRadius: R.control,
               background: "transparent",
               color: C.primary,
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.5 : 1,
+              cursor: loading || entraSyncing ? "not-allowed" : "pointer",
+              opacity: loading || entraSyncing ? 0.5 : 1,
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
@@ -420,7 +454,47 @@ export default function EmployeesPage() {
           >
             <RefreshCw size={20} strokeWidth={1.9} />
           </button>
+          {is(ROLES.ADMIN) && (
+            <button
+              type="button"
+              aria-label="Sync from Microsoft Entra"
+              title="Sync from Microsoft Entra"
+              onClick={() => void handleEntraSync()}
+              disabled={loading || entraSyncing}
+              style={{
+                height: 32,
+                padding: "0 12px",
+                border: `1px solid ${C.border}`,
+                borderRadius: R.control,
+                background: C.white,
+                color: C.primary,
+                cursor: loading || entraSyncing ? "not-allowed" : "pointer",
+                opacity: loading || entraSyncing ? 0.5 : 1,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 12,
+                fontWeight: 600,
+                fontFamily: "'Inter', 'Manrope', sans-serif",
+              }}
+            >
+              <CloudDownload size={16} strokeWidth={2} />
+              {entraSyncing ? "Syncing..." : "Sync from Entra"}
+            </button>
+          )}
         </div>
+        {entraSyncStatus && (
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: 12,
+              color: C.muted,
+              fontFamily: "'Inter', 'Manrope', sans-serif",
+            }}
+          >
+            {entraSyncStatus}
+          </div>
+        )}
 
         <Tbl
           cols={cols}

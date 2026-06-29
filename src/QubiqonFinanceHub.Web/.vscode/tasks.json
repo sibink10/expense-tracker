@@ -20,7 +20,7 @@
     {
       "label": "Build & Deploy (akumen production)",
       "type": "shell",
-      "command": "npm run build && npx @azure/static-web-apps-cli deploy ./dist --deployment-token 7721d09307ce10ec55f746f4856ae28cad8eda8b6a604793a11fce599042902807-9d7e5f5b-bac1-486e-8cdb-43485c5089b1003220608536ac03 --env production",
+      "command": "npm run build:akumen && npx @azure/static-web-apps-cli deploy ./dist --deployment-token 7721d09307ce10ec55f746f4856ae28cad8eda8b6a604793a11fce599042902807-9d7e5f5b-bac1-486e-8cdb-43485c5089b1003220608536ac03 --env production",
       "options": {
         "cwd": "${workspaceFolder}"
       },

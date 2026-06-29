@@ -152,9 +152,15 @@ public class Employee
     public bool IsActive { get; set; } = true;
     public bool IsDelete { get; set; } = false;
     public bool HasFinanceAccess { get; set; } = true;
+    public Guid? ManagerId { get; set; }
+    [MaxLength(100)] public string? FirstName { get; set; }
+    [MaxLength(30)] public string? PersonalMobile { get; set; }
+    public DateOnly? DateOfJoining { get; set; }
+    [MaxLength(50)] public string? EmploymentType { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
+    [ForeignKey(nameof(ManagerId))] public Employee? Manager { get; set; }
     public EmployeeOrganizationContext? OrganizationContext { get; set; }
     public FinanceEmployeeRole? FinanceRole { get; set; }
 }

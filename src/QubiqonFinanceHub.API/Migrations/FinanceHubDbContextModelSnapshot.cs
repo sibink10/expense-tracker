@@ -359,10 +359,6 @@ namespace QubiqonFinanceHub.API.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
 
-                    b.Property<string>("TaxExemptionReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -388,6 +384,10 @@ namespace QubiqonFinanceHub.API.Migrations
                         .HasColumnType("varchar(2)");
 
                     b.Property<string>("ShippingAddress")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("TaxExemptionReason")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
@@ -481,6 +481,9 @@ namespace QubiqonFinanceHub.API.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateOnly?>("DateOfJoining")
+                        .HasColumnType("date");
+
                     b.Property<string>("Department")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -498,9 +501,17 @@ namespace QubiqonFinanceHub.API.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("EmploymentType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("EntraObjectId")
                         .HasMaxLength(36)
                         .HasColumnType("nvarchar(36)");
+
+                    b.Property<string>("FirstName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("FullName")
                         .IsRequired()
@@ -518,8 +529,15 @@ namespace QubiqonFinanceHub.API.Migrations
                     b.Property<bool>("IsDelete")
                         .HasColumnType("bit");
 
+                    b.Property<Guid?>("ManagerId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PersonalMobile")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<string>("Role")
                         .IsRequired()
@@ -530,6 +548,8 @@ namespace QubiqonFinanceHub.API.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ManagerId");
 
                     b.HasIndex("OrganizationId", "Email")
                         .IsUnique();
@@ -752,13 +772,13 @@ namespace QubiqonFinanceHub.API.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<bool>("ShowGstin")
-                        .HasColumnType("bit");
-
                     b.Property<bool>("ShowBusinessLegalName")
                         .HasColumnType("bit");
 
                     b.Property<bool>("ShowBusinessTradeName")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowGstin")
                         .HasColumnType("bit");
 
                     b.Property<bool>("ShowPan")
@@ -1641,11 +1661,18 @@ namespace QubiqonFinanceHub.API.Migrations
 
             modelBuilder.Entity("QubiqonFinanceHub.API.Models.Entities.Employee", b =>
                 {
+                    b.HasOne("QubiqonFinanceHub.API.Models.Entities.Employee", "Manager")
+                        .WithMany()
+                        .HasForeignKey("ManagerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("QubiqonFinanceHub.API.Models.Entities.Organization", "Organization")
                         .WithMany("Employees")
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Manager");
 
                     b.Navigation("Organization");
                 });

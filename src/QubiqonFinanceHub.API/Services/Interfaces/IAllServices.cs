@@ -1,3 +1,4 @@
+using System.Text.Json;
 using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Entities;
 using QubiqonFinanceHub.API.Models.Enums;
@@ -177,7 +178,9 @@ public interface IEmployeeService
 
 public interface IGraphApiService
 {
+    bool IsConfigured();
     Task<IReadOnlyList<GraphUserDto>> GetUsersAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<JsonElement>> ListAllUsersForSyncAsync(CancellationToken cancellationToken = default);
 }
 
 public interface IStorageService

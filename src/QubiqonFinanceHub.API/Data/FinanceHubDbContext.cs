@@ -69,8 +69,12 @@ public class FinanceHubDbContext : DbContext
                 .IsUnique()
                 .HasFilter("[EntraObjectId] IS NOT NULL");
             e.HasIndex(x => new { x.OrganizationId, x.Email }).IsUnique();
-            e.Property(x => x.Role).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Role).HasConversion(UserRoleConverter.Instance).HasMaxLength(20);
             e.Property(x => x.HasFinanceAccess).HasDefaultValue(true);
+            e.HasOne(x => x.Manager)
+                .WithMany()
+                .HasForeignKey(x => x.ManagerId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         b.Entity<Role>(e => {

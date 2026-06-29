@@ -156,3 +156,45 @@ export async function getEmployeeRoleEmployees(): Promise<Employee[]> {
   const all = await getEmployees();
   return all.items.filter((e) => (e.role || "").toLowerCase() === ROLES.EMPLOYEE);
 }
+
+export interface EntraSyncStartResponse {
+  jobId: string;
+  status: string;
+}
+
+export interface EntraSyncJob {
+  jobId: string;
+  status: string;
+  totalUsers?: number | null;
+  processedUsers: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  error?: string | null;
+  createdAt: string;
+  completedAt?: string | null;
+}
+
+export async function startEntraSync(): Promise<EntraSyncStartResponse> {
+  const { data } = await apiClient.post<EntraSyncStartResponse>("/employees/sync-from-entra");
+  return data;
+}
+
+export async function getEntraSyncJob(jobId: string): Promise<EntraSyncJob> {
+  const { data } = await apiClient.get<EntraSyncJob>(`/employees/sync-from-entra/jobs/${jobId}`);
+  return data;
+}
+
+const ENTRA_SYNC_POLL_MS = 2000;
+
+export async function pollEntraSyncJob(
+  jobId: string,
+  onProgress?: (job: EntraSyncJob) => void
+): Promise<EntraSyncJob> {
+  for (;;) {
+    const job = await getEntraSyncJob(jobId);
+    onProgress?.(job);
+    if (job.status === "completed" || job.status === "failed") return job;
+    await new Promise((r) => setTimeout(r, ENTRA_SYNC_POLL_MS));
+  }
+}

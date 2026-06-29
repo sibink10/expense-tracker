@@ -597,6 +597,19 @@ public record CreateEmployeeRequest(string? EntraObjectId, string FullName, stri
 public record UpdateEmployeeRequest(string? FullName, string? Department, string? Designation, string? EmployeeCode, string? Role);
 public record RoleDto(int Id, string Code, string DisplayName);
 
+public record EntraSyncStartResponse(Guid JobId, string Status);
+
+public record EntraSyncJobDto(
+    Guid JobId,
+    string Status,
+    int? TotalUsers,
+    int ProcessedUsers,
+    int Created,
+    int Updated,
+    int Skipped,
+    string? Error,
+    DateTime CreatedAt,
+    DateTime? CompletedAt);
 
 // ═══════════════════════════════════════════════════
 //  CATOGORY

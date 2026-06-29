@@ -8,6 +8,7 @@ using QubiqonFinanceHub.API.Auth.Finance;
 using QubiqonFinanceHub.API.Auth.Shared;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.Services;
+using QubiqonFinanceHub.API.Services.EntraSync;
 using QubiqonFinanceHub.API.Services.Implementations;
 using QubiqonFinanceHub.API.Services.Interfaces;
 using QubiqonFinanceHub.API.Services.Pdf;
@@ -52,6 +53,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IOrganizationSettingsService, OrganizationSettingsService>();
         services.AddScoped<IExcelUploadService, ExcelUploadService>();
         services.AddScoped<IGraphApiService, GraphApiService>();
+        services.AddSingleton<EntraSyncJobStore>();
+        services.AddScoped<IEntraEmployeeSyncService, EntraEmployeeSyncService>();
 
         services.Configure<GlobalAuthOptions>(config.GetSection(GlobalAuthOptions.SectionName));
         services.Configure<TrustedAppsOptions>(config.GetSection(TrustedAppsOptions.SectionName));
