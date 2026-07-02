@@ -2,6 +2,15 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { Toaster } from "react-hot-toast";
 import App from "./App";
+import { branding } from "./shared/branding";
+
+document.title = branding.appTitle;
+
+const faviconLink =
+  document.querySelector<HTMLLinkElement>("link[rel='icon']") ??
+  Object.assign(document.createElement("link"), { rel: "icon", type: "image/png" });
+faviconLink.href = branding.favicon;
+if (!faviconLink.parentNode) document.head.appendChild(faviconLink);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

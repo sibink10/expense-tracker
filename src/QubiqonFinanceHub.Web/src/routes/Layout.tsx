@@ -33,6 +33,7 @@ import { buildNav } from "../shared/nav";
 import Modals from "../components/Modals";
 import DeepLinkHandler from "../components/DeepLinkHandler";
 import { useAppContext } from "../context/AppContext";
+import { branding } from "../shared/branding";
 import { logoutSession } from "../shared/auth/sessionAuth";
 import { selectOrganization } from "../shared/api";
 import { MODAL_T } from "../shared/constants";
@@ -295,18 +296,21 @@ export default function Layout() {
         {activeOrg?.logoUrl ? (
           // eslint-disable-next-line jsx-a11y/alt-text
           <img src={activeOrg.logoUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : branding.headerFallbackIcon ? (
+          // eslint-disable-next-line jsx-a11y/alt-text
+          <img src={branding.headerFallbackIcon} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
           <span style={{ fontSize: "16px", fontWeight: 700, color: C.invoice }}>
-            {(activeOrg?.orgName || "Qubiqon").trim()[0]}
+            {(activeOrg?.orgName || branding.orgNameFallback).trim()[0]}
           </span>
         )}
       </div>
       <div style={{ textAlign: "left", minWidth: 0, flex: 1 }}>
         <div style={{ fontSize: "12px", fontWeight: 700, color: C.primary, lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          {activeOrg?.orgName || "Qubiqon"}
+          {activeOrg?.orgName || branding.orgNameFallback}
         </div>
         <div style={{ fontSize: "9px", color: C.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          {activeOrg?.subName || "Finance Hub"}
+          {activeOrg?.subName || branding.subNameFallback}
         </div>
       </div>
     </div>
@@ -321,7 +325,7 @@ export default function Layout() {
           setNavPopover(null);
           setOrgOpen((v) => !v);
         }}
-        title={isCollapsedDesktop ? activeOrg?.orgName || "Qubiqon" : undefined}
+        title={isCollapsedDesktop ? activeOrg?.orgName || branding.orgNameFallback : undefined}
         style={{
           display: "flex",
           alignItems: "center",
@@ -353,9 +357,12 @@ export default function Layout() {
           {activeOrg?.logoUrl ? (
             // eslint-disable-next-line jsx-a11y/alt-text
             <img src={activeOrg.logoUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : branding.headerFallbackIcon ? (
+            // eslint-disable-next-line jsx-a11y/alt-text
+            <img src={branding.headerFallbackIcon} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           ) : (
             <span style={{ fontSize: "16px", fontWeight: 700, color: C.invoice }}>
-              {(activeOrg?.orgName || "Qubiqon").trim()[0]}
+              {(activeOrg?.orgName || branding.orgNameFallback).trim()[0]}
             </span>
           )}
         </div>
@@ -363,10 +370,10 @@ export default function Layout() {
           <>
             <div style={{ textAlign: "left", flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: "12px", fontWeight: 700, color: C.primary, lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {activeOrg?.orgName || "Qubiqon"}
+                {activeOrg?.orgName || branding.orgNameFallback}
               </div>
               <div style={{ fontSize: "9px", color: C.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {activeOrg?.subName || "Finance Hub"}
+                {activeOrg?.subName || branding.subNameFallback}
               </div>
             </div>
             {orgs.length > 0 && <ChevronDown size={14} color={C.muted} />}
@@ -438,9 +445,12 @@ export default function Layout() {
                   {o.logoUrl ? (
                     // eslint-disable-next-line jsx-a11y/alt-text
                     <img src={o.logoUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : branding.headerFallbackIcon ? (
+                    // eslint-disable-next-line jsx-a11y/alt-text
+                    <img src={branding.headerFallbackIcon} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   ) : (
                     <span style={{ fontSize: "13px", fontWeight: 700, color: C.invoice }}>
-                      {(o.orgName || "Q")[0]}
+                      {(o.orgName || branding.orgNameFallback).trim()[0]}
                     </span>
                   )}
                 </div>

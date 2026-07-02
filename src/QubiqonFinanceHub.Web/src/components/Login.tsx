@@ -2,8 +2,8 @@ import { useState } from "react";
 import { C, R } from "../shared/theme";
 import { MicrosoftIcon } from "./icons";
 import { redirectToLogin } from "../shared/auth/sessionAuth";
+import { branding } from "../shared/branding";
 import loginImage from "../assets/login_image.png";
-import qubiqonLogo from "../assets/qubiqon.png";
 
 export default function Login() {
   const [loading, setLoading] = useState(false);
@@ -99,8 +99,8 @@ export default function Login() {
         <div style={{ width: "100%", maxWidth: "380px" }}>
           <div style={{ textAlign: "center", marginBottom: "28px" }}>
             <img
-              src={qubiqonLogo}
-              alt="Qubiqon"
+              src={branding.loginLogo}
+              alt={branding.loginLogoAlt}
               style={{
                 width: "100%",
                 maxWidth: "200px",
@@ -153,7 +153,7 @@ export default function Login() {
             </button>
           </div>
           <p style={{ textAlign: "center", color: "#a0a8b3", fontSize: "9px", marginTop: "16px" }}>
-            © 2026 Qubiqon Finance. All rights reserved.
+            {branding.copyright}
           </p>
         </div>
       </main>
