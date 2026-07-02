@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using QubiqonFinanceHub.API.Auth.Finance;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Constants;
@@ -114,7 +115,7 @@ public class ExpenseService : IExpenseService
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
 
-        if (expense.SubmittedByEmployeeId != empId && currentEmployee.Role != UserRole.Admin)
+        if (expense.SubmittedByEmployeeId != empId && FinanceEmployeeRoleHelper.ResolveUserRole(currentEmployee) != UserRole.Admin)
             throw new UnauthorizedAccessException("Only the submitter or an admin can upload the bill.");
 
         var hasExistingDocuments = HasExpenseDocument(expense);
@@ -150,12 +151,12 @@ public class ExpenseService : IExpenseService
         // Bills attached and expense is awaiting payment — notify finance (e.g. after prior approval without bills).
         if (expense.Status == ExpenseStatus.AwaitingPayment)
         {
-            var financeEmails = await _db.Employees
-                .Where(e => e.OrganizationId == orgId &&
-                            e.IsActive &&
-                            !e.IsDelete &&
-                            !string.IsNullOrWhiteSpace(e.Email) &&
-                            e.Role == UserRole.Finance)
+            var financeEmails = await FinanceEmployeeRoleHelper.WhereHasRole(
+                    _db.Employees.Where(e => e.OrganizationId == orgId &&
+                                             e.IsActive &&
+                                             !e.IsDelete &&
+                                             !string.IsNullOrWhiteSpace(e.Email)),
+                    UserRole.Finance)
                 .Select(e => e.Email)
                 .Distinct()
                 .ToListAsync();
@@ -203,10 +204,10 @@ public class ExpenseService : IExpenseService
         if (expense.Status == ExpenseStatus.Cancelled)
             throw new InvalidOperationException("A cancelled expense cannot be edited.");
 
-        if (expense.SubmittedByEmployeeId != empId && currentEmployee.Role != UserRole.Admin)
+        if (expense.SubmittedByEmployeeId != empId && FinanceEmployeeRoleHelper.ResolveUserRole(currentEmployee) != UserRole.Admin)
             throw new UnauthorizedAccessException("Only the submitter or an admin can edit this expense.");
 
-        if (currentEmployee.Role != UserRole.Admin && IsExpenseLockedForNonAdminEdit(expense.Status))
+        if (FinanceEmployeeRoleHelper.ResolveUserRole(currentEmployee) != UserRole.Admin && IsExpenseLockedForNonAdminEdit(expense.Status))
             throw new InvalidOperationException(
                 "This expense cannot be edited in its current status. Only an administrator can edit expenses after approval or once payment has started.");
 
@@ -367,12 +368,12 @@ public class ExpenseService : IExpenseService
             ["action_date"] = DateTime.UtcNow.ToString("dd MMM yyyy hh:mm tt 'UTC'"),
         };
 
-        var financeEmails = await _db.Employees
-            .Where(e => e.OrganizationId == orgId &&
-                        e.IsActive &&
-                        !e.IsDelete &&
-                        !string.IsNullOrWhiteSpace(e.Email) &&
-                        e.Role == UserRole.Finance)
+        var financeEmails = await FinanceEmployeeRoleHelper.WhereHasRole(
+                _db.Employees.Where(e => e.OrganizationId == orgId &&
+                                         e.IsActive &&
+                                         !e.IsDelete &&
+                                         !string.IsNullOrWhiteSpace(e.Email)),
+                UserRole.Finance)
             .Select(e => e.Email)
             .Distinct()
             .ToListAsync();
@@ -569,7 +570,7 @@ public class ExpenseService : IExpenseService
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
 
-        if (expense.SubmittedByEmployeeId != currentEmployee.Id && currentEmployee.Role != UserRole.Admin)
+        if (expense.SubmittedByEmployeeId != currentEmployee.Id && FinanceEmployeeRoleHelper.ResolveUserRole(currentEmployee) != UserRole.Admin)
             throw new UnauthorizedAccessException("Only the submitter or an admin can attach a bill.");
 
         var hasExistingDocuments = HasExpenseDocument(expense);
@@ -633,13 +634,13 @@ public class ExpenseService : IExpenseService
             .FirstOrDefaultAsync(x => x.Id == expenseId && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Expense not found");
 
-        if (expense.SubmittedByEmployeeId != currentEmp.Id && currentEmp.Role != UserRole.Admin)
+        if (expense.SubmittedByEmployeeId != currentEmp.Id && FinanceEmployeeRoleHelper.ResolveUserRole(currentEmp) != UserRole.Admin)
             throw new UnauthorizedAccessException("Only the submitter or an admin can remove documents.");
 
         if (expense.Status == ExpenseStatus.Rejected || expense.Status == ExpenseStatus.Completed || expense.Status == ExpenseStatus.Cancelled)
             throw new InvalidOperationException($"Documents cannot be removed when expense is in '{expense.Status}' status.");
 
-        if (currentEmp.Role != UserRole.Admin && expense.Status == ExpenseStatus.PartiallyPaid)
+        if (FinanceEmployeeRoleHelper.ResolveUserRole(currentEmp) != UserRole.Admin && expense.Status == ExpenseStatus.PartiallyPaid)
             throw new InvalidOperationException("Documents cannot be removed after a payment has been recorded.");
 
         var document = expense.Documents.FirstOrDefault(x => x.Id == documentId)

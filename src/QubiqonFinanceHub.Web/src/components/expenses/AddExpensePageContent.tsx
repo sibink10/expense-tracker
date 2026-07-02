@@ -53,10 +53,14 @@ export default function AddExpensePage() {
 
   const loadEmployeeOptions = async (query: string) => {
     const res = await getEmployees({ page: 1, pageSize: 20, search: query || undefined });
-    return res.items.map((e) => ({
-      value: e.id,
-      label: `${e.name}${e.dept ? ` (${e.dept})` : ""}`,
-    }));
+    return res.items.map((e) => {
+      const deptPart = e.dept ? ` (${e.dept})` : "";
+      const orgPart = e.organizationName ? ` — ${e.organizationName}` : "";
+      return {
+        value: e.id,
+        label: `${e.name}${deptPart}${orgPart}`,
+      };
+    });
   };
 
   const validate = () => {

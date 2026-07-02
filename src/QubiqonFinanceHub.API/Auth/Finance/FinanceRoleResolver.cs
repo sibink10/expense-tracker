@@ -21,10 +21,7 @@ public class FinanceRoleResolver(FinanceHubDbContext db) : IFinanceRoleResolver
         if (emp == null || !emp.IsActive || emp.IsDelete || !emp.HasFinanceAccess)
             return null;
 
-        if (emp.FinanceRole?.Role != null
-            && Enum.TryParse<UserRole>(emp.FinanceRole.Role.Code, true, out var financeRole))
-            return (financeRole, financeRole.ToString());
-
-        return (emp.Role, emp.Role.ToString());
+        var role = FinanceEmployeeRoleHelper.ResolveUserRole(emp);
+        return (role, role.ToString());
     }
 }

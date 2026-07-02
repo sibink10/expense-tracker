@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using QubiqonFinanceHub.API.Auth.Finance;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Entities;
@@ -35,7 +36,7 @@ public class DashboardService : IDashboardService
         string? reportCurrency = null,
         DashboardPeriod period = DashboardPeriod.Total)
     {
-        var role = (await _tenant.GetCurrentEmployeeAsync()).Role;
+        var role = FinanceEmployeeRoleHelper.ResolveUserRole(await _tenant.GetCurrentEmployeeAsync());
         var scopeMyOnly = myOnly || role == UserRole.Employee;
         var includeBills = role is UserRole.Approver or UserRole.Finance or UserRole.Admin;
         var includeInvoices = role is UserRole.Finance or UserRole.Admin;

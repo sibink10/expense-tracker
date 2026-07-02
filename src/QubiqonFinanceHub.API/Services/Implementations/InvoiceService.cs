@@ -1,5 +1,6 @@
 using System.Net;
 using Microsoft.EntityFrameworkCore;
+using QubiqonFinanceHub.API.Auth.Finance;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Entities;
@@ -389,7 +390,8 @@ public class InvoiceService : IInvoiceService
             .FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == orgId)
             ?? throw new KeyNotFoundException("Invoice not found");
 
-        if (emp.Role != UserRole.Finance && emp.Role != UserRole.Admin)
+        var role = FinanceEmployeeRoleHelper.ResolveUserRole(emp);
+        if (role != UserRole.Finance && role != UserRole.Admin)
             throw new InvalidOperationException("Only Finance or Admin can send invoices to the client.");
 
         if (inv.Status != InvoiceStatus.Signed)

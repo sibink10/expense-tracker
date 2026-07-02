@@ -26,7 +26,7 @@ public class EmployeesController(
             return StatusCode(StatusCodes.Status503ServiceUnavailable,
                 new { message = "Microsoft Graph client credentials are not configured." });
 
-        var orgId = await tenant.GetCurrentOrganizationId();
+        var orgId = await tenant.GetHomeOrganizationIdAsync();
         var result = await entraSync.StartSyncAsync(orgId, cancellationToken);
         return Accepted(result);
     }

@@ -78,6 +78,9 @@ export default function EmployeesPage() {
   const { t, user, is } = useAppContext();
   const isCurrentUser = (emp: Employee) =>
     (user.email || "").toLowerCase().trim() === (emp.email || "").toLowerCase().trim();
+  const canManageEmployee = (emp: Employee) =>
+    !!emp.organizationId &&
+    emp.organizationId === user.effectiveOrganizationId;
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -266,6 +269,7 @@ export default function EmployeesPage() {
   const cols: TblCol[] = [
     { label: "Name", sortKey: "FullName" },
     { label: "Email" },
+    { label: "Organization" },
     { label: "Department" },
     { label: "Role" },
     { label: "Status" },
@@ -275,13 +279,14 @@ export default function EmployeesPage() {
     _cells: [
       { v: e.name || "NA" },
       { v: e.email || "NA" },
+      { v: e.organizationName || "NA" },
       { v: e.dept || "NA" },
       { v: e.role ? formatRoleLabel(e.role) : "NA" },
       {
         v: (
           <Toggle
             checked={e.isActive ?? true}
-            disabled={isCurrentUser(e)}
+            disabled={isCurrentUser(e) || !canManageEmployee(e)}
             onChange={async (next) => {
               await toggleEmployee(e.id);
               load();
@@ -295,11 +300,12 @@ export default function EmployeesPage() {
             <EditActionButton
               sx={tableIconButtonSx(C.actionEditBg)}
               onClick={() => openEdit(e)}
+              disabled={!canManageEmployee(e)}
             />
             <DeleteActionButton
               sx={tableIconButtonSx(C.actionDeleteBg)}
               onClick={() => setDeleteTarget(e)}
-              disabled={isCurrentUser(e)}
+              disabled={isCurrentUser(e) || !canManageEmployee(e)}
             />
           </span>
         ),

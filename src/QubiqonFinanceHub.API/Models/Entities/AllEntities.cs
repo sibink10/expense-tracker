@@ -148,6 +148,7 @@ public class Employee
     [MaxLength(100)] public string? Department { get; set; }
     [MaxLength(100)] public string? Designation { get; set; }
     [MaxLength(50)] public string? EmployeeCode { get; set; }
+    [Obsolete("Finance Hub uses finance.EmployeeRoles; do not read or write in application code.")]
     public UserRole Role { get; set; } = UserRole.Employee;
     public bool IsActive { get; set; } = true;
     public bool IsDelete { get; set; } = false;

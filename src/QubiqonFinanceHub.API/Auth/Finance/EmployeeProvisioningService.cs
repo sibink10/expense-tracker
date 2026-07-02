@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using QubiqonFinanceHub.API.Auth.Finance;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.Models.Entities;
-using QubiqonFinanceHub.API.Models.Enums;
 
 namespace QubiqonFinanceHub.API.Auth.Finance;
 
@@ -13,6 +13,8 @@ public interface IEmployeeProvisioningService
 
 public class EmployeeProvisioningService(FinanceHubDbContext db) : IEmployeeProvisioningService
 {
+    private const string DefaultRoleCode = "Employee";
+
     public Task<Employee?> FindByEntraObjectIdAsync(string oid, CancellationToken ct = default) =>
         db.Employees.FirstOrDefaultAsync(e => e.EntraObjectId == oid, ct);
 
@@ -29,6 +31,10 @@ public class EmployeeProvisioningService(FinanceHubDbContext db) : IEmployeeProv
         if (seedOrg == null)
             throw new InvalidOperationException("No active organization found for user provisioning.");
 
+        var defaultRole = await db.Roles
+            .FirstOrDefaultAsync(r => r.IsActive && r.Code == DefaultRoleCode, ct)
+            ?? throw new InvalidOperationException($"Role '{DefaultRoleCode}' is not available.");
+
         emp = new Employee
         {
             Id = Guid.TryParse(oid, out var parsedId) ? parsedId : Guid.NewGuid(),
@@ -36,12 +42,12 @@ public class EmployeeProvisioningService(FinanceHubDbContext db) : IEmployeeProv
             EntraObjectId = oid,
             FullName = name,
             Email = email,
-            Role = UserRole.Employee,
             IsActive = true,
             IsDelete = false,
             CreatedAt = DateTime.UtcNow
         };
         db.Employees.Add(emp);
+        await FinanceEmployeeRoleHelper.UpsertFinanceRoleAsync(db, emp.Id, defaultRole.Id, ct);
         await db.SaveChangesAsync(ct);
     }
 }

@@ -12,6 +12,8 @@ export interface ApiEmployee {
   designation?: string;
   employeeCode?: string | null;
   isActive?: boolean;
+  organizationId?: string;
+  organizationName?: string | null;
 }
 
 export interface Employee {
@@ -23,6 +25,8 @@ export interface Employee {
   designation?: string;
   employeeCode?: string | null;
   isActive?: boolean;
+  organizationId?: string;
+  organizationName?: string | null;
 }
 
 export interface EmployeeRole {
@@ -41,6 +45,8 @@ function mapApiEmployeeToApp(item: ApiEmployee): Employee {
     designation: item.designation,
     employeeCode: item.employeeCode ?? null,
     isActive: item.isActive ?? true,
+    organizationId: item.organizationId,
+    organizationName: item.organizationName ?? null,
   };
 }
 

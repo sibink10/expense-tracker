@@ -114,7 +114,9 @@ internal static class ListQuerySorting
         {
             "email" => desc ? q.OrderByDescending(e => e.Email) : q.OrderBy(e => e.Email),
             "department" or "dept" => desc ? q.OrderByDescending(e => e.Department) : q.OrderBy(e => e.Department),
-            "role" => desc ? q.OrderByDescending(e => e.Role) : q.OrderBy(e => e.Role),
+            "role" => desc
+                ? q.OrderByDescending(e => e.FinanceRole!.Role!.Code)
+                : q.OrderBy(e => e.FinanceRole!.Role!.Code),
             "isactive" or "status" => desc ? q.OrderByDescending(e => e.IsActive) : q.OrderBy(e => e.IsActive),
             "fullname" or "name" => desc ? q.OrderByDescending(e => e.FullName) : q.OrderBy(e => e.FullName),
             "createdat" or _ => desc ? q.OrderByDescending(e => e.CreatedAt) : q.OrderBy(e => e.CreatedAt),

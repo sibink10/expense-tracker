@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using QubiqonFinanceHub.API.Auth.Finance;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Entities;
-using QubiqonFinanceHub.API.Models.Enums;
 using QubiqonFinanceHub.API.Services.Helpers;
 using QubiqonFinanceHub.API.Services.Interfaces;
 
@@ -19,11 +19,11 @@ public class EmployeeService : IEmployeeService
 
     public async Task<PaginatedResult<EmployeeDto>> ListAsync(FilterParams f)
     {
-        var orgId = await _tenant.GetCurrentOrganizationId();
         var q = _db.Employees
+            .Include(e => e.Organization)
             .Include(e => e.FinanceRole!)
                 .ThenInclude(fr => fr.Role)
-            .Where(e => e.OrganizationId == orgId && !e.IsDelete)
+            .Where(e => !e.IsDelete)
             .AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(f.Search))
@@ -33,16 +33,7 @@ public class EmployeeService : IEmployeeService
         }
 
         if (!string.IsNullOrWhiteSpace(f.Role))
-        {
-            var roleCode = f.Role.Trim();
-            var roleCodeLower = roleCode.ToLower();
-            var hasEnum = Enum.TryParse<UserRole>(roleCode, true, out var enumRole);
-
-            q = q.Where(e =>
-                (e.FinanceRole != null && e.FinanceRole.Role != null
-                    && e.FinanceRole.Role.Code.ToLower() == roleCodeLower)
-                || (e.FinanceRole == null && hasEnum && e.Role == enumRole));
-        }
+            q = FinanceEmployeeRoleHelper.WhereHasRoleCode(q, f.Role.Trim());
 
         var total = await q.CountAsync();
         q = q.ApplyEmployeeSorting(f);
@@ -87,9 +78,6 @@ public class EmployeeService : IEmployeeService
             throw new ArgumentException("Email is required", nameof(dto));
 
         var financeRole = await GetActiveRoleAsync(dto.Role);
-        var employeeRole = Enum.TryParse<UserRole>(financeRole.Code, true, out var parsedRole)
-            ? parsedRole
-            : UserRole.Employee;
 
         // Uniqueness should ignore soft-deleted employees (IsDelete == true).
         // If a soft-deleted employee exists for a unique field, re-activate it instead of inserting a new row.
@@ -116,15 +104,14 @@ public class EmployeeService : IEmployeeService
             deletedByEmail.Department = dto.Department;
             deletedByEmail.Designation = dto.Designation;
             deletedByEmail.EmployeeCode = dto.EmployeeCode;
-            deletedByEmail.Role = employeeRole;
             deletedByEmail.Email = email;
             deletedByEmail.IsActive = true;
             deletedByEmail.IsDelete = false;
             deletedByEmail.UpdatedAt = DateTime.UtcNow;
-            await UpsertFinanceRoleAsync(deletedByEmail.Id, financeRole.Id);
+            await FinanceEmployeeRoleHelper.UpsertFinanceRoleAsync(_db, deletedByEmail.Id, financeRole.Id);
 
             await _db.SaveChangesAsync();
-            return MapToDto(deletedByEmail);
+            return await ToDtoAsync(deletedByEmail.Id);
         }
 
         if (!string.IsNullOrWhiteSpace(entraId))
@@ -144,15 +131,14 @@ public class EmployeeService : IEmployeeService
                 deletedByEntra.Department = dto.Department;
                 deletedByEntra.Designation = dto.Designation;
                 deletedByEntra.EmployeeCode = dto.EmployeeCode;
-                deletedByEntra.Role = employeeRole;
                 deletedByEntra.Email = email;
                 deletedByEntra.IsActive = true;
                 deletedByEntra.IsDelete = false;
                 deletedByEntra.UpdatedAt = DateTime.UtcNow;
-                await UpsertFinanceRoleAsync(deletedByEntra.Id, financeRole.Id);
+                await FinanceEmployeeRoleHelper.UpsertFinanceRoleAsync(_db, deletedByEntra.Id, financeRole.Id);
 
                 await _db.SaveChangesAsync();
-                return MapToDto(deletedByEntra);
+                return await ToDtoAsync(deletedByEntra.Id);
             }
         }
 
@@ -166,15 +152,14 @@ public class EmployeeService : IEmployeeService
             Department = dto.Department,
             Designation = dto.Designation,
             EmployeeCode = dto.EmployeeCode,
-            Role = employeeRole,
             IsActive = true,
             IsDelete = false,
             CreatedAt = DateTime.UtcNow
         };
         _db.Employees.Add(emp);
-        await UpsertFinanceRoleAsync(emp.Id, financeRole.Id);
+        await FinanceEmployeeRoleHelper.UpsertFinanceRoleAsync(_db, emp.Id, financeRole.Id);
         await _db.SaveChangesAsync();
-        return MapToDto(emp);
+        return await ToDtoAsync(emp.Id);
     }
 
     public async Task<EmployeeDto> UpdateAsync(Guid id, UpdateEmployeeRequest dto)
@@ -197,15 +182,12 @@ public class EmployeeService : IEmployeeService
             if (dto.Role != null)
             {
                 var role = await GetActiveRoleAsync(dto.Role);
-                await UpsertFinanceRoleAsync(emp.Id, role.Id);
-
-                if (Enum.TryParse<UserRole>(role.Code, true, out var newRole))
-                    emp.Role = newRole;
+                await FinanceEmployeeRoleHelper.UpsertFinanceRoleAsync(_db, emp.Id, role.Id);
             }
 
             emp.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
-            return MapToDto(emp);
+            return await ToDtoAsync(emp.Id);
         }
 
     public async Task<EmployeeDto> ToggleActiveAsync(Guid id)
@@ -218,7 +200,7 @@ public class EmployeeService : IEmployeeService
         emp.IsActive = !emp.IsActive;
         emp.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        return MapToDto(emp);
+        return await ToDtoAsync(emp.Id);
     }
 
 
@@ -235,7 +217,7 @@ public class EmployeeService : IEmployeeService
         emp.IsDelete = true;
         emp.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        return MapToDto(emp);
+        return await ToDtoAsync(emp.Id);
     }
 
     private async Task<Role> GetActiveRoleAsync(string roleCode)
@@ -249,31 +231,19 @@ public class EmployeeService : IEmployeeService
             ?? throw new InvalidOperationException("Selected role is not available");
     }
 
-    private async Task UpsertFinanceRoleAsync(Guid employeeId, int roleId)
+    private async Task<EmployeeDto> ToDtoAsync(Guid employeeId)
     {
-        var existing = await _db.FinanceEmployeeRoles
-            .FirstOrDefaultAsync(r => r.EmployeeId == employeeId);
-
-        if (existing == null)
-        {
-            _db.FinanceEmployeeRoles.Add(new FinanceEmployeeRole
-            {
-                Id = Guid.NewGuid(),
-                EmployeeId = employeeId,
-                RoleId = roleId,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
-            });
-            return;
-        }
-
-        existing.RoleId = roleId;
-        existing.IsActive = true;
-        existing.UpdatedAt = DateTime.UtcNow;
+        var emp = await _db.Employees.AsNoTracking()
+            .Include(e => e.Organization)
+            .Include(e => e.FinanceRole!)
+                .ThenInclude(fr => fr.Role)
+            .FirstAsync(e => e.Id == employeeId);
+        return MapToDto(emp);
     }
 
     private static EmployeeDto MapToDto(Employee e) => new(
         e.Id, e.FullName, e.Email, e.Department,
-        e.Designation, e.EmployeeCode, e.FinanceRole?.Role?.Code ?? e.Role.ToString(), e.IsActive
+        e.Designation, e.EmployeeCode, FinanceEmployeeRoleHelper.ResolveRoleCode(e), e.IsActive,
+        e.OrganizationId, e.Organization?.OrgName
     );
 }

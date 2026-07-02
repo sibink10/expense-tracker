@@ -90,12 +90,16 @@ public class TenantService : ITenantService
 
         var emp = await _db.Employees
             .Include(e => e.OrganizationContext)
+            .Include(e => e.FinanceRole!)
+                .ThenInclude(fr => fr.Role)
             .FirstOrDefaultAsync(e => e.EntraObjectId == empId.ToString());
 
         if (emp == null)
         {
             emp = await _db.Employees
                 .Include(e => e.OrganizationContext)
+                .Include(e => e.FinanceRole!)
+                    .ThenInclude(fr => fr.Role)
                 .FirstOrDefaultAsync(e => e.Email == email);
             if (emp != null)
             {

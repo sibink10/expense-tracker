@@ -2,16 +2,23 @@ using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Constants;
 using QubiqonFinanceHub.API.Models.Entities;
-using QubiqonFinanceHub.API.Models.Enums;
 using QubiqonFinanceHub.API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 public class OrganizationService(
     FinanceHubDbContext _db,
     ITenantService _tenant,
-    IStorageService _storage)
+    IStorageService _storage,
+    IHttpContextAccessor _httpContextAccessor)
     : IOrganizationService
 {
+    private bool CanSwitchOrganizationContext()
+    {
+        var user = _httpContextAccessor.HttpContext?.User;
+        if (user == null) return false;
+        return user.IsInRole("Admin") || user.IsInRole("Finance") || user.IsInRole("Approver");
+    }
+
     public async Task<OrganizationDto> CreateAsync(CreateOrganizationRequest dto)
     {
         var orgId = Guid.NewGuid();
@@ -147,11 +154,10 @@ public class OrganizationService(
 
     public async Task<List<OrganizationDto>> GetAllAsync()
     {
-        var currentEmployee = await _tenant.GetCurrentEmployeeAsync();
         var effectiveOrgId = await _tenant.GetEffectiveOrganizationIdAsync();
         var orgsQuery = _db.Organizations.Where(o => o.IsActive);
 
-        if (currentEmployee.Role != UserRole.Admin)
+        if (!CanSwitchOrganizationContext())
             orgsQuery = orgsQuery.Where(o => o.Id == effectiveOrgId);
 
         var orgs = await orgsQuery.ToListAsync();
@@ -166,8 +172,8 @@ public class OrganizationService(
     public async Task<OrganizationDto> SelectAsync(Guid id)
     {
         var employee = await _tenant.GetCurrentEmployeeAsync();
-        if (employee.Role != UserRole.Admin)
-            throw new UnauthorizedAccessException("Only administrators can switch organization context.");
+        if (!CanSwitchOrganizationContext())
+            throw new UnauthorizedAccessException("Only administrators, finance, or approvers can switch organization context.");
 
         var targetOrg = await _db.Organizations.FirstOrDefaultAsync(o => o.Id == id && o.IsActive)
                         ?? throw new KeyNotFoundException("Organization not found.");

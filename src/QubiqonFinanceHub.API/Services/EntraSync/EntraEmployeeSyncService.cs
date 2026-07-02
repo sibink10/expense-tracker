@@ -104,13 +104,14 @@ public class EntraEmployeeSyncService : IEntraEmployeeSyncService
                     var entraEmployeeId = Guid.Parse(oid!);
 
                     var existing = await db.Employees
-                        .Include(e => e.FinanceRole)
+                        .Include(e => e.FinanceRole!)
+                            .ThenInclude(fr => fr.Role)
                         .FirstOrDefaultAsync(e =>
                             e.OrganizationId == organizationId
                             && !e.IsDelete
                             && (e.EntraObjectId == oid || e.Email.ToLower() == normalizedEmail), ct);
 
-                    if (existing != null && UserRoleConverter.IsQhrmsRole(existing.Role))
+                    if (existing != null && UserRoleConverter.IsQhrmsRoleCode(existing.FinanceRole?.Role?.Code))
                     {
                         oidToEmployeeId[oid!] = existing.Id;
                         skipped++;
@@ -211,7 +212,6 @@ public class EntraEmployeeSyncService : IEntraEmployeeSyncService
             DateOfJoining = ParseDateOnly(GetString(user, "employeeHireDate")),
             EmploymentType = GetString(user, "employeeType"),
             IsActive = GetBool(user, "accountEnabled") ?? true,
-            Role = UserRole.Employee,
             IsDelete = false,
             CreatedAt = DateTime.UtcNow
         };

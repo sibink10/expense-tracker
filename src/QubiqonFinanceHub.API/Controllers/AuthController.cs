@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using QubiqonFinanceHub.API.Auth.Finance;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Entities;
-using QubiqonFinanceHub.API.Models.Enums;
 using QubiqonFinanceHub.API.Services;
 
 namespace QubiqonFinanceHub.API.Controllers;
@@ -12,6 +12,8 @@ namespace QubiqonFinanceHub.API.Controllers;
 [ApiController, Route("api/auth"), Authorize]
 public class AuthController(FinanceHubDbContext db) : ControllerBase
 {
+    private const string DefaultRoleCode = "Employee";
+
     [HttpGet("me")]
     public async Task<IActionResult> Me()
     {
@@ -21,6 +23,8 @@ public class AuthController(FinanceHubDbContext db) : ControllerBase
 
         var emp = await db.Employees
             .Include(e => e.OrganizationContext)
+            .Include(e => e.FinanceRole!)
+                .ThenInclude(fr => fr.Role)
             .FirstOrDefaultAsync(e => e.EntraObjectId == oid);
 
         if (emp == null)
@@ -32,6 +36,10 @@ public class AuthController(FinanceHubDbContext db) : ControllerBase
 
             if (seedOrg == null) return NotFound("Organization not found");
 
+            var defaultRole = await db.Roles
+                .FirstOrDefaultAsync(r => r.IsActive && r.Code == DefaultRoleCode)
+                ?? throw new InvalidOperationException($"Role '{DefaultRoleCode}' is not available.");
+
             emp = new Employee
             {
                 Id = Guid.Parse(oid!),
@@ -39,13 +47,19 @@ public class AuthController(FinanceHubDbContext db) : ControllerBase
                 EntraObjectId = oid!,
                 FullName = name,
                 Email = email ?? "",
-                Role = UserRole.Employee,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 IsDelete = false
             };
             db.Employees.Add(emp);
+            await FinanceEmployeeRoleHelper.UpsertFinanceRoleAsync(db, emp.Id, defaultRole.Id);
             await db.SaveChangesAsync();
+
+            emp = await db.Employees
+                .Include(e => e.OrganizationContext)
+                .Include(e => e.FinanceRole!)
+                    .ThenInclude(fr => fr.Role)
+                .FirstAsync(e => e.Id == emp.Id);
         }
 
         if (emp.IsActive == false || emp.IsDelete == true)
@@ -72,7 +86,7 @@ public class AuthController(FinanceHubDbContext db) : ControllerBase
             emp.Email,
             emp.Department,
             emp.Designation,
-            emp.Role,
+            FinanceEmployeeRoleHelper.ResolveUserRole(emp),
             initials.ToUpper(),
             effectiveOrgId,
             effectiveOrg.OrgName,

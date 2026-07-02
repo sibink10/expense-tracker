@@ -592,7 +592,7 @@ public record DashboardDto(
 // ═══════════════════════════════════════════════════
 //  EMPLOYEE
 // ═══════════════════════════════════════════════════
-public record EmployeeDto(Guid Id, string FullName, string Email, string? Department, string? Designation, string? EmployeeCode, string Role, bool IsActive);
+public record EmployeeDto(Guid Id, string FullName, string Email, string? Department, string? Designation, string? EmployeeCode, string Role, bool IsActive, Guid OrganizationId, string? OrganizationName);
 public record CreateEmployeeRequest(string? EntraObjectId, string FullName, string Email, string? Department, string? Designation, string? EmployeeCode, string Role);
 public record UpdateEmployeeRequest(string? FullName, string? Department, string? Designation, string? EmployeeCode, string? Role);
 public record RoleDto(int Id, string Code, string DisplayName);

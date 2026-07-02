@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Client.Extensions.Msal;
+using QubiqonFinanceHub.API.Auth.Finance;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Constants;
@@ -117,12 +118,12 @@ public class VendorBillService : IVendorBillService
         _db.VendorBills.Add(bill);
         await _db.SaveChangesAsync();
 
-        var reviewers = await _db.Employees
-            .Where(e => e.OrganizationId == orgId &&
-                        e.IsActive &&
-                        !e.IsDelete &&
-                        !string.IsNullOrWhiteSpace(e.Email) &&
-                        e.Role == UserRole.Approver)
+        var reviewers = await FinanceEmployeeRoleHelper.WhereHasRole(
+                _db.Employees.Where(e => e.OrganizationId == orgId &&
+                                         e.IsActive &&
+                                         !e.IsDelete &&
+                                         !string.IsNullOrWhiteSpace(e.Email)),
+                UserRole.Approver)
             .Select(e => e.Email)
             .Distinct()
             .ToListAsync();
@@ -394,12 +395,12 @@ public class VendorBillService : IVendorBillService
 
         await _db.SaveChangesAsync();
 
-        var financeEmails = await _db.Employees
-            .Where(e => e.OrganizationId == orgId &&
-                        e.IsActive &&
-                        !e.IsDelete &&
-                        !string.IsNullOrWhiteSpace(e.Email) &&
-                        e.Role == UserRole.Finance)
+        var financeEmails = await FinanceEmployeeRoleHelper.WhereHasRole(
+                _db.Employees.Where(e => e.OrganizationId == orgId &&
+                                         e.IsActive &&
+                                         !e.IsDelete &&
+                                         !string.IsNullOrWhiteSpace(e.Email)),
+                UserRole.Finance)
             .Select(e => e.Email)
             .Distinct()
             .ToListAsync();
@@ -803,7 +804,7 @@ public class VendorBillService : IVendorBillService
         if (bill.Status != BillStatus.Submitted)
             throw new InvalidOperationException("Documents can only be removed when bill is in Submitted status.");
 
-        if (bill.SubmittedByEmployeeId != currentEmp.Id && currentEmp.Role != UserRole.Admin)
+        if (bill.SubmittedByEmployeeId != currentEmp.Id && FinanceEmployeeRoleHelper.ResolveUserRole(currentEmp) != UserRole.Admin)
             throw new UnauthorizedAccessException("Only the submitter or an admin can remove documents.");
 
         var document = bill.Documents.FirstOrDefault(x => x.Id == documentId)

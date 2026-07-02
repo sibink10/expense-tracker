@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using QubiqonFinanceHub.API.Auth.Finance;
 using QubiqonFinanceHub.API.Data;
 using QubiqonFinanceHub.API.DTOs;
 using QubiqonFinanceHub.API.Models.Constants;
@@ -218,12 +219,12 @@ public class AdvanceService : IAdvanceService
 
         await _db.SaveChangesAsync();
 
-        var financeEmails = await _db.Employees
-            .Where(e => e.OrganizationId == orgId &&
-                        e.IsActive &&
-                        !e.IsDelete &&
-                        !string.IsNullOrWhiteSpace(e.Email) &&
-                        e.Role == UserRole.Finance)
+        var financeEmails = await FinanceEmployeeRoleHelper.WhereHasRole(
+                _db.Employees.Where(e => e.OrganizationId == orgId &&
+                                         e.IsActive &&
+                                         !e.IsDelete &&
+                                         !string.IsNullOrWhiteSpace(e.Email)),
+                UserRole.Finance)
             .Select(e => e.Email)
             .Distinct()
             .ToListAsync();
