@@ -32,6 +32,8 @@ export default function AdminOrgPage() {
   const [fax, setFax] = useState("");
   const [website, setWebsite] = useState("");
   const [zohoSignEmail, setZohoSignEmail] = useState("");
+  const [zohoSignSignerName, setZohoSignSignerName] = useState("");
+  const [zohoSignSenderName, setZohoSignSenderName] = useState("");
   const [zohoClientId, setZohoClientId] = useState("");
   const [zohoClientSecret, setZohoClientSecret] = useState("");
   const [zohoCode, setZohoCode] = useState("");
@@ -98,6 +100,8 @@ export default function AdminOrgPage() {
         setFax(org.fax ?? "");
         setWebsite(org.website ?? "");
         setZohoSignEmail(org.zohoSignEmail ?? "");
+        setZohoSignSignerName(org.zohoSignSignerName ?? "");
+        setZohoSignSenderName(org.zohoSignSenderName ?? "");
         setZohoClientId(org.zohoClientId ?? "");
         setZohoClientSecret(org.zohoClientSecret ?? "");
         setZohoCode(org.zohoCode ?? "");
@@ -168,6 +172,8 @@ export default function AdminOrgPage() {
         fax: fax || undefined,
         website: website || undefined,
         zohoSignEmail: zohoSignEmail.trim() || undefined,
+        zohoSignSignerName: zohoSignSignerName.trim() || undefined,
+        zohoSignSenderName: zohoSignSenderName.trim() || undefined,
         zohoClientId: zohoClientId.trim() || undefined,
         zohoClientSecret: zohoClientSecret.trim() || undefined,
         zohoCode: zohoCode.trim() || undefined,
@@ -366,6 +372,19 @@ export default function AdminOrgPage() {
               onChange={(e) => setZohoSignEmail(e.target.value)}
               ph="authorized.signer@company.com"
               req
+            />
+            <Inp
+              label="Zoho Sign signer name"
+              value={zohoSignSignerName}
+              onChange={(e) => setZohoSignSignerName(e.target.value)}
+              ph="Name shown to the signer in Zoho emails"
+              req
+            />
+            <Inp
+              label="Zoho Sign sender name"
+              value={zohoSignSenderName}
+              onChange={(e) => setZohoSignSenderName(e.target.value)}
+              ph="Display name for the email sender"
             />
             <Inp
               label="Client ID"

@@ -1110,6 +1110,14 @@ namespace QubiqonFinanceHub.API.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+                    b.Property<string>("ZohoSignSenderName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("ZohoSignSignerName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
                     b.Property<string>("ZohoTokenEndpoint")
                         .HasMaxLength(512)
                         .HasColumnType("nvarchar(512)");

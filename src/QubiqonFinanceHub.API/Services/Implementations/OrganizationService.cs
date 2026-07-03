@@ -52,6 +52,8 @@ public class OrganizationService(
             AccountNumber = dto.AccountNumber?.Trim(),
             BankAddress = dto.BankAddress?.Trim(),
             ZohoSignEmail = dto.ZohoSignEmail?.Trim(),
+            ZohoSignSignerName = dto.ZohoSignSignerName?.Trim(),
+            ZohoSignSenderName = dto.ZohoSignSenderName?.Trim(),
             ZohoClientId = dto.ZohoClientId?.Trim(),
             ZohoClientSecret = dto.ZohoClientSecret?.Trim(),
             ZohoCode = dto.ZohoCode?.Trim(),
@@ -122,6 +124,8 @@ public class OrganizationService(
         if (dto.AccountNumber != null) org.AccountNumber = dto.AccountNumber.Trim();
         if (dto.BankAddress != null) org.BankAddress = dto.BankAddress.Trim();
         if (dto.ZohoSignEmail != null) org.ZohoSignEmail = string.IsNullOrWhiteSpace(dto.ZohoSignEmail) ? null : dto.ZohoSignEmail.Trim();
+        if (dto.ZohoSignSignerName != null) org.ZohoSignSignerName = string.IsNullOrWhiteSpace(dto.ZohoSignSignerName) ? null : dto.ZohoSignSignerName.Trim();
+        if (dto.ZohoSignSenderName != null) org.ZohoSignSenderName = string.IsNullOrWhiteSpace(dto.ZohoSignSenderName) ? null : dto.ZohoSignSenderName.Trim();
         if (dto.ZohoClientId != null) org.ZohoClientId = TrimOrNull(dto.ZohoClientId);
         if (dto.ZohoClientSecret != null) org.ZohoClientSecret = TrimOrNull(dto.ZohoClientSecret);
         if (dto.ZohoCode != null) org.ZohoCode = TrimOrNull(dto.ZohoCode);
@@ -241,6 +245,8 @@ public class OrganizationService(
         o.AccountNumber,
         o.BankAddress,
         o.ZohoSignEmail,
+        o.ZohoSignSignerName,
+        o.ZohoSignSenderName,
         o.ZohoClientId,
         o.ZohoClientSecret,
         o.ZohoCode,

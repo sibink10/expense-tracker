@@ -46,6 +46,14 @@ public class Organization
     [MaxLength(256)]
     public string? ZohoSignEmail { get; set; }
 
+    /// <summary>Display name for the Zoho Sign recipient (recipient_name in API).</summary>
+    [MaxLength(256)]
+    public string? ZohoSignSignerName { get; set; }
+
+    /// <summary>Display name for the Zoho Sign email sender (stored for reference).</summary>
+    [MaxLength(256)]
+    public string? ZohoSignSenderName { get; set; }
+
     [MaxLength(256)]
     public string? ZohoClientId { get; set; }
 

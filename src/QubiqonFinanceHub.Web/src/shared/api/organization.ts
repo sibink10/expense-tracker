@@ -51,6 +51,10 @@ export interface OrganizationDto {
   logoUrl?: string | null;
   ZohoSignEmail?: string;
   zohoSignEmail?: string;
+  ZohoSignSignerName?: string;
+  zohoSignSignerName?: string;
+  ZohoSignSenderName?: string;
+  zohoSignSenderName?: string;
   ZohoClientId?: string;
   zohoClientId?: string;
   ZohoClientSecret?: string;
@@ -101,6 +105,8 @@ export interface OrganizationPayload {
   logoUrl?: string | null;
   logoFile?: File | null;
   zohoSignEmail?: string;
+  zohoSignSignerName?: string;
+  zohoSignSenderName?: string;
   zohoClientId?: string;
   zohoClientSecret?: string;
   zohoCode?: string;
@@ -143,6 +149,8 @@ function mapDtoToPayload(dto: OrganizationDto): OrganizationPayload {
     isCurrent: (anyDto.IsCurrent as boolean) ?? (anyDto.isCurrent as boolean) ?? false,
     logoUrl: (anyDto.LogoUrl as string) ?? (anyDto.logoUrl as string) ?? null,
     zohoSignEmail: (anyDto.ZohoSignEmail as string) ?? (anyDto.zohoSignEmail as string),
+    zohoSignSignerName: (anyDto.ZohoSignSignerName as string) ?? (anyDto.zohoSignSignerName as string),
+    zohoSignSenderName: (anyDto.ZohoSignSenderName as string) ?? (anyDto.zohoSignSenderName as string),
     zohoClientId: (anyDto.ZohoClientId as string) ?? (anyDto.zohoClientId as string),
     zohoClientSecret: (anyDto.ZohoClientSecret as string) ?? (anyDto.zohoClientSecret as string),
     zohoCode: (anyDto.ZohoCode as string) ?? (anyDto.zohoCode as string),
@@ -202,6 +210,8 @@ export async function saveOrganization(payload: OrganizationPayload): Promise<Or
   if (payload.accountNumber) form.append("AccountNumber", payload.accountNumber);
   if (payload.bankAddress) form.append("BankAddress", payload.bankAddress);
   if (payload.zohoSignEmail) form.append("ZohoSignEmail", payload.zohoSignEmail);
+  if (payload.zohoSignSignerName) form.append("ZohoSignSignerName", payload.zohoSignSignerName);
+  if (payload.zohoSignSenderName) form.append("ZohoSignSenderName", payload.zohoSignSenderName);
   if (payload.zohoClientId) form.append("ZohoClientId", payload.zohoClientId);
   if (payload.zohoClientSecret) form.append("ZohoClientSecret", payload.zohoClientSecret);
   if (payload.zohoCode) form.append("ZohoCode", payload.zohoCode);

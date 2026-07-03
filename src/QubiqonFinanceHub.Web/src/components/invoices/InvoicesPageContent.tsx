@@ -813,13 +813,18 @@ export default function InvoicesPage() {
         zIndex={INVOICE_MODAL_Z_INDEX + 50}
       >
         <p style={{ fontSize: "13px", color: C.primary, margin: "0 0 12px", lineHeight: 1.5 }}>
-          A PDF is generated from this invoice and sent to your organization&apos;s{" "}
-          <strong>Zoho Sign email</strong> (configured under Admin → Organization). After signing, sync stores the
-          signed PDF and marks the invoice as sent.
+          A PDF is generated from this invoice and sent to{" "}
+          <strong>
+            {activeOrg?.zohoSignSignerName
+              ? `${activeOrg.zohoSignSignerName} (${activeOrg.zohoSignEmail ?? "no email"})`
+              : "your organization's Zoho Sign recipient"}
+          </strong>{" "}
+          (configured under Admin → Organization). After signing, sync stores the signed PDF and marks the invoice as
+          sent.
         </p>
-        {!activeOrg?.zohoSignEmail && (
+        {(!activeOrg?.zohoSignEmail || !activeOrg?.zohoSignSignerName) && (
           <p style={{ fontSize: 12, color: C.danger, margin: "0 0 12px" }}>
-            Set Zoho Sign email on the active organization before sending.
+            Set Zoho Sign email and signer name on the active organization before sending.
           </p>
         )}
         <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", flexWrap: "wrap" }}>
@@ -829,7 +834,7 @@ export default function InvoicesPage() {
           <Btn
             v="invoice"
             onClick={() => void handleConfirmZohoSign()}
-            disabled={zohoSignLoading || !activeOrg?.zohoSignEmail}
+            disabled={zohoSignLoading || !activeOrg?.zohoSignEmail || !activeOrg?.zohoSignSignerName}
           >
             {zohoSignLoading ? "Sending…" : "Send for signing"}
           </Btn>

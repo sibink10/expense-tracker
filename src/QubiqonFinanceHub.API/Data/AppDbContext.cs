@@ -1235,6 +1235,8 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.ZohoScope).HasMaxLength(1000);
             entity.Property(e => e.ZohoSignApiBaseUrl).HasMaxLength(512);
             entity.Property(e => e.ZohoSignEmail).HasMaxLength(256);
+            entity.Property(e => e.ZohoSignSignerName).HasMaxLength(256);
+            entity.Property(e => e.ZohoSignSenderName).HasMaxLength(256);
             entity.Property(e => e.ZohoTokenEndpoint).HasMaxLength(512);
         });
 

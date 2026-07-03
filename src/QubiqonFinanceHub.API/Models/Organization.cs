@@ -51,6 +51,10 @@ public partial class Organization
 
     public string? ZohoSignEmail { get; set; }
 
+    public string? ZohoSignSignerName { get; set; }
+
+    public string? ZohoSignSenderName { get; set; }
+
     public string? ZohoAuthorizationEndpoint { get; set; }
 
     public string? ZohoClientId { get; set; }

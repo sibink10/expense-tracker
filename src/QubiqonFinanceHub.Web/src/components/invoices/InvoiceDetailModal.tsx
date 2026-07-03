@@ -314,8 +314,10 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
           {zohoStatusLabel && (
             <span style={{ fontSize: 11, color: C.muted }}>({zohoStatusLabel})</span>
           )}
-          {activeOrg?.zohoSignEmail && (
-            <span style={{ fontSize: 11, color: C.muted }}>→ {activeOrg.zohoSignEmail}</span>
+          {activeOrg?.zohoSignSignerName && activeOrg?.zohoSignEmail && (
+            <span style={{ fontSize: 11, color: C.muted }}>
+              → {activeOrg.zohoSignSignerName} ({activeOrg.zohoSignEmail})
+            </span>
           )}
         </div>
       )}
@@ -423,12 +425,17 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
         zIndex={INVOICE_MODAL_Z_INDEX + 50}
       >
         <p style={{ fontSize: "13px", color: C.primary, margin: "0 0 12px", lineHeight: 1.5 }}>
-          Generates a PDF and emails it to <strong>{activeOrg?.zohoSignEmail ?? "the org Zoho Sign email"}</strong> for
-          authorized signature.
+          Generates a PDF and emails it to{" "}
+          <strong>
+            {activeOrg?.zohoSignSignerName
+              ? `${activeOrg.zohoSignSignerName} (${activeOrg.zohoSignEmail ?? "no email"})`
+              : (activeOrg?.zohoSignEmail ?? "the org Zoho Sign email")}
+          </strong>{" "}
+          for authorized signature.
         </p>
-        {!activeOrg?.zohoSignEmail && (
+        {(!activeOrg?.zohoSignEmail || !activeOrg?.zohoSignSignerName) && (
           <p style={{ fontSize: 12, color: C.danger, margin: "0 0 12px" }}>
-            Configure Zoho Sign email under Admin → Organization.
+            Configure Zoho Sign email and signer name under Admin → Organization.
           </p>
         )}
         <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", flexWrap: "wrap" }}>
@@ -436,7 +443,11 @@ export default function InvoiceDetailModal({ invoice: initialInv }: Props) {
             <X size={14} strokeWidth={1.9} />
             Cancel
           </Btn>
-          <Btn v="invoice" onClick={() => void handleConfirmZohoSign()} disabled={zohoSignLoading || !activeOrg?.zohoSignEmail}>
+          <Btn
+            v="invoice"
+            onClick={() => void handleConfirmZohoSign()}
+            disabled={zohoSignLoading || !activeOrg?.zohoSignEmail || !activeOrg?.zohoSignSignerName}
+          >
             {zohoSignLoading ? "Sending…" : <><Signature size={14} strokeWidth={1.9} /> Send for signing</>}
           </Btn>
         </div>

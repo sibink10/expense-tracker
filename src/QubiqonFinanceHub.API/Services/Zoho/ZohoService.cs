@@ -309,7 +309,10 @@ public class ZohoService : IZohoService
             throw new InvalidOperationException(
                 "Organization Zoho Sign email is not configured. Set it under Admin → Organization profile.");
 
-        var signerName = string.IsNullOrWhiteSpace(org.SubName) ? org.OrgName : org.SubName!;
+        var signerName = org.ZohoSignSignerName?.Trim();
+        if (string.IsNullOrWhiteSpace(signerName))
+            throw new InvalidOperationException(
+                "Organization Zoho Sign signer name is not configured. Set it under Admin → Organization profile.");
         var pdfBytes = await pdfGenerator.GenerateAsync(invoiceId, cancellationToken);
         var placement = InvoiceSignaturePlacementResolver.Resolve(pdfBytes);
 
