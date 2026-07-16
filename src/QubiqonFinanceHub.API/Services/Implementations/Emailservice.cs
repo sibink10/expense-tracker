@@ -479,7 +479,8 @@ public class EmailService : IEmailService
                 "Payment Notes",
                 variables,
                 includePaymentReference: true,
-                includeBillIdRow: false),
+                includeBillIdRow: false,
+                forVendorRecipient: true),
 
             var key when key == Constants.EmailTemplateKeys.InvoiceCreated => await BuildSafeInvoiceEmailContentAsync(
                 org,
@@ -1338,7 +1339,8 @@ public class EmailService : IEmailService
         string detailsHeading,
         Dictionary<string, string> variables,
         bool includePaymentReference,
-        bool includeBillIdRow = true)
+        bool includeBillIdRow = true,
+        bool forVendorRecipient = false)
     {
         var detailsSection = string.IsNullOrWhiteSpace(detailsText)
             ? string.Empty
@@ -1372,10 +1374,76 @@ public class EmailService : IEmailService
         var discountPercentRow = BuildOptionalTableRow("Discount %", GetVariableOrEmpty(variables, "discount_percent"));
         var roundingRow = BuildOptionalTableRow("Rounding", GetVariableOrEmpty(variables, "rounding"));
         var lineItemsHtml = GetVariableOrEmpty(variables, "line_items_html");
-        var gstBreakdownRowsHtml = GetVariableOrEmpty(variables, "gst_breakdown_rows_html");
+        var gstBreakdownRowsHtml = forVendorRecipient
+            ? string.Empty
+            : GetVariableOrEmpty(variables, "gst_breakdown_rows_html");
         var tdsRowHtml = GetVariableOrEmpty(variables, "tds_row_html");
-        var viewLinkSection = BuildViewLinkSection(variables);
+        var viewLinkSection = forVendorRecipient ? string.Empty : BuildViewLinkSection(variables);
         var organizationDetails = BuildOrganizationDetails(org);
+        var totalPayableRow = forVendorRecipient
+            ? string.Empty
+            : $"""
+                <tr>
+                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Total Payable</td>
+                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{Encode(GetVariable(variables, "total_payable"))}</td>
+                </tr>
+                """;
+
+        var descriptionRow = forVendorRecipient
+            ? string.Empty
+            : $"""
+                <tr>
+                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Description</td>
+                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{Encode(GetVariable(variables, "description"))}</td>
+                </tr>
+                """;
+        var subTotalRow = forVendorRecipient
+            ? string.Empty
+            : $"""
+                <tr>
+                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Sub total (items)</td>
+                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{Encode(GetVariableOrEmpty(variables, "sub_total"))}</td>
+                </tr>
+                """;
+        var totalGstRow = forVendorRecipient
+            ? string.Empty
+            : $"""
+                <tr>
+                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Total GST</td>
+                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{Encode(GetVariableOrEmpty(variables, "total_line_gst"))}</td>
+                </tr>
+                """;
+        var dueDateRow = forVendorRecipient
+            ? string.Empty
+            : $"""
+                <tr>
+                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Due Date</td>
+                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{Encode(GetVariable(variables, "due_date"))}</td>
+                </tr>
+                """;
+        var actorRow = forVendorRecipient
+            ? string.Empty
+            : $"""
+                <tr>
+                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">{Encode(actorLabel)}</td>
+                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{Encode(actorName)}</td>
+                </tr>
+                """;
+        var updatedOnRow = forVendorRecipient
+            ? string.Empty
+            : $"""
+                <tr>
+                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Updated On</td>
+                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{Encode(GetVariable(variables, "action_date"))}</td>
+                </tr>
+                """;
+        var automatedFooter = forVendorRecipient
+            ? string.Empty
+            : $$"""
+                <div style="margin-top:24px;padding-top:20px;border-top:1px solid #e2e8f0;font-size:13px;line-height:1.7;color:#64748b;">
+                    This is an automated notification from {{Encode(org.OrgName)}}.
+                </div>
+                """;
 
         var htmlBody = $$"""
             <!DOCTYPE html>
@@ -1416,19 +1484,10 @@ public class EmailService : IEmailService
                                     <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Vendor</td>
                                     <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{{Encode(GetVariable(variables, "vendor_name"))}}</td>
                                 </tr>
-                                <tr>
-                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Description</td>
-                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{{Encode(GetVariable(variables, "description"))}}</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Sub total (items)</td>
-                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{{Encode(GetVariableOrEmpty(variables, "sub_total"))}}</td>
-                                </tr>
+                                {{descriptionRow}}
+                                {{subTotalRow}}
                                 {{gstBreakdownRowsHtml}}
-                                <tr>
-                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Total GST</td>
-                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{{Encode(GetVariableOrEmpty(variables, "total_line_gst"))}}</td>
-                                </tr>
+                                {{totalGstRow}}
                                 {{discountPercentRow}}
                                 {{roundingRow}}
                                 <tr>
@@ -1436,29 +1495,17 @@ public class EmailService : IEmailService
                                     <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{{Encode(GetVariable(variables, "amount"))}}</td>
                                 </tr>
                                 {{tdsRowHtml}}
-                                <tr>
-                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Total Payable</td>
-                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{{Encode(GetVariable(variables, "total_payable"))}}</td>
-                                </tr>
+                                {{totalPayableRow}}
                                 {{paidAmountRow}}
                                 {{balanceDueRow}}
                                 <tr>
                                     <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Bill Date</td>
                                     <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{{Encode(GetVariable(variables, "bill_date"))}}</td>
                                 </tr>
-                                <tr>
-                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Due Date</td>
-                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{{Encode(GetVariable(variables, "due_date"))}}</td>
-                                </tr>
+                                {{dueDateRow}}
                                 {{paymentReferenceRow}}
-                                <tr>
-                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">{{Encode(actorLabel)}}</td>
-                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{{Encode(actorName)}}</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding:14px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;width:35%;vertical-align:top;text-align:left;">Updated On</td>
-                                    <td style="padding:14px 16px;border-top:1px solid #e2e8f0;font-size:14px;color:#0f172a;width:65%;vertical-align:top;text-align:left;">{{Encode(GetVariable(variables, "action_date"))}}</td>
-                                </tr>
+                                {{actorRow}}
+                                {{updatedOnRow}}
                             </table>
                         </div>
 
@@ -1467,9 +1514,7 @@ public class EmailService : IEmailService
                         {{detailsSection}}
                         {{viewLinkSection}}
 
-                        <div style="margin-top:24px;padding-top:20px;border-top:1px solid #e2e8f0;font-size:13px;line-height:1.7;color:#64748b;">
-                            This is an automated notification from {{Encode(org.OrgName)}}.
-                        </div>
+                        {{automatedFooter}}
                     </div>
                 </div>
             </body>
