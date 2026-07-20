@@ -36,11 +36,19 @@ public class VendorBillService : IVendorBillService
         if (vendor.OrganizationId != orgId || vendor.IsDelete)
             throw new KeyNotFoundException("Vendor not found");
 
+        var lineItems = ParseLineItems(dto.Items);
+        var validLineItems = lineItems.Where(li => !string.IsNullOrWhiteSpace(li.Description) && li.Quantity > 0).ToList();
+        if (validLineItems.Count == 0)
+            throw new InvalidOperationException("At least one item with description and quantity is required.");
+
+        var subTotal = validLineItems.Sum(li => li.Quantity * li.Rate);
+        var tdsBase = Math.Round(subTotal - (subTotal * dto.DiscountPercent / 100), 2);
+
         decimal tdsAmount = 0;
         if (dto.TaxConfigId.HasValue)
         {
             var tax = await _db.TaxConfigurations.FindAsync(dto.TaxConfigId.Value);
-            if (tax != null) tdsAmount = Math.Round(dto.Amount * tax.Rate / 100, 2);
+            if (tax != null) tdsAmount = Math.Round(tdsBase * tax.Rate / 100, 2);
         }
 
         var billId = Guid.NewGuid();
@@ -84,11 +92,6 @@ public class VendorBillService : IVendorBillService
             Text = $"Bill submitted for ₹{dto.Amount:N2}." + (attachmentUrl != null ? " Attachment uploaded." : " No attachment."),
             ActionType = CommentActionType.Submitted
         });
-
-        var lineItems = ParseLineItems(dto.Items);
-        var validLineItems = lineItems.Where(li => !string.IsNullOrWhiteSpace(li.Description) && li.Quantity > 0).ToList();
-        if (validLineItems.Count == 0)
-            throw new InvalidOperationException("At least one item with description and quantity is required.");
 
         for (var i = 0; i < lineItems.Count; i++)
         {
@@ -197,12 +200,15 @@ public class VendorBillService : IVendorBillService
         bill.Rounding = dto.Rounding;
 
         // ✅ Tax calculation
+        var subTotal = validLineItems.Sum(li => li.Quantity * li.Rate);
+        var tdsBase = Math.Round(subTotal - (subTotal * dto.DiscountPercent / 100), 2);
+
         decimal tdsAmount = 0;
         if (bill.TaxConfigId.HasValue)
         {
             var tax = await _db.TaxConfigurations.FindAsync(bill.TaxConfigId.Value);
             if (tax != null)
-                tdsAmount = Math.Round(dto.Amount * tax.Rate / 100, 2);
+                tdsAmount = Math.Round(tdsBase * tax.Rate / 100, 2);
         }
 
         bill.TDSAmount = tdsAmount;

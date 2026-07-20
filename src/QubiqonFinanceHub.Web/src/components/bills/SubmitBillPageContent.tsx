@@ -178,7 +178,8 @@ export default function SubmitBillPage() {
   const due = bd ? addDays(bd, paymentTermOptions.find((x) => x.v === trm)?.d || 30) : "";
   const tx = tdsOptions.find((x) => x.id === tds);
   const tdsRate = tx?.rate || 0;
-  const tdsA = Math.round((totalBeforeTds * tdsRate) / 100);
+  const tdsBase = round2(subTotal - discountAmount);
+  const tdsA = round2((tdsBase * tdsRate) / 100);
 
   const gridStyle: React.CSSProperties = {
     display: "grid",
