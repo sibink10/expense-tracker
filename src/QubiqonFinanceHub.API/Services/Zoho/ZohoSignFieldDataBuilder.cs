@@ -91,6 +91,13 @@ public static class ZohoSignFieldDataBuilder
             "USD" => $"${amount:N2}",
             "EUR" => $"€{amount:N2}",
             "GBP" => $"£{amount:N2}",
+            "CAD" => $"CA${amount:N2}",
+            "AUD" => $"A${amount:N2}",
+            "AED" => $"AED {amount:N2}",
+            "SGD" => $"S${amount:N2}",
+            "JPY" => $"¥{amount:N2}",
+            "CHF" => $"CHF {amount:N2}",
+            "INR" => $"₹{amount:N2}",
             _ => $"₹{amount:N2}"
         };
 

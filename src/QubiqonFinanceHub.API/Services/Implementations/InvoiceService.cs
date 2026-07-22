@@ -119,7 +119,12 @@ public class InvoiceService : IInvoiceService
             "EUR" => "Euro",
             "GBP" => "British Pound",
             "CAD" => "Canadian Dollar",
+            "AUD" => "Australian Dollar",
             "AED" => "United Arab Emirates Dirham",
+            "SGD" => "Singapore Dollar",
+            "JPY" => "Japanese Yen",
+            "CHF" => "Swiss Franc",
+            "INR" => "Indian Rupee",
             _ => "Indian Rupee"
         };
         var wholeAmount = (int)Math.Floor(invoice.Total);
@@ -248,7 +253,12 @@ public class InvoiceService : IInvoiceService
             "EUR" => "Euro",
             "GBP" => "British Pound",
             "CAD" => "Canadian Dollar",
+            "AUD" => "Australian Dollar",
             "AED" => "United Arab Emirates Dirham",
+            "SGD" => "Singapore Dollar",
+            "JPY" => "Japanese Yen",
+            "CHF" => "Swiss Franc",
+            "INR" => "Indian Rupee",
             _ => "Indian Rupee"
         };
 
@@ -754,7 +764,12 @@ public class InvoiceService : IInvoiceService
             "EUR" => $"€{amount:N2}",
             "GBP" => $"£{amount:N2}",
             "CAD" => $"CA${amount:N2}",
+            "AUD" => $"A${amount:N2}",
             "AED" => $"AED {amount:N2}",
+            "SGD" => $"S${amount:N2}",
+            "JPY" => $"¥{amount:N2}",
+            "CHF" => $"CHF {amount:N2}",
+            "INR" => $"₹{amount:N2}",
             _ => $"₹{amount:N2}"
         };
 
